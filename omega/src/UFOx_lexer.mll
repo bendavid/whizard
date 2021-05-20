@@ -59,7 +59,7 @@ rule token = parse
   | '-'        	      { MINUS }
   | ( digit+ as i ) ( '.' '0'* )?
                       { INT (int_of_string i) }
-  | digit* '.' digit+ ( ['E''e'] '-'? digit+ )? as x
+  | ( digit* '.' digit+ | digit+ '.' digit* ) ( ['E''e'] '-'? digit+ )? as x
                       { FLOAT (float_of_string x) }
   | '\'' (char word* as s) '\''
                       { QUOTED s }

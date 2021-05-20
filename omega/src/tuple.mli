@@ -34,7 +34,13 @@ module type Mono =
   sig
     type 'a t
 
+    (* The size of the tuple, i.\,e.~[arity (a1,a2,a3) = 3]. *)
     val arity : 'a t -> int
+
+    (* The maximum size of tuples supported by the module.
+       A negative value means that there is no limit.  In this
+       case the functions [power] and [power_fold] may raise
+       the exception [No_termination]. *)
     val max_arity : unit -> int
 
     val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
@@ -81,12 +87,13 @@ module type Mono =
    \end{equation}
    For tuples and polytuples with bounded arity, the [power]
    and [power_fold] functions terminate. In polytuples with unbounded arity, the
-   the [power] function always raises [No_termination].  [power_fold]
+   the [power] function raises [No_termination] unless a limit is given
+   by [?truncate].  [power_fold]
    also raises [No_termination], but could be changed to run until the
    argument function raises an exception.  However, if we need this behaviour,
-   we should implemente [power_iter] instead. *)
-    val power : 'a list -> 'a t list
-    val power_fold : ('a t -> 'b -> 'b) -> 'a list -> 'b -> 'b
+   we should probably implement [power_iter] instead. *)
+    val power : ?truncate:int -> 'a list -> 'a t list
+    val power_fold : ?truncate:int -> ('a t -> 'b -> 'b) -> 'a list -> 'b -> 'b
 
 (* We can also identify all (poly)tuples with permuted elements and return
    only one representative, e.\,g.:
@@ -166,6 +173,13 @@ module type Nary =
       val of_list : 'a list -> 'a t
     end
 module Unbounded_Nary : Nary
+
+(* \begin{dubious}
+     It seemed like a good idea, but hardcoding [max_arity] here prevents
+     optimizations for processes with fewer external particles than
+     [max_arity].  For [max_arity >= 8] things become bad!
+     Need to implement a truncating version of [power] and [power_fold].
+   \end{dubious} *)
 
 module type Bound = sig val max_arity : unit -> int end
 module Nary (B: Bound) : Nary

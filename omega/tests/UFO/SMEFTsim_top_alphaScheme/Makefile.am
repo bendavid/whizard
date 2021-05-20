@@ -4,12 +4,10 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2016 by
+# Copyright (C) 1999-2021 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     with contributions from
-#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -27,7 +25,24 @@
 #
 ########################################################################
 
-SUBDIRS = SM MSSM SMEFTsim_top_alphaScheme
+EXTRA_DIST = \
+  __init__.py \
+  coupling_orders.py \
+  couplings.py \
+  CT_couplings.py \
+  decays.py \
+  function_library.py \
+  lorentz.py \
+  object_library.py \
+  param_card_massless.dat \
+  parameters.py \
+  particles.py \
+  propagators.py \
+  restrict_massless.dat \
+  restrict_SMlimit_massless.dat \
+  version.info \
+  vertices.py \
+  write_param_card.py
 
 ########################################################################
 ## The End.

@@ -46,6 +46,8 @@ val compare : t -> t -> int
 
 (* \thocwmodulesection{Color Flows} *)
 
+(* This computes the color flow as used by WHIZARD: *)
+
 module type Flow =
   sig
 
@@ -83,6 +85,11 @@ module Flow : Flow
 (* \thocwmodulesection{Vertex Color Flows} *)
 
 (* \begin{dubious}
+     The following is (stipp work-in-progress) infrastructure for
+     translating UFO style color factors into color flows.
+   \end{dubious} *)
+
+(* \begin{dubious}
      It might be beneficial, to use the color flow representation
      here.  This will simplify the colorizer at the price of
      some complexity in [UFO] or here.
@@ -90,48 +97,105 @@ module Flow : Flow
 
 module type Arrow =
   sig
+
+    (* Endpoints can be the the tip or tail of an arrow or a ghost.
+       We use the aliases for illustration. *)
     type endpoint
-    val position : endpoint -> int
-    val relocate : (int -> int) -> endpoint -> endpoint
     type tip = endpoint
     type tail = endpoint
     type ghost = endpoint
+
+    (* The position of the endpoint is encoded as an integer, which
+       can be mapped, if necessary. *)
+    val position : endpoint -> int
+    val relocate : (int -> int) -> endpoint -> endpoint
+
+    (* An [Arrow.t] is either a genuine arrow or a ghost \ldots *)
     type ('tail, 'tip, 'ghost) t =
       | Arrow of 'tail * 'tip
       | Ghost of 'ghost
+
+    (* {}\ldots and we distuish [free] arrows that must not contain
+       summation indices from [factor]s that may.  Indices are
+       opaque. *)
     type free = (tail, tip, ghost) t
     type factor
+
+    (* For debugging, logging, etc. *)
     val free_to_string : free -> string
     val factor_to_string : factor -> string
+
+    (* Change the [endpoint]s in an arrow. *)
     val map : (endpoint -> endpoint) -> free -> free
+
+    (* Turn the [endpoints] satisfying the predicate into a
+       left or right hand side summation index. *)
     val to_left_factor : (endpoint -> bool) -> free -> factor
     val to_right_factor : (endpoint -> bool) -> free -> factor
+
+    (* The incomplete inverse [of_factor] raises an exception
+       if there are remaining summation indices.  [is_free] can
+       be used to check first. *)
     val of_factor : factor -> free
-    val negatives : free -> endpoint list
     val is_free : factor -> bool
+
+    (* Return all the endpoints of the array that have a [position]
+       encoded as a negative integer.  These are treated as summation
+       indices in our applications. *)
+    val negatives : free -> endpoint list
+
+    (* We will need to test whether an arrow represents a ghost. *)
     val is_ghost : free -> bool
+
+    (* Merging two arrows can give a variety of results: *)
+    type merge =
+      | Match of factor  (* a tip fits the other's tail: make one arrow out of two *)
+      | Ghost_Match (* two matching ghosts *)
+      | Loop_Match (* both tips fit both tails: drop the arrows *)
+      | Mismatch (* ghost meets arrow: error *)
+      | No_Match (* nothing to be done *)
+    val merge : factor -> factor -> merge
+
+(* It's intuitive to use infix operators to construct the lines. *)
     val single : endpoint -> endpoint -> free
     val double : endpoint -> endpoint -> free list
     val ghost : endpoint -> free
-    val chain : int list -> free list
-    val cycle : int list -> free list
-    type merge =
-      | Match of factor
-      | Ghost_Match
-      | Loop_Match
-      | Mismatch
-      | No_Match
-    val merge : factor -> factor -> merge
-    module BinOps : sig
+
+    module Infix : sig
+
+      (* [single i j] or [i => j] creates a single line from [i] to [j] and
+         [i ==> j] is a shorthard for [[i => j]]. *)
       val (=>) : int -> int -> free
       val (==>) : int -> int -> free list
+
+      (* [double i j] or [i <=> j] creates a double line from [i] to [j]
+         and back. *)
       val (<=>) : int -> int -> free list
+
+      (* Single lines with subindices at the tip and/or tail *)
       val (>=>) : int * int -> int -> free
       val (=>>) : int -> int * int -> free
       val (>=>>) : int * int -> int * int -> free
+
+      (* [ghost i] [?? i] creates a ghost at [i]. *)
       val (??) : int -> free
+
+      (* NB: I wanted to use [~~] instead of [??], but ocamlweb can't handle
+         operators starting with [~] in the index properly. *)
     end
+
+    (* [chain [1;2;3]] is a shorthand for [[1 => 2; 2 => 3]] and
+       [cycle [1;2;3]] for [[1 => 2; 2 => 3; 3 => 1]].  Other lists
+       and edge cases are handled in the natural way. *)
+    val chain : int list -> free list
+    val cycle : int list -> free list
+
     module Test : Test
+
+    (* Pretty printer for the toplevel. *)
+    val pp_free : Format.formatter -> free -> unit
+    val pp_factor : Format.formatter -> factor -> unit
+
   end
 
 module Arrow : Arrow
@@ -149,10 +213,20 @@ module Propagator : Propagator
 module type Birdtracks =
   sig
     type t
+
+    (* Debugging, logging, etc. *)
     val to_string : t -> string
-    val pp : Format.formatter -> t -> unit
+
+    (* Test for trivial color flows that are just a number. *)
     val trivial : t -> bool
+
+    (* Test for vanishing coefficients. *)
     val is_null : t -> bool
+
+    (* Purely numeric factors, implemented as Laurent polynomials
+       (cf.~[Algebra.Laurent] in~$N_C$ with complex rational
+       coefficients. *)
+    val const : Algebra.Laurent.t -> t
     val unit : t
     val null : t
     val two : t
@@ -161,23 +235,33 @@ module type Birdtracks =
     val minus : t
     val nc : t
     val imag : t
+
+    (* Shorthand: $\{(c_i,p_i)\}_i\to \sum_i c_i (N_C)^{p_i}$*)
     val ints : (int * int) list -> t
-    val const : Algebra.Laurent.t -> t
-    val times : t -> t -> t
-    val multiply : t list -> t
+
     val scale : Algebra.QC.t -> t -> t
+
     val sum : t list -> t
     val diff : t -> t -> t
-    val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
-    val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
-    module BinOps : sig
+    val times : t -> t -> t
+    val multiply : t list -> t
+    module Infix : sig
       val ( +++ ) : t -> t -> t
       val ( --- ) : t -> t -> t
       val ( *** ) : t -> t -> t
     end
+
+    val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
+    val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
+
     val map : (int -> int) -> t -> t
+
     val fuse : int -> t -> Propagator.t list -> (Algebra.QC.t * Propagator.t) list
+
     module Test : Test
+
+    (* Pretty printer for the toplevel. *)
+    val pp : Format.formatter -> t -> unit
   end
 
 module Birdtracks : Birdtracks

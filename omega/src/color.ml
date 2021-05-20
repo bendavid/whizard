@@ -491,11 +491,11 @@ module QC = Algebra.QC
 module type Arrow =
   sig
     type endpoint
-    val position : endpoint -> int
-    val relocate : (int -> int) -> endpoint -> endpoint
     type tip = endpoint
     type tail = endpoint
     type ghost = endpoint
+    val position : endpoint -> int
+    val relocate : (int -> int) -> endpoint -> endpoint
     type ('tail, 'tip, 'ghost) t =
       | Arrow of 'tail * 'tip
       | Ghost of 'ghost
@@ -507,14 +507,9 @@ module type Arrow =
     val to_left_factor : (endpoint -> bool) -> free -> factor
     val to_right_factor : (endpoint -> bool) -> free -> factor
     val of_factor : factor -> free
-    val negatives : free -> endpoint list
     val is_free : factor -> bool
+    val negatives : free -> endpoint list
     val is_ghost : free -> bool
-    val single : endpoint -> endpoint -> free
-    val double : endpoint -> endpoint -> free list
-    val ghost : endpoint -> free
-    val chain : int list -> free list
-    val cycle : int list -> free list
     type merge =
       | Match of factor
       | Ghost_Match
@@ -522,7 +517,10 @@ module type Arrow =
       | Mismatch
       | No_Match
     val merge : factor -> factor -> merge
-    module BinOps : sig
+    val single : endpoint -> endpoint -> free
+    val double : endpoint -> endpoint -> free list
+    val ghost : endpoint -> free
+    module Infix : sig
       val (=>) : int -> int -> free
       val (==>) : int -> int -> free list
       val (<=>) : int -> int -> free list
@@ -531,7 +529,11 @@ module type Arrow =
       val (>=>>) : int * int -> int * int -> free
       val (??) : int -> free
     end
+    val chain : int list -> free list
+    val cycle : int list -> free list
     module Test : Test
+    val pp_free : Format.formatter -> free -> unit
+    val pp_factor : Format.formatter -> factor -> unit
   end
 
 module Arrow : Arrow =
@@ -554,7 +556,7 @@ module Arrow : Arrow =
     type ghost = endpoint
 
     (* Note that the \emph{same} index can appear multiple
-       times on in \emph{each} side. Thus, we \emph{must not}
+       times on \emph{each} side. Thus, we \emph{must not}
        combine the arrows in the two factors.
        In fact, we cannot disambiguate them by
        distinguishing tips from tails alone. *)
@@ -686,7 +688,7 @@ module Arrow : Arrow =
          else
            No_Match
 
-    module BinOps =
+    module Infix =
       struct
         let (=>) i j = single (I i) (I j)
         let (==>) i j = [i => j]
@@ -694,24 +696,18 @@ module Arrow : Arrow =
         let ( >=> ) (i, n) j = single (M (i, n)) (I j)
         let ( =>> ) i (j, m) = single (I i) (M (j, m))
         let ( >=>> ) (i, n) (j, m) = single (M (i, n)) (M (j, m))
-        (* I wanted to use [~~] instead of [??], but ocamlweb doesn't like
-           operators starting with [~] in the index. *)
         let (??) i = ghost (I i)
       end
 
-    open BinOps
+    open Infix
 
     (* Composite Arrows. *)
 
-    let rec chain' = function
+    let rec chain = function
       | [] -> []
       | [a] -> [a => a]
       | [a; b] -> [a => b]
-      | a :: (b :: _ as rest) -> (a => b) :: chain' rest
-
-    let chain = function
-      | [] -> []
-      | a :: _ as a_list -> chain' a_list
+      | a :: (b :: _ as rest) -> (a => b) :: chain rest
 
     let rec cycle' a = function
       | [] -> [a => a]
@@ -781,6 +777,12 @@ module Arrow : Arrow =
              suite_cycle]
 
       end
+
+    let pp_free fmt f =
+      Format.fprintf fmt "%s" (free_to_string f)
+
+    let pp_factor fmt f =
+      Format.fprintf fmt "%s" (factor_to_string f)
 
   end
 
@@ -852,9 +854,9 @@ module type Birdtracks =
   sig
     type t
     val to_string : t -> string
-    val pp : Format.formatter -> t -> unit
     val trivial : t -> bool
     val is_null : t -> bool
+    val const : Algebra.Laurent.t -> t
     val unit : t
     val null : t
     val two : t
@@ -864,29 +866,29 @@ module type Birdtracks =
     val nc : t
     val imag : t
     val ints : (int * int) list -> t
-    val const : Algebra.Laurent.t -> t
-    val times : t -> t -> t
-    val multiply : t list -> t
     val scale : QC.t -> t -> t
     val sum : t list -> t
     val diff : t -> t -> t
-    val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
-    val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
-    module BinOps : sig
+    val times : t -> t -> t
+    val multiply : t list -> t
+    module Infix : sig
       val ( +++ ) : t -> t -> t
       val ( --- ) : t -> t -> t
       val ( *** ) : t -> t -> t
     end
+    val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
+    val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
     val map : (int -> int) -> t -> t
     val fuse : int -> t -> Propagator.t list -> (QC.t * Propagator.t) list
     module Test : Test
+    val pp : Format.formatter -> t -> unit
   end
 
 module Birdtracks =
   struct
 
     module A = Arrow
-    open A.BinOps
+    open A.Infix
     module P = Propagator
     module L = Algebra.Laurent
 
@@ -1156,14 +1158,14 @@ module Birdtracks =
     let diff term1 term2 =
       canonicalize (List.rev_append term1 (scale (qc_int (-1)) term2))
 
-    module BinOps =
+    module Infix =
       struct
         let ( +++ ) term term' = sum [term; term']
         let ( --- ) = diff
         let ( *** ) = times
       end
 
-    open BinOps
+    open Infix
 
     let trace3 r a b c =
       r a (-1) (-2) *** r b (-2) (-3) *** r c (-3) (-1)
@@ -1434,7 +1436,7 @@ module SU3 : SU3 =
   struct
 
     module A = Arrow
-    open Arrow.BinOps
+    open Arrow.Infix
 
     module B = Birdtracks
     type t = B.t
@@ -1461,7 +1463,7 @@ module SU3 : SU3 =
     let fuse = B.fuse
     let f_of_rep = B.f_of_rep
     let d_of_rep = B.d_of_rep
-    module BinOps = B.BinOps
+    module Infix = B.Infix
 
     let delta3 i j =
       [(LP.int 1, i ==> j)]
@@ -1671,7 +1673,7 @@ gives
         module B = Birdtracks
 
         open Birdtracks
-        open Birdtracks.BinOps
+        open Birdtracks.Infix
 
         let exorcise vertex =
           List.filter
@@ -2095,7 +2097,7 @@ module U3 : SU3 =
   struct
 
     module A = Arrow
-    open Arrow.BinOps
+    open Arrow.Infix
 
     module B = Birdtracks
     type t = B.t
@@ -2122,7 +2124,7 @@ module U3 : SU3 =
     let fuse = B.fuse
     let f_of_rep = B.f_of_rep
     let d_of_rep = B.d_of_rep
-    module BinOps = B.BinOps
+    module Infix = B.Infix
 
     let delta3 i j =
       [(LP.int 1, i ==> j)]
@@ -2196,7 +2198,7 @@ module U3 : SU3 =
 
         open OUnit
         open Birdtracks
-        open BinOps
+        open Infix
 
         let suite_lie =
           "Lie algebra relations" >:::

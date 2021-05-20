@@ -968,9 +968,16 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 
     type vertices = (A.flavor * (constant Coupling.t * A.flavor PT.t) list) list
 
+(* \begin{dubious}
+     This is \emph{very} inefficient for [max_degree > 6].  Find a better
+     approach that avoids precomputing the huge lookup table!
+   \end{dubious} *)
+
     let vertices_nocache max_degree flavors : vertices =
       VSet.fold (fun f rhs v -> (f, rhs) :: v)
-        (PT.power_fold collect_vertices flavors VSet.empty) []
+        (PT.power_fold
+           ~truncate:(pred max_degree)
+           collect_vertices flavors VSet.empty) []
 
 (* Performance hack: *)
 
@@ -1055,6 +1062,14 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               result
           end
       | Some result -> result
+
+    let vertices' max_degree flavors =
+      Printf.eprintf ">>> vertices %d ..." max_degree;
+      flush stderr;
+      let v = vertices max_degree flavors in
+      Printf.eprintf " done.\n";
+      flush stderr;
+      v
 
 (* Note that we must perform any filtering of the vertices \emph{after}
    caching, because the restrictions \emph{must not} influence the
@@ -2023,7 +2038,7 @@ i*)
       let brakets =
         flavor_keystones (filter_keystone stats tower) select_p n
           (filter_vertices select_vtx
-	     (vertices (M.max_degree ()) (M.flavors ())))
+	     (vertices (min n (M.max_degree ())) (M.flavors ())))
           (T.keystones (ThoList.range 1 n)) in
 
       (* Remove the part of the DAG that is never needed in the amplitude. *)

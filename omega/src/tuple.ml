@@ -39,8 +39,8 @@ module type Mono =
     val split : ('a * 'b) t -> 'a t * 'b t
     val product : 'a list t -> 'a t list
     val product_fold : ('a t -> 'b -> 'b) -> 'a list t -> 'b -> 'b
-    val power : 'a list -> 'a t list
-    val power_fold : ('a t -> 'b -> 'b) -> 'a list -> 'b -> 'b
+    val power : ?truncate:int -> 'a list -> 'a t list
+    val power_fold : ?truncate:int -> ('a t -> 'b -> 'b) -> 'a list -> 'b -> 'b
     type 'a graded = 'a list array
     val graded_sym_power : int -> 'a graded -> 'a t list
     val graded_sym_power_fold : int -> ('a t -> 'b -> 'b) -> 'a graded ->
@@ -118,8 +118,23 @@ module Binary =
     let product_fold f (lx, ly) init =
       Product.fold2 (fun x y -> f (x, y)) lx ly init
 
-    let power l = product (l, l)
-    let power_fold f l = product_fold f (l, l)
+    let power ?truncate l =
+      match truncate with
+      | None -> product (l, l)
+      | Some n ->
+	  if n >= 2 then
+	    product (l, l)
+	  else
+	    invalid_arg "Tuple.Binary.power: truncate < 2"
+
+    let power_fold ?truncate f l =
+      match truncate with
+      | None -> product_fold f (l, l)
+      | Some n ->
+	  if n >= 2 then
+	    product_fold f (l, l)
+	  else
+	    invalid_arg "Tuple.Binary.power_fold: truncate < 2"
 
 (* In the special case of binary fusions, the implementation is very concise. *)
     type 'a graded = 'a list array
@@ -193,8 +208,23 @@ module Ternary =
     let product_fold f (lx, ly, lz) init =
       Product.fold3 (fun x y z -> f (x, y, z)) lx ly lz init
 
-    let power l = product (l, l, l)
-    let power_fold f l = product_fold f (l, l, l)
+    let power ?truncate l =
+      match truncate with
+      | None -> product (l, l, l)
+      | Some n ->
+	  if n >= 3 then
+	    product (l, l, l)
+	  else
+	    invalid_arg "Tuple.Ternary.power: truncate < 3"
+
+    let power_fold ?truncate f l =
+      match truncate with
+      | None -> product_fold f (l, l, l)
+      | Some n ->
+	  if n >= 3 then
+	    product_fold f (l, l, l)
+	  else
+	    invalid_arg "Tuple.Ternary.power_fold: truncate < 3"
 
     type 'a graded = 'a list array
 
@@ -326,10 +356,25 @@ module Mixed23 =
 
     exception No_termination
 
-    let power_fold f l init =
+    let power_fold23 f l init =
       product_fold f (T2 (l, l)) (product_fold f (T3 (l, l, l)) init)
-    let power l =
-      power_fold (fun m acc -> m :: acc) l []
+
+    let power_fold2 f l init =
+      product_fold f (T2 (l, l)) init
+
+    let power_fold ?truncate f l init =
+      match truncate with
+      | None -> power_fold23 f l init
+      | Some n ->
+	  if n >= 3 then
+	    power_fold23 f l init
+	  else if n = 2 then
+	    power_fold2 f l init
+	  else
+	    invalid_arg "Tuple.Mixed23.power_fold: truncate < 2"
+
+    let power ?truncate l =
+      power_fold ?truncate (fun m acc -> m :: acc) l []
 
     type 'a graded = 'a list array
 
@@ -411,6 +456,7 @@ module Nary (A : sig val max_arity : unit -> int end) =
       Product.list (function
         | x :: y -> (x, y)
         | [] -> failwith "Tuple.Nary.product") (xl :: yl)
+
     let product_fold f (xl, yl) init =
       Product.fold (function
         | x :: y -> f (x, y)
@@ -418,8 +464,20 @@ module Nary (A : sig val max_arity : unit -> int end) =
 
     exception No_termination
 
-    let power_fold f l init =
+    let truncated_arity ?truncate () =
       let ma = max_arity () in
+      match truncate with
+      | None -> ma
+      | Some n ->
+	  if n < 2 then
+	    invalid_arg "Tuple.Nary.power: truncate < 2"
+	  else if ma >= 2 then
+	    min n ma
+	  else
+	    n
+
+    let power_fold ?truncate f l init =
+      let ma = truncated_arity ?truncate () in
       if ma > 0 then
         List.fold_right
           (fun n -> product_fold f (l, ThoList.clone (pred n) l))
@@ -427,8 +485,8 @@ module Nary (A : sig val max_arity : unit -> int end) =
       else
         raise No_termination
 
-    let power l =
-      power_fold (fun t acc -> t :: acc) l []
+    let power ?truncate l =
+      power_fold ?truncate (fun t acc -> t :: acc) l []
 
     type 'a graded = 'a list array
 

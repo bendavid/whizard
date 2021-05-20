@@ -441,7 +441,8 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
 (* \thocwmodulesubsection{Header} *)
 
 (* \begin{dubious}
-     It would be nice to safe the creation date as comment. However, the Unix
+     [Bijan:]
+     It would be nice to save the creation date as comment. However, the Unix
      module doesn't seem to be loaded on default.
    \end{dubious} *)
 
