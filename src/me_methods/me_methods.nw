@@ -2946,7 +2946,8 @@ diagrams, at least in the testsuite.
             char (restrictions_string), char (diagrams_string), &
             char (writer%extra_options), char (write_phs_output_string)
     type is (omega_ufo_writer_t)
-       parameter_module = char (id) // "_par_" // char (writer%model_name)
+       parameter_module = char (id) // "_par_" // replace (char (writer%model_name), &
+            "-", "_", every=.true.)
        write (unit, "(5A)")  char (id), ".f90: ", char (parameter_module), ".lo"
        if (.not. verbose) then
           write (unit, "(5A)")  TAB // '@echo  "  OMEGA[UFO]', trim (char (id)), '.f90"'
