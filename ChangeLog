@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0+
 
+2021-05-24
+        Use defaults for UFO models without propagators.py
+
 2021-05-21
 	Bug fix: prevent invalid code for UFO models containing hyphens
 
