@@ -136,6 +136,16 @@ let valid_fortran_id s =
       false in
   valid_fortran_id' (pred (String.length s))
 
+let sanitize_fortran_id s =
+  let sanitize s =
+    String.map (fun c -> if is_alphanum c then c else '_') s in
+  if String.length s <= 0 then
+    invalid_arg "ThoString.sanitize_fortran_id: empty"
+  else if is_alpha s.[0] then
+    sanitize s
+  else
+    "N_" ^ sanitize s
+
 module Test =
   struct
 
@@ -169,8 +179,32 @@ module Test =
       "A_xyz_0_" >::
 	(fun () -> assert_equal true (valid_fortran_id "A_xyz_0_"))
 
+    let sanitize_digit =
+      "0" >::
+	(fun () -> assert_equal "N_0" (sanitize_fortran_id "0"))
+
+    let sanitize_digit_alpha =
+      "0abc" >::
+	(fun () -> assert_equal "N_0abc" (sanitize_fortran_id "0abc"))
+
+    let sanitize_underscore =
+      "_" >::
+	(fun () -> assert_equal "N__" (sanitize_fortran_id "_"))
+
+    let sanitize_underscore_alpha =
+      "_ABC" >::
+	(fun () -> assert_equal "N__ABC" (sanitize_fortran_id "_ABC"))
+
+    let sanitize_questionmark =
+      "A?C" >::
+	(fun () -> assert_equal "A_C" (sanitize_fortran_id "A?C"))
+
+    let sanitize_valid =
+      "A_xyz_0_" >::
+	(fun () -> assert_equal "A_xyz_0_" (sanitize_fortran_id "A_xyz_0_"))
+
     let suite_fortran =
-      "compare" >:::
+      "valid_fortran_id" >:::
         [fortran_empty;
          fortran_digit;
          fortran_digit_alpha;
@@ -179,9 +213,19 @@ module Test =
          fortran_questionmark;
          fortran_valid]
 
+    let suite_sanitize =
+      "sanitize_fortran_id" >:::
+        [sanitize_digit;
+         sanitize_digit_alpha;
+         sanitize_underscore;
+         sanitize_underscore_alpha;
+         sanitize_questionmark;
+         sanitize_valid]
+
     let suite =
       "ThoString" >:::
-	[suite_fortran]
+	[suite_fortran;
+         suite_sanitize]
 
   end
 

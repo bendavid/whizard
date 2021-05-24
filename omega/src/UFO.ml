@@ -70,8 +70,16 @@ let parse_string text =
   | Parsing.Parse_error ->
      invalid_arg ("parse error: " ^ text)
 
+exception File_missing of string
+
 let parse_file name =
-  let ic = open_in name in
+  let ic =
+    try open_in name with
+    | Sys_error msg as exc ->
+       if msg = name ^ ": No such file or directory" then
+         raise (File_missing name)
+       else
+         raise exc in
   let result =
     begin
       try
@@ -137,16 +145,18 @@ module Files : Files =
 	decays : UFO_syntax.t }
 
     let parse_directory dir =
-      let parse stem = parse_file (Filename.concat dir (stem ^ ".py")) in
+      let filename stem = Filename.concat dir (stem ^ ".py") in
+      let parse stem = parse_file (filename stem) in
+      let parse_optional stem =
+        try parse stem with File_missing _ -> [] in
       { particles = parse "particles";
 	couplings = parse "couplings";
-	coupling_orders = (try parse "coupling_orders" with _ -> []);
+	coupling_orders = parse_optional "coupling_orders";
 	vertices = parse "vertices";
 	lorentz = parse "lorentz";
 	parameters = parse "parameters";
-	propagators = parse "propagators";
-        (* [(try parse "propagators" with _ -> []);] *)
-	decays = (try parse "decays" with _ -> []) }
+	propagators = parse_optional "propagators";
+	decays = parse_optional "decays" }
 
   end
 

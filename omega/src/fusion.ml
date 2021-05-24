@@ -971,6 +971,11 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 (* \begin{dubious}
      This is \emph{very} inefficient for [max_degree > 6].  Find a better
      approach that avoids precomputing the huge lookup table!
+   \end{dubious}
+   \begin{dubious}
+     I should revive the above Idea to use [M.vertices] instead directly,
+     instead of rebuilding it from [M.fuse2],
+     [M.fuse3] and [M.fuse]!
    \end{dubious} *)
 
     let vertices_nocache max_degree flavors : vertices =

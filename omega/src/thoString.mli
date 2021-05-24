@@ -63,5 +63,9 @@ val compare_caseless :  string -> string -> int
    \texttt{\lbrack A-Za-z\rbrack\lbrack A-Za-z0-9\_\rbrack*} *)
 val valid_fortran_id : string -> bool
 
+(* Replace any invalid character by ['_'] and prepend ["N_"] iff
+   the string doesn't start with a letter. *)
+val sanitize_fortran_id : string -> string
+
 module Test : sig val suite : OUnit.test end
 
