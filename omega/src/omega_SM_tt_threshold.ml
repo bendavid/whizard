@@ -1,6 +1,6 @@
 (* omega_SM_tt_threshold.ml --
 
-   Copyright (C) 1999-2012 by
+   Copyright (C) 1999-2021 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -25,11 +25,3 @@
 module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran)
     (Modellib_SM.SM(Modellib_SM.SM_tt_threshold))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

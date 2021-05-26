@@ -25,11 +25,3 @@
 module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran)
                      (Modellib_SM.SM(Modellib_SM.SM_no_anomalous))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -1,11 +1,11 @@
-! $Id: external_Test.f90 2364 2010-04-20 12:47:06Z cnspeckn $
+! external.SM_tt_threshold.f90
 !
-! Copyright (C) 1999-2012 by 
+! Copyright (C) 1999-2021 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     Fabian Bach <fabian.bach@desy.de> (only this file)
+!     with contributions from
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
