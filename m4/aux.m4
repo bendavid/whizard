@@ -242,6 +242,11 @@ echo "           Flags: --- $CXXFLAGS ---"
 echo "--------------------------------------------------------------"
 echo " Python compiler: --- $PYTHON ---   @<:@interfaces only@:>@"
 echo "         Version: --- $PYTHON_FULL_VERSION ---"
+if test "$PYTHON_API" != "no" ; then
+   echo " WhiPy interface: --- yes ---"
+else
+   echo " WhiPy interface: --- no ---"
+fi
 echo "**************************************************************"
 echo "---      Internal and shipped packages      ---"
 echo "--------------------------------------------------------------"
