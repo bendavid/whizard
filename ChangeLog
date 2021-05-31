@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0+
 
+2021-05-31
+	Full LCIO MC production files can be properly recasted
+
 2021-05-24
         Use defaults for UFO models without propagators.py
 
