@@ -28,6 +28,7 @@ val status : string
 
 val default_UFO_dir : string
 
+(*i
 (* Cache writing is attempted in the order [[system_cache_dir]], [[user_cache_dir]], [["."]]
    and cache reading in the opposite order. *)
 
@@ -36,6 +37,7 @@ val user_cache_dir : string
 
 val cache_prefix : string
 val cache_suffix : string
+i*)
 
 val openmp : bool
 

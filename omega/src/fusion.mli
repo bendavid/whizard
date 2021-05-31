@@ -180,10 +180,12 @@ module type T =
 
     val allowed : amplitude -> bool
 
+(*i
 (* \thocwmodulesubsection{Performance Hacks} *)
 
     val initialize_cache : string -> unit
     val set_cache_name : string -> unit
+i*)
 
 (* \thocwmodulesubsection{Diagnostics} *)
 
@@ -282,9 +284,11 @@ module type Multi =
       exclusions -> selectors -> process list -> amplitudes
     val empty : amplitudes
 
+(*i
     (* Precompute the vertex table cache. *)
     val initialize_cache : string -> unit
     val set_cache_name : string -> unit
+i*)
 
     (* The list of all combinations of incoming and outgoing particles
        with a nonvanishing scattering amplitude. *)

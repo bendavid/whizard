@@ -36,7 +36,7 @@ nodist_execmod_HEADERS = $(OMEGALIB_MOD)
 libomega_core_la_SOURCES = $(OMEGALIB_F90)
 
 EXTRA_DIST = \
-    $(OMEGA_CAML) \
+    $(OMEGA_CONFIG_MLI) $(OMEGA_CAML) \
     omegalib.nw $(OMEGALIB_F90)
 
 OMEGA_CMXA = omega_core.cmxa omega_targets.cmxa omega_models.cmxa
@@ -65,7 +65,9 @@ endif
 include $(top_srcdir)/omega/src/Makefile.ocaml
 include $(top_srcdir)/omega/src/Makefile.sources
 
-if OCAML_AVAILABLE 
+if OCAML_AVAILABLE
+config.cmo config.cmx: config.cmi
+
 omega_core.a: omega_core.cmxa
 omega_core.cmxa: $(OMEGA_CORE_CMX)
 	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi

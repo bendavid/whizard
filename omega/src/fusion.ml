@@ -76,8 +76,10 @@ module type T =
     val constraints : amplitude -> string option
     val symmetry : amplitude -> int
     val allowed : amplitude -> bool
+(*i
     val initialize_cache : string -> unit
     val set_cache_name : string -> unit
+i*)
     val check_charges : unit -> flavor_sans_color list list
     val count_fusions : amplitude -> int
     val count_propagators : amplitude -> int
@@ -581,12 +583,15 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
     let ew_order = ref (EW_order 99)
 
     let options = Options.create
-        [ "ignore-cache", Arg.Unit (fun () -> cache_option := Cache_Ignore),
+        [
+(*i
+          "ignore-cache", Arg.Unit (fun () -> cache_option := Cache_Ignore),
           " ignore cached model tables (default)";
           "use-cache", Arg.Unit (fun () -> cache_option := Cache_Use),
           " use cached model tables";
           "overwrite-cache", Arg.Unit (fun () -> cache_option := Cache_Overwrite),
           " overwrite cached model tables";
+i*)
 	  "qcd", Arg.Int (fun n -> qcd_order := QCD_order n), 
 	  " set QCD order n [>= 0, default = 99] (ignored)";
 	  "ew", Arg.Int (fun n -> ew_order := EW_order n), 
@@ -992,6 +997,7 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
                * constant Coupling.vertex4 * constant) list
           * (A.flavor list * constant Coupling.vertexn * constant) list
 
+(*i
     module VCache =
       Cache.Make (struct type t = vertex_table end) (struct type t = vertices end)
 
@@ -1067,6 +1073,8 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
               result
           end
       | Some result -> result
+i*)
+    let vertices = vertices_nocache
 
     let vertices' max_degree flavors =
       Printf.eprintf ">>> vertices %d ..." max_degree;
@@ -3178,8 +3186,10 @@ module type Multi =
     val amplitudes : bool -> int option ->
       exclusions -> selectors -> process list -> amplitudes
     val empty : amplitudes
+(*i
     val initialize_cache : string -> unit
     val set_cache_name : string -> unit
+i*)
     val flavors : amplitudes -> process list
     val vanishing_flavors : amplitudes -> process list
     val color_flows : amplitudes -> Color.Flow.t list
@@ -3549,9 +3559,11 @@ i*)
         color_factors = color_factor_table;
         constraints = C.description select_wf }
 
+(*i
     let initialize_cache = F.initialize_cache
     let set_cache_name = F.set_cache_name
-        
+i*)
+
     let empty =
       { flavors = [];
         vanishing_flavors = [];

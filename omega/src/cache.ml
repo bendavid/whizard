@@ -24,9 +24,14 @@
 
 
 let search_path =
+  [ Filename.current_dir_name ]
+
+(*i
+let search_path =
   [ Filename.current_dir_name;
     ThoFilename.expand_home Config.user_cache_dir;
     Config.system_cache_dir ]
+i*)
 
 module type T =
   sig

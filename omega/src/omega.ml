@@ -350,15 +350,17 @@ i*)
     let read_lines file = 
       List.rev (read_lines_rev file)
 
+(*i
     type cache_mode =
       | Cache_Default
       | Cache_Initialize of string
 
     let cache_option =
       ref Cache_Default
+i*)
 
     let unphysical_polarization = ref None
-    
+
 (* \thocwmodulesection{Main Program} *)
 
     let main () =
@@ -411,9 +413,11 @@ i*)
            "name    each line: in -> out1 out2 ...");
           ("-cascade", Arg.String (fun s -> cascades := s :: !cascades),
            "expr       select diagrams");
+(*i
           ("-initialize",
            Arg.String (fun s -> cache_option := Cache_Initialize s),
            "dir     precompute lookup tables and store them in directory");
+i*)
           ("-unphysical", Arg.Int (fun i -> unphysical_polarization := Some i),
            "n       use unphysical polarization for n-th particle / test WIs");
           ("-template", Arg.Set template,
@@ -485,9 +489,10 @@ i*)
      is selected.
    \end{dubious} *)
 
+(*i
       begin match processes, !cache_option, !params with
       | [], Cache_Initialize dir, false ->
-          F.initialize_cache dir;
+         (* [F.initialize_cache dir;] *)
           exit 0
       | _, _, true ->
           if !write then
@@ -498,6 +503,18 @@ i*)
            T.amplitudes_to_channel cmdline output_channel !checks CF.empty;
          exit 0
       | _, _, false ->
+i*)
+
+      begin match processes, !params with
+      | _, true ->
+          if !write then
+            T.parameters_to_channel output_channel;
+          exit 0
+      | [], false ->
+         if !write then
+           T.amplitudes_to_channel cmdline output_channel !checks CF.empty;
+         exit 0
+      | _, false ->
 
         let selectors =
           let fin, fout = List.hd processes in

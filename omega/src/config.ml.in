@@ -27,6 +27,7 @@ let status = "@PACKAGE_STATUS@"
 
 let default_UFO_dir = "@OMEGA_DEFAULT_UFO_DIR@"
 
+(*i
 let system_cache_dir = "@OMEGA_SYSTEM_CACHE_DIR@"
 let user_cache_dir = "@OMEGA_USER_CACHE_DIR@"
 
@@ -39,6 +40,7 @@ let cache_prefix =
   try Filename.chop_extension basename with | _ -> basename
 
 let cache_suffix = "@OMEGA_CACHE_SUFFIX@"
+i*)
 
 let openmp = false
 

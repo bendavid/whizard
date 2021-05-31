@@ -89,9 +89,15 @@ OMEGA_INTERFACES_MLI = \
 # files to the end of the shorter list.
 ########################################################################
 
+# Derived from a *.ml.in, not to be distributed
+OMEGA_CONFIG_ML = \
+    config.ml
+
+OMEGA_CONFIG_MLI = $(OMEGA_CONFIG_ML:.ml=.mli)
+
 OMEGA_CORE_ML_PART1 = \
     OUnit.ml OUnitDiff.ml \
-    config.ml partial.ml pmap.ml format_Fortran.ml \
+    partial.ml pmap.ml format_Fortran.ml \
     thoString.ml sets.ml thoList.ml thoArray.ml bundle.ml powSet.ml \
     thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml \
@@ -115,7 +121,8 @@ OMEGA_CORE_ML = \
     $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2) $(OMEGA_CORE_ML_PART3)
 
 OMEGA_CORE_MLI_PRIMARY = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML_PRIMARY:.ml=.mli)
-OMEGA_CORE_MLI = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML:.ml=.mli)
+OMEGA_CORE_MLI = \
+    $(OMEGA_CONFIG_MLI) $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML:.ml=.mli)
 
 OMEGA_MODELLIB_ML = \
     modellib_SM.ml \
@@ -206,8 +213,8 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_Majorana.ml \
     omega_SM_Majorana_legacy.ml
 
-OMEGA_CORE_CMO = $(OMEGA_CORE_ML:.ml=.cmo)
-OMEGA_CORE_CMX = $(OMEGA_CORE_ML:.ml=.cmx)
+OMEGA_CORE_CMO = $(OMEGA_CONFIG_ML:.ml=.cmo) $(OMEGA_CORE_ML:.ml=.cmo)
+OMEGA_CORE_CMX = $(OMEGA_CORE_CMO:.cmo=.cmx)
 OMEGA_TARGETS_CMO = $(OMEGA_TARGETLIB_ML:.ml=.cmo)
 OMEGA_TARGETS_CMX = $(OMEGA_TARGETLIB_ML:.ml=.cmx)
 OMEGA_MODELS_CMO = $(OMEGA_MODELLIB_ML:.ml=.cmo)
@@ -247,6 +254,7 @@ OMEGA_ML = \
     $(OMEGA_APPLICATIONS_ML)
 
 OMEGA_MLI = \
+    $(OMEGA_CONFIG_MLI) \
     $(OMEGA_CORE_MLI) \
     $(OMEGA_MODELLIB_MLI) \
     $(OMEGA_TARGETLIB_MLI)
