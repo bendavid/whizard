@@ -10939,7 +10939,7 @@ should suffice to print the latter.
        if (object%weight_alt_is_known ()) then
           do i = 1, object%get_n_alt ()
              write (u, "(5x,A," // fmt // ",1x,I0)")  &
-                  "alternate weight      = ", object%get_weight_alt(i), i
+                  "alternate weight       = ", object%get_weight_alt(i), i
           end do
        end if
     end if
@@ -11758,17 +11758,20 @@ calculation, including MCI evaluation.  Useful if we need only matrix elements.
 <<Events: event: TBP>>=
   procedure :: recalculate => event_recalculate
 <<Events: procedures>>=
-  subroutine event_recalculate &
-       (event, update_sqme, weight_factor, recover_beams, recover_phs)
+  subroutine event_recalculate (event, update_sqme, weight_factor, &
+       recover_beams, recover_phs, check_match, success)
     class(event_t), intent(inout) :: event
     logical, intent(in) :: update_sqme
     real(default), intent(in), optional :: weight_factor
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: recover_phs
+    logical, intent(in), optional :: check_match
+    logical, intent(out), optional :: success
     type(particle_set_t), pointer :: particle_set
     integer :: i_mci, i_term, channel
     logical :: rec_phs_mci
     rec_phs_mci = .true.;  if (present (recover_phs))  rec_phs_mci = recover_phs
+    if (present (success))  success = .false.
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        i_mci = event%selected_i_mci
@@ -11778,7 +11781,11 @@ calculation, including MCI evaluation.  Useful if we need only matrix elements.
           call msg_bug ("Event: recalculate: undefined selection parameters")
        end if
        call event%instance%choose_mci (i_mci)
-       call event%instance%set_trace (particle_set, i_term, recover_beams)
+       call event%instance%set_trace &
+            (particle_set, i_term, recover_beams, check_match, success)
+       if (present (success)) then
+          if (.not. success)  return
+       end if
        if (allocated (event%alpha_qcd_forced)) then
           call event%instance%set_alpha_qcd_forced &
                (i_term, event%alpha_qcd_forced)

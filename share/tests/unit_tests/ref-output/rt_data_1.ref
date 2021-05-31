@@ -107,6 +107,7 @@ resonance_on_shell_turnoff =  0.000000000000E+00
 resonance_background_factor =  1.000000000000E+00
 ?keep_beams = false
 ?keep_remnants = true
+?rescan_force = false
 ?recover_beams = true
 ?update_event = false
 ?update_sqme = false

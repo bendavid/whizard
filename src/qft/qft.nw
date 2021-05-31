@@ -4933,9 +4933,14 @@ explicitly.
 <<Flavors: flavor: TBP>>=
   procedure :: tag_hard_process => flavor_tag_hard_process
 <<Flavors: procedures>>=
-  elemental subroutine flavor_tag_hard_process (flv)
+  elemental subroutine flavor_tag_hard_process (flv, hard)
     class(flavor_t), intent(inout) :: flv
-    flv%hard_process = .true.
+    logical, intent(in), optional :: hard
+    if (present (hard)) then
+       flv%hard_process = hard
+    else
+       flv%hard_process = .true.
+    end if
   end subroutine flavor_tag_hard_process
 
 @ %def flavor_tag_hard_process
@@ -4951,6 +4956,8 @@ explicitly.
 
 @ %def flavor_undefine
 @ Output: dense, no linebreak
+
+A hard-process tag is only shown if debugging is on.
 <<Flavors: flavor: TBP>>=
   procedure :: write => flavor_write
 <<Flavors: procedures>>=
@@ -4967,6 +4974,11 @@ explicitly.
     write (u, "(I0)", advance="no")  flv%f
     if (flv%radiated) then
        write (u, "('*')", advance="no")
+    end if
+    if (msg_level (D_FLAVOR) >= DEBUG) then
+       if (flv%hard_process) then
+          write (u, "('#')", advance="no")
+       end if
     end if
     write (u, "(A)", advance="no")  ")"
   end subroutine flavor_write
@@ -5000,6 +5012,7 @@ so after reading the particle-data pointer is empty.
     integer, intent(in) :: u
     write (u) flv%f
     write (u) flv%radiated
+    write (u) flv%hard_process
   end subroutine flavor_write_raw
 
   subroutine flavor_read_raw (flv, u, iostat)
@@ -5011,6 +5024,7 @@ so after reading the particle-data pointer is empty.
        if (iostat /= 0)  return
     end if
     read (u, iostat=iostat)  flv%radiated
+    read (u, iostat=iostat)  flv%hard_process
   end subroutine flavor_read_raw
 
 @ %def flavor_write_raw flavor_read_raw
@@ -6022,9 +6036,10 @@ us to avoid temporaries in some places.
 <<Quantum numbers: quantum numbers: TBP>>=
   procedure :: tag_hard_process => quantum_numbers_tag_hard_process
 <<Quantum numbers: procedures>>=
-  elemental subroutine quantum_numbers_tag_hard_process (qn)
+  elemental subroutine quantum_numbers_tag_hard_process (qn, hard)
     class(quantum_numbers_t), intent(inout) :: qn
-    call qn%f%tag_hard_process ()
+    logical, intent(in), optional :: hard
+    call qn%f%tag_hard_process (hard)
   end subroutine quantum_numbers_tag_hard_process
 
 @ %def quantum_numbers_tag_hard_process
@@ -8449,6 +8464,25 @@ that for each state, there is an array of counters.
   end subroutine state_iterator_set_model
 
 @ %def state_iterator_set_model
+@ Modify the hard-interaction tag of the current flavor entries at a specific
+position, in-place.
+<<State matrices: state iterator: TBP>>=
+  procedure :: retag_hard_process => state_iterator_retag_hard_process
+<<State matrices: procedures>>=
+  subroutine state_iterator_retag_hard_process (it, i, hard)
+    class(state_iterator_t), intent(inout) :: it
+    integer, intent(in) :: i
+    logical, intent(in) :: hard
+    type(node_t), pointer :: node
+    integer :: j
+    node => it%node
+    do j = 1, it%depth-i
+       node => node%parent
+    end do
+    call node%qn%tag_hard_process (hard)
+  end subroutine state_iterator_retag_hard_process
+
+@ %def state_iterator_retag_hard_process
 @ Retrieve the matrix element value associated with the current node.
 <<State matrices: state iterator: TBP>>=
   procedure :: get_matrix_element => state_iterator_get_matrix_element
@@ -9242,6 +9276,18 @@ must be equal to the length $d$ of the individual flavor-state entries.
   end subroutine state_flv_content_match
 
 @ %def state_flv_content_match
+@ Check if a given PDG code occurs anywhere in the table.
+<<State matrices: state flv content: TBP>>=
+  procedure :: contains => state_flv_content_contains
+<<State matrices: procedures>>=
+  function state_flv_content_contains (state_flv, pdg) result (success)
+    class(state_flv_content_t), intent(in) :: state_flv
+    integer, intent(in) :: pdg
+    logical :: success
+    success = any (state_flv%pdg == pdg)
+  end function state_flv_content_contains
+
+@ %def state_flv_content_contains
 @
 <<State matrices: procedures>>=
   elemental function pacify_complex (c_in) result (c_pac)
@@ -11583,6 +11629,24 @@ tagged as part of the hard process.
   end subroutine interaction_tag_hard_process
 
 @ %def interaction_tag_hard_process
+@ Modify hard-interaction flags at the specified particle-position, in-place.
+<<Interactions: interaction: TBP>>=
+  procedure :: retag_hard_process => interaction_retag_hard_process
+<<Interactions: procedures>>=
+  subroutine interaction_retag_hard_process (int, i, hard)
+    class(interaction_t), intent(inout), target :: int
+    integer, intent(in) :: i
+    logical, intent(in) :: hard
+    type(state_iterator_t) :: it
+    call it%init (int%get_state_matrix_ptr ())
+    do while (it%is_valid ())
+       call it%retag_hard_process (i, hard)
+       call it%advance ()
+    end do
+  end subroutine interaction_retag_hard_process
+  
+@ %def interaction_retag_hard_process
+@
 \subsection{Accessing contents}
 Return the integer tag.
 <<Interactions: interaction: TBP>>=
@@ -12048,7 +12112,9 @@ Also transfer resonance flags.
 connected to a new interaction [[int]].
 
 If [[resonant]] is defined and true, the connections are marked as
-resonant in the result interaction
+resonant in the result interaction.  Also, the children of the resonant
+connections are untagged if they were tagged with hard-interaction flags
+previously.
 <<Interactions: interaction: TBP>>=
   procedure :: relate_connections => interaction_relate_connections
 <<Interactions: procedures>>=
@@ -12068,6 +12134,7 @@ resonant in the result interaction
        do j = 1, int_in%children(k2)%get_length ()
           i2 = int_in%children(k2)%get_link (j)
           call int%relate (map_connections(i), map(i2))
+          if (reson)  call int%retag_hard_process (map(i2), .false.)
        end do
        int%resonant(map_connections(i)) = reson
     end do
@@ -13323,10 +13390,14 @@ In the result interaction, quantum numbers of the connections can be
 summed over.  This is determined by the [[qn_mask_conn]] argument.
 The [[qn_mask_rest]] argument is its analog for the other particles
 within the result interaction.  (E.g., for the trace of the state
-matrix, all quantum numbers are summed over.)  Finally, the
+matrix, all quantum numbers are summed over.)  
+
+Finally, the
 [[connections_are_resonant]] argument tells whether the connecting
-particles should be marked as resonant in the final event record.
-This is useful for decays.
+particles should be marked as resonant in the final event record.  If true,
+this also implies that the second interaction is not the hard process, so any
+corresponding tags should be removed from the outgoing particles.
+This applies to decays.
 
 The algorithm consists of the following steps:
 \begin{enumerate}

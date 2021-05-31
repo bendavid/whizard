@@ -134,6 +134,7 @@ seed = 2
 ?resonance_history = false
 ?keep_beams = false
 ?keep_remnants = true
+?rescan_force = false
 ?recover_beams = true
 ?update_event = false
 ?update_sqme = false

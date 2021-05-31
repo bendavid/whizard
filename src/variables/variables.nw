@@ -3825,6 +3825,12 @@ procedure with type [[V_NONE]].
           'in the event record, but tagged as unphysical.  Note that for ' // &
           'ISR and/or beamstrahlung spectra, the radiated photons are ' // &
           'considered as beam remnants.'))
+    call var_list%append_log (var_str ("?rescan_force"), .false., &
+          intrinsic=.true., &
+          description=var_str ('Flag that allows to bypass essential ' // &
+          'checks on the particle set when reading event/rescanning files ' // &
+          'into \whizard. (cf. \ttt{rescan}, \ttt{?update\_event}, \ttt{?update\_sqme}, ' // &
+          '\newline \ttt{?update\_weight})'))
     call var_list%append_log (var_str ("?recover_beams"), .true., &
           intrinsic=.true., &
           description=var_str ('Flag that decides whether the beam particles ' // &
@@ -3839,7 +3845,7 @@ procedure with type [[V_NONE]].
           '\ttt{?recover\_beams}, \ttt{?update\_sqme}, \ttt{?update\_weight})'))
     call var_list%append_log (var_str ("?update_sqme"), .false., &
           intrinsic=.true., &
-          description=var_str ('Flag that decides whehter the squared ' // &
+          description=var_str ('Flag that decides whether the squared ' // &
           'matrix element in an event file should be updated/recalculated ' // &
           'when reading event/rescanning files into \whizard. (cf. \ttt{rescan}, ' // &
           '\newline \ttt{?recover\_beams}, \ttt{?update\_event}, \ttt{?update\_weight})'))

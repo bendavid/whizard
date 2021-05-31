@@ -16517,11 +16517,12 @@ it.  It should be switched off when reading from raw event file.
   end subroutine process_instance_get_trace
 
   subroutine process_instance_set_trace &
-       (instance, pset, i_term, recover_beams, check_match)
+       (instance, pset, i_term, recover_beams, check_match, success)
     class(process_instance_t), intent(inout), target :: instance
     type(particle_set_t), intent(in) :: pset
     integer, intent(in) :: i_term
     logical, intent(in), optional :: recover_beams, check_match
+    logical, intent(out), optional :: success
     type(interaction_t), pointer :: int
     integer :: n_in
     int => instance%get_trace_int_ptr (i_term)
@@ -16529,7 +16530,8 @@ it.  It should be switched off when reading from raw event file.
     call pset%fill_interaction (int, n_in, &
          recover_beams = recover_beams, &
          check_match = check_match, &
-         state_flv = instance%get_state_flv (i_term))
+         state_flv = instance%get_state_flv (i_term), &
+         success = success)
   end subroutine process_instance_set_trace
 
 @ %def process_instance_get_trace

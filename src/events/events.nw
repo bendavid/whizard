@@ -12192,10 +12192,11 @@ necessary for making a fully qualified flavor component.
   public :: particle_from_lcio_particle
 <<HEP events: procedures>>=
   subroutine particle_from_lcio_particle &
-     (prt, lprt, model, daughters, parents, polarization)
+     (prt, lprt, model, fallback_model, daughters, parents, polarization)
     type(particle_t), intent(out) :: prt
     type(lcio_particle_t), intent(in) :: lprt
     type(model_data_t), intent(in), target :: model
+    type(model_data_t), intent(in), target :: fallback_model
     integer, dimension(:), intent(in) :: daughters, parents
     type(vector4_t) :: vtx4
     type(flavor_t) :: flv
@@ -12215,7 +12216,7 @@ necessary for making a fully qualified flavor component.
        end select
     case (4);  call prt%set_status (PRT_BEAM)
     end select
-    call flv%init (lcio_particle_get_pdg (lprt), model)
+    call flv%init (lcio_particle_get_pdg (lprt), model, fallback_model)
     call col%init (lcio_particle_get_flow (lprt))
     if (flv%is_beam_remnant ())  call prt%set_status (PRT_BEAM_REMNANT)
     call prt%set_flavor (flv)
@@ -12318,7 +12319,8 @@ information is not available.
              parents(j) = lcio_get_n_parents (evt,i,j)
           end do
        end if
-       call particle_from_lcio_particle (particle_set%prt(i), prt, model, &
+       call particle_from_lcio_particle (particle_set%prt(i), &
+            prt, model, fallback_model, &
             daughters, parents, polarization)
        deallocate (daughters, parents)
     end do
@@ -12361,7 +12363,6 @@ information is not available.
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
-
     call lcio_event_to_particle_set (particle_set, &
          lcio_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -16857,6 +16858,10 @@ event files.
 
 @ %def eio_lcio_switch_inout
 @ Output an event to the allocated LCIO writer.
+
+[WK 21-03-10]: Disable all output of sqme and alt-weight event parameters.
+Due to the fact that LCIO can only store single-precision values, we 
+not just lose precision, but also can run into overflows (events with ISR).
 <<EIO LCIO: eio lcio: TBP>>=
   procedure :: output => eio_lcio_output
 <<EIO LCIO: procedures>>=
@@ -16901,10 +16906,10 @@ event files.
        call lcio_event_set_process_name (eio%lcio_event, &
             event%get_process_name ())
        do i = 1, eio%n_alt
-          sqme_prc = event%get_sqme_alt(i)
-          weight = event%get_weight_alt(i)
-          call lcio_event_set_alt_sqme (eio%lcio_event, sqme_prc, i)
-          call lcio_event_set_alt_weight (eio%lcio_event, weight, i)
+           sqme_prc = event%get_sqme_alt(i)
+           weight = event%get_weight_alt(i)
+           call lcio_event_set_alt_sqme (eio%lcio_event, sqme_prc, i)
+           call lcio_event_set_alt_weight (eio%lcio_event, weight, i)
        end do
        call lcio_event_write (eio%lcio_writer, eio%lcio_event)
        call maybe_transfer_event_to_handle (eio%lcio_event, &
@@ -16918,6 +16923,9 @@ event files.
 
 @ %def eio_lcio_output
 @ Input an event.
+
+[WK 22-04-21] We do no longer fix the [[i_mci]] and [[i_term]] indices to 1,
+this can now be done by [[simulation_recalculate]].
 <<EIO LCIO: eio lcio: TBP>>=
   procedure :: input_i_prc => eio_lcio_input_i_prc
   procedure :: input_event => eio_lcio_input_event
@@ -16958,7 +16966,7 @@ event files.
     class(event_handle_t), intent(inout), optional :: event_handle
     iostat = 0
     call event%reset_contents ()
-    call event%select (1, 1, 1)
+    call event%select (0, 0, 1)
     call event%set_index (lcio_event_get_event_index (eio%lcio_event))
     call lcio_to_event (event, eio%lcio_event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
@@ -16986,7 +16994,6 @@ destroyed.
        type is (lcio_event_t)
           call lcio_event_final (event_handle, delete)  ! just in case
           event_handle = lcio_event
-call show_lcio_event (event_handle)
           call lcio_event_nullify (lcio_event) ! avoid destructor call
        end select
     end if
@@ -17290,6 +17297,7 @@ We test the implementation of all I/O methods.
     end select
 
     call eio%input_event (event, iostat)
+    call event%select (1, 1, 1)
     call event%write (u)
 
     write (u, "(A)")

@@ -6311,7 +6311,7 @@ daughters to $i$.
   end subroutine particle_set_remove_duplicates
 
 @ %def particle_set_remove_duplicates
-@ This doesn't catch all cases. Missing are splittings of the type
+@ This does not catch all cases. Missing are splittings of the type
 $i \to \text{something and} j$.
 <<Particles: remove duplicates: procedures>>=
   subroutine find_duplicates ()
@@ -6719,17 +6719,42 @@ To be on the safe side, allocate four times the original size.
 
 @ %def particle_set_to_hepevt_form
 @ This procedure aims at reconstructing the momenta of an interaction,
-given a particle set.  Since the particle orderings
+given a particle set.  The main task is to find the original hard process, by
+following the event history. 
+
+In-state: take those particles which are flagged as [[PRT_INCOMING]]
+
+Out-state: try to be smart by checking the immediate children of the incoming
+particles.  If the [[state_flv]] table is present, check any [[PRT_RESONANT]]
+particles that we get this way, whether they are potential out-particles by
+their PDG codes.  If not, replace them by their children, recursively.
+(Resonances may have been inserted by the corresponding event transform.)
+
+[WK 21-02-16] Revised the algorithm for the case [[recover_beams]] = false,
+i.e., the particle set contains beams and radiation.  This does not mean that
+the particle set contains the complete radiation history.  To make up for
+missing information, we follow the history in the interaction one step
+backwards and do a bit of guesswork to match this to the possibly incomplete
+history in the particle set.  [The current implementation allows only for one
+  stage of radiation; this could be improved by iterating the procedure!]
+
+[WK 21-03-21] Amended the [[find_hard_process_in_pset]] algorithm as follows:
+Occasionally, PYTHIA adds a stepchild to the decay of a resonance that WHIZARD
+has inserted, a shower object that also has other particles in the event as
+parents.  Such objects must not enter the hard-process record.  Therefore,
+resonance child particle objects are ignored if they have more than one
+parent.
 <<Particles: particle set: TBP>>=
   procedure :: fill_interaction => particle_set_fill_interaction
 <<Particles: procedures>>=
   subroutine particle_set_fill_interaction &
-       (pset, int, n_in, recover_beams, check_match, state_flv)
+       (pset, int, n_in, recover_beams, check_match, state_flv, success)
     class(particle_set_t), intent(in) :: pset
     type(interaction_t), intent(inout) :: int
     integer, intent(in) :: n_in
     logical, intent(in), optional :: recover_beams, check_match
     type(state_flv_content_t), intent(in), optional :: state_flv
+    logical, intent(out), optional :: success
     integer, dimension(:), allocatable :: map, pdg
     integer, dimension(:), allocatable :: i_in, i_out, p_in, p_out
     logical, dimension(:), allocatable :: i_set
@@ -6739,25 +6764,28 @@ given a particle set.  Since the particle orderings
     check = .true.;  if (present (check_match))  check = check_match
     if (check) then
        call find_hard_process_in_int  (i_in, i_out)
-       call find_hard_process_in_pset (p_in, p_out)
-       n_out = size (i_out)
-       if (size (i_in) /= n_in)  call err_int_n_in
-       if (size (p_in) /= n_in)  call err_pset_n_in
-       if (size (p_out) /= n_out)  call err_pset_n_out
+       call find_hard_process_in_pset (p_in, p_out, state_flv, success)
+       if (present (success)) then
+          if (size (i_in) /= n_in)  success = .false.
+          if (size (p_in) /= n_in)  success = .false.
+          if (size (p_out) /= n_out)  success = .false.
+          if (.not. success)  return
+       else
+          if (size (i_in) /= n_in)  call err_int_n_in
+          if (size (p_in) /= n_in)  call err_pset_n_in
+          if (size (p_out) /= n_out)  call err_pset_n_out
+       end if
        call extract_hard_process_from_pset (pdg)
-       call determine_map_for_hard_process (map, state_flv)
+       call determine_map_for_hard_process (map, state_flv, success)
+       if (present (success)) then
+          if (.not. success)  return
+       end if
+       call map_handle_duplicates (map)
        if (.not. r_beams) then
-          select case (n_in)
-          case (1)
-             call recover_parents (p_in(1), map)
-          case (2)
-             do i = 1, 2
-                call recover_parents (p_in(i), map)
-             end do
-             do p = 1, 2
-                call recover_radiation (p, map)
-             end do
-          end select
+          call determine_map_for_beams (map)
+          call map_handle_duplicates (map)
+          call determine_map_for_radiation (map, i_in, p_in)
+          call map_handle_duplicates (map)
        end if
     else
        allocate (map (int%get_n_tot ()))
@@ -6767,34 +6795,29 @@ given a particle set.  Since the particle orderings
     allocate (i_set (int%get_n_tot ()), source = .false.)
     do p = 1, size (map)
        if (map(p) /= 0) then
-          i_set(map(p)) = .true.
-          call int%set_momentum &
-               (pset%prt(p)%get_momentum (), map(p))
+          if (.not. i_set(map(p))) then
+             call int%set_momentum (pset%prt(p)%get_momentum (), map(p))
+             i_set(map(p)) = .true.
+          end if
        end if
     end do
     if (r_beams) then
        do i = 1, n_in
           call reconstruct_beam_and_radiation (i, i_set)
        end do
+    else
+       do i = int%get_n_tot (), 1, -1
+          if (.not. i_set(i))  call reconstruct_missing (i, i_set)
+       end do
     end if
-    if (any (.not. i_set))  call err_map
+    if (any (.not. i_set)) then
+       if (present (success)) then
+          success = .false.
+       else
+          call err_map
+       end if
+    end if
   contains
-    subroutine find_hard_process_in_pset (p_in, p_out)
-      integer, dimension(:), allocatable, intent(out) :: p_in, p_out
-      integer, dimension(:), allocatable :: p_status, p_idx
-      integer :: n_out_p
-      integer :: i
-      allocate (p_status (pset%n_tot), p_idx (pset%n_tot))
-      p_status = pset%prt%get_status ()
-      p_idx = [(i, i = 1, pset%n_tot)]
-      allocate (p_in (n_in))
-      p_in = pack (p_idx, p_status == PRT_INCOMING)
-      if (size (p_in) == 0)  call err_pset_hard
-      i = p_in(1)
-      n_out_p = particle_get_n_children (pset%prt(i))
-      allocate (p_out (n_out_p))
-      p_out = particle_get_children (pset%prt(i))
-    end subroutine find_hard_process_in_pset
     subroutine find_hard_process_in_int (i_in, i_out)
       integer, dimension(:), allocatable, intent(out) :: i_in, i_out
       integer :: n_in_i
@@ -6809,6 +6832,59 @@ given a particle set.  Since the particle orderings
       allocate (i_out (n_out))
       i_out = interaction_get_children (int, i)
     end subroutine find_hard_process_in_int
+    subroutine find_hard_process_in_pset (p_in, p_out, state_flv, success)
+      integer, dimension(:), allocatable, intent(out) :: p_in, p_out
+      type(state_flv_content_t), intent(in), optional :: state_flv
+      logical, intent(out), optional :: success
+      integer, dimension(:), allocatable :: p_status, p_idx, p_child
+      integer :: n_out_p, n_child, n_shift
+      integer :: i, k, c
+      allocate (p_status (pset%n_tot), p_idx (pset%n_tot), p_child (pset%n_tot))
+      p_status = pset%prt%get_status ()
+      p_idx = [(i, i = 1, pset%n_tot)]
+      allocate (p_in (n_in))
+      p_in = pack (p_idx, p_status == PRT_INCOMING)
+      if (size (p_in) == 0)  call err_pset_hard
+      i = p_in(1)
+      allocate (p_out (n_out))
+      n_out_p = particle_get_n_children (pset%prt(i))
+      p_out(1:n_out_p) = particle_get_children (pset%prt(i))
+      do k = 1, size (p_out)
+         i = p_out(k)
+         if (present (state_flv)) then
+            do while (pset%prt(i)%get_status () == PRT_RESONANT)
+               if (state_flv%contains (pset%prt(i)%get_pdg ()))  exit
+               n_child = particle_get_n_children (pset%prt(i))
+               p_child(1:n_child) = particle_get_children (pset%prt(i))
+               n_shift = -1
+               do c = 1, n_child
+                  if (particle_get_n_parents (pset%prt(p_child(c))) == 1) then
+                     n_shift = n_shift + 1
+                  else
+                     p_child(c) = 0
+                  end if
+               end do
+	       if (n_shift < 0) then
+                  if (present (success)) then
+                     success = .false.
+                     return
+                  else
+                     call err_mismatch
+                  end if
+               end if
+               p_out(k+1+n_shift:n_out_p+n_shift) = p_out(k+1:n_out_p)
+               n_out_p = n_out_p + n_shift
+               do c = 1, n_child
+                  if (p_child(c) /= 0) then
+                     p_out(k+c-1) = p_child(c)
+                  end if
+               end do
+               i = p_out(k)
+            end do
+         end if
+      end do
+      if (present (success))  success = .true.
+    end subroutine find_hard_process_in_pset
     subroutine extract_hard_process_from_pset (pdg)
       integer, dimension(:), allocatable, intent(out) :: pdg
       integer, dimension(:), allocatable :: pdg_p
@@ -6822,13 +6898,14 @@ given a particle set.  Since the particle orderings
       allocate (pdg (n_in + n_out))
       pdg = pack (pdg_p, mask_p)
     end subroutine extract_hard_process_from_pset
-    subroutine determine_map_for_hard_process (map, state_flv)
+    subroutine determine_map_for_hard_process (map, state_flv, success)
       integer, dimension(:), allocatable, intent(out) :: map
       type(state_flv_content_t), intent(in), optional :: state_flv
+      logical, intent(out), optional :: success
       integer, dimension(:), allocatable :: pdg_i, map_i
       integer :: n_tot
       logical, dimension(:), allocatable :: mask_i, mask_p
-      logical :: success
+      logical :: match
       n_tot = int%get_n_tot ()
       if (present (state_flv)) then
          allocate (mask_i (n_tot), source = .false.)
@@ -6836,113 +6913,176 @@ given a particle set.  Since the particle orderings
          mask_i (i_out) = .true.
          allocate (pdg_i (n_tot), map_i (n_tot))
          pdg_i = unpack (pdg, mask_i, 0)
-         call state_flv%match (pdg_i, success, map_i)
+         call state_flv%match (pdg_i, match, map_i)
+         if (present (success)) then
+            success = match
+	 end if
+         if (.not. match) then
+	    if (present (success)) then
+	       return
+	    else
+               call err_mismatch
+            end if
+	 end if
          allocate (mask_p (pset%n_tot), source = .false.)
          mask_p (p_in) = .true.
          mask_p (p_out) = .true.
          allocate (map (size (mask_p)), &
               source = unpack (pack (map_i, mask_i), mask_p, 0))
-         if (.not. success)  call err_mismatch
       else
          allocate (map (n_tot), source = 0)
          map(p_in) = i_in
          map(p_out) = i_out
       end if
     end subroutine determine_map_for_hard_process
-    recursive subroutine recover_parents (p, map)
-      integer, intent(in) :: p
+    subroutine map_handle_duplicates (map)
       integer, dimension(:), intent(inout) :: map
-      integer :: i, n, n_p, q, k
-      integer, dimension(:), allocatable :: i_parents, p_parents
-      integer, dimension(1) :: pp
-      i = map(p)
-      n = interaction_get_n_parents (int, i)
-      q = p
-      n_p = particle_get_n_parents (pset%prt(q))
-      do while (n_p == 1)
-         pp = particle_get_parents (pset%prt(q))
-         if (pset%prt(pp(1))%get_n_children () > 1)  exit
-         q = pp(1)
-         n_p = pset%prt(q)%get_n_parents ()
-      end do
-      if (n_p /= n)  call err_map
-      allocate (i_parents (n), p_parents (n))
-      i_parents = interaction_get_parents (int, i)
-      p_parents = pset%prt(q)%get_parents ()
-      do k = 1, n
-         q = p_parents(k)
-         if (map(q) == 0) then
-            map(q) = i_parents(k)
-            call recover_parents (q, map)
-         end if
-      end do
-    end subroutine recover_parents
-    recursive subroutine recover_radiation (p, map)
-      integer, intent(in) :: p
-      integer, dimension(:), intent(inout) :: map
-      integer :: i, n, n_p, q, k
-      integer, dimension(:), allocatable :: i_children, p_children
-      if (particle_get_status (pset%prt(p)) == PRT_INCOMING)  return
-      i = map(p)
-      n = interaction_get_n_children (int, i)
-      n_p = pset%prt(p)%get_n_children ()
-      if (n_p /= n)  call err_map
-      allocate (i_children (n), p_children (n))
-      i_children = interaction_get_children (int, i)
-      p_children = pset%prt(p)%get_children ()
-      do k = 1, n
-         q = p_children(k)
-         if (map(q) == 0) then
-            i = i_children(k)
-            if (interaction_get_n_children (int, i) == 0) then
-               map(q) = i
-            else
-               select case (n)
-               case (2)
-                  select case (k)
-                  case (1);  map(q) = i_children(2)
-                  case (2);  map(q) = i_children(1)
-                  end select
-               case (4)
-                  select case (k)
-                  case (1);  map(q) = i_children(3)
-                  case (2);  map(q) = i_children(4)
-                  case (3);  map(q) = i_children(1)
-                  case (4);  map(q) = i_children(2)
-                  end select
-               case default
-                  call err_radiation
-               end select
+      integer, dimension(1) :: p_parent, p_child
+      integer :: p
+      do p = 1, pset%n_tot
+         if (map(p) == 0) then
+            if (pset%prt(p)%get_n_parents () == 1) then
+               p_parent = pset%prt(p)%get_parents ()
+               if (map(p_parent(1)) /= 0) then
+                  if (pset%prt(p_parent(1))%get_n_children () == 1) then
+                     map(p) = map(p_parent(1))
+                  end if
+               end if
             end if
-         else
-            call recover_radiation (q, map)
          end if
       end do
-    end subroutine recover_radiation
+      do p = pset%n_tot, 1, -1
+         if (map(p) == 0) then
+            if (pset%prt(p)%get_n_children () == 1) then
+               p_child = pset%prt(p)%get_children ()
+               if (map(p_child(1)) /= 0) then
+                  if (pset%prt(p_child(1))%get_n_parents () == 1) then
+                     map(p) = map(p_child(1))
+                  end if
+               end if
+            end if
+         end if
+      end do
+    end subroutine map_handle_duplicates
+    subroutine determine_map_for_beams (map)
+      integer, dimension(:), intent(inout) :: map
+      select case (n_in)
+      case (1);  map(1) = 1
+      case (2);  map(1:2) = [1,2]
+      end select
+    end subroutine determine_map_for_beams
+    subroutine determine_map_for_radiation (map, i_in, p_in)
+      integer, dimension(:), intent(inout) :: map
+      integer, dimension(:), intent(in) :: i_in
+      integer, dimension(:), intent(in) :: p_in
+      integer, dimension(:), allocatable :: i_cur, p_cur
+      integer, dimension(:), allocatable :: i_par, p_par, i_rad, p_rad
+      integer :: i, p
+      integer :: b, r
+      i_cur = i_in
+      p_cur = p_in
+      do b = 1, n_in
+         i = i_cur(b)
+         p = p_cur(b)
+         i_par = interaction_get_parents (int, i)
+         p_par = pset%prt(p)%get_parents ()
+         if (size (i_par) == 0 .or. size (p_par) == 0)  cycle
+         if (size (p_par) == 1) then
+            if (pset%prt(p_par(1))%get_n_children () == 1) then
+               p_par = pset%prt(p_par(1))%get_parents ()  ! copy of entry
+            end if
+         end if
+         i_rad = interaction_get_children (int, i_par(1))
+         p_rad = pset%prt(p_par(1))%get_children ()
+         do r = 1, size (i_rad)
+            if (any (map == i_rad(r)))  i_rad(r) = 0
+         end do
+         i_rad = pack (i_rad, i_rad /= 0)
+         do r = 1, size (p_rad)
+            if (map(p_rad(r)) /= 0)  p_rad(r) = 0
+         end do
+         p_rad = pack (p_rad, p_rad /= 0)
+         do r = 1, min (size (i_rad), size (p_rad))
+            map(p_rad(r)) = i_rad(r)
+         end do
+      end do
+      do b = 1, min (size (p_par), size (i_par))
+         if (map(p_par(b)) == 0 .and. all (map /= i_par(b))) then
+            map(p_par(b)) = i_par(b)
+         end if
+      end do
+    end subroutine determine_map_for_radiation
     subroutine reconstruct_beam_and_radiation (k, i_set)
       integer, intent(in) :: k
       logical, dimension(:), intent(inout) :: i_set
-      integer :: k_src, k_in, k_rad
+      integer :: k_src, k_pre, k_in, k_rad
       type(interaction_t), pointer :: int_src
       integer, dimension(2) :: i_child
+      logical, dimension(2) :: is_final
+      integer :: i
       call int%find_source (k, int_src, k_src)
-      if (.not. i_set (k)) then
-         call int%set_momentum (int_src%get_momentum (k_src), k)
-         i_set(k) = .true.
-         if (n_in == 2) then
-            i_child = interaction_get_children (int, k)
-            if (interaction_get_n_children (int, i_child(1)) > 0) then
-               k_in = i_child(1);  k_rad = i_child(2)
-            else
-               k_in = i_child(2);  k_rad = i_child(1)
-            end if
-            if (.not. i_set(k_in))  call err_beams
-            call int%set_momentum &
-              (int%get_momentum (k) - int%get_momentum (k_in), k_rad)
-            i_set(k_rad) = .true.
+      k_pre = 0
+      k_in = k
+      do while (.not. i_set (k_in))
+         if (k_pre == 0) then
+            call int%set_momentum (int_src%get_momentum (k_src), k_in)
+         else
+            call int%set_momentum (int%get_momentum (k_pre), k_in)
          end if
-      end if
+         i_set(k_in) = .true.
+         if (n_in == 2) then
+            k_pre = k_in
+            i_child = interaction_get_children (int, k_pre)
+            do i = 1, 2
+               is_final(i) = interaction_get_n_children (int, i_child(i)) == 0
+            end do
+            if (all (.not. is_final)) then
+               k_in = i_child(k);  k_rad = 0
+            else if (is_final(2)) then
+               k_in = i_child(1);  k_rad = i_child(2)
+            else if (is_final(1)) then
+               k_in = i_child(2);  k_rad = i_child(1)
+            else
+               call err_beams
+            end if
+            if (k_rad /= 0) then
+               if (i_set (k_in)) then
+                  call int%set_momentum &
+                       (int%get_momentum (k) - int%get_momentum (k_in), k_rad)
+                  i_set(k_rad) = .true.
+               else
+                  call err_beams_norad
+               end if
+            end if
+         end if
+      end do
     end subroutine reconstruct_beam_and_radiation
+    subroutine reconstruct_missing (i, i_set)
+      integer, intent(in) :: i
+      logical, dimension(:), intent(inout) :: i_set
+      integer, dimension(:), allocatable :: i_child, i_parent, i_sibling
+      integer :: s
+      i_child = interaction_get_children (int, i)
+      i_parent = interaction_get_parents (int, i)
+      if (size (i_child) > 0 .and. all (i_set(i_child))) then
+         call int%set_momentum (sum (int%get_momenta (i_child)), i)
+      else if (size (i_parent) > 0 .and. all (i_set(i_parent))) then
+         i_sibling = interaction_get_children (int, i_parent(1))
+         call int%set_momentum (sum (int%get_momenta (i_parent)), i)
+         do s = 1, size (i_sibling)
+            if (i_sibling(s) == i)  cycle
+            if (i_set(i_sibling(s))) then
+               call int%set_momentum (int%get_momentum (i) &
+                    - int%get_momentum (i_sibling(s)), i)
+            else
+               call err_beams_norad
+            end if
+         end do
+      else
+         call err_beams_norad
+      end if
+      i_set(i) = .true.
+    end subroutine reconstruct_missing
     subroutine err_pset_hard
       call msg_fatal ("Reading particle set: no particles marked as incoming")
     end subroutine err_pset_hard
@@ -6988,6 +7128,12 @@ given a particle set.  Since the particle orderings
       call msg_fatal ("Reading particle set: Beam structure " &
            // "does not match requested process")
     end subroutine err_beams
+    subroutine err_beams_norad
+      call pset%write ()
+      call int%basic_write ()
+      call msg_fatal ("Reading particle set: Beam structure " &
+           // "cannot be reconstructed for this configuration")
+    end subroutine err_beams_norad
     subroutine err_radiation
       call int%basic_write ()
       call msg_bug ("Reading particle set: Interaction " &

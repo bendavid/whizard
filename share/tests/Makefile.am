@@ -904,6 +904,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/isr_6.ref \
     functional_tests/ref-output-double/lcio_2.ref \
     functional_tests/ref-output-double/lcio_7.ref \
+    functional_tests/ref-output-double/lcio_12.ref \
     functional_tests/ref-output-double/lhapdf5.ref \
     functional_tests/ref-output-double/lhapdf6.ref \
     functional_tests/ref-output-double/lhef_7.ref \
@@ -940,6 +941,8 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/resonances_10.ref \
     functional_tests/ref-output-double/resonances_11.ref \
     functional_tests/ref-output-double/resonances_13.ref \
+    functional_tests/ref-output-double/resonances_14.ref \
+    functional_tests/ref-output-double/resonances_15.ref \
     functional_tests/ref-output-double/smtest_2.ref \
     functional_tests/ref-output-double/smtest_8.ref \
     functional_tests/ref-output-double/tauola_1.ref \
@@ -998,6 +1001,7 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/isr_6.ref \
     functional_tests/ref-output-ext/lcio_2.ref \
     functional_tests/ref-output-ext/lcio_7.ref \
+    functional_tests/ref-output-ext/lcio_12.ref \
     functional_tests/ref-output-ext/mlm_matching_isr.ref \
     functional_tests/ref-output-ext/nlo_5.ref \
     functional_tests/ref-output-ext/nlo_7.ref \
@@ -1019,6 +1023,8 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/resonances_10.ref \
     functional_tests/ref-output-ext/resonances_11.ref \
     functional_tests/ref-output-ext/resonances_13.ref \
+    functional_tests/ref-output-ext/resonances_14.ref \
+    functional_tests/ref-output-ext/resonances_15.ref \
     functional_tests/ref-output-ext/tauola_1.ref \
     functional_tests/ref-output-ext/tauola_2.ref \
     functional_tests/ref-output-ext/tauola_3.ref
@@ -1040,6 +1046,7 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/isr_6.ref \
     functional_tests/ref-output-quad/lcio_2.ref \
     functional_tests/ref-output-quad/lcio_7.ref \
+    functional_tests/ref-output-quad/lcio_12.ref \
     functional_tests/ref-output-quad/mlm_matching_isr.ref \
     functional_tests/ref-output-quad/nlo_5.ref \
     functional_tests/ref-output-quad/nlo_7.ref \
@@ -1061,6 +1068,8 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/resonances_10.ref \
     functional_tests/ref-output-quad/resonances_11.ref \
     functional_tests/ref-output-quad/resonances_13.ref \
+    functional_tests/ref-output-quad/resonances_14.ref \
+    functional_tests/ref-output-quad/resonances_15.ref \
     functional_tests/ref-output-quad/tauola_1.ref \
     functional_tests/ref-output-quad/tauola_2.ref \
     functional_tests/ref-output-quad/tauola_3.ref
@@ -1198,6 +1207,7 @@ MISC_TESTS_SIN = \
     functional_tests/lcio_9.sin \
     functional_tests/lcio_10.sin \
     functional_tests/lcio_11.sin \
+    functional_tests/lcio_12.sin \
     functional_tests/lhapdf5.sin \
     functional_tests/lhapdf6.sin \
     functional_tests/lhef_1.sin \
@@ -1319,6 +1329,8 @@ MISC_TESTS_SIN = \
     functional_tests/resonances_11.sin \
     functional_tests/resonances_12.sin \
     functional_tests/resonances_13.sin \
+    functional_tests/resonances_14.sin \
+    functional_tests/resonances_15.sin \
     functional_tests/restrictions.sin \
     functional_tests/reweight_1.sin \
     functional_tests/reweight_2.sin \

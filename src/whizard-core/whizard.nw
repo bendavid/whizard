@@ -8852,6 +8852,7 @@ the procedure with this name in the [[simulations]] module.
     type(rt_data_t), intent(inout), optional, target :: global
     type(rt_data_t), pointer :: current
     type(process_library_t), pointer :: lib
+    type(string_t) :: phs_method_saved, integration_method_saved
     type(string_t) :: proc_id, libname_cur, libname_res
     integer :: i, n
     if (.not. prc_set%is_active ())  return
@@ -8864,6 +8865,8 @@ the procedure with this name in the [[simulations]] module.
     libname_res = prc_set%get_libname ()
     lib => current%prclib_stack%get_library_ptr (libname_res)
     if (associated (lib))  call current%update_prclib (lib)
+    phs_method_saved = local%get_sval (var_str ("$phs_method"))
+    integration_method_saved = local%get_sval (var_str ("$integration_method"))
     call local%set_string (var_str ("$phs_method"), &
             var_str ("none"), is_known = .true.)
     call local%set_string (var_str ("$integration_method"), &
@@ -8875,6 +8878,10 @@ the procedure with this name in the [[simulations]] module.
        call prepare_process (prc_set%subprocess(i)%p, proc_id)
        if (signal_is_pending ())  return
     end do
+    call local%set_string (var_str ("$phs_method"), &
+            phs_method_saved, is_known = .true.)
+    call local%set_string (var_str ("$integration_method"), &
+            integration_method_saved, is_known = .true.)
     lib => current%prclib_stack%get_library_ptr (libname_cur)
     if (associated (lib))  call current%update_prclib (lib)
   contains
@@ -9143,7 +9150,6 @@ module restricted_subprocesses_uti
   use models, only: model_t
   use rng_base_ut, only: rng_test_factory_t
   use mci_base, only: mci_t
-  use mci_none, only: mci_none_t
   use phs_base, only: phs_config_t
   use phs_forests, only: syntax_phs_forest_init, syntax_phs_forest_final
   use phs_wood, only: phs_wood_config_t
@@ -11141,7 +11147,7 @@ var list by the global var list.
           end do
       end if
     end if
-
+    
     if (support_resonance_history) then
        prclib_saved => local%prclib
        call entry%setup_resonant_subprocesses (local, process)
@@ -13349,7 +13355,7 @@ external matrix element parameters event by event.  The matrix element
 <<Simulations: procedures>>=
   subroutine simulation_calculate_alt_entries (simulation)
     class(simulation_t), intent(inout) :: simulation
-    real(default) :: factor
+    real(default) :: sqme_prc, weight_prc, factor
     real(default), dimension(:), allocatable :: sqme_alt, weight_alt
     integer :: n_alt, i, j
     i = simulation%i_prc
@@ -13359,7 +13365,17 @@ external matrix element parameters event by event.  The matrix element
     associate (entry => simulation%entry(i))
       do j = 1, n_alt
          if (signal_is_pending ())  return
-         factor = entry%get_kinematical_weight ()
+         if (simulation%update_weight) then
+            factor = entry%get_kinematical_weight ()
+         else
+            sqme_prc = entry%get_sqme_prc ()
+            weight_prc = entry%get_weight_prc ()
+            if (sqme_prc /= 0) then
+               factor = weight_prc / sqme_prc
+            else
+               factor = 0
+            end if
+         end if
          associate (alt_entry => simulation%alt_entry(i,j))
            call alt_entry%update_process (saved=.false.)
            call alt_entry%select &
@@ -13447,7 +13463,7 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
     type(rt_data_t), intent(inout) :: global
     type(qcd_t) :: qcd
     type(string_t) :: str1, str2, str3
-    logical :: complete
+    logical :: complete, check_match
     str1 = "Rescanning"
     if (simulation%entry(1)%config%unweighted) then
        str2 = "unweighted"
@@ -13463,11 +13479,12 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
        str3 = "(process parameters updated) "
     else
        str3 = ""
-    end if
+    end if   
     write (msg_buffer, "(A,1x,A,1x,A,A,A)")  char (str1), char (str2), &
          "events ", char (str3), "..."
     call msg_message ()
     call simulation%init_event_index ()
+    check_match = .not. global%var_list%get_lval (var_str ("?rescan_force"))
     do
        call simulation%increment_event_index ()
        call simulation%read_event (es_array, .false., complete)
@@ -13475,7 +13492,7 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
        if (simulation%update_event &
             .or. simulation%update_sqme &
             .or. simulation%update_weight) then
-          call simulation%recalculate ()
+          call simulation%recalculate (check_match = check_match)
           if (signal_is_pending ())  return
           associate (entry => simulation%entry(simulation%i_prc))
             call entry%update_normalization ()
@@ -13785,23 +13802,58 @@ is not stored in the simulation record.
 <<Simulations: simulation: TBP>>=
   procedure :: recalculate => simulation_recalculate
 <<Simulations: procedures>>=
-  subroutine simulation_recalculate (simulation, recover_phs)
+  subroutine simulation_recalculate (simulation, recover_phs, check_match)
     class(simulation_t), intent(inout) :: simulation
     logical, intent(in), optional :: recover_phs
-    integer :: i_prc
+    logical, intent(in), optional :: check_match
+    integer :: i_prc, i_comp, i_term, k
+    integer :: i_mci, i_mci0, i_mci1
+    integer, dimension(:), allocatable :: i_terms
+    logical :: success
     i_prc = simulation%i_prc
     associate (entry => simulation%entry(i_prc))
-      if (simulation%update_weight) then
-         call entry%recalculate &
-              (update_sqme = simulation%update_sqme, &
-              recover_beams = simulation%recover_beams, &
-              recover_phs = recover_phs, &
-              weight_factor = entry%get_kinematical_weight ())
+      if (entry%selected_i_mci /= 0) then
+         i_mci0 = entry%selected_i_mci
+         i_mci1 = i_mci0
       else
-         call entry%recalculate &
-              (update_sqme = simulation%update_sqme, &
-              recover_beams = simulation%recover_beams, &
-              recover_phs = recover_phs)
+         i_mci0 = 1
+         i_mci1 = entry%process%get_n_mci ()
+      end if
+      SCAN_COMP: do i_mci = i_mci0, i_mci1
+         i_comp = entry%process%get_master_component (i_mci)
+         call entry%process%reset_selected_cores ()
+         call entry%process%select_components ([i_comp])
+         i_terms = entry%process%get_component_i_terms (i_comp)
+         SCAN_TERM: do k = 1, size (i_terms)
+            i_term = i_terms(k)
+            call entry%select (i_mci, i_term, entry%selected_channel)
+            if (entry%selected_i_term /= 0 &
+                 .and. entry%selected_i_term /= i_term)  cycle SCAN_TERM
+            call entry%select (i_mci, i_term, entry%selected_channel)
+            if (simulation%update_weight) then
+               call entry%recalculate &
+                    (update_sqme = simulation%update_sqme, &
+                    recover_beams = simulation%recover_beams, &
+                    recover_phs = recover_phs, &
+                    weight_factor = entry%get_kinematical_weight (), &
+                    check_match = check_match, &
+                    success = success)
+            else
+               call entry%recalculate &
+                    (update_sqme = simulation%update_sqme, &
+                    recover_beams = simulation%recover_beams, &
+                    recover_phs = recover_phs, &
+                    check_match = check_match, &
+                    success = success)
+            end if
+            if (success)  exit SCAN_COMP
+         end do SCAN_TERM
+         deallocate (i_terms)
+      end do SCAN_COMP
+      if (.not. success) then
+         call entry%write ()
+         call msg_fatal ("Simulation/recalculate: &
+              &event could not be matched to the specified process")
       end if
     end associate
   end subroutine simulation_recalculate

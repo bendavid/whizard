@@ -345,7 +345,10 @@ TESTS_REQ_LCIO = \
     lcio_8.run \
     lcio_9.run \
     lcio_10.run \
-    lcio_11.run
+    lcio_11.run \
+    lcio_12.run \
+    resonances_14.run \
+    resonances_15.run
 XFAIL_TESTS_REQ_LCIO =
 
 TESTS_REQ_LHAPDF5 = \
@@ -584,6 +587,14 @@ noinst_PROGRAMS += resonances_11_count
 resonances_11_count_SOURCES = resonances_11_count.f90
 resonances_11.run: resonances_11_count
 
+noinst_PROGRAMS += resonances_14_check
+resonances_14_check_SOURCES = resonances_14_check.f90
+resonances_14.run: resonances_14_check
+
+noinst_PROGRAMS += resonances_15_check
+resonances_15_check_SOURCES = resonances_15_check.f90
+resonances_15.run: resonances_15_check
+
 noinst_PROGRAMS += epa_2_count
 epa_2_count_SOURCES = epa_2_count.f90
 epa_2.run: epa_2_count
@@ -796,7 +807,7 @@ clean-local: clean-macosx
 	rm -f *.run *.log slha_test.out *_check.out ufo_5_test.slha
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FCMOD) *.o *.la
-	rm -f *_count.out
+	rm -f *_count.out *_check.out
 	rm -f *_digest.out
 	rm -f *.makefile
 	rm -f *.grid

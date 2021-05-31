@@ -2772,7 +2772,9 @@ C...Fill in missing mother information.
 C...Fill in missing daughter information.
           IF(K(I,2).EQ.94.AND.MSTU(16).NE.2) THEN
             DO 140 I1=JDAHEP(1,I),JDAHEP(2,I)
-              I2=MOD(K(I1,4)/MSTU(5),MSTU(5))
+               I2=MOD(K(I1,4)/MSTU(5),MSTU(5))
+              !!! JRR: uncolored undecayed parton
+              if (I2 == 0)  cycle
               JDAHEP(1,I2)=I
   140       CONTINUE
           ENDIF
