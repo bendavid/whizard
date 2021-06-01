@@ -804,7 +804,7 @@ clean-local: clean-macosx
 	rm -f LCIO_FLAG EVENT_ANALYSIS_FLAG PYTHIA6_FLAG PYTHIA8_FLAG
 	rm -f LHAPDF5_FLAG LHAPDF6_FLAG
 	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
-	rm -f *.run *.log slha_test.out *_check.out ufo_5_test.slha
+	rm -f *.run *.log slha_test.out ufo_5_test.slha
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FCMOD) *.o *.la
 	rm -f *_count.out *_check.out
