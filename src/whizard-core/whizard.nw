@@ -28306,6 +28306,7 @@ arrange that the callback is executed while writing the 3rd event.
          .false., is_known=.true.)
     call global%var_list%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)
+    call global%var_list%set_int (var_str ("seed"), 0, is_known=.true.)
 
     allocate (lib)
     call lib%init (var_str ("lib_cmd34"))
