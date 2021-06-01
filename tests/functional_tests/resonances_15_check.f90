@@ -9,7 +9,7 @@ program main
 
   character(*), parameter :: infile1 = "resonances_15_a.weights.dat"
   character(*), parameter :: infile2 = "resonances_15_b.weights.dat"
-  character(*), parameter :: outfile = "resonances_15.check.out"
+  character(*), parameter :: outfile = "resonances_15_check.out"
 
   integer :: u_in1, u_in2, u_out
   integer :: iostat
