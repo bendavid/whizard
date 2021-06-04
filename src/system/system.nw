@@ -2531,11 +2531,7 @@ system call.
 <<OS interface: procedures>>=
   function os_file_exist (name) result (exist)
     type(string_t), intent(in) :: name
-!    logical, intent(in), optional :: verb
     logical :: exist
-!    integer :: status
-!    call  os_system_call ('test -f "' // name // '"', status=status, verbose=verb)
-!    res = (status == 0)
     inquire (file = char (name), exist=exist)
   end function os_file_exist
 

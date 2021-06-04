@@ -1097,7 +1097,7 @@ module pdg_arrays
 
   use io_units
   use sorting
-  use physics_defs, only: UNDEFINED
+  use physics_defs
 
 <<Standard module head>>
 
@@ -1412,7 +1412,7 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   elemental function is_gluon (pdg_nr)
     logical :: is_gluon
     integer, intent(in) :: pdg_nr
-    if (pdg_nr == 21) then
+    if (pdg_nr == GLUON) then
        is_gluon = .true.
     else
        is_gluon = .false.
@@ -1427,7 +1427,7 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   elemental function is_photon (pdg_nr)
     logical :: is_photon
     integer, intent(in) :: pdg_nr
-    if (pdg_nr == 22) then
+    if (pdg_nr == PHOTON) then
        is_photon = .true.
     else
        is_photon = .false.
@@ -1453,7 +1453,8 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   elemental function is_lepton (pdg_nr)
     logical :: is_lepton
     integer, intent(in) :: pdg_nr
-    if (abs (pdg_nr) >= 11 .and. abs (pdg_nr) <= 16) then
+    if (abs (pdg_nr) >= ELECTRON .and. &
+         abs (pdg_nr) <= TAU_NEUTRINO) then
       is_lepton = .true.
     else
       is_lepton = .false.
@@ -1479,7 +1480,7 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   elemental function is_massless_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_massless_vector
-    if (pdg_nr == 21 .or. pdg_nr == 22) then
+    if (pdg_nr == GLUON .or. pdg_nr == PHOTON) then
       is_massless_vector = .true.
     else
       is_massless_vector = .false.
@@ -1494,7 +1495,7 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   elemental function is_massive_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_massive_vector
-    if (abs (pdg_nr) == 23 .or. abs (pdg_nr) == 24) then
+    if (abs (pdg_nr) == Z_BOSON .or. abs (pdg_nr) == W_BOSON) then
       is_massive_vector = .true.
     else
       is_massive_vector = .false.
@@ -1782,7 +1783,7 @@ sorting, we eliminate double entries.
     allocate (pdg_inverse%pdg (n))
     do i = 1, n
        select case (pdg%pdg(i))
-       case (21, 22, 23, 25)
+       case (GLUON, PHOTON, Z_BOSON, 25)
           pdg_inverse%pdg(i) = pdg%pdg(i)
        case default
           pdg_inverse%pdg(i) = -pdg%pdg(i)
