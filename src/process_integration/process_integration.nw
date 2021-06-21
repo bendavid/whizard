@@ -6346,6 +6346,17 @@ process object.
 @ %def process_is_nlo_calculation
 @
 <<Process: process: TBP>>=
+  procedure :: get_negative_sf => process_get_negative_sf
+<<Process: procedures>>=
+  function process_get_negative_sf (process) result (neg_sf)
+    logical :: neg_sf
+    class(process_t), intent(in) :: process
+    neg_sf = process%config%process_def%get_negative_sf ()
+  end function process_get_negative_sf
+
+@ %def process_get_negative_sf
+@
+<<Process: process: TBP>>=
   procedure :: is_combined_nlo_integration &
        => process_is_combined_nlo_integration
 <<Process: procedures>>=
@@ -11668,13 +11679,14 @@ evaluating the chain twice via different pointers to the same target.
 <<Kinematics: kinematics: TBP>>=
   procedure :: evaluate_sf_chain => kinematics_evaluate_sf_chain
 <<Kinematics: procedures>>=
-  subroutine kinematics_evaluate_sf_chain (k, fac_scale, sf_rescale)
+  subroutine kinematics_evaluate_sf_chain (k, fac_scale, negative_sf, sf_rescale)
     class(kinematics_t), intent(inout) :: k
     real(default), intent(in) :: fac_scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(inout), optional :: sf_rescale
     select case (k%sf_chain%get_status ())
     case (SF_DONE_KINEMATICS)
-       call k%sf_chain%evaluate (fac_scale, sf_rescale)
+       call k%sf_chain%evaluate (fac_scale, negative_sf = negative_sf, sf_rescale = sf_rescale)
     end select
   end subroutine kinematics_evaluate_sf_chain
 
@@ -11970,6 +11982,7 @@ to fulfill their signature.
      class(pcm_instance_t), pointer :: pcm_instance => null ()
      integer :: nlo_type = BORN
      integer, dimension(:), allocatable :: same_kinematics
+     logical :: negative_sf = .false.
    contains
    <<Instances: term instance: TBP>>
   end type term_instance_t
@@ -12096,6 +12109,7 @@ relevant for a NLO algorithm.
     term%config => process%get_term_ptr (i_term)
     term%int_hard = term%config%int
     core => process%get_core_term (i_term)
+    term%negative_sf = process%get_negative_sf ()
     call core%allocate_workspace (term%core_state)
     select type (core)
     class is (prc_external_t)
@@ -13990,7 +14004,7 @@ interaction, then compute the convolution with the initial state.
 <<Instances: procedures>>=
   subroutine term_instance_evaluate_trace (term)
     class(term_instance_t), intent(inout) :: term
-    call term%k_term%evaluate_sf_chain (term%fac_scale)
+    call term%k_term%evaluate_sf_chain (term%fac_scale, term%negative_sf)
     call term%evaluate_scaled_sf_chains ()
     call term%isolated%evaluate_sf_chain (term%fac_scale)
     call term%isolated%evaluate_trace ()
@@ -14022,7 +14036,7 @@ It becomes problematic when handling [[e, p]]-beams.
                 call sf_rescale%set (pcm%real_kinematics%xi_tilde)
              end select
           end select
-          call term%k_term%sf_chain%evaluate (term%fac_scale, sf_rescale)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, term%negative_sf, sf_rescale)
           deallocate (sf_rescale)
        else if (term%k_term%emitter >= 0 .and. term%k_term%emitter <= term%k_term%n_in) then
           allocate (sf_rescale_real_t :: sf_rescale)
@@ -14035,10 +14049,10 @@ It becomes problematic when handling [[e, p]]-beams.
                      pcm%real_kinematics%y (term%k_term%i_phs))
              end select
           end select
-          call term%k_term%sf_chain%evaluate (term%fac_scale, sf_rescale)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, term%negative_sf, sf_rescale)
           deallocate (sf_rescale)
        else
-          call term%k_term%sf_chain%evaluate (term%fac_scale)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, term%negative_sf)
        end if
     else if (term%nlo_type == NLO_DGLAP) then
        allocate (sf_rescale_dglap_t :: sf_rescale)
@@ -14049,7 +14063,7 @@ It becomes problematic when handling [[e, p]]-beams.
              call sf_rescale%set (pcm%isr_kinematics%z)
           end select
        end select
-       call term%k_term%sf_chain%evaluate (term%fac_scale, sf_rescale)
+       call term%k_term%sf_chain%evaluate (term%fac_scale, term%negative_sf, sf_rescale)
        deallocate (sf_rescale)
     end if
   end subroutine term_instance_evaluate_scaled_sf_chains

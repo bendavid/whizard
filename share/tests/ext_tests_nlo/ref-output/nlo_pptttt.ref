@@ -41,6 +41,7 @@ $rng_method = "rng_stream"
 | End of included 'nlo_settings.sin'
 [user variable] pr = PDG(2, -2, 1, -1, 3, -3, 4, -4, 5, -5, 21)
 $exclude_gauge_splittings = "t"
+$negative_sf = "positive"
 $lhapdf_file = "MSTW2008nlo68cl"
 sqrts =  1.300000000000E+04
 alpha_power = 0

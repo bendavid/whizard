@@ -4109,15 +4109,16 @@ particles, and the number of components.
   procedure :: init => process_configuration_init
 <<Process configurations: procedures>>=
   subroutine process_configuration_init &
-       (config, prc_name, n_in, n_components, model, var_list, nlo_process)
+       (config, prc_name, n_in, n_components, model, var_list, &
+       nlo_process, negative_sf)
     class(process_configuration_t), intent(out) :: config
     type(string_t), intent(in) :: prc_name
     integer, intent(in) :: n_in
     integer, intent(in) :: n_components
     type(model_t), intent(in), pointer :: model
     type(var_list_t), intent(in) :: var_list
-    logical, intent(in), optional :: nlo_process
-    logical :: nlo_proc
+    logical, intent(in), optional :: nlo_process, negative_sf
+    logical :: nlo_proc, neg_sf
     logical :: requires_resonances
     if (debug_on) call msg_debug (D_CORE, "process_configuration_init")
     config%id = prc_name
@@ -4125,6 +4126,11 @@ particles, and the number of components.
        nlo_proc = nlo_process
     else
        nlo_proc = .false.
+    end if
+    if (present (negative_sf)) then
+       neg_sf = negative_sf
+    else
+       neg_sf = .false.
     end if
     requires_resonances = var_list%get_lval (var_str ("?resonance_history"))
 
@@ -4137,11 +4143,13 @@ particles, and the number of components.
             model = model, n_in = n_in, n_components = n_components, &
             num_id = config%num_id, &
             nlo_process = nlo_proc, &
+            negative_sf = neg_sf, &
             requires_resonances = requires_resonances)
     else
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
             nlo_process = nlo_proc, &
+            negative_sf = neg_sf, &
             requires_resonances = requires_resonances)
     end if
   end subroutine process_configuration_init
@@ -17901,7 +17909,7 @@ ambiguous.
 There are two possibilities that a process contains more than one
 component: by an explicit component statement by the user for
 inclusive processes, or by having one process at NLO level. The first
-option is determined in the routine [[scan_components]], and
+option is determined in the chunk [[scan components]], and
 determines [[n_components]].
 <<Commands: cmd process: TBP>>=
   procedure :: execute => cmd_process_execute
@@ -17918,7 +17926,7 @@ determines [[n_components]].
     type(prt_spec_t), dimension(:), allocatable :: prt_spec_in
     type(prt_spec_t), dimension(:), allocatable :: prt_spec_out
     type(var_list_t), pointer :: var_list
-    integer, dimension(:), allocatable :: pdg
+    integer, dimension(:), allocatable :: ipdg
     integer, dimension(:), allocatable :: i_term
     integer, dimension(:), allocatable :: nlo_comp
     integer :: i, j, n_in, n_out, n_terms, n_components
@@ -17933,11 +17941,14 @@ determines [[n_components]].
     logical :: use_real_finite
     logical :: gks_active
     logical :: initial_state_colored
+    logical :: neg_sf
     integer :: comp_mult
     integer :: gks_multiplicity
     integer :: n_components_init
     integer :: alpha_power, alphas_power
     logical :: requires_soft_mismatch, requires_dglap_remnants
+    type(string_t) :: nlo_correction_type
+    type(pdg_array_t), dimension(:), allocatable :: pdg
     if (debug_on) call msg_debug (D_CORE, "cmd_process_execute")
     var_list => cmd%local%get_var_list_ptr ()
 
@@ -17952,13 +17963,25 @@ determines [[n_components]].
     call compile_prt_expr &
          (prt_expr_out, cmd%pn_out, var_list, cmd%local%model)
     call prt_expr_out%expand ()
-    call scan_components ()
+<<Commands: cmd process execute: scan components>>
     allocate (nlo_comp (n_components))
 
     nlo_fixed_order = cmd%local%nlo_fixed_order
-    gks_multiplicity = var_list%get_ival (var_str ('gks_multiplicity'))
+    gks_multiplicity = var_list%get_ival (var_str ("gks_multiplicity"))
     gks_active = gks_multiplicity > 2
-    call check_for_nlo_corrections ()
+    neg_sf = .false.
+    select case (char (var_list%get_sval (var_str ("$negative_sf"))))
+    case ("default")
+       neg_sf = nlo_fixed_order
+    case ("negative")
+       neg_sf = .true.
+    case ("positive")
+       neg_sf = .false.
+    case default
+       call msg_fatal ("Negative PDF handling can only be " // &
+            "default, negative or positive.")
+    end select
+<<Commands: cmd process execute: check for nlo corrections>>
 
     method = var_list%get_sval (var_str ("$method"))
     born_me_method = var_list%get_sval (var_str ("$born_me_method"))
@@ -17985,7 +18008,8 @@ determines [[n_components]].
     call determine_needed_components ()
     call prc_config%init (cmd%id, n_in, n_components_init, &
          cmd%local%model, cmd%local%var_list, &
-         nlo_process = nlo_fixed_order)
+         nlo_process = nlo_fixed_order, &
+         negative_sf = neg_sf)
 
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
@@ -18023,14 +18047,11 @@ determines [[n_components]].
   end subroutine check_threshold_consistency
 
 @ %def check_threshold_consistency
-<<Commands: cmd process execute procedures>>=
-  subroutine check_for_nlo_corrections ()
-    type(string_t) :: nlo_correction_type
-    type(pdg_array_t), dimension(:), allocatable :: pdg
+<<Commands: cmd process execute: check for nlo corrections>>=
     if (nlo_fixed_order .or. gks_active) then
        nlo_correction_type = &
             var_list%get_sval (var_str ('$nlo_correction_type'))
-       select case (char(nlo_correction_type))
+       select case (char (nlo_correction_type))
        case ("QCD")
           qcd_corr = .true.; qed_corr = .false.
        case ("EW")
@@ -18062,7 +18083,6 @@ determines [[n_components]].
             cmd%id // var_str("."), var_str ("Proceed with usual " // &
             "leading-order integration and simulation")])
     end if
-  end subroutine check_for_nlo_corrections
 
 @ %def check_for_nlo_corrections
 @
@@ -18139,23 +18159,22 @@ determines [[n_components]].
 
 @ %def setup_radiation_generator
 @
-<<Commands: cmd process execute procedures>>=
-  subroutine scan_components ()
+<<Commands: cmd process execute: scan components>>=
     n_terms = prt_expr_out%get_n_terms ()
     allocate (pdg_out_tab (n_terms))
     allocate (i_term (n_terms), source = 0)
     n_components = 0
     SCAN: do i = 1, n_terms
-       if (allocated (pdg))  deallocate (pdg)
+       if (allocated (ipdg))  deallocate (ipdg)
        call prt_expr_out%term_to_array (prt_spec_out, i)
        n_out = size (prt_spec_out)
-       allocate (pdg (n_out))
+       allocate (ipdg (n_out))
        do j = 1, n_out
           prt_out = prt_spec_out(j)%to_string ()
           call split (prt_out, prt_out1, ":")
-          pdg(j) = cmd%local%model%get_pdg (prt_out1)
+          ipdg(j) = cmd%local%model%get_pdg (prt_out1)
        end do
-       pdg_out = sort (pdg)
+       pdg_out = sort (ipdg)
        do j = 1, n_components
           if (pdg_out == pdg_out_tab(j))  cycle SCAN
        end do
@@ -18163,7 +18182,6 @@ determines [[n_components]].
        i_term(n_components) = i
        pdg_out_tab(n_components) = pdg_out
     end do SCAN
-  end subroutine scan_components
 
 @
 <<Commands: cmd process execute procedures>>=

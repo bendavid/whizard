@@ -3,6 +3,8 @@ include("nlo_settings.sin")
 alias pr = u:U:d:D:s:S:c:C:b:B:gl
 $exclude_gauge_splittings = "t"
 
+$negative_sf = "positive"
+
 alias Wpm = Wp:Wm
 beams = p, p => lhapdf
 $lhapdf_file = "MSTW2008nlo68cl"

@@ -261,6 +261,7 @@ $circe1_acc = "SBAND"
 [undefined] $circe2_file = [unknown string]
 $circe2_design = "*"
 [undefined] $beam_events_file = [unknown string]
+$negative_sf = "default"
 [undefined] $job_id = [unknown string]
 [undefined] $compile_workspace = [unknown string]
 $model_name = "SM"

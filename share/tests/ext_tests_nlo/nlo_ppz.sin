@@ -4,6 +4,8 @@ alias pr = u:U:d:D:s:S:c:C:b:B:gl
 
 $exclude_gauge_splittings = "t"
 
+$negative_sf = "positive"
+
 beams = p, p => lhapdf
 $lhapdf_file = "MSTW2008nlo68cl"
 sqrts = 13000 GeV

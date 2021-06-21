@@ -5,6 +5,8 @@ alias Wpm = Wp:Wm
 
 $exclude_gauge_splittings = "t"
 
+$negative_sf = "positive"
+
 beams = p, p => lhapdf
 $lhapdf_file = "MSTW2008nlo68cl"
 sqrts = 13000 GeV

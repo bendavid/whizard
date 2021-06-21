@@ -9382,10 +9382,11 @@ indicated by the status code.
   procedure (sf_int_apply), deferred :: apply
 <<SF base: interfaces>>=
   abstract interface
-     subroutine sf_int_apply (sf_int, scale, rescale, i_sub)
+     subroutine sf_int_apply (sf_int, scale, negative_sf, rescale, i_sub)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), intent(in) :: scale
+       logical, intent(in), optional :: negative_sf
        class(sf_rescale_t), intent(in), optional :: rescale
        integer, intent(in), optional :: i_sub
      end subroutine sf_int_apply
@@ -10655,9 +10656,10 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
 <<SF base: sf chain instance: TBP>>=
   procedure :: evaluate => sf_chain_instance_evaluate
 <<SF base: procedures>>=
-  subroutine sf_chain_instance_evaluate (chain, scale, sf_rescale)
+  subroutine sf_chain_instance_evaluate (chain, scale, negative_sf, sf_rescale)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(inout), optional :: sf_rescale
     type(interaction_t), pointer :: out_int
     real(default) :: sf_sum
@@ -10679,20 +10681,20 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
                          select case (i_sub)
                          case (0)
                             if (n_sub == 0) then
-                               call sf%int%apply (scale, sf_rescale, i_sub = i_sub)
+                               call sf%int%apply (scale, negative_sf, sf_rescale, i_sub = i_sub)
                             else
-                               call sf%int%apply (scale, i_sub = i_sub)
+                               call sf%int%apply (scale, negative_sf, i_sub = i_sub)
                             end if
                          case default
                             if (i_beam == i_sub) then
-                               call sf%int%apply (scale, sf_rescale, i_sub = i_sub)
+                               call sf%int%apply (scale, negative_sf, sf_rescale, i_sub = i_sub)
                             else
-                               call sf%int%apply (scale, i_sub = i_sub)
+                               call sf%int%apply (scale, negative_sf, i_sub = i_sub)
                             end if
                          end select
                       end do
                    else
-                      call sf%int%apply (scale, i_sub = n_sub)
+                      call sf%int%apply (scale, negative_sf, i_sub = n_sub)
                    end if
                    if (sf%int%status <= SF_FAILED_EVALUATION) then
                       chain%status = SF_FAILED_EVALUATION
@@ -11226,9 +11228,10 @@ parameter~$x$.
 <<SF base: sf test int: TBP>>=
   procedure :: apply => sf_test_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_apply (sf_int, scale, rescale, i_sub)
+  subroutine sf_test_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     select case (sf_int%data%mode)
@@ -11531,9 +11534,10 @@ the application always succeeds.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: apply => sf_test_spectrum_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_spectrum_apply (sf_int, scale, rescale, i_sub)
+  subroutine sf_test_spectrum_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     call sf_int%set_matrix_element &
@@ -11815,9 +11819,10 @@ the application always succeeds.
 <<SF base: sf test generator: TBP>>=
   procedure :: apply => sf_test_generator_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_generator_apply (sf_int, scale, rescale, i_sub)
+  subroutine sf_test_generator_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     call sf_int%set_matrix_element &
@@ -14616,9 +14621,10 @@ choose to conserve momentum, so energy conservation may be violated.
 <<SF isr: isr: TBP>>=
   procedure :: apply => isr_apply
 <<SF isr: procedures>>=
-  subroutine isr_apply (sf_int, scale, rescale, i_sub)
+  subroutine isr_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(isr_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: f, finv, x, xb, eps, rb
@@ -16028,9 +16034,10 @@ overall cross section.
 <<SF epa: epa: TBP>>=
   procedure :: apply => epa_apply
 <<SF epa: procedures>>=
-  subroutine epa_apply (sf_int, scale, rescale, i_sub)
+  subroutine epa_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(epa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: x, xb, qminsq, qmaxsq, f, E, m2
@@ -17519,9 +17526,10 @@ generated $x$ values are identical.
 <<SF ewa: ewa: TBP>>=
   procedure :: apply => ewa_apply
 <<SF ewa: procedures>>=
-  subroutine ewa_apply (sf_int, scale, rescale, i_sub)
+  subroutine ewa_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(ewa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: x, xb, pt2, c1, c2
@@ -18561,9 +18569,10 @@ Here, we insert the predefined norm.
 <<SF escan: escan: TBP>>=
   procedure :: apply => escan_apply
 <<SF escan: procedures>>=
-  subroutine escan_apply (sf_int, scale, rescale, i_sub)
+  subroutine escan_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(escan_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: f
@@ -19172,9 +19181,10 @@ Trivial, just set the unit weight.
 <<SF gaussian: gaussian: TBP>>=
   procedure :: apply => gaussian_apply
 <<SF gaussian: procedures>>=
-  subroutine gaussian_apply (sf_int, scale, rescale, i_sub)
+  subroutine gaussian_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: f
@@ -19873,9 +19883,10 @@ Trivial, just set the unit weight.
 <<SF beam events: beam events: TBP>>=
   procedure :: apply => beam_events_apply
 <<SF beam events: procedures>>=
-  subroutine beam_events_apply (sf_int, scale, rescale, i_sub)
+  subroutine beam_events_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: f
@@ -20897,9 +20908,10 @@ The scale is ignored.
 <<SF circe1: circe1: TBP>>=
   procedure :: apply => circe1_apply
 <<SF circe1: procedures>>=
-  subroutine circe1_apply (sf_int, scale, rescale, i_sub)
+  subroutine circe1_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(circe1_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default), dimension(2) :: xb
@@ -21909,9 +21921,10 @@ the interaction has only one entry, and the factor is unity.
 <<SF circe2: circe2: TBP>>=
   procedure :: apply => circe2_apply
 <<SF circe2: procedures>>=
-  subroutine circe2_apply (sf_int, scale, rescale, i_sub)
+  subroutine circe2_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(circe2_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     complex(default) :: f
@@ -22799,14 +22812,16 @@ Once the scale is also known, we can actually call the PDF and
 set the values.  Contrary to LHAPDF, the wrapper already takes care of
 adjusting to the $x$ and $Q$ bounds.  Account for the Jacobian.
 
+The parameter [[negative_sf]] is necessary to determine if we allow for negative PDF values.
 The class [[rescale]] gives rescaling prescription for NLO convolution of the
 structure function in combination with [[i_sub]].
 <<SF pdf builtin: pdf builtin: TBP>>=
   procedure :: apply => pdf_builtin_apply
 <<SF pdf builtin: procedures>>=
-  subroutine pdf_builtin_apply (sf_int, scale, rescale, i_sub)
+  subroutine pdf_builtin_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default), dimension(-6:6) :: ff
@@ -22815,7 +22830,9 @@ structure function in combination with [[i_sub]].
     real(double) :: xx, qq
     complex(default), dimension(:), allocatable :: fc
     integer :: i, j_sub, i_sub_opt
+    logical :: negative_sf_opt
     i_sub_opt = 0; if (present (i_sub)) i_sub_opt = i_sub
+    negative_sf_opt = .false.; if (present(negative_sf)) negative_sf_opt = negative_sf
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
@@ -22853,11 +22870,18 @@ structure function in combination with [[i_sub]].
       end if
       if (data%has_photon) then
          allocate (fc (count ([data%mask, data%mask_photon])))
-         fc = max (pack ([ff, fph], &
-              [data%mask, data%mask_photon]), 0._default)
+         if (negative_sf_opt) then
+            fc = pack ([ff, fph], [data%mask, data%mask_photon])
+         else
+            fc = max( pack ([ff, fph], [data%mask, data%mask_photon]), 0._default)
+         end if
       else
          allocate (fc (count (data%mask)))
-         fc = max (pack (ff, data%mask), 0._default)
+         if (negative_sf_opt) then
+            fc = pack (ff, data%mask)
+         else
+            fc = max( pack (ff, data%mask), 0._default)
+         end if
       end if
     end associate
     if (debug_active (D_BEAMS)) print *, 'Set pdfs: ', real (fc)
@@ -24041,15 +24065,18 @@ to the physical particle mass, but keep the radiated mass zero.
 @
 \subsection{Structure function}
 We have to cast the LHAPDF arguments to/from double precision (possibly
-from/to extended/quadruple precision), if necessary.  Furthermore,
-some structure functions can yield negative results (sea quarks close
-to $x=1$).  We set these unphysical values to zero.
+from/to extended/quadruple precision), if necessary.
+Some structure functions can yield negative results (sea quarks close
+to $x=1$). In an NLO computation, this is perfectly fine and we keep negative values.
+Unlike total cross sections, PDFs do not have to be positive definite. For LO however,
+negative PDFs would cause negative event weights so we set these values to zero instead.
 <<SF lhapdf: lhapdf: TBP>>=
   procedure :: apply => lhapdf_apply
 <<SF lhapdf: procedures>>=
-  subroutine lhapdf_apply (sf_int, scale, rescale, i_sub)
+  subroutine lhapdf_apply (sf_int, scale, negative_sf, rescale, i_sub)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
     real(default) :: x, s
@@ -24058,8 +24085,10 @@ to $x=1$).  We set these unphysical values to zero.
     double precision :: fphot
     complex(default), dimension(:), allocatable :: fc
     integer :: i, i_sub_opt, j_sub
+    logical :: negative_sf_opt
     external :: evolvePDFM, evolvePDFpM
     i_sub_opt = 0; if (present (i_sub)) i_sub_opt = i_sub
+    negative_sf_opt = .false.; if (present(negative_sf)) negative_sf_opt = negative_sf
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
@@ -24126,11 +24155,18 @@ to $x=1$).  We set these unphysical values to zero.
       end if
       if (data%has_photon) then
          allocate (fc (count ([data%mask, data%mask_photon])))
-         fc = max (pack ([ff, fphot] / x, &
-              [data%mask, data%mask_photon]), 0._default)
+         if (negative_sf_opt) then
+            fc = pack ([ff, fphot] / x, [data%mask, data%mask_photon])
+         else
+            fc = max( pack ([ff, fphot] / x, [data%mask, data%mask_photon]), 0._default)
+         end if
       else
          allocate (fc (count (data%mask)))
-         fc = max (pack (ff / x, data%mask), 0._default)
+         if (negative_sf_opt) then
+            fc = pack (ff / x, data%mask)
+         else
+            fc = max( pack (ff / x, data%mask), 0._default)
+         end if
       end if
     end associate
     if (debug_active (D_BEAMS)) print *, 'Set pdfs: ', real (fc)

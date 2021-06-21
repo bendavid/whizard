@@ -3450,6 +3450,13 @@ procedure with type [[V_NONE]].
           description=var_str ('Normalization flag for the energy scan ' // &
           'structure function: if set the total cross section is normalized ' // &
           'to unity. (cf. also \ttt{energy\_scan})'))
+    call var_list%append_string (var_str ("$negative_sf"), var_str ("default"), &
+          intrinsic=.true., &
+          description=var_str ('String variable to set the behavior to either ' // &
+          'keep negative structure function/PDF values or set them to zero. ' // &
+          'The default (\ttt{"default"}) takes the first option for NLO and the ' // &
+          'second for LO processes. Explicit behavior can be set with ' // &
+          '\ttt{"positive"} or \ttt{"negative"}.'))
   end subroutine var_list_set_beams_defaults
 
 @ %def var_list_set_beams_defaults

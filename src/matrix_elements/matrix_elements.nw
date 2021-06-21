@@ -5800,6 +5800,7 @@ The [[md5sum]] is used to verify the integrity of the configuration.
      type(process_component_def_t), dimension(:), allocatable :: extra
      character(32) :: md5sum = ""
      logical :: nlo_process = .false.
+     logical :: negative_sf = .false.
      logical :: requires_resonances = .false.
    contains
    <<Process libraries: process def: TBP>>
@@ -5963,7 +5964,7 @@ suffix which we increment for each component.
 <<Process libraries: procedures>>=
   subroutine process_def_init (def, id, &
        model, model_name, n_in, n_components, num_id, &
-       nlo_process, requires_resonances)
+       nlo_process, negative_sf, requires_resonances)
     class(process_def_t), intent(out) :: def
     type(string_t), intent(in), optional :: id
     class(model_data_t), intent(in), optional, target :: model
@@ -5972,6 +5973,7 @@ suffix which we increment for each component.
     integer, intent(in), optional :: n_components
     integer, intent(in), optional :: num_id
     logical, intent(in), optional :: nlo_process
+    logical, intent(in), optional :: negative_sf
     logical, intent(in), optional :: requires_resonances
     character(16) :: suffix
     integer :: i
@@ -6001,6 +6003,9 @@ suffix which we increment for each component.
     end if
     if (present (nlo_process)) then
        def%nlo_process = nlo_process
+    end if
+    if (present (negative_sf)) then
+       def%negative_sf = negative_sf
     end if
     if (present (requires_resonances)) then
        def%requires_resonances = requires_resonances
@@ -6290,6 +6295,17 @@ this process.
   end function process_def_get_nlo_type
 
 @ %def process_def_get_nlo_type
+@
+<<Process libraries: process def: TBP>>=
+  procedure :: get_negative_sf => process_def_get_negative_sf
+<<Process libraries: procedures>>=
+  elemental function process_def_get_negative_sf (def) result (neg_sf)
+    logical :: neg_sf
+    class(process_def_t), intent(in) :: def
+    neg_sf = def%negative_sf
+  end function process_def_get_negative_sf
+
+@ %def process_def_get_negative_sf
 @ Number of incoming particles, common to all components.
 <<Process libraries: process def: TBP>>=
   procedure :: get_n_in => process_def_get_n_in

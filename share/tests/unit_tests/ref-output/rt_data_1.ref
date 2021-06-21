@@ -60,6 +60,7 @@ gaussian_spread2 =  0.000000000000E+00
 [undefined] $beam_events_file = [unknown string]
 ?beam_events_warn_eof = true
 ?energy_scan_normalize = false
+$negative_sf = "default"
 ?logging => false
 [undefined] $job_id = [unknown string]
 [undefined] $compile_workspace = [unknown string]

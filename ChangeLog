@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0+
 
+2021-06-21
+	Option to keep negative PDF entries or set them zero
+
 2021-05-31
 	Full LCIO MC production files can be properly recasted
 
