@@ -37,4 +37,3 @@ cdef extern from "whizard.h":
     void whizard_sample_get_alpha_s (sample_handle_t sample, double* alpha_s)
     void whizard_sample_get_weight (sample_handle_t sample, double* weight)
     void whizard_sample_get_sqme (sample_handle_t sample, double* sqme)
-

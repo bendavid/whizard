@@ -66,7 +66,8 @@ setup(
                                        language='c++')],
                             # https://cython.readthedocs.io/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives
                             compiler_directives={
-                                'language_level': '2'
+                                'language_level': '2',
+                                'embedsignature': True,
                             }
                             ),
     # https://cython.readthedocs.io/en/latest/src/quickstart/build.html#building-a-cython-module-using-setuptools
