@@ -18059,7 +18059,7 @@ determines [[n_components]].
        case ("Full")
           qcd_corr =.true.; qed_corr = .true.
        case default
-          call msg_fatal ("Invalid NLO correction type! " // &
+          call msg_fatal ("Invalid NLO correction type. " // &
                "Valid inputs are: QCD, EW, Full (default: QCD)")
        end select
        call check_for_excluded_gauge_boson_splitting_partners ()

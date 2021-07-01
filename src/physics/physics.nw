@@ -123,6 +123,8 @@ We need an UNDEFINED value:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: GLUON = 21
   integer, parameter, public :: PHOTON = 22
+  integer, parameter, public :: PHOTON_OFFSHELL = -2002
+  integer, parameter, public :: PHOTON_ONSHELL = 2002
   integer, parameter, public :: Z_BOSON = 23
   integer, parameter, public :: W_BOSON = 24
 

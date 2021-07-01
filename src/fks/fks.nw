@@ -5877,7 +5877,7 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
     end select
     do i_flv = 1, size (flv_born, 2)
        do i_part = 1, size (flv_born, 1)
-          if (is_corresponding_vector (flv_born(i_part, i_flv), nlo_corr_type)) then
+          if (is_massless_vectorboson (flv_born(i_part, i_flv), nlo_corr_type)) then
              virt%gamma_0(i_part, i_flv) = 11._default / 6._default * CA_factor &
                   - two / three * TR_sum
              virt%gamma_p(i_part, i_flv) = (67._default / 9._default &
@@ -5888,6 +5888,10 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
              virt%gamma_0(i_part, i_flv) = 1.5_default * CF_factor(i_part, i_flv)
              virt%gamma_p(i_part, i_flv) = (6.5_default - two * pi**2 / three) * CF_factor(i_part, i_flv)
              virt%c_flv(i_part, i_flv) = CF_factor(i_part, i_flv)
+          else if (is_massive_vectorboson (flv_born(i_part, i_flv), nlo_corr_type)) then
+             virt%gamma_0(i_part, i_flv) = zero
+             virt%gamma_p(i_part, i_flv) = zero
+             virt%c_flv(i_part, i_flv) = CF_factor(i_part, i_flv)
           else
              virt%gamma_0(i_part, i_flv) = zero
              virt%gamma_p(i_part, i_flv) = zero
@@ -5896,17 +5900,17 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
        end do
     end do
   contains
-    function is_corresponding_vector (pdg_nr, nlo_corr_type)
-      logical :: is_corresponding_vector
+    function is_massless_vectorboson (pdg_nr, nlo_corr_type)
+      logical :: is_massless_vectorboson
       integer, intent(in) :: pdg_nr
       type(string_t), intent(in) :: nlo_corr_type
-      is_corresponding_vector = .false.
+      is_massless_vectorboson = .false.
       if (nlo_corr_type == "QCD") then
-         is_corresponding_vector = is_gluon (pdg_nr)
+         is_massless_vectorboson = is_gluon (pdg_nr)
       else if (nlo_corr_type == "EW") then
-         is_corresponding_vector = is_photon (pdg_nr)
+         is_massless_vectorboson = is_photon (pdg_nr)
       end if
-    end function is_corresponding_vector
+    end function is_massless_vectorboson
     function is_corresponding_fermion (pdg_nr, nlo_corr_type)
       logical :: is_corresponding_fermion
       integer, intent(in) :: pdg_nr
@@ -5918,6 +5922,15 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
          is_corresponding_fermion = is_fermion (pdg_nr)
       end if
     end function is_corresponding_fermion
+    function is_massive_vectorboson (pdg_nr, nlo_corr_type)
+      logical :: is_massive_vectorboson
+      integer, intent(in) :: pdg_nr
+      type(string_t), intent(in) :: nlo_corr_type
+      is_massive_vectorboson = .false.
+      if (nlo_corr_type == "EW") then
+         is_massive_vectorboson = is_massive_vector (pdg_nr)
+      end if
+    end function is_massive_vectorboson
   end subroutine virtual_init_constants
 
 @ %def virtual_init_constants
@@ -6107,7 +6120,11 @@ is true).
                         print *, 'b_ij: ', virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
                 end if
              else if (debug2_active (D_VIRTUAL)) then
-                print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
+                if (nlo_corr_type == "QCD") then
+                   print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
+                else if (nlo_corr_type == "EW") then
+                   print *, 'b_ij: ', i, j, virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
+                end if
              end if
           end do
        end do

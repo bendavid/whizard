@@ -842,11 +842,12 @@ Obviously, this process-core type uses the BLHA interface.
     integer :: unit, filestat
     character(len=LEN_MAX_FLAVOR_STRING) :: rd_line
     logical :: read_flavor, give_warning
-    integer :: label_count, i_flv
+    integer :: label_count, i_flv, i
     integer :: i_hel, n_in
     integer :: i_next, n_entries
     integer, dimension(size(flavors, 1) + 2) :: i_array
     integer, dimension(size(flavors, 1) + 2) :: hel_array
+    integer, dimension(size(flavors, 1)) :: flv_array
     integer, parameter :: NO_NUMBER = -1000
     integer, parameter :: PROC_NOT_FOUND = -1001
     integer, parameter :: list_incr = 50
@@ -897,24 +898,33 @@ Obviously, this process-core type uses the BLHA interface.
             end if
             if (.not. all (i_array == PROC_NOT_FOUND)) then
                do i_flv = 1, size (flavors, 2)
-                   if (all (i_array (1 : n_entries - 2) == flavors (:,i_flv))) then
-                      if (label_count > size (label)) &
-                           call extend_integer_array (label, list_incr)
-                      label(label_count) = i_array (n_entries)
-                      if (label_count > size (flv_index)) &
-                           call extend_integer_array (flv_index, list_incr)
-                      flv_index (label_count) = i_flv
-                      if (label_count > size (hel_index)) &
-                           call extend_integer_array (hel_index, list_incr)
-                      hel_index (label_count) = i_hel
-                      if (driver%include_polarizations) then
-                         helicities (label(label_count), :) = hel_array (1:n_in)
-                         i_hel = i_hel + 1
-                      end if
-                      n_found = n_found + 1
-                      label_count = label_count + 1
-                      exit
-                   end if
+                  flv_array = 0
+                  do i = 1, size (flv_array)
+                     if (i_array (i) == PHOTON_OFFSHELL .and. &
+                          flavors (i, i_flv) == PHOTON) then
+                        flv_array (i) = i_array (i)
+                     else
+                        flv_array (i) = flavors (i, i_flv)
+                     end if
+                  end do
+                  if (all (i_array (1 : n_entries - 2) == flv_array (:))) then
+                     if (label_count > size (label)) &
+                          call extend_integer_array (label, list_incr)
+                     label(label_count) = i_array (n_entries)
+                     if (label_count > size (flv_index)) &
+                          call extend_integer_array (flv_index, list_incr)
+                     flv_index (label_count) = i_flv
+                     if (label_count > size (hel_index)) &
+                          call extend_integer_array (hel_index, list_incr)
+                     hel_index (label_count) = i_hel
+                     if (driver%include_polarizations) then
+                        helicities (label(label_count), :) = hel_array (1:n_in)
+                        i_hel = i_hel + 1
+                     end if
+                     n_found = n_found + 1
+                     label_count = label_count + 1
+                     exit
+                  end if
                end do
                give_warning = .false.
             else
@@ -1857,6 +1867,7 @@ module blha_config
   use constants
   use string_utils
   use variables, only: var_list_t
+  use physics_defs, only: PHOTON, PHOTON_OFFSHELL
   use diagnostics
   use md5
   use model_data
@@ -2098,6 +2109,8 @@ of the particles. Note that the output can only be processed by OpenLoops.
      integer :: openloops_phs_tolerance = 0
      type(string_t) :: openloops_extra_cmd
      integer :: openloops_stability_log = 0
+     integer :: n_off_photons_is = 0
+     integer :: n_off_photons_fs = 0
   end type blha_configuration_t
 
 @ %def blha_cffg_process_node_t blha_configuration_t
@@ -2297,6 +2310,42 @@ This types control the creation of BLHA-interface files
   end subroutine blha_master_set_correction_type
 
 @ %def blha_master_set_correction_type
+@
+<<BLHA config: blha master: TBP>>=
+  procedure :: set_photon_characteristics => blha_master_set_photon_characteristics
+<<BLHA config: procedures>>=
+  subroutine blha_master_set_photon_characteristics (master, flv_born, n_in)
+    class(blha_master_t), intent(inout) :: master
+    integer, dimension(:,:), intent(in) :: flv_born
+    integer, intent(in) :: n_in
+    integer :: i_file, i, i_flv 
+    integer :: noff_is, noff_fs, noff_is_max, noff_fs_max
+    do i_file = 1, master%n_files
+       noff_is_max = 0; noff_fs_max = 0
+       do i_flv = 1, size (flv_born, 2)
+          noff_is = 0; noff_fs = 0
+          do i = 1, n_in
+             if (flv_born (i, i_flv) == PHOTON) noff_is = noff_is + 1
+          end do
+          noff_is_max = max (noff_is, noff_is_max)
+          do i = n_in + 1, size (flv_born(:, i_flv))
+             if (flv_born (i, i_flv) == PHOTON) noff_fs = noff_fs + 1
+          end do
+          noff_fs_max = max (noff_fs, noff_fs_max)
+       end do
+       if (master%blha_cfg(i_file)%correction_type == BLHA_CT_EW &
+          .and. master%ew_scheme == BLHA_EW_0 &
+          .and. (noff_is_max > 0 .or. noff_fs_max > 0)) then
+          call msg_fatal ("For NLO EW/mixed corrections, 'alpha_0'/" &
+          // "'alpha_thompson' are ",  [ var_str ("inconsistent EW input " &
+          // "schemes. Please use 'alpha_mz' or 'Gmu'")])
+       end if
+       master%blha_cfg(i_file)%n_off_photons_is = noff_is_max
+       master%blha_cfg(i_file)%n_off_photons_fs = noff_fs_max
+    end do
+  end subroutine blha_master_set_photon_characteristics
+
+@ %def blha_master_set_photon_characteristics
 @
 <<BLHA config: blha master: TBP>>=
   procedure :: generate => blha_master_generate
@@ -3027,7 +3076,63 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
 
 @ %def blha_configuration_get_n_proc
 @
-Write the BLHA file. Internal mode is intented for md5summing only.
+Write the BLHA file. Internal mode is intented for md5summing only.\\
+\\
+Special cases of external photons in \texttt{OpenLoops}:\\
+For electroweak corrections the particle ID (PID) of photons is a crucial input for the
+computation of matrix elements by \texttt{OpenLoops}.
+According to "arXiv: 1907.13071", section 3.2, external photons are classified by the
+following types:
+\begin{itemize}
+\item PID $= -2002$: off-shell photons, that undergo $\gamma\rightarrow f\bar{f}$ splittings
+at NLO EW, or initial state photons from QED PDFs
+\item PID $= 2002$: on-shell photons, that do not undergo $\gamma\rightarrow f\bar{f}$
+splittings at NLO EW, or initial state photons for example at photon colliders
+\item PID $= 22$: unresolved photons, representing radiated photons at NLO EW, absent at LO
+\end{itemize}
+For the first two types scattering amplitudes for processes with external photons at NLO EW
+get renormalisation factors containing photon-coupling and wave function counterterms.
+Logarithmic mass singularities arising due to the renormalisation of off-shell external
+photon wave functions are cancelled by collinear singularities of photon PDF counterterms or
+analogous terms in virtual contributions originating from $\gamma\rightarrow f\bar{f}$
+splittings of final state photons.\\
+The finite remainders of the renormalisation factors are thus dictated by the specific photon
+PID stated above.
+As consequence, we have to adjust the input PIDs written into the BLHA file which will be
+read by \texttt{OpenLoops}.\\
+Concretely, for the case of electroweak corrections initial state photons associated with
+photon PDFs and final state photons (if existent at LO) are labeled as off-shell photons with
+PID "$-2002$".
+On-shell photons with PID "$2002$" are neglected for now since to include them for processes
+at NLO EW is non-trivial from the phenomenological point of view.
+Processes at NLO EW typically are studied at high energy scales for which photon-induced
+sub-processes in most cases can not be neglected.
+However, on-shell, e.~g. tagged, photons are defined at low energy scales and thus the
+process has to be described with external photon fields and couplings at two different
+scales.\\
+Another issue which has to be adressed if various photon PIDs are taken into account is that
+real and virtual amplitudes have to be computed at the same order in $\alpha$ at a specific
+scale for the subtraction scheme to be consistent.
+The complication comes by the fact that the EW coupling $\alpha$ of each external photon in
+the amplitudes will automatically be rescaled by \texttt{OpenLoops} corresponding to the
+specific photon type.
+Following eq. (3.30) of "arXiv: 1907.13071", by default the coupling of an on-shell photon
+will be changed to $\alpha(0)$ and that of an off-shell photon to $\alpha_{G_\mu}$ if not
+chosen already at a high scale, e.~g. $\alpha(M_Z)$.
+In order to not spoil the IR cancellation \texttt{OpenLoops} supplies to register unresolved
+photons with PID "22" describing a radiated photon at NLO EW for which the photon-coupling
+$\alpha$ is left unchanged at the value which is computed with the electroweak input scheme
+chosen by the user.
+This is adopted here by labeling each emitted photon as unresolved with PID "22" if no
+photons are present at LO.\\
+For EW corrections the freedom to choose an electroweak input scheme is restricted, however,
+since the number of external photons present at LO is not conserved for the corresponding
+real flavor structures due to possible $\gamma \rightarrow f\bar{f}$ splittings.
+This forbids to choose $\alpha=\alpha(0)$ since otherwise the order in $\alpha(0)$ is not
+conserved in the real amplitudes corresponding to the factorizing Born process.
+Consequently, for FKS the NLO components are not of the same order in $\alpha(0)$.
+The option \texttt{\$blha\_ew\_scheme = "alpha\_0"} is thus refused for the case if EW
+corrections are activated and photons are present at LO.
 <<BLHA config: public>>=
   public :: blha_configuration_write
 <<BLHA config: procedures>>=
@@ -3041,6 +3146,7 @@ Write the BLHA file. Internal mode is intented for md5summing only.
     type(blha_cfg_process_node_t), pointer :: node
     integer :: i
     character(3) :: pdg_char
+    character(5) :: pdg_char_extra
     character(4) :: hel_char
     character(len=25), parameter :: pad = ""
     logical :: write_process, no_v
@@ -3185,18 +3291,40 @@ Write the BLHA file. Internal mode is intented for md5summing only.
           write (u, '(A25, A)') "AmplitudeType " // pad, char (buf)
           buf = ""
           do i = 1, size (node%pdg_in)
-             call node%pdg_in(i)%write_pdg (pdg_char)
-             if (node%pdg_in(i)%polarized) then
-                call node%pdg_in(i)%write_helicity (hel_char)
-                buf = (buf // pdg_char // hel_char) // " "
+             if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_in(i)%pdg == PHOTON &
+                .and. cfg%n_off_photons_is > 0) then
+                if (cfg%ew_scheme == BLHA_EW_0) then
+                   call msg_fatal ("ew_scheme: 'alpha_0' or 'alpha_thompson' " &
+                        // "in combination",  [ var_str ("with off-shell external photons " &
+                        // "is not consistent with FKS.")])
+                end if
+                write (pdg_char_extra, '(I5)') PHOTON_OFFSHELL
+                buf = (buf // pdg_char_extra) // " "
              else
-                buf = (buf // pdg_char) // " "
+                call node%pdg_in(i)%write_pdg (pdg_char)
+                if (node%pdg_in(i)%polarized) then
+                   call node%pdg_in(i)%write_helicity (hel_char)
+                   buf = (buf // pdg_char // hel_char) // " "
+                else
+                   buf = (buf // pdg_char) // " "
+                end if
              end if
           end do
           buf = buf // "-> "
           do i = 1, size (node%pdg_out)
-             call node%pdg_out(i)%write_pdg (pdg_char)
-             buf = (buf // pdg_char) // " "
+             if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_out(i)%pdg == PHOTON &
+                .and. cfg%n_off_photons_fs > 0) then
+                if (cfg%ew_scheme == BLHA_EW_0) then
+                   call msg_fatal ("ew_scheme: 'alpha_0' or 'alpha_thompson' " &
+                        // "in combination with off-shell external photons " &
+                        // "is not consistent with FKS. Try a different one.")
+                end if
+                write (pdg_char_extra, '(I5)') PHOTON_OFFSHELL
+                buf = (buf // pdg_char_extra) // " "
+             else
+                call node%pdg_out(i)%write_pdg (pdg_char)
+                buf = (buf // pdg_char) // " "
+             end if
           end do
           write (u, "(A)") char (trim (buf))
           write (u, *)

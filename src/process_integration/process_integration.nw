@@ -3578,6 +3578,7 @@ environment variables.
               extra_cmd = openloops_extra_cmd, &
               beam_structure = process%env%get_beam_structure ())
          call pcm%get_blha_flv_states (process%core_entry, flv_born, flv_real)
+         call blha_master%set_photon_characteristics (flv_born, process%config%n_in)
          call blha_master%generate (process%meta%id, &
               process%config%model, process%config%n_in, &
               alpha_power, alphas_power, &
@@ -15758,7 +15759,8 @@ to supply an external $\alpha_s$.
           end if
           i_real_fin = instance%process%get_associated_real_fin (1)
           if (term%config%i_component /= i_real_fin) &
-               call term%apply_fks (core%get_alpha_s (term%core_state), 0._default)
+               call term%apply_fks (core%get_alpha_s (term%core_state), &
+                                    core%get_alpha_qed ())
           if (instance%process%uses_real_partition ()) &
                call instance%apply_real_partition ()
        end associate
