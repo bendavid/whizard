@@ -4,6 +4,12 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0+
 
+2021-07-02
+	Improvement for POWHEG matching:
+	- implement massless recoil case
+	- allow reading in existing POWHEG grids
+	- support kinematic cuts at generator level
+
 2021-07-01
 	Distinguish different cases of photons in NLO EW corrections
 

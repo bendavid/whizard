@@ -5705,10 +5705,6 @@ procedure with type [[V_NONE]].
     call var_list%append_int (var_str ("powheg_grid_size_y"), &
          5, intrinsic = .true., &
          description=var_str ('Number of $y$ points in the POWHEG grid.'))
-    call var_list%append_int (var_str ("powheg_grid_sampling_points"), &
-         500000, intrinsic = .true., &
-         description=var_str ('Number of calls used to initialize the ' // &
-         'POWHEG grid.'))
     call var_list%append_real (var_str ("powheg_pt_min"), &
           1._default, intrinsic = .true., &
           description=var_str ('Lower $p_T$-cut-off for the POWHEG ' // &
@@ -5988,8 +5984,8 @@ procedure with type [[V_NONE]].
          description=var_str ('Real parameter for the FKS ' // &
          'phase space that sets the numerical upper value of the $\left|y\right|$ ' // &
          'variable. Valid for ranges $[0,1]$, where value inputs out of bounds will take ' // &
-         'the value of the closest bound.(cf. also \ttt{fks\_dij\_exp1}, ' // &
-         '\ttt{\$fks\_mapping\_type}, \ttt{fks\_dij\_exp2}, \ttt{fks\_y\_max})'))
+         'the value of the closest bound. Only supported for massless FSR. ' // &
+         '(cf. also \ttt{fks\_dij\_exp1}, \ttt{\$fks\_mapping\_type}, \ttt{fks\_dij\_exp2})'))
     call var_list%append_log (var_str ("?vis_fks_regions"), &
          .false., intrinsic = .true., &
          description=var_str ('Logical variable that, if set to ' // &

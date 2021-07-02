@@ -2584,6 +2584,18 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
   end function grid_is_non_zero_everywhere
 
 @ %def grid_is_non_zero_everywhere
+@ Returns true if any value of the grid is non-zero.
+We need this to determine whether the grid has been filled during integration.
+<<Grids: grid: TBP>>=
+  procedure :: has_non_zero_entries => grid_has_non_zero_entries
+<<Grids: procedures>>=
+  pure function grid_has_non_zero_entries (grid) result (non_zero)
+    logical :: non_zero
+    class(grid_t), intent(in) :: grid
+    non_zero = any (abs (grid%values) > zero)
+  end function grid_has_non_zero_entries
+
+@ %def grid_has_non_zero_entries
 @ MPI: We allow for several grids in a parallelized run to be combined with [[MPI_reduce]].
 The operator has to be specified. We do not check on any specifications.
 <<MPI: Grids: grid: TBP>>=
@@ -2633,6 +2645,7 @@ The operator has to be specified. We do not check on any specifications.
   end subroutine grid_write
 
 @ %def grid_write
+@
 <<Grids: grid: TBP>>=
   procedure :: compute_and_write_mean_and_max => &
        grid_compute_and_write_mean_and_max
@@ -2671,7 +2684,6 @@ The operator has to be specified. We do not check on any specifications.
   end subroutine grid_compute_and_write_mean_and_max
 
 @ %def grid_compute_and_write_mean_and_max
-@
 @
 <<Grids: grid: TBP>>=
   procedure :: save_to_file => grid_save_to_file
@@ -2729,8 +2741,8 @@ The operator has to be specified. We do not check on any specifications.
 
 @ %def verify_points_for_grid
 @ Returns the [[unit]] that has opened the input [[file]] and read the
-first two lines. The caller has to close it. Furhtermore, we return
-[[points]] cointaining the number of points in each dimension.
+first two lines. The caller has to close it. Furthermore, we return
+[[points]] containing the number of points in each dimension.
 <<Grids: procedures>>=
   subroutine load_points_from_file (file, unit, points)
     character(len=*), intent(in) :: file
@@ -3157,8 +3169,10 @@ if (vanishes (f_next - f_curr)) then
    x_next = x_next + (x_next - x_curr) / 10
    cycle
 end if
+
 @
-@
+@ Implements the bisection root-finding method to find a root of [[func]]
+between [[lower_start]] and [[upper_start]] with tolerance [[precision]].
 <<solver: public>>=
   public :: solve_interval
 <<solver: procedures>>=
@@ -3181,8 +3195,11 @@ end if
     f_low = real( func%evaluate (x_low) )
     f_high = real( func%evaluate (x_high) )
     if (f_low * f_high > 0) return
-    if (x_low > x_high) call msg_fatal ("Interval solver: Upper bound must be &
-                                        &greater than lower bound")
+    if (x_low > x_high) then
+       call display_solver_status()
+       call msg_fatal ("Interval solver: Upper bound must be &
+                       &greater than lower bound")
+    end if
     n_iter = 0
     do n_iter = 1, MAX_TRIES
        x_half = (x_high + x_low)/2

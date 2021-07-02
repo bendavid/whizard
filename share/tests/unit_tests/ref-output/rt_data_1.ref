@@ -328,7 +328,6 @@ mlm_Eclusfactor =  1.000000000000E+00
 ?powheg_use_singular_jacobian = false
 powheg_grid_size_xi = 5
 powheg_grid_size_y = 5
-powheg_grid_sampling_points = 500000
 powheg_pt_min =  1.000000000000E+00
 powheg_lambda =  2.000000000000E-01
 ?powheg_test_sudakov = false

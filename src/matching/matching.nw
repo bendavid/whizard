@@ -1355,7 +1355,7 @@ module powheg_matching
 <<Use strings>>
 <<Use debug>>
   use diagnostics
-  use constants, only: ZERO, ONE, TWO, FIVE, TINY_07, PI, TWOPI
+  use constants, only: ZERO, ONE, TWO, THREE, FOUR, FIVE, TINY_07, PI, TWOPI
   use numeric_utils
   use io_units, only: given_output_unit, free_unit
   use format_utils, only: write_separator
@@ -1377,7 +1377,7 @@ module powheg_matching
 
   use phs_fks, only: phs_fks_generator_t, compute_dalitz_bounds, beta_emitter
   use phs_fks, only: phs_point_set_t, phs_identifier_t, phs_fks_t
-  use phs_fks, only: I_XI, I_Y, FSR_SIMPLE, FSR_MASSIVE
+  use phs_fks, only: I_XI, I_Y, UBF_FSR_SIMPLE, UBF_FSR_MASSIVE, UBF_FSR_MASSLESS_RECOIL
   use matching_base
   use instances, only: process_instance_t, process_instance_hook_t
   use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
@@ -1410,10 +1410,9 @@ $\alpha_s^\text{rad}$ is still larger than the true $\alpha_s$.
   type :: powheg_settings_t
      real(default) :: pt2_min = zero
      real(default) :: lambda = zero
-     integer :: n_init = 0
      integer :: size_grid_xi = 0
      integer :: size_grid_y = 0
-     integer :: upper_bound_func = UBF_SIMPLE
+     integer :: upper_bound_func_type = UBF_FSR_SIMPLE
      logical :: test_sudakov = .false.
      logical :: disable_sudakov = .false.
      logical :: singular_jacobian = .false.
@@ -1422,13 +1421,6 @@ $\alpha_s^\text{rad}$ is still larger than the true $\alpha_s$.
   end type powheg_settings_t
 
 @ %def powheg_settings_t
-@ These are the possible values for [[upper_bound_func]] and will be
-used to decide which ubf object is allocated.
-<<POWHEG matching: parameters>>=
-  integer, parameter :: UBF_SIMPLE = 1
-  integer, parameter :: UBF_EEQQ = 2
-  integer, parameter :: UBF_MASSIVE = 3
-@ %def UBF_SIMPLE UBF_EEQQ
 @
 <<POWHEG matching: powheg settings: TBP>>=
   procedure :: init => powheg_settings_init
@@ -1442,8 +1434,6 @@ used to decide which ubf object is allocated.
          var_list%get_ival (var_str ("powheg_grid_size_xi"))
     settings%size_grid_y = &
          var_list%get_ival (var_str ("powheg_grid_size_y"))
-    settings%n_init = &
-         var_list%get_ival (var_str ("powheg_grid_sampling_points"))
     settings%lambda = var_list%get_rval (var_str ("powheg_lambda"))
     settings%singular_jacobian = &
          var_list%get_lval (var_str ("?powheg_use_singular_jacobian"))
@@ -1466,10 +1456,9 @@ used to decide which ubf object is allocated.
     write (u, "(1X,A)") "POWHEG settings:"
     write (u, "(3X,A," // FMT_16 //")") "pt2_min = ", powheg_settings%pt2_min
     write (u, "(3X,A," // FMT_16 //")") "lambda = ", powheg_settings%lambda
-    write (u, "(3X,A,I12)") "n_init = ", powheg_settings%n_init
     write (u, "(3X,A,I12)") "size_grid_xi = ", powheg_settings%size_grid_xi
     write (u, "(3X,A,I12)") "size_grid_y = ", powheg_settings%size_grid_y
-    write (u, "(3X,A,I12)") "upper_bound_func = ", powheg_settings%upper_bound_func
+    write (u, "(3X,A,I12)") "upper_bound_func_type = ", powheg_settings%upper_bound_func_type
   end subroutine powheg_settings_write
 
 @ %def powheg_settings_write
@@ -1504,8 +1493,9 @@ used to decide which ubf object is allocated.
   end subroutine radiation_write
 
 @ %def radiation_write
-@ [[lambda2_gen]] $\neq$ [[lambda]] and is used in the upper bounding
-functions.
+@ [[lambda2_gen]] is the scale used in the (log integrated) upper bounding
+functions. It is not equivalent to [[lambda]] which is the reference
+scale for the $\alpha_s$ evolution.
 <<POWHEG matching: public>>=
   public :: process_deps_t
 <<POWHEG matching: types>>=
@@ -1619,12 +1609,12 @@ partonic vs hadronic cms as well as decays in POWHEG:
     integer :: n_xi_max = 0
     integer :: n_norm = 0
     integer :: n_sqme = 0
-    integer :: veto_ubf = 0
-    integer :: veto_alpha_s = 0
-    integer :: veto_xi_max = 0
-    integer :: veto_norm = 0
-    integer :: veto_sqme = 0
-    integer :: n_veto_fail = 0
+    integer :: n_veto_ubf = 0
+    integer :: n_veto_alpha_s = 0
+    integer :: n_veto_xi_max = 0
+    integer :: n_veto_norm = 0
+    integer :: n_veto_sqme = 0
+    integer :: n_fail_ubf = 0
   contains
   <<POWHEG matching: veto counter: TBP>>
   end type veto_counter_t
@@ -1638,7 +1628,7 @@ partonic vs hadronic cms as well as decays in POWHEG:
     class(veto_counter_t), intent(inout) :: counter
     logical, intent(in) :: vetoed
     counter%n_ubf = counter%n_ubf + 1
-    if (vetoed) counter%veto_ubf = counter%veto_ubf + 1
+    if (vetoed) counter%n_veto_ubf = counter%n_veto_ubf + 1
   end subroutine veto_counter_record_ubf
 
 @ %def veto_counter_record_ubf
@@ -1660,7 +1650,7 @@ partonic vs hadronic cms as well as decays in POWHEG:
     class(veto_counter_t), intent(inout) :: counter
     logical, intent(in) :: vetoed
     counter%n_alpha_s = counter%n_alpha_s + 1
-    if (vetoed) counter%veto_alpha_s = counter%veto_alpha_s + 1
+    if (vetoed) counter%n_veto_alpha_s = counter%n_veto_alpha_s + 1
   end subroutine veto_counter_record_alpha_s
 
 @ %def veto_counter_record_alpha_s
@@ -1672,7 +1662,7 @@ partonic vs hadronic cms as well as decays in POWHEG:
     class(veto_counter_t), intent(inout) :: counter
     logical, intent(in) :: vetoed
     counter%n_xi_max = counter%n_xi_max + 1
-    if (vetoed) counter%veto_xi_max = counter%veto_xi_max + 1
+    if (vetoed) counter%n_veto_xi_max = counter%n_veto_xi_max + 1
   end subroutine veto_counter_record_xi_max
 
 @ %def veto_counter_record_xi_max
@@ -1684,7 +1674,7 @@ partonic vs hadronic cms as well as decays in POWHEG:
     class(veto_counter_t), intent(inout) :: counter
     logical, intent(in) :: vetoed
     counter%n_norm = counter%n_norm + 1
-    if (vetoed) counter%veto_norm = counter%veto_norm + 1
+    if (vetoed) counter%n_veto_norm = counter%n_veto_norm + 1
   end subroutine veto_counter_record_norm
 
 @ %def veto_counter_record_norm
@@ -1696,21 +1686,22 @@ partonic vs hadronic cms as well as decays in POWHEG:
     class(veto_counter_t), intent(inout) :: counter
     logical, intent(in) :: vetoed
     counter%n_sqme = counter%n_sqme + 1
-    if (vetoed) counter%veto_sqme = counter%veto_sqme + 1
+    if (vetoed) counter%n_veto_sqme = counter%n_veto_sqme + 1
   end subroutine veto_counter_record_sqme
 
 @ %def veto_counter_record_sqme
 @
 <<POWHEG matching: veto counter: TBP>>=
-  procedure :: record_fail => veto_counter_record_fail
+  procedure :: record_ubf_fail => veto_counter_record_ubf_fail
 <<POWHEG matching: procedures>>=
-  subroutine veto_counter_record_fail (counter)
+  subroutine veto_counter_record_ubf_fail (counter)
     class(veto_counter_t), intent(inout) :: counter
-    counter%n_veto_fail = counter%n_veto_fail + 1
-  end subroutine veto_counter_record_fail
+    counter%n_fail_ubf = counter%n_fail_ubf + 1
+  end subroutine veto_counter_record_ubf_fail
 
-@ %def veto_counter_record_fail
-@
+@ %def veto_counter_record_ubf_fail
+@ This routine fills the POWHEG veto log file with content showing how many
+events have been vetoed in which step of the sudakov veto algorithm.
 <<POWHEG matching: veto counter: TBP>>=
   procedure :: write => veto_counter_write
 <<POWHEG matching: procedures>>=
@@ -1719,42 +1710,45 @@ partonic vs hadronic cms as well as decays in POWHEG:
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit); if (u < 0) return
-    write (u, "(A,I12)") "Nr. of ubf-veto calls: ", counter%n_ubf
-    write (u, "(A,I12)") "Nr. of ubf-vetos: ", counter%veto_ubf
+    write (u, "(A29,I10)") "Nr. of ubf-veto calls: ", counter%n_ubf
+    write (u, "(A29,I10)") "Nr. of ubf-vetos: ", counter%n_veto_ubf
     if (counter%n_ubf > 0) &
-       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
-                            one*counter%veto_ubf / counter%n_ubf
+       write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
+            one * counter%n_veto_ubf / counter%n_ubf * 100, "%"
     call write_separator (u)
 
-    write (u, "(A,I12)") "Nr. of alpha_s-veto calls: ", counter%n_alpha_s
-    write (u, "(A,I12)") "Nr. of alpha_s-vetos: ", counter%veto_alpha_s
+    write (u, "(A29,I10)") "Nr. of alpha_s-veto calls: ", counter%n_alpha_s
+    write (u, "(A29,I10)") "Nr. of alpha_s-vetos: ", counter%n_veto_alpha_s
     if (counter%n_alpha_s > 0) &
-       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
-                            one*counter%veto_alpha_s / counter%n_alpha_s
+       write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
+            one * counter%n_veto_alpha_s / counter%n_alpha_s * 100, "%"
     call write_separator (u)
 
-    write (u, "(A,I12)") "Nr. of xi_max-veto calls: ", counter%n_xi_max
-    write (u, "(A,I12)") "Nr. of xi_max-vetos: ", counter%veto_xi_max
+    write (u, "(A29,I10)") "Nr. of xi_max-veto calls: ", counter%n_xi_max
+    write (u, "(A29,I10)") "Nr. of xi_max-vetos: ", counter%n_veto_xi_max
     if (counter%n_alpha_s > 0) &
-       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
-                            one*counter%veto_xi_max / counter%n_xi_max
+       write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
+            one * counter%n_veto_xi_max / counter%n_xi_max * 100, "%"
     call write_separator (u)
 
-    write (u, "(A,I0)") "Nr. of norm-veto calls: ", counter%n_norm
-    write (u, "(A,I0)") "Nr. of norm-vetos: ", counter%veto_norm
+    write (u, "(A29,I10)") "Nr. of norm-veto calls: ", counter%n_norm
+    write (u, "(A29,I10)") "Nr. of norm-vetos: ", counter%n_veto_norm
     if (counter%n_norm > 0) &
-       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
-                            one*counter%veto_norm / counter%n_norm
+       write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
+            one * counter%n_veto_norm / counter%n_norm * 100, "%"
     call write_separator (u)
 
-    write (u, "(A,I0)") "Nr. of sqme-veto calls: ", counter%n_sqme
-    write (u, "(A,I0)") "Nr. of sqme-vetos: ", counter%veto_sqme
+    write (u, "(A29,I10)") "Nr. of sqme-veto calls: ", counter%n_sqme
+    write (u, "(A29,I10)") "Nr. of sqme-vetos: ", counter%n_veto_sqme
     if (counter%n_sqme > 0) &
-       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
-                            one*counter%veto_sqme / counter%n_sqme
+       write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
+            one * counter%n_veto_sqme / counter%n_sqme * 100, "%"
     call write_separator (u)
-    write (u, "(A,I0)") "Nr. of upper-bound failures: ", &
-                        counter%n_veto_fail
+    write (u, "(A29,I10)") "Nr. of upper-bound failures: ", &
+                        counter%n_fail_ubf
+    if (counter%n_sqme > 0) &
+       write (u, "(A29,F9.2,A1)") "Fraction of failed points: ", &
+            one * counter%n_fail_ubf / counter%n_sqme * 100, "%"
   end subroutine veto_counter_write
 
 @ %def veto_counter_write
@@ -1775,7 +1769,7 @@ This contains the pieces that depend on the radiation region $\alpha_r$
      real(default) :: xi2_max = zero
      real(default) :: norm_max = zero
      real(default) :: current_pt2_max = zero
-     real(default) :: last_log = zero
+     real(default) :: sum_log_rands = zero
      real(default) :: random = zero
      type(veto_counter_t) :: veto_counter
      integer :: i_phs = 0
@@ -1797,7 +1791,7 @@ This contains the pieces that depend on the radiation region $\alpha_r$
     write (u, "(3X,A," // FMT_19 // ")")  "norm_max = ", sudakov%norm_max
     write (u, "(3X,A," // FMT_19 // ")")  &
          "current_pt2_max = ", sudakov%current_pt2_max
-    write (u, "(3X,A," // FMT_19 // ")")  "last_log = ", sudakov%last_log
+    write (u, "(3X,A," // FMT_19 // ")")  "sum_log_rands = ", sudakov%sum_log_rands
     write (u, "(3X,A," // FMT_19 // ")")  "random = ", sudakov%random
   end subroutine sudakov_write
 
@@ -1846,15 +1840,15 @@ This contains the pieces that depend on the radiation region $\alpha_r$
 @ %def sudakov_set_normalization
 @
 <<POWHEG matching: sudakov: TBP>>=
-  procedure :: update => sudakov_update
+  procedure :: update_xi2_max => sudakov_update_xi2_max
 <<POWHEG matching: procedures>>=
-  pure subroutine sudakov_update (sudakov, xi2_max)
+  pure subroutine sudakov_update_xi2_max (sudakov, xi2_max)
     class(sudakov_t), intent(inout) :: sudakov
     real(default), intent(in) :: xi2_max
     sudakov%xi2_max = xi2_max
-  end subroutine sudakov_update
+  end subroutine sudakov_update_xi2_max
 
-@ %def sudakov_update
+@ %def sudakov_update_xi2_max
 @ [[upper_bound_func]] does \emph{not} contain the normalization $N$
 which is given by the grids. In the notation of [[1002.2581]], it is
 thus $\frac 1 N U(\xi,y)$
@@ -1874,7 +1868,7 @@ thus $\frac 1 N U(\xi,y)$
 @ Similar to the [[upper_bound_func]], this is
 $-\frac 1 N \log\Delta(p_T^2)$ where
 \begin{equation}
-  \Delta^{(U)} (p_T) = \exp{-\int U(\xi,y)\theta(k_T - p_T)\;d\xi dy d\phi}
+  \Delta^{(U)} (p_T) = \exp\left[-\int U(\xi,y)\theta(k_T - p_T) \; d\xi \, dy \, d\phi \right]
 \end{equation}
 <<POWHEG matching: sudakov: TBP>>=
   procedure (sudakov_log_integrated_ubf), deferred :: log_integrated_ubf
@@ -1921,16 +1915,16 @@ $-\frac 1 N \log\Delta(p_T^2)$ where
   procedure (sudakov_kt2_max), deferred :: kt2_max
 <<POWHEG matching: interfaces>>=
   abstract interface
-     pure function sudakov_kt2_max (sudakov, s_hat) result (kt2_max)
+     pure function sudakov_kt2_max (sudakov) result (kt2_max)
         import
         real(default) :: kt2_max
         class(sudakov_t), intent(in) :: sudakov
-        real(default), intent(in) :: s_hat
-    end function sudakov_kt2_max
+     end function sudakov_kt2_max
   end interface
 
 @ %def sudakov_kt2_max
-@
+@ Veto routine for an overestimation of the UBF
+performed to simplify the log integrated UBF
 <<POWHEG matching: sudakov: TBP>>=
   procedure (sudakov_reweight_ubf), deferred :: reweight_ubf
 <<POWHEG matching: interfaces>>=
@@ -1944,7 +1938,8 @@ $-\frac 1 N \log\Delta(p_T^2)$ where
   end interface
 
 @ %def sudakov_reweight_ubf
-@
+@ Veto routine to correct for an overestimation of $\xi_\text{max}$
+performed in the case of massive emitters.
 <<POWHEG matching: sudakov: TBP>>=
   procedure (sudakov_reweight_xi_max), deferred :: reweight_xi_max
 <<POWHEG matching: interfaces>>=
@@ -1979,16 +1974,26 @@ improved version.
   end function sudakov_alpha_s
 
 @ %def sudakov_alpha_s
-@ We have to solve the equation
+@ To generate the transverse momentum, we have to solve the equation
 \begin{equation*}
-  \frac{\log\Delta^{(U)} (p_T)}{\log\Delta^{(U)}(p_T^{\mathrm{max}}} = \log\Delta^{(U)}(p_T) = \log r_1
+  \frac{\Delta^{(U)}(p_T)}{\Delta^{(U)}(p_T^{\mathrm{max}})} = r_1
 \end{equation*}
-iteratively for $p_T$. If the current emission is not accepted, in the next step it is
-$\log\Delta^{(U)}(p_T^{\mathrm{max}}) = \log r_1$, so that we have to solve the equation
+iteratively for $p_T$.
+In log space and with initially $\Delta^{(U)}(p_T^{\mathrm{max}}) = 1$, this is
+\begin{equation*}
+  \log\Delta^{(U)}(p_T) = \log r_1
+\end{equation*}
+If no solution is found, we set $p_T = p_T^{\mathrm{min}}$ to exit the event
+generation loop and generate an emissionless event.
+If a solution is found but the current emission is not accepted,
+we set $p_T = p_T^{\mathrm{max}}$ and thus
+in the next step it is $\Delta^{(U)}(p_T^{\mathrm{max}}) = r_1$,
+so that we have to solve the equation
 \begin{equation*}
   \log\Delta^{(U)}(p_T) = \log r_1 + \log r_2
 \end{equation*}
-using the second random number $r_2$.
+using another random number $r_2$. We use [[sum_log_rands]] to remember
+the sum of the logarithms of all previous random numbers used for this event.
 <<POWHEG matching: sudakov: TBP>>=
   procedure :: generate_pt2 => sudakov_generate_pt2
 <<POWHEG matching: procedures>>=
@@ -1999,13 +2004,11 @@ using the second random number $r_2$.
     success = .false.
     if (sudakov%current_pt2_max > sudakov%powheg_settings%pt2_min) then
        call sudakov%rng%generate (sudakov%random)
-       sudakov%last_log = sudakov%last_log + log(sudakov%random)
+       sudakov%sum_log_rands = sudakov%sum_log_rands + log(sudakov%random)
        pt2 = solve_interval (sudakov, &
             sudakov%powheg_settings%pt2_min, &
             sudakov%current_pt2_max, success, &
             0.001_default)
-       !sudakov%last_log = sudakov%norm_max * sudakov%log_integrated_ubf (pt2)
-              !sudakov%last_log + &
     end if
     if (.not. success) then
        pt2 = sudakov%powheg_settings%pt2_min
@@ -2041,7 +2044,13 @@ using the second random number $r_2$.
   end subroutine sudakov_check_solution_interval
 
 @ %def sudakov_check_solution_interval
-@
+@ Generates the FKS variables $(\xi, y,\phi)$ and sets the emission hardness scale.
+In debug mode, we assert that the [[pt2]] saved in the [[radiation_t]]
+and the massive hardness scale are equal.
+This should hold as we compute [[kt2]] with the [[y]] we got from generating
+[[pt2]] so that this is a full circle.
+It then initiates the generation of the transverse momentum followed by
+a sequence of veto steps to get the correct distribution.
 <<POWHEG matching: sudakov: TBP>>=
   procedure :: generate_emission => sudakov_generate_emission
 <<POWHEG matching: procedures>>=
@@ -2050,20 +2059,17 @@ using the second random number $r_2$.
     type(radiation_t), intent(inout) :: r
     logical :: accepted
     sudakov%current_pt2_max = r%pt2
-    call sudakov%generate_xi_and_y_and_phi (r)
-    !sudakov%last_log = sudakov%norm_max * &
-         !sudakov%log_integrated_ubf (sudakov%current_pt2_max)
     if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_generate_emission")
     if (debug_on) call msg_debug2 (D_MATCHING, "sqrt (sudakov%current_pt2_max)", &
          sqrt (sudakov%current_pt2_max))
-    if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
+    if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%sum_log_rands", sudakov%sum_log_rands)
     LOOP_UNTIL_ACCEPTED: do
        if (signal_is_pending ())  return
        r%valid = .false.
        r%pt2 = sudakov%generate_pt2 ()
        if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_generate_emission: after generate_pt2")
        if (debug_on) call msg_debug2 (D_MATCHING, "sqrt (r%pt2)", sqrt (r%pt2))
-       if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
+       if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%sum_log_rands", sudakov%sum_log_rands)
        if (r%pt2 <= sudakov%powheg_settings%pt2_min) then
           exit
        end if
@@ -2090,8 +2096,6 @@ using the second random number $r_2$.
           call assert_equal (OUTPUT_UNIT, r%pt2, &
                sudakov%kt2 (r%xi, r%y), &
                "sudakov_generate_xi_and_y_and_phi: pt2 inconsistency")
-          ! for this we have to recompute z?
-          !call msg_bug ()
        end if
        r%valid = .true.
        exit
@@ -2099,7 +2103,7 @@ using the second random number $r_2$.
   end subroutine sudakov_generate_emission
 
 @ %def sudakov_generate_emission
-@
+@ Evaluates the Sudakov as needed for [[solve_interval]] to generate a $p_T$ value.
 <<POWHEG matching: sudakov: TBP>>=
   procedure :: evaluate => sudakov_evaluate
 <<POWHEG matching: procedures>>=
@@ -2107,9 +2111,7 @@ using the second random number $r_2$.
     complex(default) :: f
     class(sudakov_t), intent(in) :: solver_f
     real(default), intent(in) :: x
-    f = solver_f%last_log + solver_f%norm_max * solver_f%log_integrated_ubf (x)
-    !f = log (solver_f%random) + solver_f%norm_max * solver_f%log_integrated_ubf (x) &
-         !- solver_f%last_log
+    f = solver_f%sum_log_rands + solver_f%norm_max * solver_f%log_integrated_ubf (x)
   end function sudakov_evaluate
 
 @ %def sudakov_evaluate
@@ -2175,7 +2177,7 @@ This corresponds to Appendix C of [[1002.2581]]
     class(sudakov_simple_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: xi, y
     kt2 = sudakov%phs_fks_generator%real_kinematics%kt2 &
-       (sudakov%i_phs, sudakov%associated_emitter (), FSR_SIMPLE, xi, y)
+       (sudakov%i_phs, sudakov%associated_emitter (), UBF_FSR_SIMPLE, xi, y)
   end function sudakov_simple_fsr_kt2
 
 @ %def sudakov_simple_fsr_kt2
@@ -2183,13 +2185,15 @@ This corresponds to Appendix C of [[1002.2581]]
 \begin{equation*}
   t_{\mathrm{max}} = \xi_{\mathrm{max}}^2 \hat{s}
 \end{equation*}
+We use this as largest possible scale for the radiation.
 <<POWHEG matching: sudakov simple fsr: TBP>>=
   procedure :: kt2_max => sudakov_simple_fsr_kt2_max
 <<POWHEG matching: procedures>>=
-  pure function sudakov_simple_fsr_kt2_max (sudakov, s_hat) result (kt2_max)
+  pure function sudakov_simple_fsr_kt2_max (sudakov) result (kt2_max)
      real(default) :: kt2_max
      class(sudakov_simple_fsr_t), intent(in) :: sudakov
-     real(default), intent(in) :: s_hat
+     real(default) :: s_hat
+     s_hat = sudakov%event_deps%s_hat
      kt2_max = sudakov%xi2_max * s_hat
   end function sudakov_simple_fsr_kt2_max
 
@@ -2203,27 +2207,27 @@ This corresponds to Appendix C of [[1002.2581]]
               {\log{p_T^2/\Lambda^2}}} -
           \log{\frac{\xi^2_\text{max}s}{p_T^2}}\right]
 \end{equation}
-with $p_\text{T,max}^2=\xi_\text{max}^2s$.
+with $p_\text{T,max}^2=\xi_\text{max}^2 s$.
 <<POWHEG matching: sudakov simple fsr: TBP>>=
   procedure :: log_integrated_ubf => sudakov_simple_fsr_log_integrated_ubf
 <<POWHEG matching: procedures>>=
-  pure function sudakov_simple_fsr_log_integrated_ubf (sudakov, pt2) result (y)
-    real(default) :: y
+  pure function sudakov_simple_fsr_log_integrated_ubf (sudakov, pt2) result (log_sudakov)
+    real(default) :: log_sudakov
     class(sudakov_simple_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: pt2
-    real(default) :: xm2s, xm2sl, pt2l
+    real(default) :: kt2_max, kt2_maxl, pt2l
     logical :: within_boundaries
-    within_boundaries = pt2 / sudakov%event_deps%s_hat <= sudakov%xi2_max &
+    within_boundaries = pt2 <= sudakov%kt2_max () &
          .and. pt2 >= sudakov%powheg_settings%pt2_min
     if (within_boundaries) then
-       xm2s = sudakov%xi2_max * sudakov%event_deps%s_hat
-       xm2sl = xm2s / sudakov%process_deps%lambda2_gen
+       kt2_max = sudakov%kt2_max ()
+       kt2_maxl = kt2_max / sudakov%process_deps%lambda2_gen
        pt2l = pt2 / sudakov%process_deps%lambda2_gen
-       y = pi / b0rad * (log (xm2sl) * &
-            log (log (xm2sl) / log (pt2l)) - &
-            log (xm2s / pt2))
+       log_sudakov = pi / b0rad * (log (kt2_maxl) * &
+            log (log (kt2_maxl) / log (pt2l)) - &
+            log (kt2_max / pt2))
     else
-       y = 0
+       log_sudakov = 0
     end if
   end function sudakov_simple_fsr_log_integrated_ubf
 
@@ -2268,8 +2272,8 @@ with $p_\text{T,max}^2=\xi_\text{max}^2s$.
   end subroutine sudakov_simple_fsr_generate_xi_and_y_and_phi
 
 @ %def sudakov_generate_xi_and_y_and_phi
-@ Generate $\xi \in [\frac{p_\text{T}}{\sqrt{s}}, \xi_\text{max}]$
-with a density $1 / \xi$
+@ We generate $\xi \in [\frac{p_\text{T}}{\sqrt{s}}, \xi_\text{max}]$
+with a density $1 / \xi$ i.e. uniformly in $\log(\xi)$.
 <<POWHEG matching: sudakov simple fsr: TBP>>=
   procedure :: generate_xi => sudakov_simple_fsr_generate_xi
 <<POWHEG matching: procedures>>=
@@ -2287,8 +2291,8 @@ with a density $1 / \xi$
 @ %def sudakov_simple_fsr_generate_xi
 @
 \subsubsection{Dijet production at lepton colliders}
-In the POWHEG method paper, this is done for $e^+e^-\to q\bar{q}$.
-There $k_\text{max}=q^0/2=\sqrt{s}/2$. We slightly extend this to
+In the POWHEG method paper, $e^+e^-\to q\bar{q}$ requires a UBF different
+from the simple one to account for an additional divergence for $(\xi,y) \to (1,-1)$.
 <<POWHEG matching: public>>=
   public :: sudakov_eeqq_fsr_t
 <<POWHEG matching: types>>=
@@ -2298,8 +2302,9 @@ There $k_\text{max}=q^0/2=\sqrt{s}/2$. We slightly extend this to
   end type sudakov_eeqq_fsr_t
 
 @ %def sudakov_eeqq_fsr_t
-@ This $k_T$ measure is the same as the simple FSR up to
-$\mathcal{O}(\theta^4)$ when $y=\cos\theta$.
+@ This $k_T$ measure is the same as in the case for simple FSR up to
+$\mathcal{O}(\theta^4)$ when $y=\cos(\theta)$. It differs by just a factor
+of $2$ w.r.t. [[sudakov_simple_fsr_kt2]].
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: kt2 => sudakov_eeqq_fsr_kt2
 <<POWHEG matching: procedures>>=
@@ -2307,20 +2312,20 @@ $\mathcal{O}(\theta^4)$ when $y=\cos\theta$.
     real(default) :: kt2
     class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: xi, y
-    kt2 = sudakov%event_deps%s_hat / 2 * xi**2 * (1 - y**2) / 2
-    ! TODO: (bcn 2015-07-13) call here phs_fks_generator%real_kinematics%kt2
+    kt2 = sudakov%phs_fks_generator%real_kinematics%kt2 &
+       (sudakov%i_phs, sudakov%associated_emitter(), UBF_FSR_MASSLESS_RECOIL, xi, y)
   end function sudakov_eeqq_fsr_kt2
 
 @ %def sudakov_eeqq_fsr_kt2
-@ Same expression as for [[sudakov_simple_fsr_kt2_max]]
+@ For [[eeqq]], the shower starts at $k_\text{max} = \frac{q^0}{2}$.
+(c.f. eq. (7.86) in [0709.2092].)
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: kt2_max => sudakov_eeqq_fsr_kt2_max
 <<POWHEG matching: procedures>>=
-  pure function sudakov_eeqq_fsr_kt2_max (sudakov, s_hat) result (kt2_max)
+  pure function sudakov_eeqq_fsr_kt2_max (sudakov) result (kt2_max)
      real(default) :: kt2_max
      class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
-     real(default), intent(in) :: s_hat
-     kt2_max = sudakov%xi2_max * s_hat
+     kt2_max = 0.25_default * sudakov%event_deps%s_hat
   end function sudakov_eeqq_fsr_kt2_max
 
 @ %def sudakov_eeqq_fsr_kt2_max
@@ -2337,31 +2342,51 @@ a massless recoiling system.
   end function sudakov_eeqq_fsr_upper_bound_func
 
 @ %def sudakov_eeqq_fsr_upper_bound_func
-@
+@ The logarithmic integrated UBF in the [[eeqq]] case as explained in
+[0709.2092], eq. (7.98), is given by
+\begin{align}
+  -\frac{1}{N} \log\left[ \Delta^{U}(p_T) \right]
+  &= 2 \pi \int_0^{k_\text{max}} \alpha_s(k_T)
+    \log \left[ \frac{4k_\text{max}^2}{k_T^2} \right] \theta(k_T - p_T)
+    \frac{dk_T}{k_T} \nonumber \\
+  &= \frac{\pi}{b_0} \left( \log \left[ \frac{4k_\text{max}^2}{k_T^2} \right]
+    \log \left[ \frac{\log(k_\text{max}^2/\Lambda^2)}{\log(p_T^2/\Lambda^2)} \right]
+    - \log \left[ \frac{k_\text{max}^2}{p_T^2} \right] \right)
+\end{align}
+with $k_\text{max}=\frac{q^0}{2}$.
+We see that for these logarithms to be well defined, we need to set a lower bound
+for the transverse momentum $p_{T,\text{min}} > \Lambda =$ [[lambda2_gen]].
+% (PS 2021-05-05) Status: unvalidated
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: log_integrated_ubf => sudakov_eeqq_fsr_log_integrated_ubf
 <<POWHEG matching: procedures>>=
-  pure function sudakov_eeqq_fsr_log_integrated_ubf (sudakov, pt2) result (y)
-    real(default) :: y
+  pure function sudakov_eeqq_fsr_log_integrated_ubf (sudakov, pt2) result (log_sudakov)
+    real(default) :: log_sudakov
     class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: pt2
+    real(default) :: k_max2, Lambda2
     logical :: within_boundaries
-    within_boundaries = pt2 / sudakov%event_deps%s_hat <= sudakov%xi2_max &
-         .and. pt2 >= sudakov%powheg_settings%pt2_min
+    k_max2 = sudakov%kt2_max ()
+    within_boundaries = pt2 >= sudakov%powheg_settings%pt2_min &
+         .and. pt2 <= k_max2
     if (within_boundaries) then
-       !xm2s = sudakov%xi2_max * sudakov%event_deps%s_hat
-       !xm2sl = xm2s / sudakov%process_deps%lambda2_gen
-       !pt2l = pt2 / sudakov%process_deps%lambda2_gen
-       !y = pi / b0rad * (log (xm2sl) * &
-            !log (log (xm2sl) / log (pt2l)) - &
-            !log (xm2s / pt2))
+       Lambda2 = sudakov%process_deps%lambda2_gen
+       log_sudakov = pi / b0rad * ( log (4 * k_max2 / Lambda2) * &
+            log (log (k_max2/Lambda2) / log (pt2/Lambda2)) - log(k_max2/pt2) )
     else
-       y = 0
+       log_sudakov = 0
     end if
   end function sudakov_eeqq_fsr_log_integrated_ubf
 
 @ %def sudakov_eeqq_fsr_log_integrated_ubf
-@
+@ In order to arrive at the log integrated Sudakov
+implemented in [[sudakov_eeqq_fsr_log_integrated_ubf]], we overestimated
+\begin{equation}
+  \log \left[ \frac{1 + \sqrt{1 - (k_T/k_\text{max})^2}}
+                   {1 - \sqrt{1 - (k_T/k_\text{max})^2}} \right]
+  \leq \log \left[ \frac{4 k_\text{max}^2}{k_T^2} \right].
+\end{equation}
+We correct for this in this veto step.
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: reweight_ubf => sudakov_eeqq_fsr_reweight_ubf
 <<POWHEG matching: procedures>>=
@@ -2369,11 +2394,16 @@ a massless recoiling system.
     logical :: accepted
     class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
     real(default), intent(in) :: pt2
-    accepted = .false.
+    real(default) :: log_bound, k_max2
+    k_max2 = sudakov%kt2_max ()
+    log_bound = log((1 + sqrt(1 - (pt2/k_max2))) &
+                  / (1 - sqrt(1 - (pt2/k_max2))))
+    call sudakov%rng%generate (sudakov%random)
+    accepted = sudakov%random * log( 4 * k_max2 / pt2 ) <= log_bound
   end function sudakov_eeqq_fsr_reweight_ubf
 
 @ %def sudakov_eeqq_fsr_reweight_ubf
-@
+@ In the eeqq case, we did not overestimate $\xi$ with $\xi_\text{max}$.
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: reweight_xi_max => sudakov_eeqq_fsr_reweight_xi_max
 <<POWHEG matching: procedures>>=
@@ -2385,22 +2415,76 @@ a massless recoiling system.
   end function sudakov_eeqq_fsr_reweight_xi_max
 
 @ %def sudakov_eeqq_fsr_reweight_xi_max
-
+In the eeqq case, we generate $y$ from a random number and afterwards compute
+$\xi(p_T,y)$ so the sequence is reversed in comparison to the simple case.
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: generate_xi_and_y_and_phi => sudakov_eeqq_fsr_generate_xi_and_y_and_phi
 <<POWHEG matching: procedures>>=
   subroutine sudakov_eeqq_fsr_generate_xi_and_y_and_phi (sudakov, r)
     class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
     type(radiation_t), intent(inout) :: r
-    real(default) :: s
-    s = sudakov%event_deps%s_hat
-    !r%xi = sudakov%generate_xi (r)
-    !r%y = one - (two * r%pt2) / (s * r%xi**2)
-    call sudakov%rng%generate (sudakov%random)
-    r%phi = sudakov%random * twopi
+    call sudakov%generate_y (r)
+    call sudakov%generate_xi (r)
+    call sudakov%generate_phi (r)
   end subroutine sudakov_eeqq_fsr_generate_xi_and_y_and_phi
 
 @ %def sudakov_generate_xi_and_y_and_phi
+@ To generate $y$ for the [[eeqq]] UBF, we take a random number
+\begin{equation}
+  -\log \left[ \frac{1 + \sqrt{1 - (p_T / k_\text{max})^2 }}
+                    {1 - \sqrt{1 - (p_T / k_\text{max})^2 }} \right]
+   < r_y <
+   \log \left[ \frac{1 + \sqrt{1 - (p_T / k_\text{max})^2 }}
+                    {1 - \sqrt{1 - (p_T / k_\text{max})^2 }} \right]
+\end{equation}
+and then compute
+\begin{equation}
+  y(r_y) = \frac{e^{r_y} - 1}{e^{r_y} + 1}
+\end{equation}
+<<POWHEG matching: sudakov eeqq fsr: TBP>>=
+  procedure :: generate_y => sudakov_eeqq_fsr_generate_y
+<<POWHEG matching: procedures>>=
+  subroutine sudakov_eeqq_fsr_generate_y (sudakov, r)
+    class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: k_max2, log_bound, r_y
+    k_max2 = sudakov%kt2_max ()
+    call sudakov%rng%generate (sudakov%random)
+    log_bound = log((1 + sqrt(1 - (r%pt2/k_max2))) &
+                  / (1 - sqrt(1 - (r%pt2/k_max2))))
+    r_y = -log_bound + sudakov%random * (two * log_bound)
+    r%y = (exp(r_y) - 1) / (exp(r_y) + 1)
+  end subroutine sudakov_eeqq_fsr_generate_y
+
+@ %def sudakov_eeqq_fsr_generate_y
+@ We generate $\xi$ for the [[eeqq]] UBF according to
+\begin{equation}
+  \xi(p_T, y) = \frac{2 p_T}{\sqrt{s} \sqrt{1-y^2}}
+\end{equation}
+<<POWHEG matching: sudakov eeqq fsr: TBP>>=
+  procedure :: generate_xi => sudakov_eeqq_fsr_generate_xi
+<<POWHEG matching: procedures>>=
+  subroutine sudakov_eeqq_fsr_generate_xi (sudakov, r)
+    class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: q0
+    q0 = sqrt(sudakov%event_deps%s_hat)
+    r%xi = (2 * sqrt(r%pt2)) / (q0 * sqrt(1 - r%y**2))
+  end subroutine sudakov_eeqq_fsr_generate_xi
+
+@ %def sudakov_eeqq_fsr_generate_xi
+@ Generate $\phi$ for the [[eeqq]] UBF
+<<POWHEG matching: sudakov eeqq fsr: TBP>>=
+  procedure :: generate_phi => sudakov_eeqq_fsr_generate_phi
+<<POWHEG matching: procedures>>=
+  subroutine sudakov_eeqq_fsr_generate_phi (sudakov, r)
+    class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    call sudakov%rng%generate (sudakov%random)
+    r%phi = sudakov%random * twopi
+  end subroutine sudakov_eeqq_fsr_generate_phi
+
+@ %def sudakov_eeqq_fsr_generate_phi
 @
 \subsubsection{Massive FSR}
 <<POWHEG matching: public>>=
@@ -2415,12 +2499,14 @@ a massless recoiling system.
   end type sudakov_massive_fsr_t
 
 @ %def sudakov_massive_fsr_t
-@ During the radiation generation, an alternative expression for $\xi_{\mathrm{max}}$,
+@ According to eq. A.42 [[1202.0465]], during the radiation generation,
+an alternative expression for $\xi_{\mathrm{max}}$,
 \begin{equation*}
   \xi_{\mathrm{max}} = 1 - \frac{(m+m_{\mathrm{rec}})^2}{q^2},
 \end{equation*}
-is used, which corresponds to an extenden Dalitz region. Phase space points outside of
-the original Dalitz region will be vetoed afterwards.
+is used, which corresponds to an extended Dalitz region.
+Phase space points outside of the original Dalitz region
+will be vetoed afterwards in [[sudakov_massive_fsr_reweight_xi_max]].
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: compute_xi_max_extended &
      => sudakov_massive_fsr_compute_xi_max_extended
@@ -2439,16 +2525,20 @@ the original Dalitz region will be vetoed afterwards.
   end subroutine sudakov_massive_fsr_compute_xi_max_extended
 
 @ %def sudakov_massive_fsr_compute_xi_max_extended
-@ For massive emitters, the radiation variable $\xi$ is constructed as follows. First,
+@ As described in [[1202.0465]], App. A.5., for massive emitters,
+the radiation variable $\xi$ is constructed as follows. First,
 \begin{equation}
-  \xi_{\mathrm{min}}(k_T^2)
-      = \frac{\sqrt{k_T^2 \left(k_T^2z_2^2 + 8\bar{p}^0q(1-z_2\right)} - k_T^2z_2}{2q^2(1-z_2)}
+  \xi_{\mathrm{min}}(K_T^2)
+      = \frac{\sqrt{K_T^2 \left(K_T^2z_2^2 + 8\bar{p}^0q(1-z_2)\right)} - K_T^2z_2}{2q^2(1-z_2)}
 \end{equation}
-is computed. Then $\xi_1$ is computed according to the same equation with $z_2 \leftrightarrow z_1$.
+is computed where $K_T$ is a hardness scale for the radiation that determines the
+upper limit of the integral for the Sudakov form factor and coincides with the
+usual one, i.e. the transverse momentum of the radiated particle, in the massless limit.
+Then $\xi_1$ is computed according to the same equation with $z_2 \leftrightarrow z_1$.
 Finally, $\xi$ is generated according to
 \begin{equation}
-  \xi = \frac{1}{q^2}\exp\left[\log\left(\xi_{\rm{min}}q^2-k_T^2\right)
-        + r\log\frac{\xi_m q^2 - k_T^2}{\xi_{\rm{min}}q^2-k_T^2} + k_T^2\right],
+  \xi = \frac{1}{q^2}\left(\exp\left[\log\left(\xi_{\rm{min}}q^2-K_T^2\right)
+        + r\log\frac{\xi_m q^2 - K_T^2}{\xi_{\rm{min}}q^2-K_T^2}\right] + K_T^2\right),
 \end{equation}
 where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
 <<POWHEG matching: sudakov massive fsr: TBP>>=
@@ -2458,28 +2548,31 @@ where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
     class(sudakov_massive_fsr_t), intent(inout) :: sudakov
     type(radiation_t), intent(inout) :: r
     real(default) :: pt2, q0, q02
-    real(default) :: E_em, xi_max
+    real(default) :: E_em, xi_max_ext
     real(default) :: xi_1, xi_min, xi_m
     pt2 = r%pt2
     E_em = sudakov%event_deps%p_born_lab%get_energy &
        (1, sudakov%associated_emitter())
     q02 = sudakov%event_deps%s_hat; q0 = sqrt(q02)
-    !xi_max = sqrt (sudakov%xi2_max)
-    xi_max = sudakov%xi_max_extended
+    xi_max_ext = sudakov%xi_max_extended
     associate (z1 => sudakov%z1, z2 => sudakov%z2)
        xi_1 = (sqrt(pt2 * (pt2 * z1**2 + 8 * E_em * q0 * (one - z1))) - pt2 * z1) / &
          (two * q02 * (one - z1))
        xi_min = (sqrt(pt2 * (pt2 * z2**2 + 8 * E_em * q0 * (one - z2))) - pt2 * z2) / &
          (two * q02 * (one - z2))
     end associate
-    xi_m = min (xi_max, xi_1)
+    xi_m = min (xi_max_ext, xi_1)
     call sudakov%rng%generate (sudakov%random)
     r%xi = (exp (log(xi_min * q02 - pt2) + sudakov%random * &
           log((xi_m * q02 - pt2) / (xi_min * q02 - pt2))) + pt2) / q02
   end subroutine sudakov_massive_fsr_generate_xi
 
 @ %def sudakov_massive_fsr_generate_xi
-@
+@ Generates the FKS variables in the case of a massive emitter and
+additionally computes $z$ and $z_{1/2}$ as well as $\xi_\text{max}$
+to be stored in the Sudakov for later use when reweighting [[xi_max]]
+and retrieving the norm from the POWHEG grid.
+The corresponding derivations can be found in [[1202.0465]], App. A.
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: generate_xi_and_y_and_phi => sudakov_massive_fsr_generate_xi_and_y_and_phi
 <<POWHEG matching: procedures>>=
@@ -2513,10 +2606,10 @@ where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
   end subroutine sudakov_massive_fsr_generate_xi_and_y_and_phi
 
 @ %def sudakov_massive_fsr_generate_xi_and_y_and_phi
-@ Computes the hardness scale:
+@ Computes the hardness scale as discussed in [[1202.0465]], App. A.2.
 \begin{equation}
-  K_T^2 = \frac{\xi^2q^2(1-z)}{2\bar{p}_{\rm{em}}^0 - z\xi q}
-  \label{HardnessMassiveFSR}
+  K_T^2 = \frac{\xi^2q^3 (1-z)}{2\bar{p}_{\rm{em}}^0 - z\xi q}
+  \label{eq:HardnessMassiveFSR}
 \end{equation}
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: kt2 => sudakov_massive_fsr_kt2
@@ -2526,35 +2619,43 @@ where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
     class(sudakov_massive_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: xi, y
     kt2 = sudakov%phs_fks_generator%real_kinematics%kt2 &
-       (sudakov%i_phs, sudakov%associated_emitter(), FSR_MASSIVE, xi, y)
+       (sudakov%i_phs, sudakov%associated_emitter(), UBF_FSR_MASSIVE, xi, y)
   end function sudakov_massive_fsr_kt2
 
 @ %def sudakov_massive_fsr_kt2
 @ For massive emitters, the upper bound on the radiated $p_T$ is
 \begin{equation*}
-  t_{\mathrm{max}} = \frac{\xi_{\mathrm{max}}^2q^3(1-z_2)}{2*\bar{p}^0 - z_2\xi_{\mathrm{max}}q}
+  t_{\mathrm{max}} = \frac{\xi_{\mathrm{max}}^2q^3(1-z_2)}{2 \cdot \bar{p}^0 - z_2\xi_{\mathrm{max}}q}
 \end{equation*}
+For this, we have to compute $z_2$ from the Dalitz bounds as [[sudakov%z2]]
+has not yet been set for the current event.
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: kt2_max => sudakov_massive_fsr_kt2_max
 <<POWHEG matching: procedures>>=
-  pure function sudakov_massive_fsr_kt2_max (sudakov, s_hat) result (kt2_max)
+  pure function sudakov_massive_fsr_kt2_max (sudakov) result (kt2_max)
      real(default) :: kt2_max
      class(sudakov_massive_fsr_t), intent(in) :: sudakov
-     real(default), intent(in) :: s_hat
-     real(default) :: q, E_em, xi_max, z2
-     q = sqrt(s_hat)
-     E_em = sudakov%event_deps%p_born_lab%get_energy &
+     real(default) :: q0, E_em, xi_max, z1, z2, m2, mrec2, k0_rec_max
+     type(vector4_t) :: p_emitter
+     q0 = sqrt(sudakov%event_deps%s_hat)
+     p_emitter = sudakov%event_deps%p_born_lab%get_momentum &
         (1, sudakov%associated_emitter())
+     associate (p => p_emitter%p)
+       mrec2 = (q0 - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
+       E_em = p(0)
+     end associate
+     m2 = p_emitter**2
+     call compute_dalitz_bounds (q0, m2, mrec2, z1, z2, k0_rec_max)
      xi_max = sudakov%xi_max_extended
-     z2 = sudakov%z2
-     kt2_max = (xi_max**2 * q**3 * (one - z2)) / (two * E_em - z2 * xi_max * q)
+     kt2_max = (xi_max**2 * q0**3 * (one - z2)) / (two * E_em - z2 * xi_max * q0)
   end function sudakov_massive_fsr_kt2_max
 
 @ %def sudakov_massive_fsr_kt2_max
-@ The upper bounding function for massive emitters is (disregarding a possible factor of $\alpha_s$)
+@ The upper bounding function for massive emitters according to Eq. A.56 in [1202.0465]
+(disregarding a possible factor of $\alpha_s$) is
 \begin{equation}
   U(\xi, y) \sim \frac{\sqrt{s}}{\bar{p}_{\rm{em}}} \frac{1}{\xi(1-z)}
-  \label{UBFMassiveFSR}
+  \label{eq:UBFMassiveFSR}
 \end{equation}
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: upper_bound_func => sudakov_massive_fsr_upper_bound_func
@@ -2576,7 +2677,7 @@ where $\xi_m = \rm{min}\left(\xi_{\rm{max}}, \xi_1\right)$.
 \begin{align*}
   I(t) &= \frac{q}{\bar{p}_{\rm{em}}}\left[\log\xi\log\left[(1-z_2)\frac{q}{k_T^2}\right] +
           \frac{1}{2} \log^2\xi + G(-k_T^2,q^2,\xi) - G(2\bar{p}_{\rm{em}},-q,\xi)\right]
-          ^{\rm{min}(\xi_1(k_T^2),\xi_{\rm{max}}}_{\xi_{\rm{min}}}) \\
+          ^{\rm{min}(\xi_1(k_T^2),\xi_{\rm{max}})}_{\xi_{\rm{min}}} \\
        &+ \frac{q}{\bar{p}_{\rm{em}}} \theta (\xi_{\rm{max}} - \xi_1(k_T^2))
           \log\frac{\xi_{\rm{max}}}{\xi_1(k_T^2)}\log\frac{1-z_2}{1-z_1},
 \end{align*}
@@ -2594,35 +2695,46 @@ for $a > 0$.
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: log_integrated_ubf => sudakov_massive_fsr_log_integrated_ubf
 <<POWHEG matching: procedures>>=
-  pure function sudakov_massive_fsr_log_integrated_ubf (sudakov, pt2) result (y)
-    real(default) :: y
+  pure function sudakov_massive_fsr_log_integrated_ubf (sudakov, pt2) result (log_sudakov)
+    real(default) :: log_sudakov
     class(sudakov_massive_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: pt2
     real(default) :: xi, xi_max, xi_1, xi_min
-    real(default) :: q0, p_em, E_em
-    real(default) :: y1, y2
-    q0 = sqrt (sudakov%event_deps%s_hat)
-    E_em = sudakov%event_deps%p_born_lab%get_energy &
-       (1, sudakov%associated_emitter())
-    p_em = space_part_norm &
-       (sudakov%event_deps%p_born_lab%get_momentum (1, sudakov%associated_emitter()))
-    xi_max = sudakov%xi_max_extended
-    associate (z1 => sudakov%z1, z2 => sudakov%z2)
+    real(default) :: q0, p_em, E_em, m2, mrec2, k0_rec_max
+    type(vector4_t) :: p_emitter
+    real(default) :: log_sudakov_up, log_sudakov_down, z1, z2
+    logical :: within_boundaries
+    within_boundaries = pt2 >= sudakov%powheg_settings%pt2_min &
+         .and. pt2 <= sudakov%kt2_max ()
+    if (within_boundaries) then
+       q0 = sqrt (sudakov%event_deps%s_hat)
+       p_emitter = sudakov%event_deps%p_born_lab%get_momentum &
+            (1, sudakov%associated_emitter())
+       associate (p => p_emitter%p)
+         mrec2 = (q0 - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
+         E_em = p(0)
+       end associate
+       m2 = p_emitter**2
+       call compute_dalitz_bounds (q0, m2, mrec2, z1, z2, k0_rec_max)
+       p_em = space_part_norm (p_emitter)
+       xi_max = sudakov%xi_max_extended
        xi_1 = (sqrt (pt2 * (pt2 * z1**2 + 8 * E_em * q0 * (one - z1))) - pt2 * z1) / &
-          (two * q0**2 * (one - z1))
+            (two * q0**2 * (one - z1))
        xi_min = (sqrt (pt2 * (pt2 * z2**2 + 8 * E_em * q0 * (one - z2))) - pt2 * z2) / &
-          (two * q0**2 * (one - z2))
+            (two * q0**2 * (one - z2))
        xi = min (xi_1, xi_max)
-       y1 = log(xi) * log((one - z2) * q0 / pt2) + log(xi)**2 / two + &
-          G_FSR(-pt2,q0**2, xi) - G_FSR(two * E_em, -q0, xi)
+       log_sudakov_up = log(xi) * log((one - z2) * q0 / pt2) + log(xi)**2 / two + &
+            G_FSR(-pt2, q0**2, xi) - G_FSR(two * E_em, -q0, xi)
        xi = xi_min
-       y2 = log(xi) * log((one - z2) * q0 / pt2) + log(xi)**2/two + &
-          G_FSR(-pt2, q0**2, xi) - G_FSR(two * E_em, -q0, xi)
-       y = y1 - y2
+       log_sudakov_down = log(xi) * log((one - z2) * q0 / pt2) + log(xi)**2/two + &
+            G_FSR(-pt2, q0**2, xi) - G_FSR(two * E_em, -q0, xi)
+       log_sudakov = log_sudakov_up - log_sudakov_down
        if (xi_max > xi_1) &
-          y = y + log(xi_max / xi_1) * log((one - z2) / (one - z1))
-       y = twopi * q0 / p_em * y
-    end associate
+           log_sudakov = log_sudakov + log(xi_max / xi_1) * log((one - z2) / (one - z1))
+       log_sudakov = twopi * q0 / p_em * log_sudakov
+    else
+       log_sudakov = 0
+    end if
   end function sudakov_massive_fsr_log_integrated_ubf
 
 @ %def sudakov_massive_fsr_log_integrated_ubf
@@ -2639,6 +2751,9 @@ for $a > 0$.
 
 @ %def sudakov_massive_fsr_reweight_ubf
 @
+In the massive case, we generated $0 < \xi < $[[xi_max_extended]]
+and thus we need to veto values of $\xi$ larger than $\xi_{\mathrm{max}}$
+in this extra veto step.
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: reweight_xi_max => sudakov_massive_fsr_reweight_xi_max
 <<POWHEG matching: procedures>>=
@@ -2652,7 +2767,8 @@ for $a > 0$.
 @ %def sudakov_massive_fsr_reweight_xi_max
 @
 \subsubsection{Auxiliary functions}
-Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq. (\ref{GMinusMassiveFSR}).
+Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR})
+and eq. (\ref{GMinusMassiveFSR}). Cannot be evaluated for $a = 0$.
 <<POWHEG matching: procedures>>=
   elemental function G_FSR (a,b,xi)
     real(default) :: G_FSR
@@ -2661,7 +2777,6 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
        G_FSR = G_FSR_Plus (a,b,xi)
     else if (a < 0) then
        G_FSR = G_FSR_Minus (a,b,xi)
-    !!! a == 0 ?
     end if
   end function G_FSR
 
@@ -2787,14 +2902,21 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
   end subroutine powheg_write
 
 @ %def powheg_write
-@
+@ Finalization of the POWHEG matching.
+It creates a log file showing how many events failed at which stage of the
+POWHEG veto algorithm.
+It also issues a warning if too many POWHEG excess events occured. If this is the
+case, the chosen upper-bounding function is unsuitable for the considered process.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: final => powheg_matching_final
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_final (matching)
     class(powheg_matching_t), intent(in) :: matching
-    integer :: u, alr
+    integer :: u, alr, n_fail_ubf_total, n_sqme_total
+    real :: frac_ubf_fail
     type(string_t) :: filename
+    n_fail_ubf_total = 0
+    n_sqme_total = 0
     u = free_unit ()
     filename = matching%process_name // "_veto.log"
     open (file=char(filename), unit=u, action='write')
@@ -2803,10 +2925,22 @@ Implements the function $G(a,b,\xi)$ given in eq. (\ref{GPlusMassiveFSR}) and eq
        write(u,'(A,I0)') 'alr: ', alr
        call matching%sudakov(alr)%s%veto_counter%write (u)
        call write_separator (u)
+       n_fail_ubf_total = n_fail_ubf_total &
+            + matching%sudakov(alr)%s%veto_counter%n_fail_ubf
+       n_sqme_total = n_sqme_total &
+            + matching%sudakov(alr)%s%veto_counter%n_sqme
     end do
     write (u,'(A,I0)') "Total number of events which radiate a gluon: ", &
                        matching%n_emissions
     close (u)
+    if (n_sqme_total > 0) then
+      frac_ubf_fail = one * n_fail_ubf_total / n_sqme_total * 100
+      if (frac_ubf_fail > 1) then
+         write (msg_buffer, "(A16,I4,A2,F6.2,A24)") "There have been ", n_fail_ubf_total,&
+              " (", frac_ubf_fail, "%) POWHEG grid excesses."
+         call msg_warning
+      end if
+    end if
   end subroutine powheg_matching_final
 
 @ %def powheg_matching_final
@@ -2830,35 +2964,50 @@ we can load them from file here.
   end subroutine powheg_matching_setup_grids
 
 @ %def powheg_matching_setup_grids
-@
+@ Sets up the Sudakovs and chooses the correct UBF type.
+To determine the UBF type, we check for massive or initial state emitters
+for each ALR. For consistency, we thus also check the eeqq case for each ALR.
+Only FSR Sudakovs are supported so far.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: setup_sudakovs => powheg_matching_setup_sudakovs
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_setup_sudakovs (powheg)
     class(powheg_matching_t), intent(inout), target :: powheg
-    integer :: alr
-    logical :: is_fsr, is_massive
-    integer :: ubf_type
+    integer :: alr, ubf_type, n_in
+    logical :: is_fsr, is_massive, is_eeqq
     allocate (powheg%sudakov (powheg%process_deps%n_alr))
-    is_fsr = .true.
     do alr = 1, powheg%process_deps%n_alr
-       if (is_fsr) then
-          ubf_type = powheg%settings%upper_bound_func
-          select type (pcm => powheg%process_instance%pcm)
-          class is (pcm_instance_nlo_t)
-             select type (config => pcm%config)
-             type is (pcm_nlo_t)
-                is_massive = powheg%phs_fks_generator%is_massive &
-                   (config%region_data%get_emitter (alr))
-             end select
+       select type (pcm => powheg%process_instance%pcm)
+       class is (pcm_instance_nlo_t)
+          select type (config => pcm%config)
+          type is (pcm_nlo_t)
+             associate(reg_data => config%region_data, &
+                  phs => powheg%phs_fks_generator)
+                n_in = reg_data%get_n_in()
+                is_fsr = reg_data%get_emitter (alr) > n_in
+                is_massive = phs%is_massive (reg_data%get_emitter (alr))
+                is_eeqq = n_in == 2 .and. &
+                     reg_data%n_legs_born == 4 .and. &
+                     .not. phs%is_massive(3) .and. &
+                     .not. phs%is_massive(4)
+                !  (PS 2021-05-28) This includes FSR regions of pp -> jj.
+             end associate
           end select
-          if (is_massive) ubf_type = UBF_MASSIVE
+       end select
+       if (is_fsr) then
+          if (is_eeqq) then
+             ubf_type = UBF_FSR_MASSLESS_RECOIL
+          else if (is_massive) then
+             ubf_type = UBF_FSR_MASSIVE
+          else
+             ubf_type = powheg%settings%upper_bound_func_type
+          end if
           select case (ubf_type)
-          case (UBF_SIMPLE)
+          case (UBF_FSR_SIMPLE)
              allocate (sudakov_simple_fsr_t :: powheg%sudakov(alr)%s)
-          case (UBF_EEQQ)
+          case (UBF_FSR_MASSLESS_RECOIL)
              allocate (sudakov_eeqq_fsr_t :: powheg%sudakov(alr)%s)
-          case (UBF_MASSIVE)
+          case (UBF_FSR_MASSIVE)
              allocate (sudakov_massive_fsr_t :: powheg%sudakov(alr)%s)
           case default
              call msg_fatal ("powheg_setup_sudakovs: Please choose upper bounding function!")
@@ -2965,7 +3114,14 @@ we can load them from file here.
   end subroutine powheg_matching_boost_preal_to_lab_frame
 
 @ %def powheg_matching_boost_preal_to_lab_frame
-@
+@ This is the last step of the Sudakov veto algorithm removing the dependence on
+the normalization factor $N$ and the upper bounding function $U$ from the final result.
+
+In cases where the Born kinematic failed the cuts, $\mathcal{B}$ was
+artificially set to zero, so we cannot use it in a denominator.
+We assume that the generator cuts applied for parton showering are weak cuts to
+avoid divergent phase space regions, thus $\mathcal{B}$ would have been large and
+the reweighting would have failed.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: reweight_matrix_elements => powheg_matching_reweight_matrix_elements
 <<POWHEG matching: procedures>>=
@@ -2997,9 +3153,13 @@ we can load them from file here.
          ubf = s%upper_bound_func (r%xi, r%y, alpha_s)
          sqme_real_x_jacobian = powheg%compute_sqme_real (r%alr, alpha_s)
          sqme_born = powheg%event_deps%sqme_born
+         if (sqme_born == 0) then
+            accepted = .false.
+            return
+         end if
          ubound = sqme_born * ubf * norm
          weight = sqme_real_x_jacobian / ubound
-         if (weight > 1) call s%veto_counter%record_fail()
+         if (weight > 1) call s%veto_counter%record_ubf_fail()
          if (debug_active (D_MATCHING)) then
             if (weight < 0) call msg_warning ("R/B < 0!")
          end if
@@ -3100,16 +3260,22 @@ Jacobian.
   end subroutine powheg_matching_import_norms_from_grid
 
 @ %def powheg_matching_import_norms_from_grid
-@
+@ We save the POWHEG grid to a file to be used for the event generation.
+If it has no non-zero entries, we assume that the integration was skipped
+because there were existing VAMP(2) and POWHEG grid files.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: save_grids => powheg_matching_save_grids
 <<POWHEG matching: procedures>>=
   subroutine powheg_matching_save_grids (powheg)
     class(powheg_matching_t), intent(inout) :: powheg
     type(string_t) :: filename, n_points
-    n_points = str (powheg%settings%n_init)
-    filename = powheg%process_name // "_" // n_points // ".pg"
-    call powheg%grid%save_to_file (char (filename))
+    filename = powheg%process_name // ".pg"
+    if (powheg%grid%has_non_zero_entries()) then
+       call powheg%grid%save_to_file (char (filename))
+    else
+       call msg_warning("POWHEG grid not saved to file. An existing " // &
+            & char(filename) // " will be used for the events.")
+    end if
   end subroutine powheg_matching_save_grids
 
 @ %def powheg_matching_save_grids
@@ -3120,11 +3286,15 @@ Jacobian.
   subroutine powheg_matching_load_grids (powheg)
     class(powheg_matching_t), intent(inout) :: powheg
     type(string_t) :: filename, n_points
-    n_points = str (powheg%settings%n_init)
-    filename = powheg%process_name // "_" // n_points // ".pg"
+    filename = powheg%process_name // ".pg"
     call powheg%grid%load_from_file (char (filename))
-    write (msg_buffer, "(A,A,A)") "POWHEG: using grids from file '", &
-                               char (filename), "'"
+    if (powheg%grid%has_non_zero_entries()) then
+       write (msg_buffer, "(A,A,A)") "POWHEG: using grids from file '", &
+            char (filename), "'"
+    else
+       call msg_fatal("POWHEG grid in " // char(filename) // &
+            & " is zero and cannot be used for event generation.")
+    end if
     call msg_message ()
   end subroutine powheg_matching_load_grids
 
@@ -3137,8 +3307,7 @@ Jacobian.
     logical :: ok
     class(powheg_matching_t), intent(in) :: powheg
     type(string_t) :: filename, n_points
-    n_points = str (powheg%settings%n_init)
-    filename = powheg%process_name // "_" // n_points // ".pg"
+    filename = powheg%process_name // ".pg"
     ok = os_file_exist (filename) .and. &
           verify_points_for_grid (char (filename), &
               [powheg%settings%size_grid_xi, &
@@ -3147,9 +3316,33 @@ Jacobian.
   end function powheg_matching_check_grids
 
 @ %def powheg_matching_check_grids
-@ By keeping the radiation with the largest [[pt2]], we are effectively
+@ This routine implements the Sudakov veto algorithm as explained in
+[[[1002.2581]]], Sec. 7.1 and Bijans thesis, Sec. 3.3 and B.2.
+Here, we veto in order to correct for
+\begin{enumerate}
+  \item an overestimation of parts of the upper bounding function
+  for complicated UBFs in [[reweight_ubf]]
+  \item the usage of $\alpha_s^\text{rad}$ instead of $\alpha_s^\text{true}$
+  in [[reweight_alpha_s]]
+  \item the usage of [[xi_max_extended]] instead of [[xi_max]] in [[reweight_xi_max]]
+  which is only non-trivial for massive FSR.
+  \item using the maximum of the entire POWHEG normalization grid $N_\text{max}$
+  when generating $p_T$ instead of the correct bin value $N(\xi_i,y_i)$ in [[reweight_norm]].
+  \item the normalization grid and the upper bounding function in the first place
+  in [[reweight_matrix_elements]] to retrieve the correct fraction
+  $\frac{\mathcal{R}(\xi,y) \mathcal{J}(\xi,y)}{\mathcal{B}}$.
+\end{enumerate}
+
+By keeping the radiation with the largest [[pt2]], we are effectively
 implementing the highest bid procedure. This means that we generate
-values $(f_B)$
+values $(f_B)$.
+
+We need to compute [[xi2_max]] before [[kt2_max]] here.
+In the simple case, it is given by $\xi_\text{max} = \frac{s-M_\text{rec}^2}{s}$
+but we can also take the $\xi_\text{max}$ from the phase space computed before;
+they coincide.
+In the eeqq case, $M_\text{rec} = 0$, so $xi_\text{max} = 1$ and in the massive
+case, we compute an extended $\xi_\text{max} = 1 - \frac{(m + M_\text{rec})^2}{q^2}$.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: generate_emission => powheg_matching_generate_emission
 <<POWHEG matching: procedures>>=
@@ -3175,15 +3368,21 @@ values $(f_B)$
        do alr = 1, powheg%process_deps%n_alr
           if (signal_is_pending ())  return
           associate (sudakov => powheg%sudakov(alr)%s)
-            xi2_max = pcm%get_xi_max (alr)**2
-            call sudakov%update (xi2_max)
             select type (sudakov)
+            type is (sudakov_simple_fsr_t)
+               xi2_max = pcm%get_xi_max (alr)**2
+               call sudakov%update_xi2_max (xi2_max)
+               if (debug2_active (D_MATCHING)) then
+                  call check_xi2_max (sudakov)
+               end if
+            type is (sudakov_eeqq_fsr_t)
+               call sudakov%update_xi2_max (one)
             type is (sudakov_massive_fsr_t)
                call sudakov%compute_xi_max_extended (sudakov%i_phs)
             end select
             r%alr = alr
-            r%pt2 = sudakov%kt2_max (powheg%event_deps%s_hat)
-            sudakov%last_log = 0
+            r%pt2 = sudakov%kt2_max ()
+            sudakov%sum_log_rands = 0
             if (debug_on) call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
             PT_EVOLUTION: do
                if (signal_is_pending ())  return
@@ -3223,6 +3422,22 @@ values $(f_B)$
           if (present (pt2_generated)) pt2_generated = powheg%settings%pt2_min
        end if
     end select
+  contains
+    subroutine check_xi2_max (sudakov)
+       class(sudakov_t), intent(in) :: sudakov
+       real(default) :: s_hat, mrec2, xi2_max
+       type(vector4_t) :: p_emitter
+       s_hat = sudakov%event_deps%s_hat
+       p_emitter = sudakov%event_deps%p_born_lab%get_momentum &
+            (1, sudakov%associated_emitter())
+       associate (p => p_emitter%p)
+          mrec2 = (sqrt(s_hat) - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
+       end associate
+       xi2_max = (s_hat - mrec2) / s_hat
+       xi2_max = xi2_max**2
+       call assert_equal (OUTPUT_UNIT, sudakov%xi2_max, xi2_max, &
+            "powheg_matching_generate_emission: xi_max inconsistent")
+    end subroutine check_xi2_max
   end subroutine powheg_matching_generate_emission
 
 @ %def generate_emission
@@ -3252,7 +3467,12 @@ values $(f_B)$
   end subroutine powheg_matching_build_particle_set
 
 @ %def powheg_matching_build_particle_set
-@ Only massless for now
+@ When generating the transverse momentum in [[sudakov_generate_pt2]],
+we used $N^\mathrm{max}$ as normalization. In this veto step, we correct
+for this by keeping events with probability
+\begin{equation*}
+  \frac{N(\xi_i,y_i)}{N^\mathrm{max}}.
+\end{equation*}
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: reweight_norm => powheg_matching_reweight_norm
 <<POWHEG matching: procedures>>=
@@ -3263,10 +3483,8 @@ values $(f_B)$
     real(default) :: random, norm_max, norm_true
     if (debug_on) call msg_debug2 (D_MATCHING, "reweight_norm")
     call powheg%rng%generate (random)
-    associate (s => powheg%sudakov(r%alr)%s)
-       norm_true = powheg%norm_from_xi_and_y (r)
-       norm_max = s%norm_max
-    end associate
+    norm_true = powheg%norm_from_xi_and_y (r)
+    norm_max = powheg%sudakov(r%alr)%s%norm_max
     accepted = random < norm_true / norm_max
     if (debug2_active (D_MATCHING)) then
        print *, '  r%alr =    ', r%alr
@@ -3287,7 +3505,25 @@ values $(f_B)$
   end function powheg_matching_reweight_norm
 
 @ %def powheg_matching_reweight_norm
-@
+@ Retrieves the value of the norm for given $\xi$ and $y$ from the pre-computed POWHEG grid.
+To find the correct bin in the grid, we need to invert the
+generation of $\xi$ and $y$ from their corresponding random numbers.
+As the grid is filled during integration, the formulas here are the inverse of
+those in [[compute_y_from_emitter]] instead of those specific for POWHEG matching.
+There, we coompute $y$ with [[y = (one - two * r_y)]] and [[y = 1.5_default * (y - y**3 / 3)]].
+The inverse of this operation is given by
+\begin{align}
+  r_y &=
+  \begin{cases}
+    \frac14 \left[ (i\sqrt{3}-1)A^{\frac13}
+    - (i\sqrt{3}+1)A^{-\frac13} + 2 \right]
+    \quad \text{for} \quad y < 0 \\
+    \frac14 \left[-(i\sqrt{3}+1)A^{\frac13}
+    + (i\sqrt{3}-1)A^{-\frac13} + 2 \right]
+    \quad \text{for} \quad y > 0
+  \end{cases}\nonumber\\
+  &\text{with} \quad A = \sqrt{y^2-1} + y
+\end{align}
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: norm_from_xi_and_y => powheg_matching_norm_from_xi_and_y
 <<POWHEG matching: procedures>>=
@@ -3302,14 +3538,34 @@ values $(f_B)$
     rands(I_XI) = r%xi / sqrt (powheg%sudakov(r%alr)%s%xi2_max)
     select type (s => powheg%sudakov(r%alr)%s)
     type is (sudakov_simple_fsr_t)
-       rands(I_Y) = (one - r%y) / two
+       rands(I_Y) = map_y_to_rands_massless(r%y)
     type is (sudakov_massive_fsr_t)
        beta = beta_emitter (sqrt (powheg%event_deps%s_hat), &
-          powheg%event_deps%p_born_lab%get_momentum (1, s%associated_emitter()))
+            powheg%event_deps%p_born_lab%get_momentum (1, s%associated_emitter()))
        rands(I_Y) = - log((one - r%y * beta) / (one + beta)) / &
-          log((one + beta) / (one - beta))
+            log((one + beta) / (one - beta))
+    type is (sudakov_eeqq_fsr_t)
+       rands(I_Y) = map_y_to_rands_massless(r%y)
     end select
     norm_true = powheg%grid%get_value ([rands, f_alr])
+  contains
+    function map_y_to_rands_massless (y) result (r_y)
+       real(default), intent(in) :: y
+       real(default) :: r_y
+       complex(default) :: y_cmplx, A, r_y_cmplx
+       y_cmplx = cmplx(y, 0, default)
+       A = sqrt(y_cmplx**2 - 1) + y_cmplx
+       if (y < 0) then
+          r_y_cmplx = 0.25_default * (cmplx(-one,sqrt(three)) * A**(one/three) &
+               - cmplx(one,sqrt(three)) * A**(-one/three) + two)
+       else if (y == 0) then
+          r_y_cmplx = cmplx(0.5_default,0)
+       else if (y > 0) then
+          r_y_cmplx = 0.25_default * (-cmplx(one,sqrt(three)) * A**(one/three) &
+               + cmplx(-one,sqrt(three)) * A**(-one/three) + two)
+       end if
+       r_y = real(r_y_cmplx)
+    end function map_y_to_rands_massless
   end function powheg_matching_norm_from_xi_and_y
 
 @ %def powheg_matching_norm_from_xi_and_y
@@ -3339,7 +3595,8 @@ $p_{T,\text{min}}^2$.
   end subroutine powheg_matching_prepare_for_events
 
 @ %def powheg_matching_prepare_for_events
-@
+@ Computes the scale $\Lambda$ used for the (log integrated) UBFs.
+By construction, it is always $p_{T,\text{min}} > \Lambda$.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: compute_lambda2_gen => powheg_matching_compute_lambda2_gen
 <<POWHEG matching: procedures>>=
@@ -3576,11 +3833,44 @@ The hook object will be deallocated when the instance gets deallocated.
 @ %def powheg_matching_hook_final
 @
 <<POWHEG matching: powheg matching hook final: reduce>>=
-@ Reduce all grid to a single grid by using [[MPI_MAX]] on each element.
+@ Reduce all grids to a single grid by using [[MPI_MAX]] on each element.
 <<MPI: POWHEG matching: powheg matching hook final: reduce>>=
   call hook%powheg%grid%mpi_reduce (MPI_MAX)
-@
-@
+
+@ This routine fills each bin of the POWHEG normalization grid $\{\tilde\xi, \tilde y\}$
+@ such that
+\begin{equation}
+  N(\{\tilde\xi, \tilde y\}) = \max_{\forall \xi,y \in \{\tilde\xi, \tilde y\}}
+  \frac{\mathcal{R}(\xi,y)\mathcal{J}(\xi,y)}{\mathcal{B}\,U(\xi,y,\alpha_s^\text{true})}
+\end{equation}
+where $\mathcal{R}(\xi,y)$ is the real cross section [[sqme_real]],
+$\mathcal{B}$ is the Born cross section [[sqme_born]],
+$\mathcal{J}$ is the Jacobian and $U$ the upper bounding function [[ubf]].
+
+For each underlying Born $f_b$, there is a number of radiation regions.
+A radiation region rr may correspond to multiple $\alpha_r$s. The phase
+space only depends upon the radiation region kinematics rr and not on
+the specific $\alpha_r$.  $\alpha_r$ can be picked in the set
+$\{\alpha_r|f_b,\text{rr}\}$ proportional to their $R_{\alpha_r}$.
+For now, we simplify things though and just work with the $\alpha_r$.
+
+References:
+\begin{itemize}
+  \item \texttt{\[1002.2581\]}, Sec. 7.1
+  \item Bijans Thesis, Sec. 3.3 and B.2
+\end{itemize}
+
+In cases where just the Born kinematic failed the cuts, $\mathcal{B}$ was artificially set
+to zero.
+Unfortunately, we lost information about the value of [[sqme_born]] in these cases
+but we assume that the generator cuts applied for parton showering are weak cuts to
+avoid divergent phase space regions, thus $\mathcal{B}$ is large and does not influence $N$
+so we can skip these phase space points.
+
+In cases where just the real kinematic failed the cuts, $\mathcal{R}$ was artificially set
+to zero and we have no way to recover it. These cases will have no influence on $N$.
+It might be possible that this leads to an underestimate of $N$ in some bins.
+The number of POWHEG excess events will be an indicator for the severity of this effect.
 <<POWHEG matching: powheg matching hook: TBP>>=
   procedure :: evaluate => powheg_matching_hook_evaluate
 <<POWHEG matching: procedures>>=
@@ -3609,6 +3899,9 @@ The hook object will be deallocated when the instance gets deallocated.
            call powheg%update_sudakovs (alr, i_phs, y)
            sqme_born = instance%get_sqme (powheg%process_deps%i_born)
            sqme_real = instance%get_sqme (powheg%process_deps%i_real(i_phs))
+           if (sqme_born == 0 .or. sqme_real == 0) then
+              cycle
+           end if
            if (powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min) then
               associate (s => powheg%sudakov(alr)%s)
                  alpha_s = s%alpha_s (s%kt2(xi, y), use_correct=.true.)
@@ -3695,11 +3988,19 @@ end module powheg_matching_uti
 @ %def powheg_test
 @
 \subsubsection{Initialization}
-No Powheg unit tests so far
+There are no Powheg unit tests so far.
+
 \subsubsection{Compare generated emission with Sudakov form factor}
 This is a nontrivial test of the generation algorithm and should be
 independent of the used upper bounding function (as long as all
 singularities are included).
+
+It runs for an extensive amount of time generating a file [[sudakov.dat]] containing
+a histogram for the Sudakov factor in bins of the radiation's transverse momentum $p_T^2$.
+
+So far, it is only designed to work for lepton collisions without beam spectra and cuts.
+In its current state however, it fills the histogram with either $1$ or [[NaN]] as the
+[[p_hard]] received in [[term_instance_evaluate_interaction]] is identically zero.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: test_sudakov => powheg_test_sudakov
 <<POWHEG matching: procedures>>=
@@ -3711,7 +4012,7 @@ singularities are included).
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default), dimension(3) :: random
     real(default) :: xi, y
-    integer :: i_call, i_bin, alr, emitter
+    integer :: i_call, i_bin, alr, emitter, i_phs
     real(default) :: alpha_s, kT2, weight
     real(default) :: pt2_min, s, random_jacobian
     real(default), dimension(n_bins) :: histo1, histo2, histo1sq, histo2sq
@@ -3741,7 +4042,8 @@ singularities are included).
   end subroutine powheg_test_sudakov
 
 @ %def powheg_test_sudakov
-@
+@ This determines the binning of the Sudakov histogram.
+Linear and logarithmic binning are available.
 <<POWHEG matching: powheg test sudakov: procedures>>=
   pure function binning (i) result (pt2)
     real(default) :: pt2
@@ -3750,6 +4052,7 @@ singularities are included).
     pt2 = pt2_min * exp (log (s / pt2_min) * (i-1) / (n_bins-1))
   end function
 
+@ %def binning
 @
 <<POWHEG matching: powheg test sudakov: procedures>>=
   subroutine compute_integrals ()
@@ -3764,12 +4067,13 @@ singularities are included).
                select type (config => pcm%config)
                type is (pcm_nlo_t)
                   emitter = config%region_data%get_emitter (alr)
+                  i_phs = powheg%process_deps%alr_to_i_phs(alr)
                end select
-               !!! The sudakov test works only with lepton collisions without beam spectria
+               !!! The sudakov test works only with lepton collisions without beam spectra
                !!! so we can identify the cms and lab momenta.
                powheg%event_deps%p_real_lab = powheg%event_deps%p_real_cms
                call powheg%copy_momenta ()
-               call fks%get_radiation_variables (emitter, xi, y)
+               call fks%get_radiation_variables (i_phs, xi, y)
                kT2 = powheg%sudakov(alr)%s%kt2(xi, y)
                if (kT2 >= pt2_min .and. xi < one - tiny_07) then
                   alpha_s = get_alpha (powheg%qcd, kT2)
@@ -3795,10 +4099,10 @@ singularities are included).
     sudakov_0 = exp(-average)
     sudakov_p = exp(-(average + error))
     sudakov_m = exp(-(average - error))
-    rel_error = (sudakov_0 - sudakov_p + sudakov_m - sudakov_0) / &
-         (2 * sudakov_0) * 100
+    rel_error = (sudakov_m - sudakov_p) / (2 * sudakov_0) * 100
   end subroutine compute_integrals
 
+@ %def compute_integrals
 @
 <<POWHEG matching: powheg test sudakov: procedures>>=
   subroutine generate_emissions ()
@@ -3826,6 +4130,7 @@ singularities are included).
     error = sqrt ((average_sq - average**2) / n_strips)
   end subroutine generate_emissions
 
+@ %def generate_emissions
 @
 <<POWHEG matching: powheg test sudakov: procedures>>=
   subroutine write_to_screen_and_file ()
@@ -3849,4 +4154,5 @@ singularities are included).
     end do
   end subroutine write_to_screen_and_file
 
+@ %def write_to_screen_and_file
 @

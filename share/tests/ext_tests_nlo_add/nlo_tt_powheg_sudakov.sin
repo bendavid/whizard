@@ -41,7 +41,6 @@ alphas_power = 0
 ?powheg_matching = true
 powheg_grid_size_xi = 5
 powheg_grid_size_y = 5
-powheg_grid_sampling_points = 1000000
 powheg_pt_min = 1
 ?powheg_use_singular_jacobian = false
 

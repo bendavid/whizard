@@ -16348,8 +16348,9 @@ tiny value differing from that.
   end subroutine threshold_projection_born
 
 @ %def threshold_projection_born
-@ This routine computes the bounds of the Dalitz region for massive emitters, see below.
-It is also used by [[Powheg]], so the routine is public.
+@ This routine computes the bounds of the Dalitz region for massive emitters.
+The corresponding derivation can be found in [[1202.0465]], App. A.
+It is also used for the POWHEG matching so the routine is public.
 The input parameter [[m2]] corresponds to the squared mass of the emitter.
 <<phs fks: public>>=
   public :: compute_dalitz_bounds
@@ -16387,9 +16388,9 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
        xii = real_kinematics%xi_tilde * real_kinematics%xi_max (i_phs)
     end if
     select case (kt2_type)
-    case (FSR_SIMPLE)
+    case (UBF_FSR_SIMPLE)
        kt2 = real_kinematics%cms_energy2 / two * xii**2 * (1 - yy)
-    case (FSR_MASSIVE)
+    case (UBF_FSR_MASSIVE)
        q = sqrt (real_kinematics%cms_energy2)
        p_emitter = real_kinematics%p_born_cms%phs_point(1)%p(emitter)
        mrec2 = (q - p_emitter%p(0))**2 - sum (p_emitter%p(1:3)**2)
@@ -16399,7 +16400,7 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
        z = z2 - (z2 - z1) * (one + yy) / two
        kt2 = xii**2 * q**3 * (one - z) / &
           (two * E_em - z * xii * q)
-    case (FSR_MASSLESS_RECOILER)
+    case (UBF_FSR_MASSLESS_RECOIL)
        kt2 = real_kinematics%cms_energy2 / two * xii**2 * (1 - yy**2) / two
     case default
        kt2 = zero
@@ -16408,12 +16409,14 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
   end function real_kinematics_kt2
 
 @ %def real_kinematics_kt2
-@
+@ These are the possible values for [[upper_bound_func_type]] and will be
+used to decide which UBF object is allocated and which $K_T$ scale for the
+matching is computed.
 <<phs fks: parameters>>=
-  integer, parameter, public :: FSR_SIMPLE = 1
-  integer, parameter, public :: FSR_MASSIVE = 2
-  integer, parameter, public :: FSR_MASSLESS_RECOILER = 3
-@ %def FSR_SIMPLE FSR_MASSIVE FSR_MASSLESS_RECOILER
+  integer, parameter, public :: UBF_FSR_SIMPLE = 1
+  integer, parameter, public :: UBF_FSR_MASSIVE = 2
+  integer, parameter, public :: UBF_FSR_MASSLESS_RECOIL = 3
+@ %def UBF_FSR_SIMPLE UBF_FSR_MASSIVE UBF_FSR_MASSLESS_RECOIL
 @
 <<phs fks: real kinematics: TBP>>=
   procedure :: final => real_kinematics_final
@@ -18082,7 +18085,7 @@ $\xi$.
 @ %def compute_beta
 @ The momentum of the radiated particle is computed according to
 \begin{equation}
-  \label{eq:phs fks:compute k_n}
+  \label{eq:phs_fks:compute_k_n}
   \underline{k}_n = \frac{q^2 - M_{\rm{rec}}^2 -
     2q^0\underline{k}_{n+1}}{2(q^0 - \underline{k}_{n+1}(1-y))},
 \end{equation}
@@ -18090,7 +18093,7 @@ with $k = k_n + k_{n+1}$ and $M_{\rm{rec}}^2 = k_{\rm{rec}}^2 =
 \left(q-k\right)^2$. Because of $\boldsymbol{\bar{k}}_n \parallel
 \boldsymbol{k}_n + \boldsymbol{k}_{n+1}$ we find $M_{\rm{rec}}^2 =
 \left(q-\bar{k}_n\right)^2$.
-Equation \ref{eq:phs fks: compute k_n} follows from the fact that
+Equation \ref{eq:phs_fks:compute_k_n} follows from the fact that
 $\left(\boldsymbol{k} - \boldsymbol{k}_n\right)^2 =
 \boldsymbol{k}_{n+1}^2$, which is equivalent to $\boldsymbol{k}_n
 \cdot \boldsymbol{k} = \frac{1}{2} \left(\underline{k}_n^2 +
@@ -18884,7 +18887,7 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
               (one - beta * y) * log(one_p_beta / one_m_beta) / beta
     else
        y = (one - two * r_y) * y_max
-       jac_rand = jac_rand * 3 * (one - y**2)
+       jac_rand = jac_rand * 3 * (one - y**2) * y_max
        y = 1.5_default * (y - y**3 / 3)
     end if
   end subroutine compute_y_from_emitter
@@ -18938,7 +18941,7 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
     real(default), intent(out) :: y
     real(default), intent(out), dimension(:) :: y_soft
     y = (one - two * r_y) * generator%y_max
-    jac_rand = jac_rand * 3 * (one - y**2)
+    jac_rand = jac_rand * 3 * (one - y**2) * generator%y_max
     y = 1.5_default * (y - y**3 / 3)
     y_soft = y
   end subroutine phs_fks_generator_compute_y_mismatch

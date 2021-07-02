@@ -940,7 +940,7 @@ separate directory with the appropriate name.
 If you want to install the latest development version, you have to
 check it out from the \whizard\ SVN repository. Note that since a
 couple of years our development is now via a Git revision control
-system hosted at the University of Siegen, cf. the next subsection. 
+system hosted at the University of Siegen, cf. the next subsection.
 
 In addition to the prerequisites listed in the previous section, you
 need:
@@ -1022,7 +1022,7 @@ as an official distribution are available from
   \url{https://whizard.tp.nt.uni-siegen.de/}
 \end{quote}
 Building \whizard\ works the way as described in
-Sec.~\ref{sec:tarballdistr}. 
+Sec.~\ref{sec:tarballdistr}.
 
 
 %%%%%
@@ -1327,7 +1327,7 @@ so \whizard\ offers the possibility of backwards compatibility here.
 \begin{quote}
 configure: --------------------------------------------------------------
 configure: --- SHOWERS PYTHIA6 PYTHIA8 MPI ---
-configure: 
+configure:
 checking whether we want to enable PYTHIA6... yes
 checking for PYTHIA6... (enabled)
 checking for PYTHIA6 eh settings... (disabled)
@@ -1797,7 +1797,7 @@ disable}. However, we do not recommend to do so.
 For Windows, from \ttt{Windows 10} onwards, there is the possibility
 to install and use an underlying Linux operating system,
 e.g. \ttt{Ubuntu}. Installation and usage of \whizard\ works then the
-same way as described above. 
+same way as described above.
 
 %%%%%%%%%%%
 
@@ -9328,7 +9328,7 @@ events in the output file.  Thus, the sum of all event weights correctly
 reproduces the total cross section.
 
 \subsection{\powheg\ matching}
-To match the NLO computation with a parton shower, \whizard\ supports
+To match the NLO events with a parton shower, \whizard\ supports
 the  \powheg\ matching.  It generates a distribution according to
 \begin{align}
   \label{eq:powheg}
@@ -9361,9 +9361,11 @@ interfaced shower.  The maximal scale is currently given by \ttt{sqrts}
 but should in the future be changeable with \ttt{powheg\_pt\_max}.
 
 Note that the \powheg\ event generation needs an additional grid for
-efficient event generation that is automatically generated during
-integration.  Further options that steer the efficiency of this grid are
-\ttt{powheg\_grid\_size\_xi} and \ttt{powheg\_grid\_size\_y}.
+efficient event generation that is generated during integration if
+\ttt{?powheg\_matching = true} is set. Thus, this needs to be set before
+the \ttt{integrate} statement.
+Further options that steer the efficiency of this grid are
+\ttt{powheg\_grid\_size\_xi}, \ttt{powheg\_grid\_size\_y} and \ttt{powheg\_grid\_sampling\_points}.
 
 \subsection{Separation of finite and singular contributions}
 
@@ -9374,7 +9376,7 @@ and singular contributions with the flag
   ?nlo_use_real_partition = true
 \end{code}
 The finite contributions, which by definition should not contain soft or
-collinear emissions, will then integrate like a ordinary LO integration
+collinear emissions, will then integrate like an ordinary LO integration
 with one additional particle.  Similarly, the event generation will
 produce only real events without subtraction terms with Born kinematics
 for this additional finite component.  The \powheg\ event generation
@@ -14347,19 +14349,19 @@ must be performed:
 
   The \whizard\ subsystem will work with input and output
   files in the current working directory, unless asked to do otherwise.
-  
+
 \item
   The \ttt{tirpc} library is used by the \ttt{StdHEP} subsystem for \ttt{xdr}
   functionality.  This
   library should be present on the host system.
 
 \item
-  Run the program.  
+  Run the program.
 \end{enumerate}
 Below is an example program, similar to \whizard's internal unit-test
 suite for different external programming languages. The user program
 controls the \whizard\ workflow in the same way as a \sindarin\ script
-would do.  The commands are a mixture of \sindarin\ command 
+would do.  The commands are a mixture of \sindarin\ command
 calls and functionality for passing information between the \whizard\
 subsystem and the host program.
 In particular, the program can process generated events one-by-one.
@@ -14415,7 +14417,7 @@ for it in range(it_begin, it_end + 1):
 
 sample.close()
 
-del(wz)      
+del(wz)
 \end{code}
 
 \subsubsection{Python module import}
@@ -14464,11 +14466,11 @@ and string values map to \python\ strings.
 To set a \sindarin\ variable of appropriate type:
 \begin{quote}
   \tt wz.set\_int ( \textit{name}, \textit{value} );
-  \\   
+  \\
   \tt wz.set\_double ( \textit{name}, \textit{value} );
-  \\   
+  \\
   \tt wz.set\_bool ( \textit{name}, \textit{value} );
-  \\  
+  \\
   \tt wz.set\_string ( \textit{name}, \textit{value} );
 \end{quote}
 \textit{name} is a \python\ string value.  It must match the corresponding
@@ -19020,9 +19022,9 @@ doi:10.1016/j.cpc.2013.05.021
 C.~Bierlich, A.~Buckley, J.~Butterworth, C.~H.~Christensen, L.~Corpe,
 D.~Grellscheid, J.~F.~Grosse-Oetringhaus, C.~Gutschow,
 P.~Karczmarczyk, J.~Klein, L.~L\"onnblad, C.~S.~Pollard, P.~Richardson,
-H.~Schulz and F.~Siegert, 
+H.~Schulz and F.~Siegert,
 {\em Robust Independent Validation of Experiment and Theory: Rivet
-  version 3}, 
+  version 3},
 SciPost Phys. \textbf{8}, 026 (2020)
 doi:10.21468/SciPostPhys.8.2.026
 [arXiv:1912.05451 [hep-ph]].
