@@ -7,7 +7,7 @@ Use svn log to see detailed changes.
 2021-07-02
 	Improvement for POWHEG matching:
 	- implement massless recoil case
-	- allow reading in existing POWHEG grids
+	- enable reading in existing POWHEG grids
 	- support kinematic cuts at generator level
 
 2021-07-01
