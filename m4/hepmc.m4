@@ -79,7 +79,7 @@ if test "$enable_hepmc" = "yes"; then
       AC_MSG_CHECKING([the HepMC3 version])
       save_CXXFLAGS="$CXXFLAGS"
       save_LIBS="$LIBS"
-      CXXFLAGS="${CXXFLAGS} --std=c++11 `${hepmcconfig} --cxxflags`"
+      CXXFLAGS="${CXXFLAGS} `${hepmcconfig} --cxxflags`"
       LIBS="${LIBS} -Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs`"
       AC_LANG([C++])
       AC_LINK_IFELSE([dnl
@@ -165,7 +165,7 @@ else
    save_CXXFLAGS="$CXXFLAGS"
    save_LIBS="$LIBS"
 
-   CXXFLAGS="${CXXFLAGS} --std=c++11 `${hepmcconfig} --cxxflags`"
+   CXXFLAGS="${CXXFLAGS} `${hepmcconfig} --cxxflags`"
    LIBS="${LIBS} `${hepmcconfig} --libs`"
 
    AC_MSG_CHECKING([if HepMC3 is built with ROOT interface])
@@ -193,7 +193,7 @@ using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
 
    AC_MSG_CHECKING([for HepMC3])
    if test "${hepmcok}" = "yes"; then
-      HEPMC_INCLUDES="--std=c++11 `${hepmcconfig} --cxxflags` $HEPMCROOTINCL"
+      HEPMC_INCLUDES="`${hepmcconfig} --cxxflags` $HEPMCROOTINCL"
       LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs` $HEPMCROOTLIBS"
       AC_MSG_RESULT([yes])
       $1

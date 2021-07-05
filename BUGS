@@ -18,6 +18,11 @@ General:
 
 Known (recent) bugs:
 
+* WHIZARD 3.0.0 and earlier might not compile together with HepMC3/ROOT
+  when using a genuine C++17 standard compiler like gcc/g++ 11 and newer.
+  This came from backwards compatibility with gcc/g++ 5 as a default
+  C++98 compiler. Fixed in v3.0.1.
+
 * WHIZARD 2.8.5/3.0.0beta and earlier do not support reading LCIO events
   with LCIO versions 2.15 and newer due to a bug in the LCIO interface.
 

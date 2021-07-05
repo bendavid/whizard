@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.0+
 
+2021-07-05
+	Bug fix for C++17 default compilers w/ HepMC3/ROOT interface
+
 2021-07-02
 	Improvement for POWHEG matching:
 	- implement massless recoil case
