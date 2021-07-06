@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode -*-
 % WHIZARD code as NOWEB source: Utilities
 \chapter{Utilities}
 \includemodulegraph{utilities}
@@ -21,6 +21,8 @@ The modules depend only on modules from the [[basics]] set.
   Predefined format strings.
 \item[numeric\_utils]
   Utilities for comparing numerical values.
+\item[data\_utils]
+  Utitilies for data structures, i.e. a fixed size queue, polymorphic binary tree and dynamic array list.
 \end{description}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{File Utilities}
@@ -1362,4 +1364,1268 @@ larger module which deals with array manipulations.
   end subroutine split_real_array
 
 @ %def split_array
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Binary Tree}
+
+<<[[binary_tree.f90]]>>=
+<<File header>>
+module binary_tree
+  use io_units
+
+  implicit none
+
+  private
+
+  type :: binary_tree_iterator_t
+     integer, dimension(:), allocatable :: key
+     integer :: current
+     !! current \in {1, N}.
+   contains
+     procedure :: init => binary_tree_iterator_init
+     procedure :: is_iterable => binary_tree_iterator_is_iterable
+     procedure :: next => binary_tree_iterator_next
+  end type binary_tree_iterator_t
+
+  type :: binary_tree_node_t
+     integer :: height = 0
+     type(binary_tree_node_t), pointer :: left => null ()
+     type(binary_tree_node_t), pointer :: right => null ()
+     !!
+     integer :: key = 0
+     class(*), pointer :: obj => null ()
+   contains
+     procedure :: init => binary_tree_node_init
+     procedure :: write => binary_tree_node_write
+     procedure :: get_balance => binary_tree_node_get_balance
+     procedure :: increment_height => binary_tree_node_increment_height
+     final :: binary_tree_node_final
+  end type binary_tree_node_t
+
+  type :: binary_tree_t
+     integer :: n_elements = 0
+     type(binary_tree_node_t), pointer :: root => null ()
+   contains
+     procedure :: write => binary_tree_write
+     procedure :: get_n_elements => binary_tree_get_n_elements
+     procedure :: insert => binary_tree_insert
+     procedure, private :: insert_node => binary_tree_insert_node
+     procedure, private :: balance => binary_tree_balance
+     procedure :: search => binary_tree_search
+     procedure :: has_key => binary_tree_has_key
+     procedure, private :: rotate_left => binary_tree_rotate_left
+     procedure, private :: rotate_right => binary_tree_rotate_right
+     procedure :: clear => binary_tree_clear
+     final :: binary_tree_final
+  end type binary_tree_t
+
+  public :: binary_tree_t, binary_tree_iterator_t
+contains
+  !! We store all keys of the binary tree in an index array.
+  !! Flatten the tree O(log n), each access is then O(1).
+  !! However, accessing the corresponding object costs one O(log n).
+  subroutine binary_tree_iterator_init (iterator, btree)
+    class(binary_tree_iterator_t), intent(inout) :: iterator
+    type(binary_tree_t), target :: btree
+    type(binary_tree_node_t), pointer :: node
+    integer :: idx
+    iterator%current = 1
+    allocate (iterator%key(btree%get_n_elements ()), source = 0)
+    if (.not. btree%get_n_elements () > 0) return
+    idx = 1; call fill_key (idx, iterator%key, btree%root)
+  contains
+    recursive subroutine fill_key (idx, key, node)
+      integer, intent(inout) :: idx
+      integer, dimension(:), intent(inout) :: key
+      type(binary_tree_node_t), pointer :: node
+      if (associated (node%left)) &
+           call fill_key (idx, key, node%left)
+      key(idx) = node%key
+      idx = idx + 1
+      if (associated (node%right)) &
+           call fill_key (idx, key, node%right)
+    end subroutine fill_key
+  end subroutine binary_tree_iterator_init
+
+  function binary_tree_iterator_is_iterable (iterator) result (flag)
+    class(binary_tree_iterator_t), intent(in) :: iterator
+    logical :: flag
+    flag = iterator%current <= size (iterator%key)
+  end function binary_tree_iterator_is_iterable
+
+  subroutine binary_tree_iterator_next (iterator, key)
+    class(binary_tree_iterator_t), intent(inout) :: iterator
+    integer, intent(out) :: key
+    if (.not. iterator%is_iterable ()) then
+       key = 0
+    else
+       key = iterator%key(iterator%current)
+       iterator%current = iterator%current + 1
+    end if
+  end subroutine binary_tree_iterator_next
+
+  subroutine binary_tree_node_init (btree_node, key, obj)
+    class(binary_tree_node_t), intent(inout) :: btree_node
+    integer, intent(in) :: key
+    class(*), pointer :: obj
+    btree_node%height = 1
+    btree_node%left => null ()
+    btree_node%right => null ()
+    btree_node%key = key
+    btree_node%obj => obj
+  end subroutine binary_tree_node_init
+
+  recursive subroutine binary_tree_node_write (btree_node, unit, level, mode)
+    class(binary_tree_node_t), intent(in) :: btree_node
+    integer, intent(in) :: unit
+    integer, intent(in) :: level
+    character(len=*), intent(in) :: mode
+    character(len=24) :: fmt
+    if (level > 0) then
+       write (fmt, "(A,I3,A)") "(", 3 * level, "X,A,1X,I3,1X,I3,A)"
+    else
+       fmt = "(A,1X,I3,1X,I3,1X)"
+    end if
+    write (unit, fmt) mode, btree_node%key, btree_node%height
+    ! write (unit, fmt) btree_node%key, btree_node%get_balance ()
+    if (associated (btree_node%right)) &
+         call btree_node%right%write (unit, level = level + 1, mode = ">")
+    if (associated (btree_node%left)) &
+         call btree_node%left%write (unit, level = level + 1, mode = "<")
+  end subroutine binary_tree_node_write
+
+  integer function binary_tree_node_get_balance (btree_node) result (balance)
+    class(binary_tree_node_t), intent(in) :: btree_node
+    integer :: leftHeight, rightHeight
+    leftHeight = 0
+    rightHeight = 0
+    if (associated (btree_node%left)) leftHeight = btree_node%left%height
+    if (associated (btree_node%right)) rightHeight = btree_node%right%height
+    balance = leftHeight - rightHeight
+  end function binary_tree_node_get_balance
+
+  subroutine binary_tree_node_increment_height (btree_node)
+    class(binary_tree_node_t), intent(inout) :: btree_node
+    integer :: leftHeight, rightHeight
+    leftHeight = 0
+    rightHeight = 0
+    if (associated (btree_node%left)) leftHeight = btree_node%left%height
+    if (associated (btree_node%right)) rightHeight = btree_node%right%height
+    btree_node%height = max (leftHeight, rightHeight) + 1
+  end subroutine binary_tree_node_increment_height
+
+  recursive subroutine binary_tree_node_final (btree_node)
+    type(binary_tree_node_t), intent(inout) :: btree_node
+    if (associated (btree_node%left)) deallocate (btree_node%left)
+    if (associated (btree_node%right)) deallocate (btree_node%right)
+    deallocate (btree_node%obj)
+  end subroutine binary_tree_node_final
+
+  subroutine binary_tree_write (btree, unit)
+    class(binary_tree_t), intent(in) :: btree
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit(unit=unit)
+    write (u, "(A,1X,I3)") "Number of elements", btree%n_elements
+    if (associated (btree%root)) then
+       call btree%root%write (u, level = 0, mode = "*")
+    else
+       write (u, "(A)") "Binary tree is empty."
+    end if
+  end subroutine binary_tree_write
+
+  subroutine binary_tree_final (btree)
+    type(binary_tree_t), intent(inout) :: btree
+    btree%n_elements = 0
+    if (associated (btree%root)) then
+       deallocate (btree%root)
+    end if
+  end subroutine binary_tree_final
+
+  subroutine binary_tree_clear (btree)
+    class(binary_tree_t), intent(inout) :: btree
+    call binary_tree_final (btree)
+  end subroutine binary_tree_clear
+
+  integer function binary_tree_get_n_elements (btree) result (n)
+    class(binary_tree_t), intent(in) :: btree
+    n = btree%n_elements
+  end function binary_tree_get_n_elements
+
+  subroutine binary_tree_insert (btree, key, obj)
+    class(binary_tree_t), intent(inout) :: btree
+    integer, intent(in) :: key
+    class(*), pointer, intent(in) :: obj
+    type(binary_tree_node_t), pointer :: node
+    allocate (node)
+    call node%init (key, obj)
+    btree%n_elements = btree%n_elements + 1
+    if (.not. associated (btree%root)) then
+       btree%root => node
+    else
+       call btree%insert_node (btree%root, node)
+    end if
+  end subroutine binary_tree_insert
+
+  recursive subroutine binary_tree_insert_node (btree, parent, node)
+    class(binary_tree_t), intent(in) :: btree
+    type(binary_tree_node_t), intent(inout), pointer :: parent
+    type(binary_tree_node_t), intent(in), pointer :: node
+    !! Choose left or right, if associated descend recursively into subtree,
+    !! else insert node.
+    if (node%key > parent%key) then
+       if (associated (parent%right)) then
+          call btree%insert_node (parent%right, node)
+       else
+          parent%right => node
+       end if
+    else if (node%key < parent%key) then
+       if (associated (parent%left)) then
+          call btree%insert_node (parent%left, node)
+       else
+          parent%left => node
+       end if
+    else
+       write (*, "(A,1X,I0)") "Error: MUST not insert duplicate key", node%key
+       stop 1
+    end if
+    call parent%increment_height ()
+    call btree%balance (parent, node%key)
+  end subroutine binary_tree_insert_node
+
+  !! Subtree: root of subtree (which is unbalance, refer to A in diagrams.)
+  subroutine binary_tree_balance (btree, subtree, key)
+    class(binary_tree_t), intent(in) :: btree
+    type(binary_tree_node_t), intent(inout), pointer :: subtree
+    integer, intent(in) :: key
+    type(binary_tree_node_t), pointer :: node, newNode
+    integer :: balance
+    balance = subtree%get_balance ()
+    node => subtree
+    newNode => null ()
+    !! balance := h_left - h_right.
+    !! Proof: balance > 0 => too many elements on the left side of the subtree.
+    !! Proof: balance < 0 => too many elements on the right side of the subtree.
+    if (balance > 1) then
+       !! => left-side of subtree
+       !!      A3(2)         B2(1)
+       !!     /             /    \
+       !!    B2(1)         C1(0)  A1(0)
+       !!   /
+       !!  C1(0)
+       !!
+       !!    A3(3)           A1(2)           C2(1)
+       !!   /               /               /    \
+       !!  B1(1)  LEFT     C2(1)    RIGHT  B1(0) A3(0)
+       !!   \             /
+       !!    C2(0)       B1(0)
+       if (subtree%left%key > key) then !! rotate right
+          call btree%rotate_right (node, newNode)
+       else !! subtree%left%key < key, rotate left, then right.
+          call btree%rotate_left (node%left, newNode)
+          node%left => newNode
+          call btree%rotate_right (node, newNode)
+       end if
+    else if (balance < -1) then
+       !! => right-side of subtree
+       !!   A0(2)           B1(1)
+       !!    \             /    \
+       !!     B1(1)       A1(0)  C3(0)
+       !!      \
+       !!       C3(0)*
+       !!
+       !!   A1(2)           A1(2)               C2(1)
+       !!    \                 \               /    \
+       !!     B3(1)  RIGHT     C2(1)    LEFT  A1(0) B3(0)
+       !!    /                   \
+       !!   C2(0)                B3(0)
+       if (subtree%right%key < key) then !! rotate left
+          call btree%rotate_left (node, newNode)
+       else !! subtree%right%key > key, rotate right, then left.
+          call btree%rotate_right (node%right, newNode)
+          node%right => newNode
+          call btree%rotate_left (node, newNode)
+       end if
+    end if
+    if (associated (newNode)) subtree => newNode
+  end subroutine binary_tree_balance
+
+  subroutine binary_tree_search (btree, key, obj)
+    class(binary_tree_t), intent(in) :: btree
+    integer, intent(in) :: key
+    class(*), pointer, intent(out) :: obj
+    type(binary_tree_node_t), pointer :: current
+    current => btree%root
+    obj => null ()
+    if (.not. associated (current)) return
+    do while (current%key /= key)
+       if (current%key > key) then
+          current => current%left
+       else
+          current => current%right
+       end if
+       if (.not. associated (current)) then
+          !! Key not found.
+          exit
+       end if
+    end do
+    if (associated (current)) obj => current%obj
+  end subroutine binary_tree_search
+
+  function binary_tree_has_key (btree, key) result (flag)
+    class(binary_tree_t), intent(in) :: btree
+    integer, intent(in) :: key
+    logical :: flag
+    type(binary_tree_node_t), pointer :: current
+    current => btree%root
+    flag = .false.
+    if (.not. associated (current)) return
+    do while (current%key /= key)
+       if (current%key > key) then
+          current => current%left
+       else
+          current => current%right
+       end if
+       if (.not. associated (current)) then
+          !! Key not found.
+          return
+       end if
+    end do
+    flag = .true.
+  end function binary_tree_has_key
+
+  !!      A     Move B to A.
+  !!     / \
+  !!    B   E   1. Split B from A%left.
+  !!   / \      2. Temporarily pointer to D.
+  !!  C   D     3. Replace pointer to D by pointer to A - E.
+  !!            4. Set temporary pointer to D to A%left.
+  !!
+  !! 1.+2. B       T => D    A
+  !!      /                   \
+  !!     C                     E
+  !!
+  !! 3.    B       T => D
+  !!      / \
+  !!     C   A
+  !!          \
+  !!           E
+  !!
+  !! 4.    B
+  !!      / \
+  !!     C   A
+  !!        / \
+  !!       D   E
+  !!
+  !! \param[inout] root Root/parent root (A).
+  !! \param[out] new_root New root/parent root (B).
+  subroutine binary_tree_rotate_right (btree, root, new_root)
+    class(binary_tree_t), intent(in) :: btree
+    type(binary_tree_node_t), pointer, intent(inout) :: root
+    type(binary_tree_node_t), pointer, intent(out) :: new_root
+    type(binary_tree_node_t), pointer :: tmp
+    new_root => root%left
+    tmp => new_root%right
+    new_root%right => root
+    root%left => tmp
+    call root%increment_height ()
+    call new_root%increment_height ()
+  end subroutine binary_tree_rotate_right
+
+  !!      A      Move B to A.
+  !!     / \
+  !!    E   B    1. Split B from A%left.
+  !!       / \   2. Temporarily pointer to C.
+  !!      C   D  3. Replace pointer to C by pointer to A - E.
+  !!             4. Set temporary pointer to C to A%right.
+  !!
+  !! 1.+2. B       T => C    A
+  !!        \               /
+  !!         D             E
+  !!
+  !! 3.    B       T => C
+  !!      / \
+  !!     A   D
+  !!    /
+  !!   E
+  !!
+  !! 4.    B
+  !!      / \
+  !!     A   D
+  !!    / \
+  !!   E   C
+  subroutine binary_tree_rotate_left (btree, root, new_root)
+    class(binary_tree_t), intent(in) :: btree
+    type(binary_tree_node_t), pointer, intent(inout) :: root
+    type(binary_tree_node_t), pointer, intent(out) :: new_root
+    type(binary_tree_node_t), pointer :: tmp
+    new_root => root%right
+    tmp => new_root%left
+    new_root%left => root
+    root%right => tmp
+    call root%increment_height ()
+    call new_root%increment_height ()
+  end subroutine binary_tree_rotate_left
+end module binary_tree
+@ %def binary_tree
+@
+\subsection{Unit tests}
+\label{sec:unit-tests}
+
+<<[[binary_tree_ut.f90]]>>=
+<<File header>>
+
+module binary_tree_ut
+  use unit_tests
+  use binary_tree_uti
+
+<<Standard module head>>
+
+<<Binary tree: public test>>
+
+ contains
+
+<<Binary tree: test driver>>
+end module binary_tree_ut
+@ %def binary_tree_ut
+@
+<<[[binary_tree_uti.f90]]>>=
+<<File header>>
+
+module binary_tree_uti
+
+  use binary_tree
+
+<<Standard module head>>
+
+  type :: btree_obj_t
+     integer :: i = 0
+  end type btree_obj_t
+
+<<Binary tree: test declarations>>
+
+ contains
+
+<<Binary tree: tests>>
+
+end module binary_tree_uti
+@ %def binary_tree_uti
+@
+<<Binary tree: public test>>=
+public :: binary_tree_test
+<<Binary tree: test driver>>=
+subroutine binary_tree_test (u, results)
+  integer, intent(in) :: u
+  type(test_results_t), intent(inout) :: results
+  <<Binary tree: execute tests>>
+end subroutine binary_tree_test
+
+@ %def binary_tree_test
+@ Provide testing for interface stability and correct implementation for the
+binary tree and its iterator.
+<<Binary tree: execute tests>>=
+call test (binary_tree_1, "binary_tree_1", &
+     "check interface and implementation", &
+     u, results)
+<<Binary tree: test declarations>>=
+public :: binary_tree_1
+<<Binary tree: tests>>=
+subroutine binary_tree_1 (u)
+  integer, intent(in) :: u
+  integer, dimension(10) :: ndx = [1, 2, 5, 7, 19, 23, 97, -1, -6, 0]
+  class(*), pointer :: obj
+  type(binary_tree_t) :: btree
+  type(binary_tree_iterator_t) :: iterator
+  integer :: i, key
+  write (u, "(A)") "* Test outout: Binary tree"
+  write (u, "(A)") "*   Purpose: test interface and implementation of binary tree " // &
+       "and its iterator using polymorph objects."
+  write (u, "(A)")
+
+  write (u, "(A)") "* Insert fixed number of object into tree..."
+  do i = 1, size (ndx)
+     call allocate_obj (i, obj)
+     call btree%insert (ndx(i), obj)
+  end do
+
+  write (u, "(A)") "* Search for all added objects in tree..."
+  do i = size (ndx), 1, -1
+     write (u, "(A,1X,I3,1X,L1)") "- Has key", ndx(i), btree%has_key (ndx(i))
+     call btree%search (ndx(i), obj)
+     select type (obj)
+     type is (btree_obj_t)
+        write (u, "(2(A,1X,I3,1X))") "- NDX", ndx(i), "OBJ", obj%i
+     end select
+  end do
+
+  write (u, "(A)") "* Output binary tree in preorder..."
+  call btree%write (u)
+
+  write (u, "(A)") "* Clear binary tree..."
+  call btree%clear ()
+  call btree%write (u)
+
+  write (u, "(A)") "* Insert fixed number of object into tree (reversed order)..."
+  do i = size (ndx), 1, -1
+     call allocate_obj (i, obj)
+     call btree%insert (ndx(i), obj)
+  end do
+
+  write (u, "(A)") "* Iterate over binary tree..."
+  call iterator%init (btree)
+  do while (iterator%is_iterable ())
+     call iterator%next (key)
+     call btree%search (key, obj)
+     select type (obj)
+     type is (btree_obj_t)
+        write (u, "(2(A,1X,I3,1X))") "- KEY", key, "OBJ", obj%i
+     end select
+  end do
+
+  write (u, "(A)") "* Search for a non-existing key..."
+  write (u, "(A,1X,I3,1X,L1)") "- Has key", 123, btree%has_key (123)
+  call btree%search (123, obj)
+  write (u, "(A,1X,L1)") "- Object found", associated (obj)
+
+  !! Do not test against a duplicate entry as the it will forcibly stop the program.
+contains
+  subroutine allocate_obj (num, obj)
+    integer, intent(in) :: num
+    class(*), pointer, intent(out) :: obj
+    allocate (btree_obj_t :: obj)
+    select type (obj)
+    type is (btree_obj_t)
+       obj%i = num
+    end select
+  end subroutine allocate_obj
+end subroutine binary_tree_1
+
+@ %def binary_tree_1
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Array List}
+
+<<[[array_list.f90]]>>=
+<<File header>>
+
+module array_list
+<<Use kinds>>
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+  implicit none
+
+  private
+
+  integer, parameter :: ARRAY_LIST_START_SIZE = 10
+  real(default), parameter :: ARRAY_LIST_GROW_FACTOR = 1.5_default, &
+       ARRAY_LIST_SHRINK_THRESHOLD = 0.3_default
+
+  type :: array_list_t
+     private
+     integer, dimension(:), allocatable :: array
+     !! Track the index to *current* item, to be stored.
+     !! Must fulfill: 0 <= count <= size.
+     integer :: count = 0
+     !! size \in N.
+     integer :: size = 0
+   contains
+     procedure :: write => array_list_write
+     procedure :: init => array_list_init
+     procedure :: add => array_list_add
+     procedure :: add_at => array_list_add_at
+     procedure :: remove => array_list_remove
+     procedure :: remove_at => array_list_remove_at
+     procedure :: get => array_list_get
+     procedure :: get_size => array_list_get_size
+     procedure :: get_count => array_list_get_count
+     procedure :: grow_size => array_list_grow_size
+     procedure :: shrink_size => array_list_shrink_size
+     procedure :: reverse_order => array_list_reverse_order
+     procedure :: sort => array_list_sort
+     procedure :: is_element => array_list_is_element
+     procedure :: find => array_list_find
+     procedure :: clear => array_list_clear
+     procedure :: is_full => array_list_is_full
+     procedure :: is_empty => array_list_is_empty
+     procedure :: is_index => array_list_is_index
+  end type array_list_t
+
+  public :: array_list_t
+contains
+  subroutine array_list_write (list, unit)
+    class(array_list_t), intent(in) :: list
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = ERROR_UNIT; if (present (unit)) u = unit
+    write (u, "(A,2(1X,I3))") "COUNT / SIZE", list%count, list%size
+    write (u, "(999(1X,I4))") list%array
+  end subroutine array_list_write
+
+  subroutine array_list_init (list)
+    class(array_list_t), intent(out) :: list
+    allocate (list%array(ARRAY_LIST_START_SIZE), source = 0)
+    list%count = 0
+    list%size = ARRAY_LIST_START_SIZE
+  end subroutine array_list_init
+
+  elemental function array_list_get (list, index) result (data)
+    class(array_list_t), intent(in) :: list
+    integer, intent(in) :: index
+    integer :: data
+    if (list%is_index (index)) then
+       data = list%array(index)
+    else
+       data = 0
+    end if
+  end function array_list_get
+
+  pure function array_list_get_count (list) result (count)
+    class(array_list_t), intent(in) :: list
+    integer :: count
+    count = list%count
+  end function array_list_get_count
+
+  pure function array_list_get_size (list) result (size)
+    class(array_list_t), intent(in) :: list
+    integer :: size
+    size = list%size
+  end function array_list_get_size
+
+  pure function array_list_is_full (list) result (flag)
+    class(array_list_t), intent(in) :: list
+    logical :: flag
+    flag = list%count >= list%size
+  end function array_list_is_full
+
+  pure function array_list_is_empty (list) result (flag)
+    class(array_list_t), intent(in) :: list
+    logical :: flag
+    flag = .not. list%count > 0
+  end function array_list_is_empty
+
+  pure function array_list_is_index (list, index) result (flag)
+    class(array_list_t), intent(in) :: list
+    integer, intent(in) :: index
+    logical :: flag
+    flag = 0 < index .and. index <= list%count
+  end function array_list_is_index
+
+  subroutine array_list_clear (list)
+    class(array_list_t), intent(inout) :: list
+    list%array = 0
+    list%count = 0
+    call list%shrink_size ()
+  end subroutine array_list_clear
+
+  subroutine array_list_add (list, data)
+    class(array_list_t), intent(inout) :: list
+    integer, intent(in) :: data
+    list%count = list%count + 1
+    if (list%is_full ()) then
+       call list%grow_size ()
+    end if
+    list%array(list%count) = data
+  end subroutine array_list_add
+
+  subroutine array_list_grow_size (list)
+    class(array_list_t), intent(inout) :: list
+    integer, dimension(:), allocatable :: array
+    integer :: new_size
+    if (.not. list%is_full ()) return
+    new_size = int (list%size * ARRAY_LIST_GROW_FACTOR)
+    allocate (array(new_size), source = 0)
+    array(:list%size) = list%array
+    call move_alloc (array, list%array)
+    list%size = size (list%array)
+  end subroutine array_list_grow_size
+
+  subroutine array_list_shrink_size (list)
+    class(array_list_t), intent(inout) :: list
+    integer, dimension(:), allocatable :: array
+    integer :: new_size
+    !! Apply shrink threshold on count.
+    ! if (.not. list%count > 0) return
+    new_size = max (list%count, ARRAY_LIST_START_SIZE)
+    allocate (array(new_size), source = 0)
+    !! \note We have to circumvent the allocate-on-assignment,
+    !! hence, we explicitly set the array boundaries.
+    array(:list%count) = list%array(:list%count)
+    call move_alloc (array, list%array)
+    list%size = new_size
+  end subroutine array_list_shrink_size
+
+  subroutine array_list_reverse_order (list)
+    class(array_list_t), intent(inout) :: list
+    list%array(:list%count) = list%array(list%count:1:-1)
+  end subroutine array_list_reverse_order
+
+  pure subroutine array_list_sort (list)
+    class(array_list_t), intent(inout) :: list
+    if (list%is_empty ()) return
+    call quick_sort (list%array(:list%count))
+  contains
+    pure recursive subroutine quick_sort (array)
+      integer, dimension(:), intent(inout) :: array
+      integer :: pivot, tmp
+      integer :: first, last
+      integer i, j
+      first = 1
+      last = size(array)
+      pivot = array(int ((first+last) / 2.))
+      i = first
+      j = last
+      do
+         do while (array(i) < pivot)
+            i = i + 1
+         end do
+         do while (pivot < array(j))
+            j = j - 1
+         end do
+         if (i >= j) exit
+         tmp = array(i)
+         array(i) = array(j)
+         array(j) = tmp
+         i = i + 1
+         j = j - 1
+      end do
+      if (first < i - 1) call quick_sort(array(first:i - 1))
+      if (j + 1 < last)  call quick_sort(array(j + 1:last))
+    end subroutine quick_sort
+  end subroutine array_list_sort
+
+  pure function array_list_is_element (list, data) result (flag)
+    class(array_list_t), intent(in) :: list
+    integer, intent(in) :: data
+    logical :: flag
+    if (list%is_empty ()) then
+       flag = .false.
+    else
+       flag = any (data == list%array)
+    end if
+  end function array_list_is_element
+
+  function array_list_find (list, data) result (index)
+    class(array_list_t), intent(inout) :: list
+    integer, intent(in) :: data
+    integer :: index
+    if (list%is_empty () &
+         .or. .not. list%is_element (data)) then
+       index = 0
+       return
+    end if
+    call list%sort () !! INTENT(INOUT)
+    index = binary_search_leftmost (list%array(:list%count), data)
+  contains
+    pure function binary_search_leftmost (array, data) result (index)
+      integer, dimension(:), intent(in) :: array
+      integer, intent(in) :: data
+      integer :: index
+      integer :: left, right
+      left = 1
+      right = size (array)
+      do while (left < right)
+         index = floor ((left + right) / 2.)
+         if (array(index) < data) then
+            left = index + 1
+         else
+            right = index
+         end if
+      end do
+      index = left
+    end function binary_search_leftmost
+  end function array_list_find
+
+  subroutine array_list_add_at (list, index, data)
+    class(array_list_t), intent(inout) :: list
+    integer, intent(in) :: index
+    integer, intent(in) :: data
+    if (.not. list%is_index (index)) return
+    if (list%is_full ()) then
+       call list%grow_size ()
+    end if
+    list%array(index + 1:list%count + 1) = list%array(index:list%count)
+    list%array(index) = data
+    list%count = list%count + 1
+  end subroutine array_list_add_at
+
+  integer function array_list_remove (list) result (data)
+    class(array_list_t), intent(inout) :: list
+    if (list%is_empty ()) then
+       data = 0
+       return
+    end if
+    data = list%get (list%count)
+    list%array(list%count) = 0
+    list%count = list%count -1
+  end function array_list_remove
+
+  integer function array_list_remove_at (list, index) result (data)
+    class(array_list_t), intent(inout) :: list
+    integer, intent(in) :: index
+    if (list%is_empty ()) then
+       data = 0
+       return
+    end if
+    data = list%get (index)
+    list%array(index:list%count - 1) = list%array(index + 1:list%count)
+    list%array(list%count) = 0
+    list%count = list%count - 1
+  end function array_list_remove_at
+end module array_list
+@ %def array_list
+@
+\subsection{Unit tests}
+\label{sec:unit-tests}
+
+<<[[array_list_ut.f90]]>>=
+<<File header>>
+
+module array_list_ut
+  use unit_tests
+  use array_list_uti
+
+<<Standard module head>>
+
+<<Array list: public test>>
+
+ contains
+
+<<Array list: test driver>>
+end module array_list_ut
+@ %def array_list_ut
+@
+<<[[array_list_uti.f90]]>>=
+<<File header>>
+
+module array_list_uti
+
+  use array_list
+
+<<Standard module head>>
+
+<<Array list: test declarations>>
+
+ contains
+
+<<Array list: tests>>
+
+end module array_list_uti
+@ %def array_list_uti
+@
+<<Array list: public test>>=
+public :: array_list_test
+<<Array list: test driver>>=
+subroutine array_list_test (u, results)
+  integer, intent(in) :: u
+  type(test_results_t), intent(inout) :: results
+  <<Array list: execute tests>>
+end subroutine array_list_test
+
+@ %def array_list_test
+@ Provide testing for interface stability and correct implementation for the
+binary tree and its iterator.
+<<Array list: execute tests>>=
+call test (array_list_1, "array_list_1", &
+     "check interface and implementation", &
+     u, results)
+<<Array list: test declarations>>=
+public :: array_list_1
+<<Array list: tests>>=
+subroutine array_list_1 (u)
+  integer, intent(in) :: u
+  type(array_list_t) :: list
+  integer :: ndx, data
+
+  write (u, "(A)") "* Test output: Array list"
+  write (u, "(A)") "*   Purpose: test interface and implementation of array list"
+  write (u, "(A)")
+
+  write (u, "(A)") "* Init array_list_t ..."
+  call list%init ()
+  write (u, "(A)") "* Test adding a single element..."
+  call list%add (1)
+  write (u, "(A)") "* Test removing a single element..."
+  data = list%remove ()
+  write (u, "(A)") "* Test growing (unnecessary, so just return)..."
+  call list%grow_size ()
+  write (u, "(A)") "* Test adding elements beyond initial capacity..."
+  call test_grow_and_add (list)
+  write (u, "(A)") "* Test adding at specific position..."
+  call list%add_at (10, -1)
+  write (u, "(A)") "* Test removing at specific position..."
+  data = list%remove_at (11)
+  write (u, "(A)") "* Test reverse ordering..."
+  call list%reverse_order ()
+  write (u, "(A)") "* Test sorting..."
+  call list%sort ()
+  write (u, "(A)") "* Test finding..."
+  ndx = list%find (1)
+  write (u, "(A)") "* Test shrinking..."
+  call list%shrink_size ()
+  write (u, "(A)") "* Test get procedures..."
+  call test_get_procedures (list)
+  write (u, "(A)") "* Test clearing list..."
+  call list%clear ()
+  write (u, "(A)") "* Test (more complicated) combinations:"
+  write (u, "(A)") "* Test growing (necessary) during adding..."
+  call test_grow_and_add (list)
+  write (u, "(A)") "* Test adding random data and sorting..."
+  call test_sort (list)
+  write (u, "(A)") "* Test finding (before sorted)..."
+  call test_find (list)
+contains
+  subroutine test_get_procedures (list)
+    type(array_list_t), intent(in) :: list
+    integer :: n
+    logical :: flag
+    n = list%get(1)
+    n = list%get_size ()
+    n = list%get_count ()
+    flag = list%is_element (1)
+  end subroutine test_get_procedures
+
+  subroutine test_grow_and_add (list)
+    type(array_list_t), intent(inout) :: list
+    integer :: i
+    do i = 1, 2 * list%get_size ()
+       call list%add (i)
+    end do
+  end subroutine test_grow_and_add
+
+  subroutine test_get (list)
+    class(array_list_t), intent(inout) :: list
+    integer :: i, data
+    do i = list%get_count (), 1, -1
+       data = list%get (i)
+       if (data == 0) then
+          write (u, "(A,1X,I3)") "INDEX EMPTY", i
+       end if
+    end do
+  end subroutine test_get
+
+  subroutine test_sort (list)
+    class(array_list_t), intent(inout) :: list
+    call list%add (6)
+    call list%add (2)
+    call list%add (9)
+    call list%add (4)
+    call list%add (8)
+    call list%add (7)
+    call list%sort ()
+  end subroutine test_sort
+
+  subroutine test_find (list)
+    class(array_list_t), intent(inout) :: list
+    write (u, "(A,1X,I3)") " 6 INDEX", list%find (6)
+    write (u, "(A,1X,I3)") "-1 INDEX", list%find (-1)
+    write (u, "(A,1X,I3)") " 3 INDEX", list%find (3)
+    write (u, "(A,1X,I3)") "26 INDEX", list%find (26)
+    call list%write (u)
+  end subroutine test_find
+end subroutine array_list_1
+
+@ %def array_list_1
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Queue}
+
+<<[[queue.f90]]>>=
+<<File header>>
+
+module queue
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+  implicit none
+
+  private
+
+  integer, parameter :: QUEUE_SIZE = 10, &
+       QUEUE_START = 0, &
+       QUEUE_END = QUEUE_SIZE
+
+  type :: queue_t
+     private
+     integer, dimension(QUEUE_SIZE) :: item
+     integer :: front = 0
+     integer :: rear = 0
+   contains
+     procedure :: enqueue => queue_enqueue
+     procedure :: dequeue => queue_dequeue
+     procedure :: is_full => queue_is_full
+     procedure :: is_empty => queue_is_empty
+     procedure :: peek => queue_peek
+     procedure :: write => queue_write
+  end type queue_t
+
+  public :: queue_t
+contains
+  elemental logical function queue_is_full (queue) result (flag)
+    class(queue_t), intent(in) :: queue
+    flag = queue%front == 1 .and. queue%rear == QUEUE_END
+  end function queue_is_full
+
+  elemental logical function queue_is_empty (queue) result (flag)
+    class(queue_t), intent(in) :: queue
+    flag = queue%front == QUEUE_START
+  end function queue_is_empty
+
+  subroutine queue_enqueue (queue, item)
+    class(queue_t), intent(inout) :: queue
+    integer, intent(in) :: item
+    if (queue%is_full ()) then
+       !! Do something. 
+    else
+       if (queue%front == QUEUE_START) queue%front = 1
+       queue%rear = queue%rear + 1
+       queue%item(queue%rear) = item
+    end if
+  end subroutine queue_enqueue
+
+  integer function queue_dequeue (queue) result (item)
+    class(queue_t), intent(inout) :: queue
+    if (queue%is_empty ()) then
+       item = 0
+    else
+       item = queue%item(queue%front)
+       if (queue%front >= queue%rear) then
+          queue%front = QUEUE_START
+          queue%rear = QUEUE_START
+          !! Q has only one element,
+          !! so we reset the queue after deleting it.
+       else
+          queue%front = queue%front + 1
+       end if
+    end if
+  end function queue_dequeue
+
+  integer function queue_peek (queue) result (item)
+    class(queue_t), intent(in) :: queue
+    if (queue%is_empty ()) then
+       item = 0
+    else
+       item = queue%item(queue%front)
+    end if
+  end function queue_peek
+
+  subroutine queue_write (queue, unit)
+    class(queue_t), intent(in) :: queue
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = ERROR_UNIT; if (present (unit)) u = unit
+    if (queue%is_empty ()) then
+       write (u, *) "Empty Queue."
+    else
+       write (u, *) "Front ->", queue%front
+       write (u, *) "Items ->"
+       do i = 1, queue%rear
+          write (u, *) queue%item(i)
+       end do
+       write (u, *) "Rear ->", queue%rear
+    end if
+  end subroutine queue_write
+end module queue
+@ %def queue
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Iterator}
+
+<<[[iterator.f90]]>>=
+<<File header>>
+module iterator
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+  implicit none
+
+  private
+
+  !! Forward
+  type :: iterator_t
+     integer :: current = 0
+     integer :: begin = 0
+     integer :: end = 0
+     integer :: step = 1
+   contains
+     procedure :: write => iterator_write
+     procedure :: init => iterator_init
+     procedure :: at_begin => iterator_at_begin
+     procedure :: at_end => iterator_at_end
+     procedure :: is_iterable => iterator_is_iterable
+     procedure :: next => iterator_next
+     procedure :: next_step => iterator_next_step
+     procedure :: get_current => iterator_get_current
+  end type iterator_t
+
+  public :: iterator_t
+contains
+  subroutine iterator_write (iter, unit)
+    class(iterator_t), intent(in) :: iter
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = ERROR_UNIT; if (present (unit)) u = unit
+    write (u, "(3(A,1X,I3,1X))") "CURRENT", iter%current, &
+         "BEGIN", iter%begin, "END", iter%end
+    flush (u)
+  end subroutine iterator_write
+
+  !! Proof: step > 0, begin < end.
+  !! Proof: step < 0, begin > end.
+  !! Proof: step /= 0.
+  subroutine iterator_init (iter, begin, end, step)
+    class(iterator_t), intent(inout) :: iter
+    integer, intent(in) :: begin
+    integer, intent(in) :: end
+    integer, intent(in), optional :: step
+    iter%begin = begin
+    iter%end = end
+    iter%step = 1; if (present (step)) iter%step = step
+    if (abs (iter%step) > 0) then
+       iter%current = iter%begin
+    else
+       write (ERROR_UNIT, "(A)") "ERROR: Step size MUST be unequal to zero."
+       stop 1
+    end if
+  end subroutine iterator_init
+
+  pure function iterator_at_begin (iter) result (flag)
+    class(iterator_t), intent(in) :: iter
+    logical :: flag
+    flag = iter%current == iter%begin
+  end function iterator_at_begin
+
+  pure function iterator_at_end (iter) result (flag)
+    class(iterator_t), intent(in) :: iter
+    logical :: flag
+    flag = iter%current == iter%end
+  end function iterator_at_end
+
+  !! Proof: begin < current < end
+  pure function iterator_is_iterable (iter) result (flag)
+    class(iterator_t), intent(in) :: iter
+    logical :: flag
+    if (iter%step > 0) then
+       flag = iter%current <= iter%end
+    else if (iter%step < 0) then
+       flag = iter%current >= iter%end
+    else
+       flag = .false.
+    end if
+  end function iterator_is_iterable
+
+  subroutine iterator_next_step (iter)
+    class(iterator_t), intent(inout) :: iter
+    if (.not. iter%is_iterable ()) return
+    iter%current = iter%current + iter%step
+  end subroutine iterator_next_step
+
+  !! Proof: begin <= current <= end.
+  !! However, after applying the step, this does not need to be true..
+  function iterator_next (iter) result (ndx)
+    class(iterator_t), intent(inout) :: iter
+    integer :: ndx
+    if (.not. iter%is_iterable ()) then
+       ndx = 0
+       return
+    end if
+    ndx = iter%current
+    iter%current = iter%current + iter%step
+  end function iterator_next
+
+  pure function iterator_get_current (iter) result (ndx)
+    class(iterator_t), intent(in) :: iter
+    integer :: ndx
+    if (.not. iter%is_iterable ()) then
+       ndx = 0
+       return
+    end if
+    ndx = iter%current
+  end function iterator_get_current
+end module iterator
+
+@ %def iterator
+@
+\subsection{Unit tests}
+\label{sec:unit-tests}
+
+<<[[iterator_ut.f90]]>>=
+<<File header>>
+
+module iterator_ut
+  use unit_tests
+  use iterator_uti
+
+<<Standard module head>>
+
+<<Iterator: public test>>
+
+ contains
+
+<<Iterator: test driver>>
+end module iterator_ut
+@ %def iterator_ut
+@
+<<[[iterator_uti.f90]]>>=
+<<File header>>
+
+module iterator_uti
+
+  use iterator
+
+<<Standard module head>>
+
+<<Iterator: test declarations>>
+
+ contains
+
+<<Iterator: tests>>
+
+end module iterator_uti
+@ %def iterator_uti
+@
+<<Iterator: public test>>=
+public :: iterator_test
+<<Iterator: test driver>>=
+subroutine iterator_test (u, results)
+  integer, intent(in) :: u
+  type(test_results_t), intent(inout) :: results
+  <<Iterator: execute tests>>
+end subroutine iterator_test
+
+@ %def iterator_test
+@ Provide testing for interface stability and correct implementation for the
+forward integer iterator.
+<<Iterator: execute tests>>=
+call test (iterator_1, "iterator_1", &
+     "check interface and implementation", &
+     u, results)
+<<Iterator: test declarations>>=
+public :: iterator_1
+<<Iterator: tests>>=
+subroutine iterator_1 (u)
+  integer, intent(in) :: u
+  type(iterator_t) :: iter
+
+  write (u, "(A)") "* Test output: iterator_1"
+  write (u, "(A)") "*   Purpose: test interface and implementation of the forward integer iterator"
+  write (u, "(A)")
+
+  call iter%init (1, 10)
+  call iter%write (u)
+  do while (iter%is_iterable ())
+     write (u, "(A,1X,I3)") "NDX", iter%next ()
+  end do
+
+  call iter%init (10, 1, -1)
+  call iter%write (u)
+  do while (iter%is_iterable ())
+     write (u, "(A,1X,I3)") "NDX", iter%next ()
+  end do
+  write (u, "(A,1X,I3)") "INVALID NDX", iter%next ()
+
+  call iter%init (1, 10)
+  call iter%write (u)
+  do while (iter%is_iterable ())
+     call iter%next_step ()
+     write (u, "(A)") "STEP."
+  end do
+end subroutine iterator_1
 @

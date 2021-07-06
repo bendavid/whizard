@@ -79,6 +79,8 @@ Warning: No cuts have been defined.
 | Starting integration for process 'nlo_10_p1'
 | Integrate: iterations = 1:100
 | Integrator: 2 chains, 2 channels, 7 dimensions
+| Integrator: Write grid header and grids to 'nlo_10_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

@@ -117,6 +117,8 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 | Integrate: iterations = 1:480:"gw"
 | Integrator: 5 chains, 48 channels, 8 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ee4j_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 480 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -132,6 +134,8 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 | Integrate: iterations = 1:480:"gw"
 | Integrator: 5 chains, 48 channels, 11 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ee4j_p1.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 480 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -139,14 +143,16 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_ee4j_p1.m2.vg2'.
 | VAMP2: set chain: use chained weights.
-   1        494  4.2862344E+01  1.13E+01   26.34    5.85*  13.34
+   1        494  4.2862344E+01  1.13E+01   26.34    5.85*  14.36
 |-----------------------------------------------------------------------------|
-   1        494  4.2862344E+01  1.13E+01   26.34    5.85   13.34
+   1        494  4.2862344E+01  1.13E+01   26.34    5.85   14.36
 |=============================================================================|
 | Starting integration for process 'nlo_ee4j_p1' part 'virtual'
 | Integrate: iterations = 1:480:"gw"
 | Integrator: 5 chains, 48 channels, 8 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ee4j_p1.m3.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 480 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -154,15 +160,15 @@ Warning:  Intermediate decay of zero-width particle W+ may be possible.
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_ee4j_p1.m3.vg2'.
 | VAMP2: set chain: use chained weights.
-   1        488 -2.3587867E+01  9.36E+00   39.69    8.77*  10.74
+   1        488 -2.3587867E+01  9.36E+00   39.69    8.77*  10.96
 |-----------------------------------------------------------------------------|
-   1        488 -2.3587867E+01  9.36E+00   39.69    8.77   10.74
+   1        488 -2.3587867E+01  9.36E+00   39.69    8.77   10.96
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  1.0816821E+02  4.75E+01   43.91    0.00*  10.53
+   1          0  1.0816821E+02  4.75E+01   43.91    0.00*  10.77
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  ( 21.6826 +-  19.83813 ) %
 |=============================================================================|

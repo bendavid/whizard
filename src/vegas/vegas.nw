@@ -1,4 +1,4 @@
-%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode -*-
 % WHIZARD code as NOWEB source: VEGAS algorithm
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -41,6 +41,7 @@ end module vegas
 @
 @ MPI Module.
 <<MPI: vegas: modules>>=
+  use request_callback, only: request_handler_t
   use mpi_f08 !NODEP!
 @
 
@@ -322,7 +323,7 @@ Anytime else, we refine the grid accordingly to [[w]].
   end subroutine vegas_grid_resize
 
 @ %def vegas_grid_resize
-@ Find the probability for a given [[x]] in the unit hypercube. 
+@ Find the probability for a given [[x]] in the unit hypercube.
 
 For the case [[n_bins < N_BINARY_SEARCH]], we utilize linear search which is faster for short arrays.
 Else we make use of a binary search. Furthermore, we calculate the inverse of
@@ -333,69 +334,32 @@ the probability and invert the result only at the end (saving some time on divis
   function vegas_grid_get_probability (self, x) result (g)
     class(vegas_grid_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
-    integer, parameter :: N_BINARY_SEARCH = 100
-    real(default) :: g, y
+    real(default) :: g
     integer :: j, i_lower, i_higher, i_mid
-    g = 1.
-    if (self%n_bins > N_BINARY_SEARCH) then
-       g = binary_search (x)
-    else
-       g = linear_search (x)
+    real(default), dimension(size(x)) :: y
+    g = 1
+    y = (x - self%x_lower) / self%delta_x
+    if (any (y < 0 .or. y > 1)) then
+       g = 0; return
     end if
+    ndim: do j = 1, self%n_dim
+       i_lower = 1
+       i_higher = self%n_bins + 1
+       !! Left-most search
+       search: do while (i_lower < i_higher - 1)
+          i_mid = floor ((i_higher + i_lower) / 2.)
+          if (y(j) > self%xi(i_mid, j)) then
+             i_lower = i_mid
+          else
+             i_higher = i_mid
+          end if
+       end do search
+       g = g * (self%delta_x(j) * &
+            & self%n_bins * (self%xi(i_lower + 1, j) - self%xi(i_lower, j)))
+    end do ndim
     ! Move division to the end, which is more efficient.
-    if (g /= 0) g = 1. / g
-  contains
-    real(default) function linear_search (x) result (g)
-      real(default), dimension(:), intent(in) :: x
-      real(default) :: y
-      integer :: j, i
-      g = 1.
-      ndim: do j = 1, self%n_dim
-         y = (x(j) - self%x_lower(j)) / self%delta_x(j)
-         if (y >= 0. .and. y <= 1.) then
-            do i = 2, self%n_bins + 1
-               if (self%xi(i, j) > y) then
-                 g = g * (self%delta_x(j) * &
-                      & self%n_bins * (self%xi(i, j) - self%xi(i - 1, j)))
-                 cycle ndim
-              end if
-           end do
-           g = 0
-           exit ndim
-        else
-           g = 0
-           exit ndim
-        end if
-     end do ndim
-   end function linear_search
-
-   real(default) function binary_search (x) result (g)
-     real(default), dimension(:), intent(in) :: x
-     ndim: do j = 1, self%n_dim
-        y = (x(j) - self%x_lower(j)) / self%delta_x(j)
-        if (y >= 0. .and. y <= 1.) then
-           i_lower = 1
-           i_higher = self%n_bins + 1
-           search: do
-              if (i_lower >= (i_higher - 1)) then
-                 g = g * (self%delta_x(j) * &
-                      & self%n_bins * (self%xi(i_higher, j) - self%xi(i_higher - 1, j)))
-                 cycle ndim
-              end if
-              i_mid = (i_higher + i_lower) / 2
-              if (y > self%xi(i_mid, j)) then
-                 i_lower = i_mid
-              else
-                 i_higher = i_mid
-              end if
-           end do search
-        else
-           g = 0.
-           exit ndim
-        end if
-     end do ndim
-   end function binary_search
- end function vegas_grid_get_probability
+    if (g /= 0) g = 1 / g
+  end function vegas_grid_get_probability
 
 @ %def vegas_grid_get_probability
 @ Broadcast the grid information. As safety measure, we get the actual grid
@@ -413,23 +377,24 @@ does not change, which is in principle possible, but will be checked onto in
 <<MPI: vegas: vegas grid: TBP>>=
   procedure, public :: broadcast => vegas_grid_broadcast
 <<MPI: vegas: procedures>>=
-  subroutine vegas_grid_broadcast (self)
+  subroutine vegas_grid_broadcast (self, comm)
     class(vegas_grid_t), intent(inout) :: self
+    type(MPI_COMM), intent(in) :: comm
     integer :: j, ierror
     type(MPI_Request), dimension(self%n_dim + 4) :: status
     ! Blocking
-    call MPI_Bcast (self%n_bins, 1, MPI_INTEGER, 0, MPI_COMM_WORLD)
+    call MPI_Bcast (self%n_bins, 1, MPI_INTEGER, 0, comm)
     ! Non blocking
-    call MPI_Ibcast (self%n_dim, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, status(1))
+    call MPI_Ibcast (self%n_dim, 1, MPI_INTEGER, 0, comm, status(1))
     call MPI_Ibcast (self%x_lower, self%n_dim, &
-         & MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, status(2))
+         & MPI_DOUBLE_PRECISION, 0, comm, status(2))
     call MPI_Ibcast (self%x_upper, self%n_dim, &
-         & MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, status(3))
+         & MPI_DOUBLE_PRECISION, 0, comm, status(3))
     call MPI_Ibcast (self%delta_x, self%n_dim, &
-         & MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, status(4))
+         & MPI_DOUBLE_PRECISION, 0, comm, status(4))
     ndim: do j = 1, self%n_dim
        call MPI_Ibcast (self%xi(1:self%n_bins + 1, j), self%n_bins + 1,&
-            & MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, status(4 + j))
+            & MPI_DOUBLE_PRECISION, 0, comm, status(4 + j))
     end do ndim
     call MPI_Waitall (self%n_dim + 4, status, MPI_STATUSES_IGNORE)
   end subroutine vegas_grid_broadcast
@@ -535,46 +500,151 @@ excess in [[evt_weight_excess]], if the event weight is larger than
   end subroutine vegas_result_write
 
 @  %def vegas_results_write
+@ Update results and efficiency.
+
+We define
+\begin{equation}
+\operatorname*{max}_{x} w(x) = \frac{f(x)}{p(x)} \Delta_{\text{jac}}.
+\end{equation}
+In the implementation we have to factor out [[n_calls]] in the jacobian.
+Also, during event generation.
+<<vegas: vegas result: TBP>>=
+  procedure, public :: update => vegas_result_update
+  procedure, public :: update_efficiency => vegas_result_update_efficiency
+<<vegas: procedures>>=
+  subroutine vegas_result_update (result, integral, variance)
+    class(vegas_result_t), intent(inout) :: result
+    real(default), intent(in) :: integral
+    real(default), intent(in) :: variance
+    real(default) :: guarded_variance, sq_integral
+    real(default) :: wgt, chi
+    !! Guard against zero (or negative) variance.
+    !! \Delta = I * \epsilon -> I = \Delta.
+    if (variance < &
+         max ((epsilon (integral) * integral)**2, tiny(integral))) then
+       guarded_variance = &
+            max ((epsilon (integral) * integral)**2, &
+            tiny (integral))
+    else
+      guarded_variance = variance
+    end if
+    wgt = 1._default / guarded_variance
+    sq_integral = integral**2
+    result%result = integral
+    result%std = sqrt (guarded_variance)
+    result%samples = result%samples + 1
+    if (result%samples == 1) then
+       result%chi2 = 0._default
+    else
+       chi = integral
+       if (result%sum_wgts > 0) then
+          chi = chi - result%sum_int_wgtd / result%sum_wgts
+       end if
+       result%chi2 = result%chi2 * (result%samples - 2.0_default)
+       result%chi2 = (wgt / (1._default + (wgt / result%sum_wgts))) &
+            & * chi**2
+       result%chi2 = result%chi2 / (result%samples - 1._default)
+    end if
+    result%sum_wgts = result%sum_wgts + wgt
+    result%sum_int_wgtd = result%sum_int_wgtd + (integral * wgt)
+    result%sum_chi = result%sum_chi + (sq_integral * wgt)
+  end subroutine vegas_result_update
+
+  subroutine vegas_result_update_efficiency (result, &
+       n_calls, max_pos, max_neg, sum_pos, sum_neg)
+    class(vegas_result_t), intent(inout) :: result
+    integer, intent(in) :: n_calls
+    real(default), intent(in) :: max_pos
+    real(default), intent(in) :: max_neg
+    real(default), intent(in) :: sum_pos
+    real(default), intent(in) :: sum_neg
+    result%max_abs_f_pos = n_calls * max_pos
+    result%max_abs_f_neg = n_calls * max_neg
+    result%max_abs_f = &
+         & max (result%max_abs_f_pos, result%max_abs_f_neg)
+    result%efficiency_pos = 0
+    if (max_pos > 0) then
+       result%efficiency_pos = &
+            & sum_pos / max_pos
+    end if
+    result%efficiency_neg = 0
+    if (max_neg > 0) then
+       result%efficiency_neg = &
+            & sum_neg / max_neg
+    end if
+    result%efficiency = 0
+    if (result%max_abs_f > 0.) then
+       result%efficiency = (sum_pos + sum_neg) &
+            & / result%max_abs_f
+    end if
+  end subroutine vegas_result_update_efficiency
+
+@ %def vegas_result_update, vegas_result_update_efficiency
+@ Reset results.
+<<vegas: vegas result: TBP>>=
+  procedure, public :: reset => vegas_result_reset
+<<vegas: procedures>>=
+  subroutine vegas_result_reset (result)
+    class(vegas_result_t), intent(inout) :: result
+    result%sum_int_wgtd = 0
+    result%sum_wgts = 0
+    result%sum_chi = 0
+    result%it_num = 0
+    result%samples = 0
+    result%chi2 = 0
+    result%efficiency = 0
+    result%efficiency_pos = 0
+    result%efficiency_neg = 0
+    result%max_abs_f = 0
+    result%max_abs_f_pos = 0
+    result%max_abs_f_neg = 0
+  end subroutine vegas_result_reset
+
+@ %def vegas_result_reset
 @ Send the result object to specified rank, internally in a non-blocking way.
 
 We do not need to handle the event results, because each event result is atomic.
 <<MPI: vegas: vegas result: TBP>>=
   procedure, public :: send => vegas_result_send
 <<MPI: vegas: procedures>>=
-  subroutine vegas_result_send (self, receiver, tag)
+  subroutine vegas_result_send (self, receiver, tag, comm, request)
     class(vegas_result_t), intent(in) :: self
     integer, intent(in) :: receiver
     integer, intent(in) :: tag
-    type(MPI_Request), dimension(13) :: request
-    call MPI_Isend (self%it_start, 1, MPI_INTEGER, receiver, 1 + tag,&
-         & MPI_COMM_WORLD, request(1))
-    call MPI_Isend (self%it_num, 1, MPI_INTEGER, receiver , 2 + tag,&
-         & MPI_COMM_WORLD, request(2))
-    call MPI_Isend (self%samples, 1, MPI_INTEGER, receiver, 3 + tag,&
-         & MPI_COMM_WORLD, request(3))
-    call MPI_Isend (self%sum_int_wgtd, 1, MPI_DOUBLE_PRECISION, receiver, 4 +&
-         & tag, MPI_COMM_WORLD, request(4))
-    call MPI_Isend (self%sum_wgts, 1, MPI_DOUBLE_PRECISION, receiver, 5 + tag,&
-         & MPI_COMM_WORLD, request(5))
-    call MPI_Isend (self%sum_chi, 1, MPI_DOUBLE_PRECISION, receiver, 6 + tag,&
-         & MPI_COMM_WORLD, request(6))
-    call MPI_Isend (self%efficiency, 1, MPI_DOUBLE_PRECISION, receiver, 7 + tag&
-         &, MPI_COMM_WORLD, request(7))
-    call MPI_Isend (self%efficiency_pos, 1, MPI_DOUBLE_PRECISION, receiver, 8 +&
-         & tag, MPI_COMM_WORLD, request(8))
-    call MPI_Isend (self%efficiency_neg, 1, MPI_DOUBLE_PRECISION, receiver, 9 +&
-         & tag, MPI_COMM_WORLD, request(9))
-    call MPI_Isend (self%max_abs_f, 1, MPI_DOUBLE_PRECISION, receiver, 10 + tag&
-         &, MPI_COMM_WORLD, request(10))
-    call MPI_Isend (self%max_abs_f_pos, 1, MPI_DOUBLE_PRECISION, receiver, 11 +&
-         & tag, MPI_COMM_WORLD, request(10))
-    call MPI_Isend (self%max_abs_f_neg, 1, MPI_DOUBLE_PRECISION, receiver, 12 +&
-         & tag, MPI_COMM_WORLD, request(11))
-    call MPI_Isend (self%result, 1, MPI_DOUBLE_PRECISION, receiver, 13 + tag,&
-         & MPI_COMM_WORLD, request(12))
-    call MPI_Isend (self%std, 1, MPI_DOUBLE_PRECISION, receiver, 14 + tag,&
-         & MPI_COMM_WORLD, request(13))
-    call MPI_waitall (13, request, MPI_STATUSES_IGNORE)
+    type(MPI_COMM), intent(in) :: comm
+    type(MPI_Request), dimension(:), intent(inout) :: request
+    if (size (request) /= self%get_n_requests ()) &
+         call msg_bug ("VEGAS: number of requests does not match.")
+    call MPI_Isend (self%it_start, 1, MPI_INTEGER, receiver, tag + 1,&
+         & comm, request(1))
+    call MPI_Isend (self%it_num, 1, MPI_INTEGER, receiver , tag + 2,&
+         & comm, request(2))
+    call MPI_Isend (self%samples, 1, MPI_INTEGER, receiver, tag + 3,&
+         & comm, request(3))
+    call MPI_Isend (self%sum_int_wgtd, 1, MPI_DOUBLE_PRECISION, receiver, tag + 4,&
+         & comm, request(4))
+    call MPI_Isend (self%sum_wgts, 1, MPI_DOUBLE_PRECISION, receiver, tag + 5,&
+         & comm, request(5))
+    call MPI_Isend (self%sum_chi, 1, MPI_DOUBLE_PRECISION, receiver, tag + 6,&
+         & comm, request(6))
+    call MPI_Isend (self%chi2, 1, MPI_DOUBLE_PRECISION, receiver, tag + 7,&
+         & comm, request(7))
+    call MPI_Isend (self%efficiency, 1, MPI_DOUBLE_PRECISION, receiver, tag + 8,&
+         & comm, request(8))
+    call MPI_Isend (self%efficiency_pos, 1, MPI_DOUBLE_PRECISION, receiver, tag + 9,&
+         & comm, request(9))
+    call MPI_Isend (self%efficiency_neg, 1, MPI_DOUBLE_PRECISION, receiver, tag + 10,&
+         & comm, request(10))
+    call MPI_Isend (self%max_abs_f, 1, MPI_DOUBLE_PRECISION, receiver, tag + 11,&
+         & comm, request(11))
+    call MPI_Isend (self%max_abs_f_pos, 1, MPI_DOUBLE_PRECISION, receiver, tag + 12,&
+         & comm, request(12))
+    call MPI_Isend (self%max_abs_f_neg, 1, MPI_DOUBLE_PRECISION, receiver, tag + 13,&
+         & comm, request(13))
+    call MPI_Isend (self%result, 1, MPI_DOUBLE_PRECISION, receiver, tag + 14,&
+         & comm, request(14))
+    call MPI_Isend (self%std, 1, MPI_DOUBLE_PRECISION, receiver, tag + 15,&
+         & comm, request(15))
   end subroutine vegas_result_send
 
 @ %def vegas_result_communicate
@@ -582,43 +652,153 @@ We do not need to handle the event results, because each event result is atomic.
 <<MPI: vegas: vegas result: TBP>>=
   procedure, public :: receive => vegas_result_receive
 <<MPI: vegas: procedures>>=
-  subroutine vegas_result_receive (self, sender, tag)
+  subroutine vegas_result_receive (self, sender, tag, comm, request)
     class(vegas_result_t), intent(inout) :: self
     integer, intent(in) :: sender
     integer, intent(in) :: tag
-    type(MPI_Request), dimension(13) :: request
-    call MPI_Irecv (self%it_start, 1, MPI_INTEGER, sender, 1 + tag,&
-         & MPI_COMM_WORLD, request(1))
-    call MPI_Irecv (self%it_num, 1, MPI_INTEGER, sender , 2 + tag,&
-         & MPI_COMM_WORLD, request(2))
-    call MPI_Irecv (self%samples, 1, MPI_INTEGER, sender, 3 + tag,&
-         & MPI_COMM_WORLD, request(3))
-    call MPI_Irecv (self%sum_int_wgtd, 1, MPI_DOUBLE_PRECISION, sender, 4 + tag&
-         &, MPI_COMM_WORLD, request(4))
-    call MPI_Irecv (self%sum_wgts, 1, MPI_DOUBLE_PRECISION, sender, 5 + tag,&
-         & MPI_COMM_WORLD, request(5))
-    call MPI_Irecv (self%sum_chi, 1, MPI_DOUBLE_PRECISION, sender, 6 + tag,&
-         & MPI_COMM_WORLD, request(6))
-    call MPI_Irecv (self%efficiency, 1, MPI_DOUBLE_PRECISION, sender, 7 + tag,&
-         & MPI_COMM_WORLD, request(7))
-    call MPI_Irecv (self%efficiency_pos, 1, MPI_DOUBLE_PRECISION, sender, 8 +&
-         & tag, MPI_COMM_WORLD, request(8))
-    call MPI_Irecv (self%efficiency_neg, 1, MPI_DOUBLE_PRECISION, sender, 9 +&
-         & tag, MPI_COMM_WORLD, request(9))
-    call MPI_Irecv (self%max_abs_f, 1, MPI_DOUBLE_PRECISION, sender, 10 + tag,&
-         & MPI_COMM_WORLD, request(10))
-    call MPI_Irecv (self%max_abs_f_pos, 1, MPI_DOUBLE_PRECISION, sender, 11 +&
-         & tag, MPI_COMM_WORLD, request(10))
-    call MPI_Irecv (self%max_abs_f_neg, 1, MPI_DOUBLE_PRECISION, sender, 12 +&
-         & tag, MPI_COMM_WORLD, request(11))
-    call MPI_Irecv (self%result, 1, MPI_DOUBLE_PRECISION, sender, 13 + tag,&
-         & MPI_COMM_WORLD, request(12))
-    call MPI_Irecv (self%std, 1, MPI_DOUBLE_PRECISION, sender, 14 + tag,&
-         & MPI_COMM_WORLD, request(13))
-    call MPI_waitall (13, request, MPI_STATUSES_IGNORE)
+    type(MPI_COMM), intent(in) :: comm
+    type(MPI_REQUEST), dimension(:), intent(inout) :: request
+    if (size (request) /= self%get_n_requests ()) &
+         call msg_bug ("VEGAS: number of requests does not match.")
+    call MPI_Irecv (self%it_start, 1, MPI_INTEGER, sender, tag + 1,&
+         & comm, request(1))
+    call MPI_Irecv (self%it_num, 1, MPI_INTEGER, sender , tag + 2,&
+         & comm, request(2))
+    call MPI_Irecv (self%samples, 1, MPI_INTEGER, sender, tag + 3,&
+         & comm, request(3))
+    call MPI_Irecv (self%sum_int_wgtd, 1, MPI_DOUBLE_PRECISION, sender, tag + 4,&
+         & comm, request(4))
+    call MPI_Irecv (self%sum_wgts, 1, MPI_DOUBLE_PRECISION, sender, tag + 5,&
+         & comm, request(5))
+    call MPI_Irecv (self%sum_chi, 1, MPI_DOUBLE_PRECISION, sender, tag + 6,&
+         & comm, request(6))
+    call MPI_Irecv (self%chi2, 1, MPI_DOUBLE_PRECISION, sender, tag + 7,&
+         & comm, request(7))
+    call MPI_Irecv (self%efficiency, 1, MPI_DOUBLE_PRECISION, sender, tag + 8,&
+         & comm, request(8))
+    call MPI_Irecv (self%efficiency_pos, 1, MPI_DOUBLE_PRECISION, sender, tag + 9,&
+         & comm, request(9))
+    call MPI_Irecv (self%efficiency_neg, 1, MPI_DOUBLE_PRECISION, sender, tag + 10,&
+         & comm, request(10))
+    call MPI_Irecv (self%max_abs_f, 1, MPI_DOUBLE_PRECISION, sender, tag + 11,&
+         & comm, request(11))
+    call MPI_Irecv (self%max_abs_f_pos, 1, MPI_DOUBLE_PRECISION, sender, tag + 12,&
+         & comm, request(12))
+    call MPI_Irecv (self%max_abs_f_neg, 1, MPI_DOUBLE_PRECISION, sender, tag + 13,&
+         & comm, request(13))
+    call MPI_Irecv (self%result, 1, MPI_DOUBLE_PRECISION, sender, tag + 14,&
+         & comm, request(14))
+    call MPI_Irecv (self%std, 1, MPI_DOUBLE_PRECISION, sender, tag + 15,&
+         & comm, request(15))
   end subroutine vegas_result_receive
 
 @ %def vegas_result_receive
+@
+<<MPI: vegas: vegas result: TBP>>=
+  procedure, private :: get_n_requests => vegas_result_get_n_requests
+<<MPI: vegas: procedures>>=
+  pure integer function vegas_result_get_n_requests (result) result (n_requests)
+    class(vegas_result_t), intent(in) :: result
+    n_requests = 15
+  end function vegas_result_get_n_requests
+@ %def vegas_result_get_n_requests
+@
+\section{Type: vegas\_handler\_t}
+\label{sec:vegas_handler_t}
+
+Callback handler for VEGAS result and grid.
+
+<<MPI: vegas: public>>=
+  public :: vegas_handler_t
+<<MPI: vegas: types>>=
+  type, extends(request_handler_t) :: vegas_handler_t
+     type(vegas_result_t), pointer :: result => null ()
+     real(default), dimension(:, :), pointer :: d => null ()
+   contains
+   <<vegas: vegas handler: TBP>>
+  end type vegas_handler_t
+@ %def vegas_handler_t
+@ Provide the actual communication between master and client.
+
+The communication for [[vegas_result_t]] is done in a separate procedure, where we only have to pass the MPI requests.
+Collecting of the distribution array is done directly.
+<<MPI: vegas: vegas handler: TBP>>=
+  procedure :: init => vegas_handler_init
+  procedure :: write => vegas_handler_write
+  procedure :: handle => vegas_handler_handle
+  procedure :: client_handle => vegas_handler_client_handle
+  final :: vegas_handler_final
+<<MPI: vegas: procedures>>=
+  subroutine vegas_handler_init (handler, handler_id, result, d)
+    class(vegas_handler_t), intent(inout) :: handler
+    integer, intent(in) :: handler_id
+    type(vegas_result_t), intent(in), target :: result
+    real(default), dimension(:, :), intent(in), target :: d
+    integer :: n_requests, tag_offset
+    handler%result => result
+    handler%d => d
+    handler%finished = .false.
+    !! Add one request for handling of the distribution d.
+    n_requests = result%get_n_requests () + 1
+    tag_offset = max(handler_id - 1, 0) * n_requests
+    call handler%allocate (n_requests, tag_offset)
+  end subroutine vegas_handler_init
+
+  subroutine vegas_handler_write (handler, unit)
+    class(vegas_handler_t), intent(in) :: handler
+    integer, intent(in), optional :: unit
+    integer :: u, j
+    u = given_output_unit (unit)
+    write (u, "(A)") "[VEGAS_HANDLER]"
+    call handler%base_write (unit)
+    call handler%result%write (u)
+    write (u, "(A)") "BEGIN D"
+    do j = 1, size (handler%d, dim=2)
+       write (u, "(1X,I3,999(1X," // FMT_17 // "))") j, handler%d(:, j)
+    end do
+    write (u, "(A)") "END D"
+  end subroutine vegas_handler_write
+
+  subroutine vegas_handler_handle (handler, source_rank, comm)
+    class(vegas_handler_t), intent(inout) :: handler
+    integer, intent(in) :: source_rank
+    type(MPI_COMM), intent(in) :: comm
+    !! Take the complete contiguous array memory.
+    call MPI_Irecv (handler%d, size (handler%d),&
+            & MPI_DOUBLE_PRECISION, source_rank, handler%tag_offset, comm,&
+            & handler%request(1))
+    call handler%result%receive (source_rank, handler%tag_offset, comm, &
+         handler%request(2:))
+    handler%activated = .true.
+    handler%finished = .false.
+  end subroutine vegas_handler_handle
+
+  subroutine vegas_handler_client_handle (handler, dest_rank, comm)
+    class(vegas_handler_t), intent(inout) :: handler
+    integer, intent(in) :: dest_rank
+    type(MPI_COMM), intent(in) :: comm
+    !! Take the complete contiguous array memory.
+    call MPI_Isend (handler%d, size (handler%d),&
+         & MPI_DOUBLE_PRECISION, dest_rank, handler%tag_offset, comm,&
+         & handler%request(1))
+    call handler%result%send (dest_rank, handler%tag_offset, comm, &
+         handler%request(2:))
+    handler%activated = .true.
+    handler%finished = .false.
+  end subroutine vegas_handler_client_handle
+
+  !> Finalize vegas_handler_t.
+  !!
+  !! Nullify pointer to object.
+  subroutine vegas_handler_final (handler)
+    type(vegas_handler_t), intent(inout) :: handler
+    nullify (handler%result)
+    nullify (handler%d)
+  end subroutine vegas_handler_final
+
+@ %def vegas_handler_init, vegas_handler_write, vegas_handler_handle,
+@ %def vegas_handler_client_handle, vegas_handler_final
+@
 \section{Type: vegas\_t}
 \label{sec:type:-vegas_t}
 
@@ -642,11 +822,17 @@ to refine the grid.
      integer, dimension(:), allocatable :: bin
      integer, dimension(:), allocatable :: box
      type(vegas_result_t) :: result
+   <<vegas: vegas: type>>
    contains
    <<vegas: vegas: TBP>>
   end type vegas_t
 
 @ %def vegas_t
+@ Add members for MPI communication and parallel mode.
+Must be set before calling to [[vegas_integrate]], likewise [[vegas_set_calls]].
+<<MPI: vegas: vegas: type>>=
+  type(MPI_COMM) :: comm
+  logical :: parallel_mode = .false.
 @ We overload the type constructor of [[vegas_t]] which initialises the
 mandatory argument [[n_dim]] and allocate memory for the grid.
 <<vegas: interfaces>>=
@@ -674,10 +860,18 @@ mandatory argument [[n_dim]] and allocate memory for the grid.
     call self%set_limits (self%grid%x_lower, self%grid%x_upper)
     call self%reset_grid ()
     call self%reset_result ()
+  <<vegas: vegas init>>
   end function vegas_init
 
 @ %def vegas_init
-
+<<vegas: vegas init>>=
+@
+@ Prepare VEGAS to be run in parallel modues (when compiled with MPI).
+<<MPI: vegas: vegas init>>=
+  call self%prepare_parallel_integrate (MPI_COMM_WORLD, &
+       duplicate_comm = .false., &
+       parallel_mode = .true.)
+@
 @ Finalize the grid. Deallocate grid memory.
 <<vegas: vegas: TBP>>=
   procedure, public :: final => vegas_final
@@ -783,9 +977,8 @@ it will only be used when compiled with [[MPI]].
   subroutine vegas_set_grid (self, grid)
     class(vegas_t), intent(inout) :: self
     type(vegas_grid_t), intent(in) :: grid
-    integer :: j, rank
+    integer :: j
     logical :: success
-    call MPI_Comm_rank (MPI_COMM_WORLD, rank)
     success = .true.
     success = (success .and. (grid%n_dim .eq. self%config%n_dim))
     success = (success .and. all (grid%x_lower .eq. self%grid%x_lower))
@@ -804,6 +997,30 @@ it will only be used when compiled with [[MPI]].
   end subroutine vegas_set_grid
 
 @ %def vegas_set_grid
+@ Prepare a parallel integration.
+
+A parallel integration requires a communicator, which may be duplicated in order to provide a safe communication context for the current VEGAS instance.
+Furthermore, given an optional parameter, the behavior with regards to the parallel evaluation can be changed (e.g. embbed integration).
+<<MPI: vegas: vegas: TBP>>=
+  procedure, public :: prepare_parallel_integrate => vegas_prepare_parallel_integrate
+<<MPI: vegas: procedures>>=
+  subroutine vegas_prepare_parallel_integrate (self, comm, duplicate_comm, parallel_mode)
+    class(vegas_t), intent(inout) :: self
+    type(MPI_COMM), intent(in) :: comm
+    logical, intent(in), optional :: duplicate_comm
+    logical, intent(in), optional :: parallel_mode
+    logical :: flag
+    flag = .true.; if (present (duplicate_comm)) flag = duplicate_comm
+    if (duplicate_comm) then
+       call MPI_COMM_DUP (comm, self%comm)
+    else
+       self%comm = comm
+    end if
+    self%parallel_mode = .true.; if (present (parallel_mode)) &
+         self%parallel_mode = parallel_mode
+  end subroutine vegas_prepare_parallel_integrate
+
+@ %def vegas_prepare_parallel_integrate
 @ We check if it is senseful to parallelize the actual grid. In simple, this
 means that [[n_boxes]] has to be larger than 2. With the result that we could
 have an actual superimposed stratified grid. In advance, we can give the size of
@@ -815,8 +1032,7 @@ communicator [[n_size]] and check whether we have enough boxes to distribute.
     class(vegas_t), intent(in) :: self
     integer, intent(in), optional :: opt_n_size
     integer :: n_size
-    n_size = 2
-    if (present (opt_n_size)) n_size = opt_n_size
+    n_size = 2; if (present (opt_n_size)) n_size = opt_n_size
     flag = (self%config%n_boxes**floor (self%config%n_dim / 2.) >= n_size)
   end function vegas_is_parallelizable
 
@@ -932,17 +1148,33 @@ if you are not careful! Hence, it will only be avaible during usage with
   end function vegas_get_max_abs_f
 
 @ %def vegas_get_max_abs_f
+@ Get sum of absolute (positive and negative) values.
+<<vegas: vegas: TBP>>=
+  procedure, public :: get_sum_abs_f_pos => vegas_get_sum_abs_f_pos
+  procedure, public :: get_sum_abs_f_neg => vegas_get_sum_abs_f_neg
+<<vegas: procedures>>=
+  elemental real(default) function vegas_get_sum_abs_f_pos (self) result (sum_abs_f)
+    class(vegas_t), intent(in) :: self
+    sum_abs_f = self%result%efficiency_pos * self%result%max_abs_f_pos
+  end function vegas_get_sum_abs_f_pos
+
+  elemental real(default) function vegas_get_sum_abs_f_neg (self) result (sum_abs_f)
+    class(vegas_t), intent(in) :: self
+    sum_abs_f = self%result%efficiency_neg * self%result%max_abs_f_neg
+  end function vegas_get_sum_abs_f_neg
+
+@ %def vegas_get_sum_abs_f_pos, vegas_get_sum_abs_f_neg
 @ Get [[f_max_pos]].
 <<vegas: vegas: TBP>>=
-  procedure, public :: get_max_abs_f_pos => vegas_get_max_abs_f_pos
+procedure, public :: get_max_abs_f_pos => vegas_get_max_abs_f_pos
 <<vegas: procedures>>=
-  elemental real(default) function vegas_get_max_abs_f_pos (self) result (max_abs_f)
-    class(vegas_t), intent(in) :: self
-    max_abs_f = 0.
-    if (self%result%max_abs_f_pos > 0.) then
-       max_abs_f = self%result%max_abs_f_pos
-    end if
-  end function vegas_get_max_abs_f_pos
+elemental real(default) function vegas_get_max_abs_f_pos (self) result (max_abs_f)
+  class(vegas_t), intent(in) :: self
+  max_abs_f = 0.
+  if (self%result%max_abs_f_pos > 0.) then
+     max_abs_f = self%result%max_abs_f_pos
+  end if
+end function vegas_get_max_abs_f_pos
 
 @ %def vegas_get_max_abs_f_pos
 @ Get [[f_max_neg]].
@@ -974,8 +1206,11 @@ if you are not careful! Hence, it will only be avaible during usage with
   end function vegas_get_evt_weight_excess
 
 @ %def vegas_get_evt_weight, vegas_get_evt_weight_excess
-@ Get and set distribution. Beware! This method is hideous as it allows to
-manipulate the algorithm at its very core.
+@ Get and set distribution.
+
+We allow the distribution to be manipulated by an external call.
+The integration result cannot be changed by this, however, the error behavior may worsen and the efficiency may fall pretty low.
+But, also, the opposite is possible, see [[vamp2_equivalences]].
 <<vegas: vegas: TBP>>=
   procedure, public :: get_distribution => vegas_get_distribution
   procedure, public :: set_distribution => vegas_set_distribution
@@ -998,55 +1233,24 @@ manipulate the algorithm at its very core.
     self%d = d
   end subroutine vegas_set_distribution
 
-@ %def vegas_set_distribution, vegas_get_distribution
-@ Send distribution to specified rank, internally in a non-blocking way.
-We send the complete array of [[d]], not just the actually used part.
+@ %def vegas_get_distribution, vegas_set_distribution
+@ Allocate result handler from VEGAS integrator object.
 <<MPI: vegas: vegas: TBP>>=
-  procedure, public :: send_distribution => vegas_send_distribution
+  procedure, public :: allocate_handler => vegas_allocate_handler
 <<MPI: vegas: procedures>>=
-  subroutine vegas_send_distribution (self, receiver, tag)
-    class(vegas_t), intent(in) :: self
-    integer, intent(in) :: receiver
-    integer, intent(in) :: tag
-    integer :: j
-    type(MPI_Request), dimension(self%config%n_dim + 2) :: request
-    call MPI_Isend (self%bin, self%config%n_dim, MPI_INTEGER, receiver, tag + 1&
-         &, MPI_COMM_WORLD, request(1))
-    call MPI_Isend (self%box, self%config%n_dim, MPI_INTEGER, receiver, tag + 2&
-         &, MPI_COMM_WORLD, request(2))
-    do j = 1, self%config%n_dim
-       call MPI_Isend (self%d(:, j), self%config%n_bins_max,&
-            & MPI_DOUBLE_PRECISION, receiver, tag + j + 2, MPI_COMM_WORLD,&
-            & request(j + 2))
-    end do
-    call MPI_Waitall (self%config%n_dim, request, MPI_STATUSES_IGNORE)
-  end subroutine vegas_send_distribution
+  subroutine vegas_allocate_handler (self, handler_id, handler)
+    class(vegas_t), intent(in), target :: self
+    integer, intent(in) :: handler_id
+    class(request_handler_t), pointer, intent(out) :: handler
+    allocate (vegas_handler_t :: handler)
+    select type (handler)
+    type is (vegas_handler_t)
+       call handler%init (handler_id, result = self%result, d = self%d)
+    end select
+  end subroutine vegas_allocate_handler
 
-@ %def vegas_send_distribution
-@ Receive distribution from specified rank, internally in a non-blocking way.
-<<MPI: vegas: vegas: TBP>>=
-  procedure, public :: receive_distribution => vegas_receive_distribution
-<<MPI: vegas: procedures>>=
-  subroutine vegas_receive_distribution (self, sender, tag)
-    class(vegas_t), intent(inout) :: self
-    integer, intent(in) :: sender
-    integer, intent(in) :: tag
-    integer :: j
-    type(MPI_Request), dimension(self%config%n_dim + 2) :: request
-    call MPI_Irecv (self%bin, self%config%n_dim, MPI_INTEGER, sender, tag + 1&
-         &, MPI_COMM_WORLD, request(1))
-    call MPI_Irecv (self%box, self%config%n_dim, MPI_INTEGER, sender, tag + 2&
-         &, MPI_COMM_WORLD, request(2))
-    do j = 1, self%config%n_dim
-       call MPI_Irecv (self%d(:, j), self%config%n_bins_max,&
-            & MPI_DOUBLE_PRECISION, sender, tag + j + 2, MPI_COMM_WORLD,&
-            & request(j + 2))
-    end do
-    call MPI_Waitall (self%config%n_dim, request, MPI_STATUSES_IGNORE)
-  end subroutine vegas_receive_distribution
-
-@ %def vegas_receive_distribution
-\section{Grid resize- and refinement}
+@ %def vegas_allocate_handler
+@ \section{Grid resize- and refinement}
 \label{sec:grid-resize-refin}
 
 Before integration the grid itself must be initialised. Given the number of
@@ -1105,18 +1309,7 @@ contracted accordingly, while preserving bin density.
 <<vegas: procedures>>=
   subroutine vegas_reset_result (self)
     class(vegas_t), intent(inout) :: self
-    self%result%sum_int_wgtd = 0.
-    self%result%sum_wgts = 0.
-    self%result%sum_chi = 0.
-    self%result%it_num = 0
-    self%result%samples = 0
-    self%result%chi2 = 0
-    self%result%efficiency = 0.
-    self%result%efficiency_pos = 0.
-    self%result%efficiency_neg = 0.
-    self%result%max_abs_f = 0.
-    self%result%max_abs_f_pos = 0.
-    self%result%max_abs_f_neg = 0.
+    call self%result%reset ()
   end subroutine vegas_reset_result
 
 @ %def vegas_reset_results
@@ -1149,17 +1342,13 @@ integration refines each grid after integration over all grids.
 <<vegas: vegas: TBP>>=
   procedure, public :: refine => vegas_refine_grid
 <<vegas: procedures>>=
-  subroutine vegas_refine_grid (self)
+  subroutine vegas_refine_grid (self, average)
     class(vegas_t), intent(inout) :: self
-    integer :: j
-    real(default), dimension(self%config%n_bins, self%config%n_dim) :: w
-    ndim: do j = 1, self%config%n_dim
-       call average_distribution (self%config%n_bins, self%d(:self%config&
-            &%n_bins, j), self%config%alpha, w(:, j))
-    end do ndim
-    call self%grid%resize (self%config%n_bins, w)
-  contains
-    <<vegas: vegas refine grid: procedures>>
+    logical, intent(in), optional :: average
+    logical :: opt_average
+    opt_average = .true.; if (present (average)) opt_average = average
+    if (opt_average) call self%average_distribution ()
+    call self%grid%resize (self%config%n_bins, self%d(:self%config%n_bins, :))
   end subroutine vegas_refine_grid
 
 @ %def vegas_refine_grid
@@ -1182,40 +1371,45 @@ Another issue arises when [[NaN]]s appear during sampling.
 A single [[NaN]] may spoil the complete adaption as the refinement depends on all weights for a single axis, c.f. [[vegas_grid_resize]] for the details of the mechanism.
 Therefore, if we find a single (or more) [[NaN]]s in the distribution of an axis, then we won't adapt that specific axis by setting the weights to one.
 Hence, we skip the adaption for parts of the grid, where [[NaN]] appeared during evaluation.
-<<vegas: vegas refine grid: procedures>>=
-subroutine average_distribution (n_bins, d, alpha, w)
+<<vegas: vegas: TBP>>=
+  procedure, private :: average_distribution => vegas_average_distribution
+<<vegas: procedures>>=
+  subroutine vegas_average_distribution (self)
     !! use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    integer, intent(in) :: n_bins
-    real(default), dimension(:), intent(inout) :: d
-    real(default), intent(in) :: alpha
-    real(default), dimension(n_bins), intent(out) :: w
-    !! Non-portable and compiler-flag sensistive test, may replace with ieee_is_nan
-    if (any (d /= d)) then
-       w = 1.0_default
-       return
-    end if
-    if (n_bins > 2) then
-       d(1) = (d(1) + d(2)) / 2.0_default
-       d(2:n_bins - 1) = (d(1:n_bins - 2) + d(2:n_bins - 1) + d(3:n_bins)) /&
-            & 3.0_default
-       d(n_bins) = d(n_bins - 1) + d(n_bins) / 2.0_default
-    end if
-    w = 1.0_default
-    if (.not. all (d < tiny (1.0_default))) then
-       d = d / sum (d)
-       where (d < tiny (1.0_default))
-          d = tiny (1.0_default)
-       end where
-       where (d /= 1.0_default)
-          w = ((d - 1.) / log(d))**alpha
-       elsewhere
-          ! Analytic limes for d -> 1
-          w = 1.0_default
-       end where
-    end if
-  end subroutine average_distribution
+    class(vegas_t), intent(inout) :: self
+    integer :: j
+    ndim: do j = 1, self%config%n_dim
+       associate (d => self%d(:self%config%n_bins, j), &
+            n_bins => self%config%n_bins)
+         !! Non-portable and compiler-flag sensistive test, may replace with ieee_is_nan
+         if (any (d /= d)) then
+            d = 1.0_default
+            cycle ndim
+         end if
+         if (n_bins > 2) then
+            d(1) = (d(1) + d(2)) / 2.0_default
+            d(2:n_bins - 1) = (d(1:n_bins - 2) + d(2:n_bins - 1) + d(3:n_bins)) /&
+                 & 3.0_default
+            d(n_bins) = d(n_bins - 1) + d(n_bins) / 2.0_default
+         end if
+         if (all (d < tiny (d))) then
+            d = 1.0_default; cycle ndim
+         end if
+         d = d / sum (d)
+         where (d < tiny (1.0_default))
+            d = tiny (1.0_default)
+         end where
+         where (d /= 1.0_default)
+            d = ((d - 1.0_default) / log(d))**self%config%alpha
+         elsewhere
+            ! Analytic limes for d -> 1
+            d = 1.0_default
+         end where
+       end associate
+    end do ndim
+  end subroutine vegas_average_distribution
 
-@ %def average_distribution
+@ %def vegas_average_distribution
 @
 \section{Integration}
 \label{sec:integration}
@@ -1250,38 +1444,60 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
 <<vegas: vegas: TBP>>=
   procedure, public :: integrate => vegas_integrate
 <<vegas: procedures>>=
-  subroutine vegas_integrate (self, func, rng, iterations, opt_reset_result,&
-       & opt_refine_grid, opt_verbose, result, abserr)
+  subroutine vegas_integrate (self, func, rng, iterations, reset_result,&
+       & refine_grid, verbose, result, abserr)
     class(vegas_t), intent(inout) :: self
     class(vegas_func_t), intent(inout) :: func
     class(rng_t), intent(inout) :: rng
     integer, intent(in), optional :: iterations
-    logical, intent(in), optional :: opt_reset_result
-    logical, intent(in), optional :: opt_refine_grid
-    logical, intent(in), optional :: opt_verbose
+    logical, intent(in), optional :: reset_result
+    logical, intent(in), optional :: refine_grid
+    logical, intent(in), optional :: verbose
     real(default), optional, intent(out) :: result, abserr
-    integer :: it, j, k
+    integer :: it, k
     real(default), dimension(self%config%n_dim) :: x
     real(default) :: fval, fval_sq, bin_volume
     real(default) :: fval_box, fval_sq_box
-    real(default) :: total_integral, total_sq_integral, total_variance, chi, wgt
+    real(default) :: total_integral, total_sq_integral
     real(default) :: cumulative_int, cumulative_std
     real(default) :: sum_abs_f_pos, max_abs_f_pos
     real(default) :: sum_abs_f_neg, max_abs_f_neg
-    logical :: reset_result = .true.
-    logical :: refine_grid = .true.
-    logical :: verbose = .false.
+    logical :: opt_reset_result
+    logical :: opt_refine_grid
+    logical :: opt_verbose
+    integer :: n_size
+    integer :: n_dim_par
+    logical :: box_success
   <<vegas: vegas integrate: variables>>
-    if (present (iterations)) self%config%iterations = iterations
-    if (present (opt_reset_result)) reset_result = opt_reset_result
-    if (present (opt_refine_grid)) refine_grid = opt_refine_grid
-    if (present (opt_verbose)) verbose = opt_verbose
-  <<vegas: vegas integrate: initialization>>
-    if (verbose) then
+    call set_options ()
+    call self%init_grid ()
+    if (opt_reset_result) call self%result%reset ()
+    self%result%it_start = self%result%it_num
+    cumulative_int = 0.
+    cumulative_std = 0.
+    n_dim_par = floor (self%config%n_dim / 2.)
+    n_size = 1
+  <<vegas: vegas integrate: init>>
+    if (opt_verbose) then
        call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
     end if
     iteration: do it = 1, self%config%iterations
-     <<vegas: vegas integrate: pre sampling>>
+       self%result%it_num = self%result%it_start + it
+       self%d = 0.
+       self%box = 1
+       self%bin = 1
+       total_integral = 0.
+       total_sq_integral = 0.
+       sum_abs_f_pos = 0.
+       max_abs_f_pos = 0.
+       sum_abs_f_neg = 0.
+       max_abs_f_neg = 0.
+       box_success = .true.
+       select type (rng)
+       type is (rng_stream_t)
+          call rng%next_substream ()
+       end select
+     <<vegas: vegas integrate: presampling>>
        loop_over_par_boxes: do while (box_success)
           loop_over_perp_boxes: do while (box_success)
              fval_box = 0._default
@@ -1307,7 +1523,7 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
              fval_sq_box = sqrt (fval_sq_box * self%config%calls_per_box)
              ! (a - b) * (a + b) = a**2 - b**2
              fval_sq_box = (fval_sq_box - fval_box) * (fval_sq_box + fval_box)
-             if (fval_sq_box <= 0.0) fval_sq_box = tiny (1.0_default)
+             if (fval_sq_box <= 0.0) fval_sq_box = fval_box**2 * epsilon (1.0_default)
              total_integral = total_integral + fval_box
              total_sq_integral = total_sq_integral + fval_sq_box
              if (self%config%mode == VEGAS_MODE_STRATIFIED) then
@@ -1320,49 +1536,33 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
              call increment_box_coord (self%box(1:n_dim_par), box_success)
              if (.not. box_success) exit shift
           end do shift
-          <<vegas: vegas integrate: sampling>>
+        <<vegas: vegas integrate: loop>>
        end do loop_over_par_boxes
-     <<vegas: vegas integrate: post sampling>>
+     <<vegas: vegas integrate: postsampling>>
        associate (result => self%result)
          ! Compute final results for this iterations
-         total_variance = total_sq_integral / (self%config%calls_per_box - 1.)
-         ! Ensure variance is always positive and larger than zero.
-         if (total_variance < tiny (1._default) / epsilon (1._default) &
-              & * max (total_integral**2, 1._default)) then
-            total_variance = tiny (1._default) / epsilon (1._default) &
-                 & * max (total_integral**2, 1._default)
-         end if
-         wgt = 1. / total_variance
-         total_sq_integral = total_integral**2
-         result%result = total_integral
-         result%std = sqrt (total_variance)
-         result%samples = result%samples + 1
-         if (result%samples == 1) then
-            result%chi2 = 0._default
-         else
-            chi = total_integral
-            if (result%sum_wgts > 0) then
-               chi = chi - result%sum_int_wgtd / result%sum_wgts
-            end if
-            result%chi2 = result%chi2 * (result%samples - 2.0_default)
-            result%chi2 = (wgt / (1._default + (wgt / result%sum_wgts))) &
-                 & * chi**2
-            result%chi2 = result%chi2 / (result%samples - 1._default)
-         end if
-         result%sum_wgts = result%sum_wgts + wgt
-         result%sum_int_wgtd = result%sum_int_wgtd + (total_integral * wgt)
-         result%sum_chi = result%sum_chi + (total_sq_integral * wgt)
+         call result%update (total_integral, variance = &
+               total_sq_integral / (self%config%calls_per_box - 1._default))
+         call result%update_efficiency (n_calls = self%config%n_calls, &
+              max_pos = max_abs_f_pos, max_neg = max_abs_f_neg, &
+              sum_pos = sum_abs_f_pos, sum_neg = sum_abs_f_neg)
          cumulative_int = result%sum_int_wgtd / result%sum_wgts
-         cumulative_std = sqrt (1. / result%sum_wgts)
+         cumulative_std = sqrt (1 / result%sum_wgts)
        end associate
-       call calculate_efficiency ()
-       if (verbose) then
+       if (opt_verbose) then
           write (msg_buffer, "(I0,1x,I0,1x, 4(E24.16E4,1x))") &
                & it, self%config%n_calls, cumulative_int, cumulative_std, &
                & self%result%chi2, self%result%efficiency
           call msg_message ()
        end if
-       if (refine_grid) call self%refine ()
+       if (opt_refine_grid) then
+          call self%refine (average = .true.)
+       else
+          !! Skip grid refinement, but average the (grid) distribution.
+          !! \note Now, we always average and dampen the distribution,
+          !!       even when not adapting (e.g. final pass).
+          call self%average_distribution ()
+       end if
     end do iteration
     if (present(result)) result = cumulative_int
     if (present(abserr)) abserr = abs(cumulative_std)
@@ -1371,79 +1571,36 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
   end subroutine vegas_integrate
 
 @ %def vegas_integrate
-@ Calculate the extras here.
-We define
-\begin{equation}
-\operatorname*{max}_{x} w(x) = \frac{f(x)}{p(x)} \Delta_{\text{jac}}.
-\end{equation}
-In the implementation we have to factor out [[n_calls]] in the jacobian.
-Also, during event generation.
+@ Set optional arguments of [[vegas_integrate]].
 <<vegas: vegas integrate: procedures>>=
-  subroutine calculate_efficiency ()
-    self%result%max_abs_f_pos = self%config%n_calls * max_abs_f_pos
-    self%result%max_abs_f_neg = self%config%n_calls * max_abs_f_neg
-    self%result%max_abs_f = &
-         & max (self%result%max_abs_f_pos, self%result%max_abs_f_neg)
-    self%result%efficiency_pos = 0.
-    if (max_abs_f_pos > 0.) then
-       self%result%efficiency_pos = &
-            & sum_abs_f_pos / max_abs_f_pos
-    end if
-    self%result%efficiency_neg = 0.
-    if (max_abs_f_neg > 0.) then
-       self%result%efficiency_neg = &
-            & sum_abs_f_neg / max_abs_f_neg
-    end if
-    self%result%efficiency = 0.
-    if (self%result%max_abs_f > 0.) then
-       self%result%efficiency = (sum_abs_f_pos + sum_abs_f_neg) &
-            & / self%result%max_abs_f
-    end if
-  end subroutine calculate_efficiency
+  subroutine set_options ()
+    if (present (iterations)) self%config%iterations = iterations
+    opt_reset_result = .true.
+    if (present (reset_result)) opt_reset_result = reset_result
+    opt_refine_grid = .true.
+    if (present (refine_grid)) opt_refine_grid = refine_grid
+    opt_verbose = .false.
+    if (present (verbose)) opt_verbose = verbose
+  end subroutine set_options
 
-@ %def calculate_efficiency
 @ We define additional chunk, which will be used later on for inserting
-MPI/general MPI code. The code can is then removed by additional noweb filter if
+MPI/general MPI code. The code is then removed by additional noweb filter if
 not compiled with the correspondig compiler flag.
 
 Overall variables, some additionally introduced due to the MPI parallelization
 and needed in sequentiell verison.
 <<vegas: vegas integrate: variables>>=
-  integer :: n_size
-  integer :: n_dim_par
-  logical :: box_success
-  ! MPI-specific variables below
-@ Overall initialization.
-<<vegas: vegas integrate: initialization>>=
-  call self%init_grid ()
-  if (reset_result) call self%reset_result ()
-  self%result%it_start = self%result%it_num
-  cumulative_int = 0.
-  cumulative_std = 0.
-  n_size = 1
-  n_dim_par = floor (self%config%n_dim / 2.)
-@ Reset all last-iteration results before sampling.
-<<vegas: vegas integrate: pre sampling>>=
-  self%result%it_num = self%result%it_start + it
-  self%d = 0.
-  self%box = 1
-  self%bin = 1
-  total_integral = 0.
-  total_sq_integral = 0.
-  total_variance = 0.
-  sum_abs_f_pos = 0.
-  max_abs_f_pos = 0.
-  sum_abs_f_neg = 0.
-  max_abs_f_neg = 0.
-  box_success = .true.
-  select type (rng)
-  type is (rng_stream_t)
-     call rng%next_substream ()
-  end select
-@ Pacify output by defining empty chunk (nothing to do here).
-<<vegas: vegas integrate: sampling>>=
 @
-<<vegas: vegas integrate: post sampling>>=
+@ Overall initialization.
+<<vegas: vegas integrate: init>>=
+@
+@ Reset all last-iteration results before sampling.
+<<vegas: vegas integrate: presampling>>=
+@
+@ Adjust rng between parallel and perpendicular loops.
+<<vegas: vegas integrate: loop>>=
+@
+<<vegas: vegas integrate: postsampling>>=
 @ Increment the box coordinates by 1. If we reach the largest value for the
 current axis (starting with the largest dimension number), we reset the counter
 to 1 and increment the next axis counter by 1. And so on, until we reach the
@@ -1476,28 +1633,35 @@ buffer.
 We temporarily store a (empty) grid, before communicating.
 <<MPI: vegas: vegas integrate: variables>>=
   integer :: rank
+  logical :: parallel_mode
   type(vegas_grid_t) :: grid
 @ MPI procedure-specific initialization.
-<<MPI: vegas: vegas integrate: initialization>>=
-  call MPI_Comm_size (MPI_COMM_WORLD, n_size)
-  call MPI_Comm_rank (MPI_COMM_WORLD, rank)
+
+Allow for (external) veto on parallel mode.
+<<MPI: vegas: vegas integrate: init>>=
+  parallel_mode = self%parallel_mode .and. self%is_parallelizable ()
+  if (parallel_mode) then
+     call MPI_Comm_size (self%comm, n_size)
+     call MPI_Comm_rank (self%comm, rank)
+  else
+     n_size = 1
+     rank = 0
+  end if
 @ Pre-sampling communication.
 
 We make a copy of the (actual) grid, which is unfilled when non-root.
 The actual grid is then broadcasted among the workers and inserted into the
 [[VEGAS]] object.
-<<MPI: vegas: vegas integrate: pre sampling>>=
-  if (self%is_parallelizable ()) then
+<<MPI: vegas: vegas integrate: presampling>>=
+  if (parallel_mode) then
      grid = self%get_grid ()
-     call grid%broadcast ()
+     call grid%broadcast (self%comm)
      call self%set_grid (grid)
-  end if
 @ Start index of the boxes for different ranks. If the random number generator
 is RngStream, we can advance the current stream in such a way, that we will
 getting matching numbers. Iff [[n_boxes]] is larger than 2, otherwise
 parallelization is useless.
-<<MPI: vegas: vegas integrate: pre sampling>>=
-  if (self%is_parallelizable ()) then
+<<MPI: vegas: vegas integrate: presampling>>=
      do k = 1, rank
         call increment_box_coord (self%box(1:n_dim_par), box_success)
         if (.not. box_success) exit
@@ -1509,8 +1673,8 @@ parallelization is useless.
      end select
   end if
 @ Increment [[n_size]] times the box coordinates.
-<<MPI: vegas: vegas integrate: sampling>>=
-  if (self%is_parallelizable ()) then
+<<MPI: vegas: vegas integrate: loop>>=
+  if (parallel_mode) then
      select type (rng)
      type is (rng_stream_t)
         call rng%advance_state (self%config%n_dim * self%config%calls_per_box&
@@ -1518,14 +1682,15 @@ parallelization is useless.
      end select
   end if
 @ Call to [[vegas_integrate_collect]].
-<<MPI: vegas: vegas integrate: post sampling>>=
-  if (self%is_parallelizable ()) then
+<<MPI: vegas: vegas integrate: postsampling>>=
+  if (parallel_mode) then
      call vegas_integrate_collect ()
      if (rank /= 0) cycle iteration
   end if
 @ Reduce (in an non-blocking fashion) all sampled information via [[MPI_SUM]] or [[MPI_MAX]].
 <<MPI: vegas: vegas integrate: procedures>>=
   subroutine vegas_integrate_collect ()
+    integer :: j
     real(default) :: root_total_integral, root_total_sq_integral
     real(default) :: root_sum_abs_f_pos, root_max_abs_f_pos
     real(default) :: root_sum_abs_f_neg, root_max_abs_f_neg
@@ -1539,21 +1704,21 @@ parallelization is useless.
     root_total_integral = 0._default
     root_total_sq_integral = 0._default
     call MPI_Ireduce (sum_abs_f_pos, root_sum_abs_f_pos, 1, MPI_DOUBLE_PRECISION,&
-         & MPI_SUM, 0, MPI_COMM_WORLD, status(1))
+         & MPI_SUM, 0, self%comm, status(1))
     call MPI_Ireduce (sum_abs_f_neg, root_sum_abs_f_neg, 1, MPI_DOUBLE_PRECISION,&
-         & MPI_SUM, 0, MPI_COMM_WORLD, status(2))
+         & MPI_SUM, 0, self%comm, status(2))
     call MPI_Ireduce (max_abs_f_pos, root_max_abs_f_pos, 1, MPI_DOUBLE_PRECISION,&
-         & MPI_MAX, 0, MPI_COMM_WORLD, status(3))
+         & MPI_MAX, 0, self%comm, status(3))
     call MPI_Ireduce (max_abs_f_neg, root_max_abs_f_neg, 1, MPI_DOUBLE_PRECISION,&
-         & MPI_MAX, 0, MPI_COMM_WORLD, status(4))
+         & MPI_MAX, 0, self%comm, status(4))
     call MPI_Ireduce (total_integral, root_total_integral, 1, MPI_DOUBLE_PRECISION,&
-         & MPI_SUM, 0, MPI_COMM_WORLD, status(5))
+         & MPI_SUM, 0, self%comm, status(5))
     call MPI_Ireduce (total_sq_integral, root_total_sq_integral, 1,&
-         & MPI_DOUBLE_PRECISION, MPI_SUM, 0, MPI_COMM_WORLD, status(6))
+         & MPI_DOUBLE_PRECISION, MPI_SUM, 0, self%comm, status(6))
     do j = 1, self%config%n_dim
        call MPI_Ireduce (self%d(1:self%config%n_bins, j), root_d(1:self%config&
             &%n_bins, j), self%config%n_bins, MPI_DOUBLE_PRECISION, MPI_SUM, 0,&
-            & MPI_COMM_WORLD, status(6 + j))
+            & self%comm, status(6 + j))
     end do
     call MPI_Waitall (self%config%n_dim + 6, status, MPI_STATUSES_IGNORE)
     if (rank == 0) sum_abs_f_pos = root_sum_abs_f_pos
@@ -2516,7 +2681,7 @@ adapted grid and print them out.
     write (u, "(A)") "* Integrate with n_it = 3 (Adaptation)"
     write (u, "(A)")
 
-    call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
+    call mc_integrator%integrate (func, rng, 3, verbose=.true., result=result, abserr=abserr)
     call mc_integrator%get_config (mc_integrator_config)
     call mc_integrator_config%write (u)
     write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") &
@@ -2527,7 +2692,7 @@ adapted grid and print them out.
     write (u, "(A)")
 
     call mc_integrator%set_calls (2000)
-    call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
+    call mc_integrator%integrate (func, rng, 3, verbose=.true., result=result, abserr=abserr)
     call mc_integrator%get_config (mc_integrator_config)
     call mc_integrator_config%write (u)
     write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") &
@@ -2779,12 +2944,12 @@ We concentrate all configuration and run-time data in a derived-type, such that,
 module vamp2
 
 <<Use kinds>>
-<<Use strings>>
   use io_units
   use format_utils, only: pac_fmt
   use format_utils, only: write_separator, write_indent
   use format_defs, only: FMT_17
   use diagnostics
+  use iterator
   use rng_base
   use rng_stream, only: rng_stream_t
 
@@ -2811,6 +2976,11 @@ end module vamp2
 <<vamp2: modules>>=
 @
 <<MPI: vamp2: modules>>=
+  use request_base
+  use request_simple
+  use request_caller
+  use balancer_base
+  use request_callback
   use mpi_f08 !NODEP!
 @
 \subsection{Type: vamp2\_func\_t}
@@ -2913,7 +3083,7 @@ mapped, or is restricted otherwise.
  end interface
 
 @ %def vamp2_evaluate_func
-@ Evaluate channel weights. 
+@ Evaluate channel weights.
 
 The calling procedure must handle the case of a vanishing overall probability
 density where either a channel weight or a channel probability vanishes.
@@ -3352,10 +3522,12 @@ integer, parameter, public :: &
      type(vamp2_equivalences_t) :: equivalences
      logical :: event_prepared
      real(default), dimension(:), allocatable :: event_weight
+   <<vamp2: vamp2: type>>
    contains
    <<vamp2: vamp2: TBP>>
   end type vamp2_t
-
+<<MPI: vamp2: vamp2: type>>=
+  class(request_base_t), allocatable :: request
 <<vamp2: interfaces>>=
   interface vamp2_t
      module procedure vamp2_init
@@ -3377,22 +3549,26 @@ integer, parameter, public :: &
     integer :: ch
     self%config%n_dim = n_dim
     self%config%n_channel = n_channel
-    if (present (n_bins_max)) self%config%n_bins_max = n_bins_max
-    if (present (n_calls_min_per_channel)) self%config%n_calls_min_per_channel = n_calls_min_per_channel
-    if (present (alpha)) self%config%alpha = alpha
-    if (present (beta)) self%config%beta = beta
-    if (present (iterations)) self%config%iterations = iterations
-    if (present (mode)) self%config%mode = mode
+    call set_options ()
     allocate (self%chain(n_channel), source=0)
     allocate (self%integrator(n_channel))
     allocate (self%weight(n_channel), source=0._default)
     do ch = 1, n_channel
        self%integrator(ch) = vegas_t (n_dim, alpha, n_bins_max, 1, mode)
     end do
-    self%weight = 1. / self%config%n_channel
+    self%weight = 1._default / self%config%n_channel
     call self%reset_result ()
     allocate (self%event_weight(self%config%n_channel), source = 0._default)
     self%event_prepared = .false.
+  contains
+    subroutine set_options ()
+      if (present (n_bins_max)) self%config%n_bins_max = n_bins_max
+      if (present (n_calls_min_per_channel)) self%config%n_calls_min_per_channel = n_calls_min_per_channel
+      if (present (alpha)) self%config%alpha = alpha
+      if (present (beta)) self%config%beta = beta
+      if (present (iterations)) self%config%iterations = iterations
+      if (present (mode)) self%config%mode = mode
+    end subroutine set_options
   end function vamp2_init
 
 @ %def vamp2_init
@@ -3536,6 +3712,52 @@ chained weights in [[vamp2_adapt_weights]].
   end subroutine vamp2_set_equivalences
 
 @ %def vamp2_set_equivalences
+@ Move allocated (and prepared!) request object into VAMP2.
+<<MPI: vamp2: vamp2: TBP>>=
+  generic, public :: allocate_request => allocate_request_by_method, &
+     allocate_request_by_object
+  procedure, private :: allocate_request_by_method => vamp2_allocate_request_by_method
+  procedure, private :: allocate_request_by_object => vamp2_allocate_request_by_object
+<<MPI: vamp2: procedures>>=
+  subroutine vamp2_allocate_request_by_method (self, method)
+    class(vamp2_t), intent(inout) :: self
+    character(len=*), intent(in) :: method
+    class(request_base_t), allocatable :: request
+    select case (trim(method))
+    case("simple", "Simple", "SIMPLE")
+       allocate (request_simple_t :: request)
+    case("load", "Load", "LOAD")
+       allocate (request_caller_t :: request)
+    case default
+       call msg_bug ("VAMP2: Unknown method for MPI request module.")
+    end select
+    select type (request)
+    type is (request_simple_t)
+       call request%init (MPI_COMM_WORLD, n_channels = self%config%n_channel)
+    type is (request_caller_t)
+       call request%init (MPI_COMM_WORLD, n_channels = self%config%n_channel)
+    end select
+    call self%allocate_request_by_object (request)
+  end subroutine vamp2_allocate_request_by_method
+
+  subroutine vamp2_allocate_request_by_object (self, request)
+    class(vamp2_t), intent(inout) :: self
+    class(request_base_t), allocatable, intent(inout) :: request
+    !! Only output in case of "parallel" integration.
+    if (request%has_workers ()) then
+       select type (request)
+       type is (request_simple_t)
+          call msg_message ("VAMP2: Simple Request Balancing.")
+       type is (request_caller_t)
+          call msg_message ("VAMP2: Request with load balancing.")
+       class default
+          call msg_bug ("VAMP2: Unknown extension of request_base.")
+       end select
+    end if
+    call move_alloc (request, self%request)
+  end subroutine vamp2_allocate_request_by_object
+
+@ %def vamp2_allocate_request
 @ Get [[n_calls]] calculated by [[VEGAS]].
 <<vamp2: vamp2: TBP>>=
   procedure, public :: get_n_calls => vamp2_get_n_calls
@@ -3723,13 +3945,7 @@ accordingly resized to fit the boundary condition of the partition of unity.
 <<vamp2: procedures>>=
   subroutine vamp2_reset_result (self)
     class(vamp2_t), intent(inout) :: self
-    self%result%sum_int_wgtd = 0.
-    self%result%sum_wgts = 0.
-    self%result%sum_chi = 0.
-    self%result%it_num = 0
-    self%result%samples = 0
-    self%result%chi2 = 0
-    self%result%efficiency = 0.
+    call self%result%reset ()
   end subroutine vamp2_reset_result
 
 @ %def vamp2_reset_result
@@ -3762,232 +3978,378 @@ in [[vegas_integrate]].
 <<vamp2: vamp2: TBP>>=
   procedure, public :: integrate => vamp2_integrate
 <<vamp2: procedures>>=
-  subroutine vamp2_integrate (self, func, rng, iterations, opt_reset_result,&
-       & opt_refine_grid, opt_adapt_weight, opt_verbose, result, abserr)
+  subroutine vamp2_integrate (self, func, rng, iterations, reset_result,&
+       & refine_grids, adapt_weights, verbose, result, abserr)
     class(vamp2_t), intent(inout) :: self
     class(vamp2_func_t), intent(inout) :: func
     class(rng_t), intent(inout) :: rng
     integer, intent(in), optional :: iterations
-    logical, intent(in), optional :: opt_reset_result
-    logical, intent(in), optional :: opt_refine_grid
-    logical, intent(in), optional :: opt_adapt_weight
-    logical, intent(in), optional :: opt_verbose
+    logical, intent(in), optional :: reset_result
+    logical, intent(in), optional :: refine_grids
+    logical, intent(in), optional :: adapt_weights
+    logical, intent(in), optional :: verbose
     real(default), optional, intent(out) :: result, abserr
     integer :: it, ch
-    real(default) :: total_integral, total_sq_integral, total_variance, chi, wgt
+    type(iterator_t) :: channel_iterator
     real(default) :: cumulative_int, cumulative_std
-    logical :: reset_result = .true.
-    logical :: adapt_weight = .true.
-    logical :: refine_grid = .true.
-    logical :: verbose = .false.
+    logical :: opt_reset_result
+    logical :: opt_adapt_weights
+    logical :: opt_refine_grids
+    logical :: opt_verbose
   <<vamp2: vamp2 integrate: variables>>
-    if (present (iterations)) self%config%iterations = iterations
-    if (present (opt_reset_result)) reset_result = opt_reset_result
-    if (present (opt_adapt_weight)) adapt_weight = opt_adapt_weight
-    if (present (opt_refine_grid)) refine_grid = opt_refine_grid
-    if (present (opt_verbose)) verbose = opt_verbose
-  <<vamp2: vamp2 integrate: initalization>>
-    if (verbose) then
+    call set_options ()
+    if (opt_verbose) then
        call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
     end if
+    if (opt_reset_result) call self%reset_result ()
+  <<vamp2: vamp2 integrate: init>>
     iteration: do it = 1, self%config%iterations
-     <<vamp2: vamp2 integrate: pre sampling>>
-       do ch = 1, self%config%n_channel
-          func%wi(ch) = self%weight(ch)
-          func%grids(ch) = self%integrator(ch)%get_grid ()
-       end do
-       channel: do ch = 1, self%config%n_channel
+       call channel_iterator%init (1, self%config%n_channel)
+       call self%prepare_integrate_iteration (func)
+     <<vamp2: vamp2 integrate: presampling>>
+     channel: do
         <<vamp2: vamp2 integrate: sampling>>
           call func%set_channel (ch)
           call self%integrator(ch)%integrate ( &
-               & func, rng, iterations, opt_refine_grid = .false., opt_verbose = verbose)
+               & func, rng, iterations, refine_grid = .false., verbose = .false.)
+        <<vamp2: vamp2 integrate: callback>>
+          call channel_iterator%next_step ()
        end do channel
-     <<vamp2: vamp2 integrate: post sampling>>
-       total_integral = dot_product (self%weight, self%integrator%get_integral ())
-       total_sq_integral = dot_product (self%weight, self%integrator%get_integral ()**2)
-       total_variance = self%config%n_calls * dot_product (self%weight**2, self%integrator%get_variance ())
+     <<vamp2: vamp2 integrate: postsampling>>
+       call self%compute_result_and_efficiency ()
        associate (result => self%result)
-         ! a**2 - b**2 = (a - b) * (a + b)
-         total_variance = sqrt (total_variance + total_sq_integral)
-         total_variance = 1. / self%config%n_calls * &
-              & (total_variance + total_integral) * (total_variance - total_integral)
-         ! Ensure variance is always positive and larger than zero
-         if (total_variance < tiny (1._default) / epsilon (1._default) * max (total_integral**2, 1._default)) then
-            total_variance = tiny (1._default) / epsilon (1._default) * max (total_integral**2, 1._default)
-         end if
-         wgt = 1. / total_variance
-         result%result = total_integral
-         result%std = sqrt (total_variance)
-         result%samples = result%samples + 1
-         if (result%samples == 1) then
-            result%chi2 = 0._default
-         else
-            chi = total_integral
-            if (result%sum_wgts > 0) chi = chi - result%sum_int_wgtd / result%sum_wgts
-            result%chi2 = result%chi2 * (result%samples - 2.0_default)
-            result%chi2 = (wgt / (1._default + (wgt / result%sum_wgts))) &
-                 & * chi**2
-            result%chi2 = result%chi2 / (result%samples - 1._default)
-         end if
-         result%sum_wgts = result%sum_wgts + wgt
-         result%sum_int_wgtd = result%sum_int_wgtd + (total_integral * wgt)
-         result%sum_chi = result%sum_chi + (total_sq_integral * wgt)
          cumulative_int = result%sum_int_wgtd / result%sum_wgts
-         cumulative_std = sqrt (1. / result%sum_wgts)
-         call calculate_efficiency ()
-         if (verbose) then
+         cumulative_std = sqrt (1 / result%sum_wgts)
+         if (opt_verbose) then
             write (msg_buffer, "(I0,1x,I0,1x, 4(E24.16E4,1x))") &
                  & it, self%config%n_calls, cumulative_int, cumulative_std, &
-                 & self%result%chi2, self%result%efficiency
+                 & result%chi2, result%efficiency
             call msg_message ()
          end if
        end associate
-       if (adapt_weight) then
+       if (opt_adapt_weights) then
           call self%adapt_weights ()
        end if
-       if (refine_grid) then
+       if (opt_refine_grids) then
           if (self%config%equivalences .and. self%equivalences%is_allocated ()) then
              call self%apply_equivalences ()
           end if
           do ch = 1, self%config%n_channel
-             call self%integrator(ch)%refine ()
+             !! When we apply the grid refinement outside of VEGAS, then we do not average over distribution
+             !! as VEGAS averaged the distribution internally.
+             call self%integrator(ch)%refine (average = .false.)
           end do
        end if
     end do iteration
     if (present (result)) result = cumulative_int
     if (present (abserr)) abserr = abs (cumulative_std)
+  contains
   <<vamp2: vamp2 integrate: procedures>>
   end subroutine vamp2_integrate
 
 @ %def vamp2_integrate
-@
+@ Set optional parameters.
 <<vamp2: vamp2 integrate: procedures>>=
-contains
-  subroutine calculate_efficiency ()
-    self%result%max_abs_f = dot_product (self%weight, &
-         & self%integrator%get_max_abs_f ())
-    self%result%max_abs_f_pos = dot_product (self%weight, &
-         & self%integrator%get_max_abs_f_pos ())
-    self%result%max_abs_f_neg = dot_product (self%weight, &
-         & self%integrator%get_max_abs_f_neg ())
-    self%result%efficiency = 0.
-    if (self%result%max_abs_f > 0.) then
-       self%result%efficiency = &
-            & dot_product (self%weight * self%integrator%get_max_abs_f (), &
-            & self%integrator%get_efficiency ()) / self%result%max_abs_f
-       ! TODO pos. or. negative efficiency would be very nice.
-    end if
-  end subroutine calculate_efficiency
+  subroutine set_options ()
+    if (present (iterations)) self%config%iterations = iterations
+    opt_reset_result = .true.
+    if (present (reset_result)) opt_reset_result = reset_result
+    opt_adapt_weights = .true.
+    if (present (adapt_weights)) opt_adapt_weights = adapt_weights
+    opt_refine_grids = .true.
+    if (present (refine_grids)) opt_refine_grids = refine_grids
+    opt_verbose = .false.
+    if (present (verbose)) opt_verbose = verbose
+  end subroutine set_options
 
-@ %def calculate_efficiency
+@ %def set_options
 @
 We define additional chunks, which we use to insert parallel/MPI code.
 <<vamp2: vamp2 integrate: variables>>=
 @
-<<vamp2: vamp2 integrate: initalization>>=
-  cumulative_int = 0.
-  cumulative_std = 0.
-  if (reset_result) call self%reset_result ()
+<<vamp2: vamp2 integrate: init>>=
 @
-<<vamp2: vamp2 integrate: pre sampling>>=
-  total_integral = 0._default
-  total_sq_integral = 0._default
-  total_variance = 0._default
+<<vamp2: vamp2 integrate: presampling>>=
+@ Conditional handling.
+We introduce a different behavior for the MPI-/non-MPI variant.
+<<NOMPI: vamp2: vamp2 integrate: sampling>>=
+  if (.not. channel_iterator%is_iterable ()) exit channel
+  ch = channel_iterator%get_current ()
 @
-<<vamp2: vamp2 integrate: sampling>>=
+<<vamp2: vamp2 integrate: callback>>=
 @
-<<vamp2: vamp2 integrate: post sampling>>=
+<<vamp2: vamp2 integrate: postsampling>>=
 @
-@ Distribute workers up in chunks of [[n_size]].
-<<MPI: vamp2: vamp2 integrate: procedures>>=
-  integer function map_channel_to_worker (channel, n_size) result (worker)
-    integer, intent(in) :: channel
-    integer, intent(in) :: n_size
-    worker = mod (channel, n_size)
-  end function map_channel_to_worker
-
-@ %def map_channel_to_rank
 <<MPI: vamp2: vamp2 integrate: variables>>=
-  type(vegas_grid_t) :: grid
-  type(MPI_Request) :: status
-  integer :: rank, n_size, worker
+  type(request_t) :: request
 @
-<<MPI: vamp2: vamp2 integrate: initalization>>=
-  call MPI_Comm_rank (MPI_COMM_WORLD, rank)
-  call MPI_Comm_size (MPI_COMM_WORLD, n_size)
-@ Broadcast all a-priori weights. After setting the weights, we have to update
-the number of calls in each channel. Afterwards, we can collect the number of
-channels, which are not parallelized by [[VEGAS]] itself, [[n_channel_non_parallel]].
-<<MPI: vamp2: vamp2 integrate: pre sampling>>=
-  call MPI_Ibcast (self%weight, self%config%n_channel, MPI_DOUBLE_PRECISION, 0,&
-       & MPI_COMM_WORLD, status)
-  do ch = 1, self%config%n_channel
-     grid = self%integrator(ch)%get_grid ()
-     call grid%broadcast ()
-     call self%integrator(ch)%set_grid (grid)
-  end do
-  call MPI_Wait (status, MPI_STATUS_IGNORE)
-  call self%set_calls (self%config%n_calls)
-@ We check on the parallelization state of the current [[VEGAS]] integrator.
-If [[VEGAS]] can not be parallelized on lowest level, we map the current channel
-to a rank and calculate the channel on that rank.
-On all other worker we just enhance the random-generator (when supported), see
-[[vegas_integrate]] for the details on the random-generator handling.
-<<MPI: vamp2: vamp2 integrate: sampling>>=
-  if (.not. self%integrator(ch)%is_parallelizable ()) then
-     worker = map_channel_to_worker (ch, n_size)
-     if (rank /= worker) then
-        select type (rng)
-        type is (rng_stream_t)
-           call rng%next_substream ()
-        end select
-        cycle channel
-     end if
-  else
-     call MPI_Barrier (MPI_COMM_WORLD)
+Verify that we have an allocated request object, else fallback to simple method.
+Be aware that we keep the fallback silent (!) in order to keep any possible testing output uninterrupted.
+<<MPI: vamp2: vamp2 integrate: init>>=
+  if (.not. allocated (self%request)) then
+     call self%allocate_request_by_method ("simple")
   end if
-@ Collect results, the actual communication is done inside the different objects.
-<<MPI: vamp2: vamp2 integrate: post sampling>>=
-  call vamp2_integrate_collect ()
-<<MPI: vamp2: vamp2 integrate: procedures>>=
-  subroutine vamp2_integrate_collect ()
-    type(vegas_result_t) :: result
-    integer :: root_n_calls
-    integer :: worker
-    do ch = 1, self%config%n_channel
-       if (self%integrator(ch)%is_parallelizable ()) cycle
-       worker = map_channel_to_worker (ch, n_size)
-       result = self%integrator(ch)%get_result ()
-       if (rank == 0) then
-          if (worker /= 0) then
-             call result%receive (worker, ch)
-             call self%integrator(ch)%receive_distribution (worker, ch)
-             call self%integrator(ch)%set_result (result)
-          end if
-       else
-          if (rank == worker) then
-             call result%send (0, ch)
-             call self%integrator(ch)%send_distribution (0, ch)
-          end if
-       end if
-    end do
-    select type (func)
-    class is (vamp2_func_t)
-       call MPI_reduce (func%n_calls, root_n_calls, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD)
-       if (rank == 0) then
-          func%n_calls = root_n_calls
-       else
-          call func%reset_n_calls ()
-       end if
-    end select
-  end subroutine vamp2_integrate_collect
+@
+<<MPI: vamp2: vamp2 integrate: presampling>>=
+  if (self%request%is_master ()) then
+     select type (req => self%request)
+     type is (request_caller_t)
+        request%terminate = .true.
+        call update_iter_and_rng (request, channel_iterator, rng)
+        !! channel_iter is already drained for master.
+        !! Do not descent into channel integration (later on).
+        call req%handle_workload ()
+     end select
+  end if
+@ Conditional handling for the MPI-version of sampling.
 
-@ %def vegas_integrate_collect
-@ Skip results analyze if non-root, after waiting for all processes to reach the
-barrier.
-<<MPI: vamp2: vamp2 integrate: post sampling>>=
-  call MPI_barrier (MPI_COMM_WORLD)
-  if (rank /= 0) cycle iteration
+We have a request object and an advanced [[channel_iterator]] and have to consider three cases:
+\begin{enumerate}
+\item [[channel_iterator]] drained,
+\item [[request]] terminated,
+\item [[request]] received.
+\end{enumerate}
+When the [[channel_iterator]] is drained by [[update_iter_and_rng]], we send a terminate request to the master
+and await in the next cycle of channel loop the terminated request.
+When the request is terminated, we can gracefully exit the channel loop as [[channel_iterator]] and [[rng]] are already advanced by [[update_iter_and_rng]].
+When we received a genuine request, then, we proceed as prophisied.
+<<MPI: vamp2: vamp2 integrate: sampling>>=
+  select type (req => self%request)
+  type is (request_caller_t)
+     if (self%request%is_master ()) exit channel
+  end select
+  call self%request%request_workload (request)
+  call update_iter_and_rng (request, channel_iterator, rng)
+  if (request%terminate) then
+     exit channel
+  else if (.not. channel_iterator%is_iterable ()) then
+     select type (req => self%request)
+     type is (request_caller_t)
+        call req%request_terminate ()
+        cycle channel
+     class is (request_base_t)
+        exit channel
+     end select
+  end if
+  if (request%group) call MPI_BARRIER (request%comm)
+  ch = request%handler_id
+  call self%integrator(ch)%prepare_parallel_integrate(request%comm, &
+       duplicate_comm = .false., &
+       parallel_mode = request%group)
+@
+<<MPI: vamp2: vamp2 integrate: callback>>=
+  if (request%group_master) then
+     if (.not. self%request%is_master ())  &
+          call allocate_handler (self%request, ch)
+     call self%request%handle_and_release_workload (request)
+  else
+     call self%request%release_workload (request)
+  end if
+@
+<<MPI: vamp2: vamp2 integrate: postsampling>>=
+  call reduce_func_calls (func)
+  call self%request%await_handler ()
+  call self%request%barrier ()
+  if (.not. self%request%is_master ()) cycle
+@
+<<MPI: vamp2: vamp2 integrate: procedures>>=
+  subroutine allocate_handler (req, ch)
+    class(request_base_t), intent(inout) :: req
+    integer, intent(in) :: ch
+    class(request_handler_t), pointer :: vegas_result_handler
+    call self%integrator(ch)%allocate_handler (&
+         handler_id = ch,&
+         handler = vegas_result_handler)
+    call req%add_handler (ch, vegas_result_handler)
+  end subroutine allocate_handler
+
+  !! Advance the random number generator for the skipped channels.
+  !!
+  !! We set current_channel = request%handler_id, hence, we need to advance
+  !! the random number generator until th iterator returns the same channel.
+  subroutine update_iter_and_rng (request, iter, rng)
+    type(request_t), intent(in) :: request
+    type(iterator_t), intent(inout) :: iter
+    class(rng_t), intent(inout) :: rng
+    advance: do while (iter%is_iterable ())
+       !! Advance up to iterator%end when in terminate mode,
+       !! else advance until we hit the previous channel (i.e. request%handler_id - 1):
+       !! Proof: current_channel <= request%handler_id - 1
+       if (.not. request%terminate) then
+          if (iter%get_current () >= request%handler_id) &
+               exit advance
+       end if
+       select type (rng)
+       type is (rng_stream_t)
+          call rng%next_substream ()
+       end select
+       call iter%next_step ()
+    end do advance
+  end subroutine update_iter_and_rng
+
+  subroutine reduce_func_calls (func)
+    class(vamp2_func_t), intent(inout) :: func
+    type(MPI_COMM) :: comm
+    integer :: root_n_calls
+    call self%request%get_external_comm (comm)
+    call MPI_reduce (func%n_calls, root_n_calls, 1, MPI_INTEGER, &
+         MPI_SUM, 0, comm)
+    if (self%request%is_master ()) then
+       func%n_calls = root_n_calls
+    else
+       call func%reset_n_calls ()
+    end if
+  end subroutine reduce_func_calls
+@
+@ Prepeare current integration's iteration.
+
+Prepare iteration, i.e. provide weights and grids to function object.
+<<vamp2: vamp2: TBP>>=
+  procedure, private :: prepare_integrate_iteration => &
+       vamp2_prepare_integrate_iteration
+<<vamp2: procedures>>=
+  subroutine vamp2_prepare_integrate_iteration (self, func)
+    class(vamp2_t), intent(inout) :: self
+    class(vamp2_func_t), intent(inout) :: func
+  <<vamp2: vamp2 prepare integrate iteration: body>>
+    call fill_func_with_weights_and_grids (func)
+  contains
+    subroutine fill_func_with_weights_and_grids (func)
+      class(vamp2_func_t), intent(inout) :: func
+      integer :: ch
+      do ch = 1, self%config%n_channel
+         func%wi(ch) = self%weight(ch)
+         !! \todo Use pointers instead of a deep copy.
+         func%grids(ch) = self%integrator(ch)%get_grid ()
+      end do
+    end subroutine fill_func_with_weights_and_grids
+  <<vamp2: vamp2 prepare integrate iteration: procedures>>
+  end subroutine vamp2_prepare_integrate_iteration
+
+@ %def vamp2_prepare_integrate_iteration
+<<vamp2: vamp2 prepare integrate iteration: body>>=
+@
+<<vamp2: vamp2 prepare integrate iteration: procedures>>=
+@
+<<MPI: vamp2: vamp2 prepare integrate iteration: body>>=
+  if (.not. allocated (self%request)) then
+     call msg_bug ("VAMP2: prepare integration iteration failed: unallocated request.")
+  end if
+  call broadcast_weights_and_grids ()
+  select type (req => self%request)
+  type is (request_simple_t)
+     call req%update (self%integrator%is_parallelizable ())
+     call init_all_handler (req)
+     call call_all_handler (req)
+     !! Add all handlers, call all handlers.
+  type is (request_caller_t)
+     if (req%is_master ()) then
+        call req%update_balancer (self%weight, self%integrator%is_parallelizable ())
+        call init_all_handler (req)
+     else
+        call self%request%reset ()
+     end if
+  class default
+     call msg_bug ("VAMP2: prepare integration iteration failed: unknown request type.")
+  end select
+@
+<<MPI: vamp2: vamp2 prepare integrate iteration: procedures>>=
+  subroutine broadcast_weights_and_grids ()
+    type(vegas_grid_t) :: grid
+    type(MPI_COMM) :: comm
+    integer :: ch
+    call self%request%get_external_comm (comm)
+    call MPI_BCAST (self%weight, self%config%n_channel, &
+         MPI_DOUBLE_PRECISION, 0, comm)
+    do ch = 1, self%config%n_channel
+       grid = self%integrator(ch)%get_grid ()
+       call grid%broadcast (comm)
+       call self%integrator(ch)%set_grid (grid)
+    end do
+    call self%set_calls (self%config%n_calls)
+  end subroutine broadcast_weights_and_grids
+
+  subroutine init_all_handler (req)
+    class(request_base_t), intent(inout) :: req
+    class(request_handler_t), pointer :: vegas_result_handler
+    integer :: ch
+    !! The master worker needs always all handler (callback objects)
+    !! in order to perform the communication to the client handler (callbacks).
+    if (.not. req%is_master ()) return
+    do ch = 1, self%config%n_channel
+       call self%integrator(ch)%allocate_handler (&
+            handler_id = ch,&
+            handler = vegas_result_handler)
+       call req%add_handler (ch, vegas_result_handler)
+    end do
+  end subroutine init_all_handler
+
+  subroutine call_all_handler (req)
+    class(request_base_t), intent(inout) :: req
+    integer :: ch
+    if (.not. req%is_master ()) return
+    do ch = 1, self%config%n_channel
+       select type (req)
+       type is (request_simple_t)
+          call req%call_handler (handler_id = ch, &
+               source_rank = req%get_request_master (ch))
+       end select
+    end do
+  end subroutine call_all_handler
+@
+@ Compute the result and efficiency of the current status of the integrator.
+<<vamp2: vamp2: TBP>>=
+  procedure, private :: compute_result_and_efficiency => &
+       vamp2_compute_result_and_efficiency
+<<vamp2: procedures>>=
+  subroutine vamp2_compute_result_and_efficiency (self)
+    class(vamp2_t), intent(inout) :: self
+    real(default) :: total_integral, total_variance
+    real(default) :: max_abs_f_pos, max_abs_f_neg, &
+         sum_abs_f_pos, sum_abs_f_neg
+    call compute_integral_and_variance (total_integral, total_variance)
+    call self%result%update (total_integral, total_variance)
+    call compute_efficiency (max_pos = max_abs_f_pos, max_neg = max_abs_f_neg, &
+         sum_pos = sum_abs_f_pos, sum_neg = sum_abs_f_neg)
+    !! Do not average of number of calls, we have already averaged the efficiencies of all channels.
+    call self%result%update_efficiency (n_calls  = 1, &
+         max_pos = max_abs_f_pos, max_neg = max_abs_f_neg, &
+         sum_pos = sum_abs_f_pos, sum_neg = sum_abs_f_neg)
+  contains
+    subroutine compute_integral_and_variance (integral, variance)
+      real(default), intent(out) :: integral, variance
+      real(default) :: sq_integral
+      integral = dot_product (self%weight, self%integrator%get_integral ())
+      sq_integral = dot_product (self%weight, self%integrator%get_integral ()**2)
+      variance = self%config%n_calls * dot_product (self%weight**2, self%integrator%get_variance ())
+      variance = sqrt (variance + sq_integral)
+      variance = 1._default / self%config%n_calls * &
+           & (variance + integral) * (variance - integral)
+    end subroutine compute_integral_and_variance
+
+    !> We compute the weight-averaged sum and maximum of the channel (integration) weights \f$w_{i,c}\f$.
+    !!
+    !! The averaged integration weight and maximum are
+    !! \f[
+    !!  \langle w \rangle = \sum_i \alpha_i \frac{\sum_j w_{i, j}}{N_i},
+    !! \f]
+    !! \f[
+    !!  \langle \max w \rangle = \sum_i \alpha_i |\max_j w_{i, j}|.
+    !! \f]
+    subroutine compute_efficiency (max_pos, max_neg, &
+         sum_pos, sum_neg)
+      real(default), intent(out) :: max_pos, max_neg
+      real(default), intent(out) :: sum_pos, sum_neg
+      max_abs_f_pos = dot_product (self%weight, self%integrator%get_max_abs_f_pos ())
+      max_abs_f_neg = dot_product (self%weight, self%integrator%get_max_abs_f_neg ())
+      sum_abs_f_pos = dot_product (self%weight, &
+           self%integrator%get_sum_abs_f_pos () / self%integrator%get_calls ())
+      sum_abs_f_neg = dot_product (self%weight, &
+           self%integrator%get_sum_abs_f_neg () / self%integrator%get_calls ())
+    end subroutine compute_efficiency
+  end subroutine vamp2_compute_result_and_efficiency
+
+@ %def vamp2_compute_result_and_efficiency
 @ Generate event from multi-channel weight $w(x) = f(x) / g(x)$.
 
 We select a channel using the a-priori weights and $f_{i}^{\text{max}}$, to
@@ -4026,12 +4388,15 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
 @ %def vamp2_generate_weighted_event
 @ Generate unweighted events.
 
-After selecting a channel $ch$ by the acceptance $r$
-\begin{equation*}
-  r > \operatorname*{argmax}_{ch} \sum_{i = 1}^{ch} \alpha_i,
-\end{equation*}
+After selecting a channel $ch$ by the inversion method using a random number $r \in [0, 1]$
+\begin{align}
+  F^{-1}(r) := \operatorname{inf} \{ c \in \{1, \dots, N_c\} | F(c) \geq r \},
+  F(c) = \sum_{c^\prime \leq c} \alpha_c^\prime,
+\end{align}
 we try for an event from the previously selected channel.
 If the event is rejected, we also reject the selected channel.
+
+The inversion method is implemented as a loop over the channel weights \(\alpha_i\) until \(\sum_{c}^{c^prime} \alpha_c - r \leq 0\), the last value of the loop index [[ch]] is then \(c^\prime\).
 <<vamp2: vamp2: TBP>>=
   procedure, public :: generate_unweighted => vamp2_generate_unweighted_event
 <<vamp2: procedures>>=
@@ -4086,12 +4451,12 @@ the integrand's object.
 
 We use an ansatz proposed by T. Ohl in the original VAMP code where we do not have to accept on
 \begin{equation*}
-   \frac{w_i(x)}{\operatorname*{max}_{i, x} w_i(x)},
+   \frac{w_i(x)}{\sum_i \alpha_i \operatorname*{max}_{x} w_i(x)},
 \end{equation*}
 after we have selected a channel by the weights $\alpha_i$. But rather, we use a
 more efficient way where we rescale the channel weights $\alpha_i$
 \begin{equation*}
-   \alpha_i \rightarrow \alpha_i \frac{\operatorname*{max}_x w_i(x)}{\operatorname*{max}_{i, x} w_i(x)}.
+   \alpha_i \rightarrow \alpha_i \frac{\operatorname*{max}_x w_i(x)}{\sum_i \alpha_i \operatorname*{max}_{x} w_i(x)}.
 \end{equation*}
 The overall magic is to insert a "1" and to  move the uneasy part into the channel selection,
 such that we can generate events likewise in the single channel mode.
@@ -4689,7 +5054,7 @@ Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initi
     write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 10000 (Adaptation)"
     write (u, "(A)")
 
-    call mc_integrator%integrate (func, rng, 3, opt_verbose = .true., result=result, abserr=abserr)
+    call mc_integrator%integrate (func, rng, 3, verbose = .true., result=result, abserr=abserr)
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
@@ -4697,7 +5062,7 @@ Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initi
     write (u, "(A)")
 
     call mc_integrator%set_calls (200)
-    call mc_integrator%integrate (func, rng, 3, opt_verbose = .true., result=result, abserr=abserr)
+    call mc_integrator%integrate (func, rng, 3, verbose = .true., result=result, abserr=abserr)
     write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
@@ -4968,7 +5333,7 @@ Use chained weights, although we average over each weight itself.
     write (u, "(A)")
 
     call mc_integrator%integrate (func, rng, 3, &
-         opt_adapt_weight = .false., result=result, abserr=abserr)
+         adapt_weights = .false., result=result, abserr=abserr)
     if (nearly_equal &
          (result, 2.000_default, rel_smallness = 0.003_default)) then
        write (u,  "(2x,A)") "Result: 2.000 [ok]"
@@ -5001,10 +5366,10 @@ Use chained weights, although we average over each weight itself.
     write (u, "(A)")
 
     call mc_integrator%set_calls (5000)
-    call mc_integrator%integrate (func, rng, 3, opt_adapt_weight = .false., &
-         opt_refine_grid = .false., result=result, abserr=abserr)
+    call mc_integrator%integrate (func, rng, 3, adapt_weights = .false., &
+         refine_grids = .false., result=result, abserr=abserr)
     if (nearly_equal &
-         (result, 2.000_default, rel_smallness = 0.002_default)) then
+         (result, 2.000_default, rel_smallness = 0.003_default)) then
        write (u,  "(2x,A)") "Result: 2.000 [ok]"
     else
        write (u,  "(2x,A," // FMT_12 // ",A," // FMT_12 // ",A)") &
@@ -5019,3 +5384,2367 @@ Use chained weights, although we average over each weight itself.
     deallocate (rng)
   end subroutine vamp2_5
 
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{MPI Request}
+
+\begin{description}
+\item[Request] Direct interface for requests.
+\item[Balancer] Sublidiary interfaces and types for implementation into [[request]].
+\item[Callback] Direct interface for non-blocking communication in callback fashion used in subsidiary in [[request]].
+\end{description}
+
+\subsection{Request Base}
+
+\begin{description}
+\item[request] Container type for current request, contains handler index and status of request.
+\item[request group cache] Caching for commnunicator groups, tries to reduce the costly calls to [[MPI_CREATE_COMM_GROUP]].
+\item[request base] Base type for request handling, defines procedures and basic request scheme for direct implementation into [[VAMP2]].
+\end{description}
+
+When a data type has an associated communicator field, it always must duplicate the communicator in order to ensure communication encapsulation.
+Only in special case (e.g. outside of object communication is required) the parent communicator should be directly used.
+For example, that is the case for the group cache, as it exports its newly created communicator to the outside of the request library.
+
+<<[[request_base.f90]]>>=
+<<File header>>
+module request_base
+  use io_units
+
+  use diagnostics
+
+  use balancer_base
+  use request_callback
+  use mpi_f08 !NODEP!
+
+  implicit none
+
+  private
+
+  type :: request_t
+     integer :: handler_id = 0
+     logical :: terminate = .false.
+     logical :: group = .false.
+     logical :: group_master = .false.
+     logical :: callback = .false.
+     type(MPI_COMM) :: comm
+  end type request_t
+
+  type :: request_group_cache_t
+     private
+     type(MPI_COMM) :: parent_comm
+     type(MPI_GROUP) :: parent_group
+     type(MPI_COMM) :: comm
+     type(MPI_GROUP) :: group
+     integer, dimension(:), allocatable :: rank
+   contains
+     procedure :: init => request_group_cache_init
+     procedure :: reset => request_group_cache_reset
+     procedure :: update => request_group_cache_update
+     procedure :: get_comm => request_group_cache_get_comm
+     procedure :: is_master => request_group_cache_is_master
+  end type request_group_cache_t
+
+  !> Base type for requesting and back calling.
+  !!
+  !! A short remark on the semantics of point-to-point communication (as its intended use in this implemenation):
+  !! MPI is strict regarding the order of the messages (for blocking communication), as those can not overtake each other, p. 41.
+  !! For non-blocking communication, the standard extends it such that the order depends on "the execution order of the calls that initiate the communication".
+  !! The non-overtaking requirement is then extended to this definition of order.
+  !!
+  !! Color method for tracking communication?
+  !! We restrict each slave to a single callback (at once), which can communicate during the next request computation.
+  !! Before handling the next (current) callback, the former one has to finish (with a wait call on the client-side).
+  !! On the server-side, we only test on the finishing, reporting a communication failure.
+  !!
+  !! Furthermore, the implementation has to take care that the order of the communication calls on the master and slave code always matches!
+  !!
+  !! Therefore, we need to secure the order of communication calls.
+  !! First, we let the master initiate all callback communication *before* polling.
+  !! This fixiates the order.
+  !! Second, we require that the implementation of the polling honors this order.
+  type, abstract :: request_base_t
+     type(MPI_COMM) :: comm
+     type(MPI_COMM) :: external_comm !! communicator for use outside of request, however, just a duplicate of comm.
+     class(balancer_base_t), allocatable :: balancer
+     type(request_group_cache_t) :: cache
+     type(request_handler_manager_t) :: handler
+   contains
+     procedure :: base_init => request_base_init
+     procedure :: base_write => request_base_write
+     procedure(request_base_deferred_write), deferred :: write
+     procedure :: is_master => request_base_is_master
+     procedure(request_base_has_workers), deferred :: has_workers
+     procedure :: get_external_comm => request_base_get_external_comm
+     procedure :: add_balancer => request_base_add_balancer
+     procedure :: add_handler => request_base_add_handler
+     procedure :: reset => request_base_reset
+     procedure :: call_handler => request_base_call_handler
+     procedure :: call_client_handler => request_base_call_client_handler
+     procedure :: await_handler => request_base_await_handler
+     procedure :: barrier => request_base_barrier
+     procedure(request_base_request_workload), deferred :: request_workload
+     procedure(request_base_release_workload), deferred :: release_workload
+     procedure(request_base_handle_and_release_workload), deferred :: handle_and_release_workload
+  end type request_base_t
+
+  !> The basic idea behind the request mechanism is that each associated worker can request a workload either from a predefined local stack, from local stealing or from a global queue.
+  !!
+  !! We note that it is not necessary to differentiate between master and worker on this level of abstraction.
+  !! Hence, the request interface ignores any notion regarding a possible parallelization concept.
+  abstract interface
+     subroutine request_base_deferred_write (req, unit)
+       import :: request_base_t
+       class(request_base_t), intent(in) :: req
+       integer, intent(in), optional :: unit
+     end subroutine request_base_deferred_write
+
+     !> Verify if request object has workers.
+     !!
+     !! An implementation shall return if there at least two workers, or otherwisely stated,
+     !! one master and one slave at least, when both are used as computing ranks.
+     logical function request_base_has_workers (req) result (flag)
+       import :: request_base_t
+       class(request_base_t), intent(in) :: req
+     end function request_base_has_workers
+
+     !> Request workload and returns an request_t object.
+     !!
+     !! The request_t object has an associated handler_id and provide several ways
+     !! to indicate whether the execution is to be terminated, or the request has an associated communictor.
+     !! Finally, whether we expect that the handler id will be connected to an callback.
+     !!
+     !! \param[out] request Request container.
+     subroutine request_base_request_workload (req, request)
+       import :: request_base_t, request_t
+       class(request_base_t), intent(inout) :: req
+       type(request_t), intent(out) :: request
+     end subroutine request_base_request_workload
+
+     !> Release workload with the information from the request container.
+     !!
+     !! The release procedure may notify the master about the finishing of the workload associated with the handler_id.
+     !! Or, it may just bookkeep whether the workload has finished.
+     !! Additionally, if request%callback was true, it could handle the callback (from client side.)
+     subroutine request_base_release_workload (req, request)
+       import :: request_base_t, request_t
+       class(request_base_t), intent(inout) :: req
+       type(request_t), intent(in) :: request
+     end subroutine request_base_release_workload
+
+     !> Handle associated callback and release workload with the information from the request container.
+     !!
+     !! The procedure must call the associated callback handler using the handler_id.
+     !! Remark: The callback manager is quite squishy regarding a missing handler (silent failure).
+     !!         The procedure has to take care whether the callback was actually successful.
+     !! The further release of the workload can then be deferred to the release_workload procedure.
+     !! \param[in] request.
+     subroutine request_base_handle_and_release_workload (req, request)
+       import :: request_base_t, request_t
+       class(request_base_t), intent(inout) :: req
+       type(request_t), intent(in) :: request
+     end subroutine request_base_handle_and_release_workload
+  end interface
+
+  public :: request_t, request_base_t
+contains
+
+  subroutine request_group_cache_init (cache, comm)
+    class(request_group_cache_t), intent(inout) :: cache
+    type(MPI_COMM), intent(in) :: comm
+    call MPI_COMM_DUP (comm, cache%parent_comm)
+    !! Local operation.
+    call MPI_COMM_GROUP (cache%parent_comm, cache%parent_group)
+    cache%group = MPI_GROUP_EMPTY
+    cache%comm = MPI_COMM_NULL
+  end subroutine request_group_cache_init
+
+  subroutine request_group_cache_reset (cache)
+    class(request_group_cache_t), intent(inout) :: cache
+    cache%group = MPI_GROUP_EMPTY
+    cache%comm = MPI_COMM_NULL
+  end subroutine request_group_cache_reset
+
+  subroutine request_group_cache_update (cache, tag, rank)
+    class(request_group_cache_t), intent(inout) :: cache
+    integer, intent(in) :: tag
+    integer, dimension(:), allocatable, intent(inout) :: rank
+    type(MPI_GROUP) :: group
+    integer :: result, error
+    call move_alloc (rank, cache%rank)
+    call MPI_GROUP_INCL (cache%parent_group, size (cache%rank), cache%rank, group)
+    call MPI_GROUP_COMPARE (cache%group, group, result)
+    if (result /= MPI_IDENT) then
+       cache%group = group
+       if (cache%comm /= MPI_COMM_NULL) call MPI_COMM_FREE (cache%comm)
+       !! Group-local operation. However, time consuming.
+       call MPI_COMM_CREATE_GROUP (cache%parent_comm, cache%group, tag, &
+            cache%comm, error)
+       if (error /= 0) then
+          call msg_bug ("Error occured during communicator creation...")
+       end if
+    ! else
+       ! call msg_message ("CACHE UPDATE: GROUPS ARE (NEARLY) IDENTICAL")
+    end if
+  end subroutine request_group_cache_update
+
+  subroutine request_group_cache_get_comm (cache, comm)
+    class(request_group_cache_t), intent(in) :: cache
+    type(MPI_COMM), intent(out) :: comm
+    comm = cache%comm
+  end subroutine request_group_cache_get_comm
+
+  logical function request_group_cache_is_master (cache) result (flag)
+    class(request_group_cache_t), intent(in) :: cache
+    integer :: rank, error
+    call MPI_COMM_RANK (cache%comm, rank, error)
+    if (error /= 0) then
+       call msg_bug ("Error: Could not retrieve group rank.")
+    end if
+    flag = (rank == 0)
+  end function request_group_cache_is_master
+
+  !! =================================================
+  !! request_base_t
+  !! =================================================
+
+  !> Initialize request base with parent communicator.
+  !!
+  !! In order to separate the communication between different parts of the request library,
+  !! duplicate the parent communicator using MPI_COMM_DUP, also done by cache and handler objects.
+  !!
+  !! \param[in] comm Parent MPI communicator for overall library.
+  subroutine request_base_init (req, comm)
+    class(request_base_t), intent(out) :: req
+    type(MPI_COMM), intent(in) :: comm
+    call MPI_COMM_DUP (comm, req%comm)
+    call MPI_COMM_DUP (comm, req%external_comm)
+    call req%cache%init (comm)
+    call req%handler%init (comm)
+  end subroutine request_base_init
+
+  subroutine request_base_write (req, unit)
+    class(request_base_t), intent(in) :: req
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    if (allocated (req%balancer)) then
+       call req%balancer%write (u)
+    else
+       write (u, "(A)") "[BALANCER]"
+       write (u, "(A)") "=> Not allocated"
+    end if
+    call req%handler%write (u)
+  end subroutine request_base_write
+
+  !> Check whether current worker is master rank in object communicator.
+  !!
+  !! Do not confuse with a group's master !!!
+  !! Proof: rank == 0
+  logical function request_base_is_master (req) result (flag)
+    class(request_base_t), intent(in) :: req
+    integer :: rank, ierr
+    call MPI_COMM_RANK (req%comm, rank, ierr)
+    if (ierr /= 0) then
+       write (*, "(A,1X,I0)") "MPI Error: request_base_is_master", ierr
+       stop 1
+    end if
+    flag = (rank == 0)
+  end function request_base_is_master
+
+  !> Provide external communicator.
+  !!
+  !! The external communicator is just a duplicate of request%comm,
+  !! in order to provide the same group of workers to external communication,
+  !! however, in a different context, such that communication from outside does not interfere with request.
+  subroutine request_base_get_external_comm (req, comm)
+    class(request_base_t), intent(in) :: req
+    type(MPI_COMM), intent(out) :: comm
+    comm = req%external_comm
+  end subroutine request_base_get_external_comm
+
+  !> Add balancer to request.
+  !!
+  !! \param[inout] balancer
+  subroutine request_base_add_balancer (req, balancer)
+    class(request_base_t), intent(inout) :: req
+    class(balancer_base_t), allocatable, intent(inout) :: balancer
+    if (allocated (req%balancer)) deallocate (req%balancer)
+    call move_alloc (balancer, req%balancer)
+  end subroutine request_base_add_balancer
+
+  !> Add request handler with handler_id.
+  !!
+  !! \param[in] handler_id
+  !! \param[in] handler Pointer to handler object.
+  subroutine request_base_add_handler (req, handler_id, handler)
+    class(request_base_t), intent(inout) :: req
+    integer, intent(in) :: handler_id
+    class(request_handler_t), pointer, intent(in) :: handler
+    call req%handler%add (handler_id, handler)
+  end subroutine request_base_add_handler
+
+  !> Reset request.
+  !! Clear handler manager from associated callbacks,
+  !! deallocate balancer, iff allocated, and reset communicator cache.
+  subroutine request_base_reset (req, deallocate_balancer)
+    class(request_base_t), intent(inout) :: req
+    logical, intent(in), optional :: deallocate_balancer
+    logical :: flag
+    flag = .false.; if (present (deallocate_balancer)) &
+         flag = deallocate_balancer
+    if (flag .and. allocated (req%balancer)) then
+       deallocate (req%balancer)
+    end if
+    call req%handler%clear ()
+    call req%cache%reset ()
+  end subroutine request_base_reset
+
+  !> Call handler for master communication for handler_id.
+  !!
+  !! \param[in] handler_id The associated key of the callback object.
+  !! \param[in] source_rank The rank of the result's source.
+  subroutine request_base_call_handler (req, handler_id, source_rank)
+    class(request_base_t), intent(inout) :: req
+    integer, intent(in) :: handler_id
+    integer, intent(in) :: source_rank
+    call req%handler%callback (handler_id, source_rank)
+  end subroutine request_base_call_handler
+
+  !> Call handler for slave communication for handler_id.
+  !!
+  !! \param[in] handler_id The associated key of the callback object.
+  subroutine request_base_call_client_handler (req, handler_id)
+    class(request_base_t), intent(inout) :: req
+    integer, intent(in) :: handler_id
+    call req%handler%client_callback (handler_id, 0)
+  end subroutine request_base_call_client_handler
+
+  !> Wait on all handler in request handler manager to finish communication.
+  subroutine request_base_await_handler (req)
+    class(request_base_t), intent(inout) :: req
+    call req%handler%waitall ()
+  end subroutine request_base_await_handler
+
+  subroutine request_base_barrier (req)
+    class(request_base_t), intent(in) :: req
+    integer :: error
+    call MPI_BARRIER (req%comm, error)
+    if (error /= MPI_SUCCESS) then
+       call msg_fatal ("Request: Error occured during MPI_BARRIER synchronisation.")
+    end if
+  end subroutine request_base_barrier
+end module request_base
+@ %def request_base
+@ \subsection{Request Simple}
+We implement a local request scheme, without any additional communication, except the callback communication.
+<<[[request_simple.f90]]>>=
+<<File header>>
+module request_simple
+  use io_units
+  use diagnostics
+
+  use array_list
+
+  use balancer_base
+  use balancer_simple
+  use request_base
+
+  use mpi_f08 !NODEP!
+
+  implicit none
+
+  private
+
+  type, extends (request_base_t) :: request_simple_t
+     integer :: n_workers = 0
+     integer :: n_channels = 0
+     logical, dimension(:), allocatable :: parallel_grid
+   contains
+     procedure :: init => request_simple_init
+     procedure :: write => request_simple_write
+     procedure :: has_workers => request_simple_has_workers
+     procedure :: update => request_simple_update
+     procedure :: get_request_master => request_simple_get_request_master
+     !! deferred.
+     procedure :: request_workload => request_simple_request_workload
+     procedure :: release_workload => request_simple_release_workload
+     procedure :: handle_and_release_workload => request_simple_handle_and_release_workload
+  end type request_simple_t
+
+  public :: request_simple_t
+contains
+  subroutine request_simple_init (req, comm, n_channels)
+    class(request_simple_t), intent(out) :: req
+    type(MPI_COMM), intent(in) :: comm
+    integer, intent(in) :: n_channels
+    integer :: n_workers
+    call req%base_init (comm)
+    call MPI_COMM_SIZE (req%comm, req%n_workers)
+    req%n_channels = n_channels
+    allocate (req%parallel_grid (n_channels), source = .false.)
+    call allocate_balancer ()
+  contains
+    subroutine allocate_balancer ()
+      class(balancer_base_t), allocatable :: balancer
+      allocate (balancer_simple_t :: balancer)
+      select type (balancer)
+      type is (balancer_simple_t)
+         call balancer%init (n_workers = req%n_workers, n_resources = req%n_channels)
+      end select
+      call req%add_balancer (balancer)
+    end subroutine allocate_balancer
+  end subroutine request_simple_init
+
+  !> Update number of channels and parallel grids.
+  !!
+  !! The simple request object does not utilize the request balancer, as the complexity of the request balancer is not required for the simple approach.
+  !! The simple approach assigns each worker several channel by a modular mapping from the set of workers {0, …, N} to the set of channels {1, …, N_c}.
+  !! Vetoing on those channel which have a parallel grid (check the definition in vegas.f90), where all workers are assigned.
+  !!
+  !! w = \phi(c) = (c - 1) mod N, if not P(c), else \forall w to c.
+  !!
+  !! The information is stored in a dynamic-sized array list, which is filled, reversed and then used in a stack-like manner keeping track of the unassigned channels.
+  !! Assigned and finished channels are then moved to the finished stack.
+  subroutine request_simple_update (req, parallel_grid)
+    class(request_simple_t), intent(inout) :: req
+    logical, dimension(:), intent(in) :: parallel_grid
+    integer :: me, worker
+    call req%reset ()
+    call MPI_COMM_RANK (req%comm, me)
+    worker = SHIFT_RANK_TO_WORKER(me)
+    select type (balancer => req%balancer)
+    type is (balancer_simple_t)
+       call balancer%update_state (worker, parallel_grid)
+    end select
+    req%parallel_grid = parallel_grid
+  end subroutine request_simple_update
+
+  subroutine request_simple_write (req, unit)
+    class(request_simple_t), intent(in) :: req
+    integer, intent(in), optional :: unit
+    integer :: u, n_size
+    u = given_output_unit (unit)
+    write (u, "(A)") "[REQUEST_SIMPLE]"
+    write (u, "(A,1X,I0)") "N_CHANNELS", req%n_channels
+    write (u, "(A,1X,I0)") "N_WORKERS", req%n_workers
+    n_size = min (25, req%n_channels)
+    write (u, "(A,25(1X,L1))") "PARALLEL_GRID", req%parallel_grid(:n_size)
+    call req%base_write (u)
+  end subroutine request_simple_write
+
+  logical function request_simple_has_workers (req) result (flag)
+    class(request_simple_t), intent(in) :: req
+    flag = (req%n_workers > 1)
+  end function request_simple_has_workers
+
+  integer function request_simple_get_request_master (req, channel) &
+       result (rank)
+    class(request_simple_t), intent(in) :: req
+    integer, intent(in) :: channel
+    if (.not. allocated (req%balancer)) then
+       call msg_bug ("Error: Balancer is not allocated.")
+    end if
+    rank = shift_worker_to_rank (req%balancer%get_resource_master (channel))
+    !! "Caveat emptor" hits here:
+    !! The balancer returns either a valid worker id or (-1) depending on the associated resource (it must be active...)
+    !! We have to check whether returned worker index is plausible.
+  end function request_simple_get_request_master
+
+  !> Request workload.
+  !!
+  !! Depending on parallel_grid, we fill the request object differently.
+  !! First, we do not set commnuicator for .not. parallel_grid (group and group master are set to .false., also).
+  !! And the callback needs to be executed.
+  !! Second, for parallel_grid, we set req%comm to the associated communicator and set group to .true..
+  !! However, the overall master has the grid's result, therefore, only the master needs to the callback.
+  !! Remark: We can actually intercept the callback for the master to himself; the results are already in the current position.
+  subroutine request_simple_request_workload (req, request)
+    class(request_simple_t), intent(inout) :: req
+    type(request_t), intent(out) :: request
+    integer :: rank, worker_id
+    call MPI_COMM_RANK (req%comm, rank)
+    worker_id = shift_rank_to_worker (rank)
+    if (.not. req%balancer%is_pending () &
+         .or. .not. req%balancer%is_assignable (worker_id)) then
+       request%terminate = .true.
+       return
+    end if
+    call req%balancer%assign_worker (worker_id, request%handler_id)
+    associate (channel => request%handler_id)
+      if (req%parallel_grid (channel)) then
+         request%comm = req%external_comm
+         request%group = .true.
+         !! The object communicator is master.
+         request%group_master = &
+              (req%get_request_master (channel) == rank)
+         request%callback = req%is_master ()
+      else
+         request%comm = req%external_comm
+         request%group = .false.
+         request%group_master = .true.
+         request%callback = .true.
+      end if
+    end associate
+  end subroutine request_simple_request_workload
+
+  subroutine request_simple_release_workload (req, request)
+    class(request_simple_t), intent(inout) :: req
+    type(request_t), intent(in) :: request
+    integer :: rank, worker_id
+    call MPI_COMM_RANK (req%comm, rank)
+    worker_id = shift_rank_to_worker (rank)
+    call req%balancer%free_worker (worker_id, request%handler_id)
+  end subroutine request_simple_release_workload
+
+  subroutine request_simple_handle_and_release_workload (req, request)
+    class(request_simple_t), intent(inout) :: req
+    type(request_t), intent(in) :: request
+    call req%call_client_handler (request%handler_id)
+    call req%release_workload (request)
+  end subroutine request_simple_handle_and_release_workload
+end module request_simple
+@ %def request_simple
+@ \subsection{Request Caller}
+We implement an global queue approach, requiring permanent communication between a governor and the worker.
+<<[[request_caller.f90]]>>=
+<<File header>>
+module request_caller
+  use kinds, only: default
+  use io_units
+  use diagnostics
+
+  use request_base
+  use balancer_base
+  use balancer_channel
+  use request_state
+  use request_callback
+
+  use mpi_f08 !NODEP!
+
+  implicit none
+
+  private
+
+  type, extends (request_base_t):: request_caller_t
+     private
+     integer :: n_channels = 0
+     integer :: n_workers = 0
+     type(request_state_t) :: state
+   contains
+     procedure :: init => request_caller_init
+     procedure :: write => request_caller_write
+     procedure :: has_workers => request_caller_has_workers
+     procedure :: update_balancer => request_caller_update_balancer
+     procedure :: handle_workload => request_caller_handle_workload
+     procedure :: request_workload => request_caller_request_workload
+     procedure :: release_workload => request_caller_release_workload
+     procedure :: handle_and_release_workload => request_caller_handle_and_release_workload
+     procedure :: request_terminate => request_caller_request_terminate
+  end type request_caller_t
+
+  public :: request_caller_t
+contains
+
+  subroutine request_caller_init (req, comm, n_channels)
+    class(request_caller_t), intent(out) :: req
+    type(MPI_COMM), intent(in) :: comm
+    integer, intent(in) :: n_channels
+    call req%base_init (comm)
+    call MPI_COMM_SIZE (req%comm, req%n_workers)
+    !! Exclude master rank (0) from set of workers.
+    req%n_workers = req%n_workers - 1
+    if (.not. req%has_workers ()) then
+       call msg_warning ("Must not handle less than 3 ranks in a master/slave global queue.")
+       call MPI_ABORT (req%comm, 1)
+    end if
+    req%n_channels = n_channels
+    call req%state%init (comm, req%n_workers)
+    if (req%is_master ()) then
+       call allocate_balancer ()
+    end if
+  contains
+    subroutine allocate_balancer ()
+      class(balancer_base_t), allocatable :: balancer
+      allocate (balancer_channel_t :: balancer)
+      select type (balancer)
+      type is (balancer_channel_t)
+         call balancer%init (n_workers = req%n_workers, n_resources = req%n_channels)
+      end select
+      call req%add_balancer (balancer)
+    end subroutine allocate_balancer
+  end subroutine request_caller_init
+
+  subroutine request_caller_write (req, unit)
+    class(request_caller_t), intent(in) :: req
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(A)") "[REQUEST_CALLER]"
+    call req%base_write (u)
+    if (req%is_master ()) &
+       call req%state%write (u)
+  end subroutine request_caller_write
+
+  logical function request_caller_has_workers (req) result (flag)
+    class(request_caller_t), intent(in) :: req
+    !! n_workers excludes the master rank.
+    flag = (req%n_workers > 1)
+  end function request_caller_has_workers
+
+  subroutine request_caller_update_balancer (req, weight, parallel_grid)
+    class(request_caller_t), intent(inout) :: req
+    real(default), dimension(:), intent(in) :: weight
+    logical, dimension(:), intent(in) :: parallel_grid
+    !! \note bug if not allocated?
+    if (.not. allocated (req%balancer)) return
+    call req%state%reset ()
+    call req%reset ()
+    select type (balancer => req%balancer)
+    type is (balancer_channel_t)
+       call balancer%update_state(weight, parallel_grid)
+    end select
+  end subroutine request_caller_update_balancer
+
+  subroutine request_caller_handle_workload (req)
+    class(request_caller_t), intent(inout) :: req
+    integer :: handler, tag, source, worker_id
+    if (.not. allocated (req%balancer)) then
+       call msg_warning ("Request: Error occured, load balancer not allocated.&
+          & Terminate all workers.")
+       !! We postpone to stop the program here so we can terminate all workers gracefully.
+       !! First, we receive their requests, then we overwrite their "original" tag to MPI_TAG_TERMINATE.
+       !! Second, we iterate this, until all workers are terminated and return without doing any besides.
+    end if
+    call req%state%init_request ()
+    call req%state%receive_request ()
+    do while (.not. req%state%is_terminated ())
+       call req%state%await_request ()
+       do while (req%state%has_request ())
+          call req%state%get_request (source, tag, handler)
+          !! Formally differentiate between worker_id and source.
+          worker_id = source
+          if (.not. allocated (req%balancer)) tag = MPI_TAG_TERMINATE
+          select case (tag)
+          case (MPI_TAG_REQUEST)
+             if (req%balancer%is_assignable (worker_id)) then
+                call req%balancer%assign_worker (worker_id, handler)
+                if (.not. req%balancer%has_resource_group (handler)) then
+                   call req%state%update_request (source, MPI_TAG_ASSIGN_SINGLE, handler)
+                else
+                   call req%state%update_request (source, MPI_TAG_ASSIGN_GROUP, handler)
+                   call provide_request_group (handler, source)
+                end if
+             else
+                call req%state%terminate (source)
+             end if
+          case (MPI_TAG_HANDLER_AND_RELEASE)
+             call req%call_handler (handler, source_rank = source)
+             call req%balancer%free_worker (worker_id, handler)
+          case (MPI_TAG_RELEASE)
+             call req%balancer%free_worker (worker_id, handler)
+          case (MPI_TAG_TERMINATE)
+             call req%state%terminate (source)
+          case (MPI_TAG_CLIENT_TERMINATE)
+             !! Allow workers to request their own termination.
+             call req%state%terminate (source)
+          case default
+             call msg_warning ()
+          end select
+       end do
+       call req%state%receive_request ()
+    end do
+    !! If we are here, there should be no leftover communnication.
+    !! Hence, we must check whether there is no left-over communication call (from server-side).
+    call req%state%free_request ()
+  contains
+    subroutine provide_request_group (handler_id, dest_rank)
+      integer, intent(in) :: handler_id
+      integer, intent(in) :: dest_rank
+      integer, dimension(:), allocatable :: rank
+      !! Rank indices and worker indices are identical, as we skip the master worker deliberately,
+      !! we can reuse the worker indices as rank indices.
+      call req%balancer%get_resource_group (handler_id, rank)
+      call req%state%provide_request_group (dest_rank, rank)
+    end subroutine provide_request_group
+  end subroutine request_caller_handle_workload
+
+  subroutine request_caller_request_workload (req, request)
+    class(request_caller_t), intent(inout) :: req
+    type(request_t), intent(out) :: request
+    type(MPI_STATUS) :: status
+    call req%state%client_serve (request%handler_id, status)
+    request%terminate = .false.
+    request%group = .false.
+    request%callback = .false.
+    request%comm = MPI_COMM_NULL
+    select case (status%MPI_TAG)
+    case (MPI_TAG_ASSIGN_SINGLE)
+       !! Default to req's communicator.
+       request%comm = req%external_comm
+       request%group_master = .true.
+       request%callback = .true.
+    case (MPI_TAG_ASSIGN_GROUP)
+       request%group = .true.
+       call retrieve_request_group (request%handler_id)
+       call req%cache%get_comm (request%comm)
+       request%group_master = req%cache%is_master ()
+       request%callback = req%cache%is_master ()
+    case (MPI_TAG_TERMINATE)
+       request%terminate = status%MPI_TAG == MPI_TAG_TERMINATE
+    end select
+  contains
+    subroutine retrieve_request_group (handler_id)
+      integer, intent(in) :: handler_id
+      integer, dimension(:), allocatable :: rank
+      !! Here, worker and rank indices are interchangeable.
+      call req%state%retrieve_request_group (rank)
+      call req%cache%update (handler_id, rank)
+    end subroutine retrieve_request_group
+  end subroutine request_caller_request_workload
+
+  subroutine request_caller_release_workload (req, request)
+    class(request_caller_t), intent(inout) :: req
+    type(request_t), intent(in) :: request
+    call req%state%client_free (request%handler_id, has_callback = request%group_master)
+  end subroutine request_caller_release_workload
+
+  subroutine request_caller_handle_and_release_workload (req, request)
+    class(request_caller_t), intent(inout) :: req
+    type(request_t), intent(in) :: request
+    if (.not. req%handler%has_handler (request%handler_id)) then
+       call msg_bug ("Request: Handler is not registered for this worker.")
+    end if
+    call req%release_workload (request)
+    call req%call_client_handler (request%handler_id)
+  end subroutine request_caller_handle_and_release_workload
+
+  subroutine request_caller_request_terminate (req)
+    class(request_caller_t), intent(inout) :: req
+    if (req%is_master ()) return
+    call req%state%client_terminate ()
+  end subroutine request_caller_request_terminate
+end module request_caller
+@ %def request_caller
+@ \subsubsection{Request Caller State}
+We implement the complete communication for [[request_caller]] into a state (or in WK's nomenclature, instance) object.
+<<[[request_state.f90]]>>=
+<<File header>>
+module request_state
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+  use iterator
+  use diagnostics
+
+  use mpi_f08 !NODEP!
+
+  implicit none
+
+  private
+
+  integer, parameter, public :: MPI_EMPTY_HANDLER = 0
+
+  integer, parameter, public :: MPI_TAG_NULL = 0, &
+       MPI_TAG_REQUEST = 1, &
+       MPI_TAG_RELEASE = 2, &
+       MPI_TAG_HANDLER_AND_RELEASE = 4, &
+       MPI_TAG_TERMINATE = 8, &
+       MPI_TAG_CLIENT_TERMINATE = 16, &
+       MPI_TAG_ASSIGN_SINGLE = 32, &
+       MPI_TAG_ASSIGN_GROUP = 64, &
+       MPI_TAG_COMMUNICATOR_GROUP = 128
+
+  integer, parameter :: MPI_STATE_ERR = 1
+
+  type :: request_state_t
+     private
+     type(MPI_COMM) :: comm
+     integer :: n_workers = 0
+     integer :: n_workers_done = 0
+     !! From MPI-3.1 book
+     !! i \in {1, N_workes_done}, max size = N_workers
+     type(MPI_Request), dimension(:), allocatable :: request
+     type(MPI_Status), dimension(:), allocatable :: status
+     integer, dimension(:), allocatable :: indices
+     !! i \in {1, N_workers}
+     integer, dimension(:), allocatable :: handler
+     logical, dimension(:), allocatable :: terminated
+     type(iterator_t) :: request_iterator
+   contains
+     procedure :: init => request_state_init
+     procedure :: write => request_state_write
+     procedure :: reset => request_state_reset
+     procedure :: is_terminated => request_state_is_terminated
+     procedure, private :: set_terminated => request_state_set_terminated
+     procedure :: terminate => request_state_terminate
+     procedure :: client_terminate => request_state_client_terminate
+     procedure :: init_request => request_state_init_request
+     procedure :: receive_request => request_state_receive_request
+     procedure :: await_request => request_state_await_request
+     procedure :: has_request => request_state_has_request
+     procedure :: get_request => request_state_get_request
+     procedure :: update_request => request_state_update_request
+     procedure :: free_request => request_state_free_request
+     procedure :: provide_request_group => request_state_provide_request_group
+     procedure :: retrieve_request_group => request_state_retrieve_request_group
+     procedure :: client_serve => request_state_client_serve
+     procedure :: client_free => request_state_client_free
+  end type request_state_t
+
+  public :: request_state_t
+contains
+  subroutine request_state_init (state, comm, n_workers)
+    class(request_state_t), intent(out) :: state
+    type(MPI_COMM), intent(in) :: comm
+    integer, intent(in) :: n_workers
+    integer :: rank
+    call MPI_COMM_DUP (comm, state%comm)
+    state%n_workers = n_workers
+    state%n_workers_done = n_workers
+    call state%request_iterator%init (1, n_workers)
+    allocate (state%request(state%n_workers), source = MPI_REQUEST_NULL)
+    allocate (state%status(state%n_workers), source = MPI_STATUS_IGNORE)
+    allocate (state%handler(state%n_workers), source = MPI_EMPTY_HANDLER)
+    allocate (state%indices(state%n_workers), source = 0)
+    allocate (state%terminated(state%n_workers), source = .false.)
+    state%indices = [(rank, rank = 1, n_workers)]
+  end subroutine request_state_init
+
+  subroutine request_state_write (state, unit)
+    class(request_state_t), intent(in) :: state
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = ERROR_UNIT; if (present (unit)) u = unit
+    write (u, "(A)") "[REQUEST_STATE]"
+    write (u, "(A,1X,I0)") "N_WORKERS", state%n_workers
+    write (u, "(A,1X,I0)") "N_WORKERS_DONE", state%n_workers_done
+    write (u, "(A)") "RANK | SOURCE | TAG | ERROR | REQUEST_NULL"
+    do i = 1, state%n_workers_done
+       write (u, "(A,4(1X,I0),1X,L1)") "REQUEST", state%indices(i), &
+            state%status(i)%MPI_SOURCE, &
+            state%status(i)%MPI_TAG, &
+            state%status(i)%MPI_ERROR, &
+            (state%request(i) == MPI_REQUEST_NULL)
+    end do
+    write (u, "(A,999(1X,I0))") "HANDLER", state%handler
+    write (u, "(A,999(1X,L1))") "TERMINATED", state%terminated
+  end subroutine request_state_write
+
+  subroutine request_state_reset (state)
+    class(request_state_t), intent(inout) :: state
+    integer :: rank
+    state%n_workers_done = state%n_workers
+    call state%request_iterator%init (1, state%n_workers)
+    state%handler = MPI_EMPTY_HANDLER
+    state%indices = [(rank, rank = 1, state%n_workers)]
+    state%terminated = .false.
+  end subroutine request_state_reset
+
+  ! pure function request_state_is_terminated (state) result (flag)
+  function request_state_is_terminated (state) result (flag)
+    class(request_state_t), intent(in) :: state
+    logical :: flag
+    flag = all (state%terminated)
+  end function request_state_is_terminated
+
+  !> Set rank to be terminated (however, do not communicate it).
+  !!
+  !! This is an EVIL procedure, as it operates only locally on the master
+  !! and does not communicate its purpose.
+  !! However, in order to allow termination requests from client-side
+  !! we need to manipulate the specific rank states.
+  subroutine request_state_set_terminated (state, rank)
+    class(request_state_t), intent(inout) :: state
+    integer, intent(in) :: rank
+    state%terminated(rank) = .true.
+  end subroutine request_state_set_terminated
+
+  subroutine request_state_terminate (state, rank)
+    class(request_state_t), intent(inout) :: state
+    integer, intent(in) :: rank
+    integer :: error
+    call MPI_SEND (MPI_EMPTY_HANDLER, 1, MPI_INTEGER, &
+         rank, MPI_TAG_TERMINATE, state%comm, error)
+    if (error /= 0) then
+       write (msg_buffer, "(A,1X,I3)") "Request: Error occured during terminate, RANK", rank
+       call msg_bug ()
+    end if
+    call state%set_terminated (rank)
+  end subroutine request_state_terminate
+
+  subroutine request_state_client_terminate (state)
+    class(request_state_t), intent(in) :: state
+    integer :: error
+    call MPI_SEND (MPI_EMPTY_HANDLER, 1, MPI_INTEGER, &
+         0, MPI_TAG_CLIENT_TERMINATE, state%comm, error)
+    if (error /= 0) then
+       write (msg_buffer, "(A,1X,I3)") "Request: Error occured during client-sided terminate"
+       call msg_bug ()
+    end if
+  end subroutine request_state_client_terminate
+
+  !> Init persistent requests.
+  !!
+  !! Must be called before first receive_request.
+  !! Free_request must be called after is_terminated returns true.
+  subroutine request_state_init_request (state)
+    class(request_state_t), intent(inout) :: state
+    integer :: i, rank, error
+    do i = 1, state%n_workers_done
+       rank = state%indices(i)
+       call MPI_RECV_INIT (state%handler(rank), 1, MPI_INTEGER, &
+            rank, MPI_ANY_TAG, state%comm, state%request(rank), error)
+       if (error /= 0) then
+          write (msg_buffer, "(A,2(A,1X,I0))") "Request: Error occured during receive init, &
+               & RANK", rank, "HANDLER", state%handler(rank)
+          call msg_message ()
+          call MPI_ABORT (state%comm, MPI_STATE_ERR)
+       end if
+    end do
+  end subroutine request_state_init_request
+
+  !> Receive requests from non-terminated workers.
+  !!
+  !! Before receiving new requests, santize arrays of received ranks from terminated ones.
+  subroutine request_state_receive_request (state)
+    class(request_state_t), intent(inout) :: state
+    integer :: i, rank
+    integer :: error
+    if (state%is_terminated ()) return
+    call sanitize_from_terminated_ranks ()
+    !! Receive new requests from (still active) workers.
+    do i = 1, state%n_workers_done
+       rank = state%indices(i)
+       call MPI_START (state%request(rank), error)
+       if (error /= 0) then
+          write (msg_buffer, "(A,2(A,1X,I6))") "Request: Error occured during receive request, &
+             & RANK", rank, "HANDLER", state%handler(rank)
+          call msg_message ()
+          call MPI_ABORT (state%comm, MPI_STATE_ERR)
+       end if
+    end do
+  contains
+    subroutine sanitize_from_terminated_ranks ()
+      integer :: n_workers_done
+      integer, dimension(:), allocatable :: indices
+      !! Remove terminated ranks from done workers.
+      indices = pack(state%indices(:state%n_workers_done), &
+           .not. state%terminated(state%indices(:state%n_workers_done)))
+      state%n_workers_done = size (indices)
+      state%indices(:state%n_workers_done) = indices
+    end subroutine sanitize_from_terminated_ranks
+  end subroutine request_state_receive_request
+
+  subroutine request_state_await_request (state)
+    class(request_state_t), intent(inout) :: state
+    integer :: error
+    if (state%is_terminated ()) return
+    !! We verify that we have active handles associated with request state.
+    call MPI_TESTSOME (state%n_workers, state%request, state%n_workers_done, &
+         state%indices, state%status, error)
+    if (error /= 0) then
+       write (ERROR_UNIT, "(A)") "Error occured during await (testing) request..."
+       call state%write (ERROR_UNIT)
+       call MPI_ABORT (state%comm, MPI_STATE_ERR)
+    else if (state%n_workers_done == MPI_UNDEFINED) then
+       write (ERROR_UNIT, "(A)") "TEST_WAITSOME returned with MPI_UNDEFINED."
+       call state%write (ERROR_UNIT)
+       call MPI_ABORT (state%comm, MPI_STATE_ERR)
+    end if
+    !! Wait a little bit...
+    if (state%n_workers_done == 0) then
+       !! Proof: REQUEST(i), i \in {1, N_workers}, i is equivalent to rank.
+       !! Proof: INDICES(j), STATUS(j), j \in {1, N_workers_done}
+       !! Proof: INDICES(j) -> i, injectiv.
+       call MPI_WAITSOME (state%n_workers, state%request, state%n_workers_done, &
+            state%indices, state%status, error)
+       if (error /= 0) then
+          write (ERROR_UNIT, "(A)") "Error occured during await request..."
+          call state%write (ERROR_UNIT)
+          call MPI_ABORT (state%comm, MPI_STATE_ERR)
+       end if
+    endif
+    call state%request_iterator%init (1, state%n_workers_done)
+  end subroutine request_state_await_request
+
+  pure function request_state_has_request (state) result (flag)
+    class(request_state_t), intent(in) :: state
+    logical :: flag
+    flag = state%request_iterator%is_iterable ()
+  end function request_state_has_request
+
+  subroutine request_state_get_request (state, rank, tag, handler)
+    class(request_state_t), intent(inout) :: state
+    integer, intent(out) :: rank
+    integer, intent(out) :: tag
+    integer, intent(out) :: handler
+    integer :: ndx
+    if (.not. state%has_request ()) then
+       call msg_bug ("Request: Cannot access missing request.")
+    end if
+    ndx = state%request_iterator%next ()
+    rank = state%indices(ndx)
+    if (rank /= state%status(ndx)%MPI_SOURCE) then
+       write (msg_buffer, "(A,2(1X,I3))") &
+          "Request: RANK and SOURCE mismatch", rank, state%status(ndx)%MPI_SOURCE
+       call msg_bug ()
+    end if
+    tag = state%status(ndx)%MPI_TAG
+    handler = state%handler(rank)
+  end subroutine request_state_get_request
+
+  subroutine request_state_update_request (state, rank, tag, handler)
+    class(request_state_t), intent(inout) :: state
+    integer, intent(in) :: rank
+    integer, intent(in) :: tag
+    integer, intent(in) :: handler
+    integer :: error
+    state%handler(rank) = handler
+    call MPI_SEND (handler, 1, MPI_INTEGER, &
+         rank, tag, state%comm, error)
+    if (error /= 0) then
+       write (msg_buffer, "(A,3(A,1X,I3))") "Request: Error occured during update, &
+          &RANK", rank, "TAG", tag, "HANDLER", handler
+       call msg_bug ()
+    end if
+  end subroutine request_state_update_request
+
+  subroutine request_state_free_request (state)
+    class(request_state_t), intent(inout) :: state
+    integer :: rank
+    do rank = 1, state%n_workers
+       if (state%request(rank) == MPI_REQUEST_NULL) cycle
+       call MPI_REQUEST_FREE (state%request(rank))
+    end do
+  end subroutine request_state_free_request
+
+  subroutine request_state_provide_request_group (state, dest_rank, worker)
+    class(request_state_t), intent(in) :: state
+    integer, intent(in) :: dest_rank
+    integer, dimension(:), intent(in) :: worker
+    call MPI_SEND (worker, size (worker), MPI_INTEGER, &
+         dest_rank, MPI_TAG_COMMUNICATOR_GROUP, state%comm)
+  end subroutine request_state_provide_request_group
+
+  subroutine request_state_retrieve_request_group (state, worker)
+    class(request_state_t), intent(inout) :: state
+    integer, dimension(:), allocatable, intent(out) :: worker
+    type(MPI_STATUS) :: status
+    integer :: n_workers
+    call MPI_PROBE (0, MPI_TAG_COMMUNICATOR_GROUP, state%comm, status)
+    call MPI_GET_COUNT(status, MPI_INTEGER, n_workers)
+    allocate (worker (n_workers), source = 0)
+    call MPI_RECV (worker, n_workers, MPI_INTEGER, &
+         0, MPI_TAG_COMMUNICATOR_GROUP, state%comm, status)
+  end subroutine request_state_retrieve_request_group
+
+  !> Query for a request (send an request tag, then receive a handler).
+  subroutine request_state_client_serve (state, handler_id, status)
+    class(request_state_t), intent(in) :: state
+    integer, intent(out) :: handler_id
+    type(MPI_STATUS), intent(out) :: status
+    call MPI_SEND (MPI_EMPTY_HANDLER, 1, MPI_INTEGER, &
+         0, MPI_TAG_REQUEST, state%comm)
+    call MPI_RECV (handler_id, 1, MPI_INTEGER, &
+         0, MPI_ANY_TAG, state%comm, status)
+  end subroutine request_state_client_serve
+
+  !> Free handler from worker.
+  subroutine request_state_client_free (state, handler_id, has_callback)
+    class(request_state_t), intent(in) :: state
+    integer, intent(in) :: handler_id
+    logical, intent(in) :: has_callback
+    integer :: tag
+    tag = merge (MPI_TAG_HANDLER_AND_RELEASE, MPI_TAG_RELEASE, has_callback)
+    call MPI_SEND (handler_id, 1, MPI_INTEGER, &
+         0, tag, state%comm)
+  end subroutine request_state_client_free
+end module request_state
+@ %def request_state
+@ \subsection{Balancer Base}
+\begin{description}
+\item[Balancer Base] Base type for usage for extensions of [[request_base]].
+\end{description}
+<<[[balancer_base.f90]]>>=
+module balancer_base
+  use io_units
+  use diagnostics
+  use array_list
+
+  implicit none
+
+  private
+
+  type :: worker_t
+     private
+     integer :: resource = 0
+     integer :: state = 0
+     integer :: n_resources = 0
+     logical :: assigned = .false.
+   contains
+     procedure :: write => worker_write
+     procedure :: is_assigned => worker_is_assigned
+     procedure :: get_resource => worker_get_resource
+     procedure :: get_state => worker_get_state
+     procedure :: add_resource => worker_add_resource
+     procedure :: free => worker_free
+  end type worker_t
+
+  type :: resource_t
+     private
+     integer :: resource_id = 0
+     logical :: active = .false.
+     integer :: n_assigned_workers = 0
+   contains
+     procedure :: write => resource_write
+     procedure :: is_active => resource_is_active
+     procedure :: set_active => resource_set_active
+     procedure :: set_inactive => resource_set_inactive
+  end type resource_t
+
+  integer, parameter, public :: STATE_SINGLE = 1, &
+       STATE_ALL = 2
+
+  type :: resource_state_t
+     integer :: n_workers = 0
+     integer :: mode = 0
+     type(array_list_t) :: resource_stack
+     type(array_list_t) :: finished_stack
+   contains
+     procedure :: write => resource_state_write
+     procedure :: init => resource_state_init
+     procedure :: add_resource => resource_state_add_resource
+     procedure :: freeze => resource_state_freeze
+     procedure :: clear => resource_state_clear
+     procedure :: has_resource => resource_state_has_resource
+     procedure :: assign_resource => resource_state_assign_resource
+     procedure :: free_resource => resource_state_free_resource
+  end type resource_state_t
+
+  !> Dynamic load balancer.
+  !!
+  !! We organize resources and workers in a transparent way using indices.
+  !! These indices replace pointer magic.
+  !!
+  !! The balancer aggregates a dynamic state, however, we allow the state by
+  !! the use of a pointer, to access the static fields of the balancer.
+  type, abstract :: balancer_base_t
+     integer :: n_workers = 0
+     integer :: n_resources = 0
+     integer :: n_states = 0
+     type(worker_t), dimension(:), allocatable :: worker
+     type(resource_t), dimension(:), allocatable :: resource
+     type(resource_state_t), dimension(:), allocatable :: state
+   contains
+     procedure :: base_init => balancer_base_base_init
+     procedure :: base_write => balancer_base_write
+     procedure(balancer_base_deferred_write), deferred :: write
+     procedure :: add_state => balancer_base_add_state
+     procedure, private :: link_worker_and_state => balancer_base_link_worker_and_state
+     procedure :: is_assignable => balancer_base_is_assignable
+     procedure :: is_worker_pending => balancer_base_is_worker_pending
+     procedure :: is_pending => balancer_base_is_pending
+     procedure(balancer_base_has_resource_group), deferred :: has_resource_group
+     procedure(balancer_base_get_resource_group), deferred :: get_resource_group
+     procedure(balancer_base_get_resource_master), deferred :: get_resource_master
+     procedure(balancer_base_assign_worker), deferred :: assign_worker
+     procedure(balancer_base_free_worker), deferred :: free_worker
+  end type balancer_base_t
+
+  abstract interface
+     subroutine balancer_base_deferred_write (balancer, unit)
+       import :: balancer_base_t
+       class(balancer_base_t), intent(in) :: balancer
+       integer, intent(in), optional :: unit
+     end subroutine balancer_base_deferred_write
+
+     !> Has resource an associated resource group.
+     !!
+     !! \note .true. only on an active resource, else .false.
+     pure logical function balancer_base_has_resource_group (balancer, resource_id) &
+          result (flag)
+       import :: balancer_base_t
+       class(balancer_base_t), intent(in) :: balancer
+       integer, intent(in) :: resource_id
+     end function balancer_base_has_resource_group
+
+     !> Get resource group.
+     !!
+     !! \note Implementation must check against group existence.
+     !! \return group (allocated|NOT allocated for (inactive|non-group) resource)
+     pure subroutine balancer_base_get_resource_group (balancer, resource_id, group)
+       import :: balancer_base_t
+       class(balancer_base_t), intent(in) :: balancer
+       integer, intent(in) :: resource_id
+       integer, dimension(:), allocatable, intent(out) :: group
+     end subroutine balancer_base_get_resource_group
+
+     !> Get resource master (worker).
+     !!
+     !! Return worker as given, however, if extended type is used in a non-local
+     !! or in combination with a commnuicative request type, then check on activation status of associated resource.
+     !!
+     !! \return worker Valid worker index (\in {1, …, N}) only on active resource*, else -1.
+     pure integer function balancer_base_get_resource_master (balancer, resource_id) &
+          result (worker)
+       import :: balancer_base_t
+       class(balancer_base_t), intent(in) :: balancer
+       integer, intent(in) :: resource_id
+     end function balancer_base_get_resource_master
+
+     !> Assign resource to a given worker or retrieve current assigned resource.
+     !!
+     !! If worker has already a resource assigned, return resource.
+     !! If worker has not been assigned a resource, retrieve new resource from state.
+     !!
+     !! \note Each call must check if a worker is assignable, if not, the procedure must return resource_id = -1.
+     subroutine balancer_base_assign_worker (balancer, worker_id, resource_id)
+       import :: balancer_base_t
+       class(balancer_base_t), intent(inout) :: balancer
+       integer, intent(in) :: worker_id
+       integer, intent(out) :: resource_id
+     end subroutine balancer_base_assign_worker
+
+     !> Free assignment of worker.
+     !!
+     !! If worker is not assigned, this procedure is idempotent.
+     !! If worker is assigned, alter state correspondingly.
+     !! \note In order to correctly free a worker from a resource, we have to explicitly keep track of the association status of a worker and a resource.
+     !! This feature is mostly relevant for resources with a worker group.
+     ! The resource may be disassociated from their worker by earlier calls or the former worker may be already assigned to a new resource.
+     !! In the latter case, we are not allowed to free them (as the new resource is still active).
+     !! Therefore, each call must check if a worker and resource are still associated and the resource is still active.
+     !! Only, in this case, disassociating workers and resource is allowed.
+     subroutine balancer_base_free_worker (balancer, worker_id, resource_id)
+       import :: balancer_base_t
+       class(balancer_base_t), intent(inout) :: balancer
+       integer, intent(in) :: worker_id
+       integer, intent(in) :: resource_id
+     end subroutine balancer_base_free_worker
+  end interface
+
+  public :: balancer_base_t, resource_state_t
+  public :: shift_rank_to_worker, shift_worker_to_rank
+contains
+  !> Shift rank index to worker index.
+  !! Proof: rank \in {0, …, N - 1}, worker \in {1, …, N}
+  elemental integer function shift_rank_to_worker (rank) result (worker)
+    integer, intent(in) :: rank
+    worker = rank + 1
+  end function shift_rank_to_worker
+
+  !> Shift worker index to rank index.
+  !! Proof: rank \in {0, …, N - 1}, worker \in {1, …, N}
+  elemental integer function shift_worker_to_rank (worker) result (rank)
+    integer, intent(in) :: worker
+    rank = worker - 1
+  end function shift_worker_to_rank
+
+  subroutine worker_write (worker, unit)
+    class(worker_t), intent(in) :: worker
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3(A,1X,I3,1X),A,1X,L1)") "RESOURCE", worker%resource, &
+         "STATE", worker%state, &
+         "N_RESOURCES", worker%n_resources, &
+         "ASSIGNED", worker%assigned
+  end subroutine worker_write
+
+  elemental logical function worker_is_assigned (worker) result (flag)
+    class(worker_t), intent(in) :: worker
+    flag = worker%assigned
+  end function worker_is_assigned
+
+  elemental integer function worker_get_resource (worker) result (resource_id)
+    class(worker_t), intent(in) :: worker
+    resource_id = worker%resource
+  end function worker_get_resource
+
+  elemental integer function worker_get_state (worker) result (i_state)
+    class(worker_t), intent(in) :: worker
+    i_state = worker%state
+  end function worker_get_state
+
+  elemental subroutine worker_add_resource (worker, resource_id)
+    class(worker_t), intent(inout) :: worker
+    integer, intent(in) :: resource_id
+    worker%n_resources = worker%n_resources + 1
+    worker%assigned = .true.
+    worker%resource = resource_id
+  end subroutine worker_add_resource
+
+  elemental subroutine worker_free (worker)
+    class(worker_t), intent(inout) :: worker
+    worker%assigned = .false.
+    worker%resource = 0
+  end subroutine worker_free
+
+  subroutine resource_write (resource, unit)
+    class(resource_t), intent(in) :: resource
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(A,1X,I3,1X,A,1X,L1,1X,A,1X,I3)") &
+         "RESOURCE_ID", resource%resource_id, &
+         "ACTIVE", resource%active, &
+         "N_ASSIGNED_WORKERS", resource%n_assigned_workers
+  end subroutine resource_write
+
+  elemental logical function resource_is_active (resource) result (flag)
+    class(resource_t), intent(in) :: resource
+    flag = resource%active
+  end function resource_is_active
+
+  subroutine resource_set_active (resource, n_workers)
+    class(resource_t), intent(inout) :: resource
+    integer, intent(in) :: n_workers
+    resource%active = .true.
+    resource%n_assigned_workers = n_workers
+  end subroutine resource_set_active
+
+  subroutine resource_set_inactive (resource)
+    class(resource_t), intent(inout) :: resource
+    resource%active = .false.
+  end subroutine resource_set_inactive
+
+  subroutine resource_state_write (state, unit)
+    class(resource_state_t), intent(in) :: state
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(A,1X,I0)") "N_STATE_WORKERS", state%n_workers
+    select case (state%mode)
+    case (STATE_SINGLE)
+       write (u, "(A)") "MODE ONE-TO-ONE"
+    case (STATE_ALL)
+       write (u, "(A)") "MODE ALL-TO-ONE"
+    case default
+       write (u, "(A)") "UNSUPPORTED MODE"
+    end select
+    write (u, "(A)") "RESOURCE"
+    call state%resource_stack%write (u)
+    write (u, "(A)") "FINISHED"
+    call state%finished_stack%write (u)
+  end subroutine resource_state_write
+
+  subroutine resource_state_init (state, mode, n_workers)
+    class(resource_state_t), intent(out) :: state
+    integer, intent(in) :: mode
+    integer, intent(in) :: n_workers
+    state%mode = mode
+    state%n_workers = n_workers
+    call state%resource_stack%init ()
+    call state%finished_stack%init ()
+  end subroutine resource_state_init
+
+  subroutine resource_state_add_resource (state, i_resource)
+    class(resource_state_t), intent(inout) :: state
+    integer, intent(in) :: i_resource
+    call state%resource_stack%add (i_resource)
+  end subroutine resource_state_add_resource
+
+  subroutine resource_state_freeze (state)
+    class(resource_state_t), intent(inout) :: state
+    call state%resource_stack%sort ()
+    call state%resource_stack %reverse_order ()
+  end subroutine resource_state_freeze
+
+  subroutine resource_state_clear (state)
+    class(resource_state_t), intent(inout) :: state
+    call state%resource_stack%clear ()
+    call state%finished_stack%clear ()
+  end subroutine resource_state_clear
+
+  elemental function resource_state_has_resource (state) result (flag)
+    class(resource_state_t), intent(in) :: state
+    logical :: flag
+    flag = .not. state%resource_stack%is_empty ()
+  end function resource_state_has_resource
+
+  function resource_state_assign_resource (state) result (i_resource)
+    class(resource_state_t), intent(inout) :: state
+    integer :: i_resource
+    if (state%resource_stack%is_empty ()) then
+       i_resource = 0
+       call msg_bug ("Error: No leftover resource on stack.")
+       return
+    end if
+    i_resource = state%resource_stack%remove () !! Pop last element from stack.
+  end function resource_state_assign_resource
+
+  subroutine resource_state_free_resource (state, i_resource)
+    class(resource_state_t), intent(inout) :: state
+    integer, intent(in) :: i_resource
+    if (state%resource_stack%is_element (i_resource)) then
+       call msg_bug ("Error: Cannot free resource, still on resource stack.")
+    end if
+    call state%finished_stack%add (i_resource)
+  end subroutine resource_state_free_resource
+
+  subroutine balancer_base_write (balancer, unit)
+    class(balancer_base_t), intent(in) :: balancer
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    write (u, "(A)") "[REQUEST BALANCER]"
+    write (u, "(3(A,1X,I3,1X))") "N_WORKERS", balancer%n_workers, &
+         "N_RESOURCES", balancer%n_resources, &
+         "N_STATES", balancer%n_states
+    write (u, "(A)") "[WORKER]"
+    do i = 1, balancer%n_workers
+       call balancer%worker(i)%write (u)
+    end do
+    write (u, "(A)") "[RESOURCE]"
+    do i = 1, balancer%n_resources
+       call balancer%resource(i)%write (u)
+    end do
+    write (u, "(A)") "[STATES]"
+    do i = 1, balancer%n_states
+       call balancer%state(i)%write (u)
+    end do
+  end subroutine balancer_base_write
+
+  subroutine balancer_base_base_init (balancer, n_workers, n_resources)
+    class(balancer_base_t), intent(out) :: balancer
+    integer, intent(in) :: n_workers
+    integer, intent(in) :: n_resources
+    balancer%n_workers = n_workers
+    balancer%n_resources = n_resources
+    allocate (balancer%worker (n_workers))
+    allocate (balancer%resource (n_resources))
+    call init_resource ()
+  contains
+    subroutine init_resource ()
+      integer :: i
+      do i = 1, balancer%n_resources
+         balancer%resource(i)%resource_id = i
+      end do
+    end subroutine init_resource
+  end subroutine balancer_base_base_init
+
+  !> Add partition of workers and link with workers.
+  !! We move the allocated partition object into the balancer.
+  !! We then assign each partition its respective number of workers in a incrementing linear fashion.
+  !! However, we postpone the linking of the resources to the partition, which can be either done dynamically with the balancer state or directly with the appropriate type-bound procedure.
+  subroutine balancer_base_add_state (balancer, state)
+    class(balancer_base_t), intent(inout) :: balancer
+    type(resource_state_t), dimension(:), allocatable, intent(inout) :: state
+    balancer%n_states = size (state)
+    call move_alloc (state, balancer%state)
+    call balancer%link_worker_and_state ()
+  end subroutine balancer_base_add_state
+
+  subroutine balancer_base_link_worker_and_state (balancer)
+    class(balancer_base_t), intent(inout) :: balancer
+    integer :: i, j, i_worker
+    if (.not. allocated (balancer%state)) &
+         call msg_bug ("Error: resource state not allocated.")
+    !! Link worker to a state.
+    i_worker = 1
+    do i = 1, balancer%n_states
+       do j = 1, balancer%state(i)%n_workers
+          if (i_worker > balancer%n_workers) then
+             call msg_bug ("Balancer: Number of state workers&
+                  & exceeding global number of workers")
+          end if
+          associate (worker => balancer%worker(i_worker))
+            worker%state = i
+            !! Reset worker attributes.
+            worker%resource = 0
+            worker%n_resources = 0
+            worker%assigned = .false.
+          end associate
+          i_worker = i_worker + 1
+       end do
+    end do
+  end subroutine balancer_base_link_worker_and_state
+
+  !> Is a worker unassigned, or is a worker assigned, but already assigned to an active resource?
+  !!
+  !! \note Fence for assign_worker TBP.
+  !! The assign_worker TPB must call is_assignable in order to retrieve the worker status.
+  !! \param[in] worker_id
+  !! \return flag If worker is NOT assigned, return .true. if state has resources.
+  !!              If worker is assigned, return .true. if associated resource is active.
+  pure logical function balancer_base_is_assignable (balancer, worker_id) result (flag)
+    class(balancer_base_t), intent(in) :: balancer
+    integer, intent(in) :: worker_id
+    integer :: i_state, resource_id
+    flag = .false.
+    if (balancer%worker(worker_id)%assigned) then
+       resource_id = balancer%worker(worker_id)%resource
+       flag = balancer%resource(resource_id)%is_active ()
+    else
+       i_state = balancer%worker(worker_id)%get_state ()
+       flag = balancer%state(i_state)%has_resource ()
+    end if
+  end function balancer_base_is_assignable
+
+  !> Is a worker still pending.
+  !!
+  !! Test worker assignment, and if there is a (valid) resource and if it is still active.
+  pure logical function balancer_base_is_worker_pending (balancer, worker_id) result (flag)
+    class(balancer_base_t), intent(in) :: balancer
+    integer, intent(in) :: worker_id
+    integer :: resource_id
+    flag = balancer%worker(worker_id)%assigned
+    if (flag) then
+       resource_id = balancer%worker(worker_id)%get_resource ()
+       flag = balancer%resource(resource_id)%is_active ()
+    end if
+  end function balancer_base_is_worker_pending
+
+  logical function balancer_base_is_pending (balancer) result (flag)
+    class(balancer_base_t), intent(in) :: balancer
+    flag = all (balancer%state%has_resource ())
+  end function balancer_base_is_pending
+
+end module balancer_base
+@ %def balancer_base
+@ \subsection{Balancer Simple}
+<<[[balancer_simple.f90]]>>=
+<<File header>>
+module balancer_simple
+  use io_units
+  use diagnostics
+
+  use balancer_base
+
+  implicit none
+
+  private
+
+  integer, parameter :: N_BALANCER_SIMPLE_STATES = 1, &
+       BALANCER_SIMPLE_CHANNEL = 1
+
+  !> Simple balancer.
+  !!
+  !! The simple balancer distribute the channel among the N workers using a modulo prescription.
+  !! However, it does assign all workers to a channel capable of grid with parallelizable structure.
+  !!
+  !! The balancer use local, non-communicative approach; each worker allocates an own instance of the balancer
+  !! and fills it with the respecting resources.
+  !!
+  !! We defer possible checks (or sentinels) to the request module, e.g. such as checking whether all channels are computed globally.
+  type, extends (balancer_base_t) :: balancer_simple_t
+     logical, dimension(:), allocatable :: parallel_grid
+   contains
+     procedure :: init => balancer_simple_init
+     procedure :: write => balancer_simple_write
+     procedure :: update_state => balancer_simple_update_state
+     procedure :: has_resource_group => balancer_simple_has_resource_group
+     procedure :: get_resource_group => balancer_simple_get_resource_group
+     procedure :: get_resource_master => balancer_simple_get_resource_master
+     procedure, private :: map_channel_to_worker => balancer_simple_map_channel_to_worker
+     procedure :: assign_worker => balancer_simple_assign_worker
+     procedure :: free_worker => balancer_simple_free_worker
+  end type balancer_simple_t
+
+  public :: balancer_simple_t
+contains
+  subroutine balancer_simple_init (balancer, n_workers, n_resources)
+    class(balancer_simple_t), intent(out) :: balancer
+    integer, intent(in) :: n_workers
+    integer, intent(in) :: n_resources
+    type(resource_state_t), dimension(:), allocatable :: state
+    call balancer%base_init (n_workers, n_resources)
+    allocate (balancer%parallel_grid(n_resources), source = .false.)
+    allocate (state (N_BALANCER_SIMPLE_STATES))
+    call state(BALANCER_SIMPLE_CHANNEL)%init ( &
+         mode = STATE_SINGLE, &
+         n_workers = balancer%n_workers)
+    call balancer%add_state (state)
+  end subroutine balancer_simple_init
+
+  subroutine balancer_simple_write (balancer, unit)
+    class(balancer_simple_t), intent(in) :: balancer
+    integer, intent(in), optional :: unit
+    integer :: u, n_size
+    u = given_output_unit (unit)
+    call balancer%base_write (u)
+    n_size = min (25, size (balancer%parallel_grid))
+    write (u, "(A,25(1X,L1))") "Parallel Grids:", balancer%parallel_grid(:n_size)
+  end subroutine balancer_simple_write
+
+  !> Update balancer state.
+  !!
+  !! Each worker update its own balancer state requiring information about the worker_id.
+  subroutine balancer_simple_update_state (balancer, worker_id, parallel_grid)
+    class(balancer_simple_t), intent(inout) :: balancer
+    integer, intent(in) :: worker_id
+    logical, dimension(:), intent(in) :: parallel_grid
+    integer :: ch, worker
+    balancer%parallel_grid = parallel_grid
+    if (.not. allocated (balancer%state)) then
+       call msg_bug ("Error: balancer state not allocated.")
+    end if
+    associate (state => balancer%state(BALANCER_SIMPLE_CHANNEL))
+      call state%clear ()
+      do ch = 1, balancer%n_resources
+         if (parallel_grid(ch)) then
+            call state%add_resource (ch)
+         else
+            worker = balancer%map_channel_to_worker (ch)
+            if (worker == worker_id) then
+               call state%add_resource (ch)
+            end if
+         end if
+      end do
+      call state%freeze ()
+    end associate
+  end subroutine balancer_simple_update_state
+
+  pure logical function balancer_simple_has_resource_group (balancer, resource_id) &
+       result (flag)
+    class(balancer_simple_t), intent(in) :: balancer
+    integer, intent(in) :: resource_id
+    if (.not. balancer%resource(resource_id)%is_active ()) then
+       flag = .false.
+       return
+    end if
+    flag = balancer%parallel_grid (resource_id)
+  end function balancer_simple_has_resource_group
+
+  pure subroutine balancer_simple_get_resource_group (balancer, resource_id, group)
+    class(balancer_simple_t), intent(in) :: balancer
+    integer, intent(in) :: resource_id
+    integer, dimension(:), allocatable, intent(out) :: group
+    integer :: i
+    if (.not. balancer%has_resource_group (resource_id)) return
+    group = pack ([(i, i=1,balancer%n_workers)], &
+         mask = balancer%worker%get_resource () == resource_id)
+  end subroutine balancer_simple_get_resource_group
+
+  !> Retrieve resource master holding the results to be communicated.
+  !!
+  !! As the simple balancer operates locally on each worker, we do not need to check whether a resource is currently active.
+  !! All the resources (and their respective order) is fixed at each update of the balancer.
+  pure integer function balancer_simple_get_resource_master (balancer, resource_id) &
+       result (worker_id)
+    class(balancer_simple_t), intent(in) :: balancer
+    integer, intent(in) :: resource_id
+    !! \note Do NOT check on resource activation (see interface prescription).
+    if (balancer%parallel_grid(resource_id)) then
+       worker_id = 1
+    else
+       worker_id = balancer%map_channel_to_worker (resource_id)
+    end if
+  end function balancer_simple_get_resource_master
+
+  pure integer function balancer_simple_map_channel_to_worker (balancer, channel) &
+       result (worker)
+    class(balancer_simple_t), intent(in) :: balancer
+    integer, intent(in) :: channel
+    !! Proof: channel \in {1, N_c}, number of workers N, rank \in {0, …, N - 1}
+    !! Proof: worker \in {1, …, N}
+    !! a = b mod c, then 0 <= a < c
+    worker = mod (channel - 1, balancer%n_workers) + 1
+  end function balancer_simple_map_channel_to_worker
+
+  subroutine balancer_simple_assign_worker (balancer, worker_id, resource_id)
+    class(balancer_simple_t), intent(inout) :: balancer
+    integer, intent(in) :: worker_id
+    integer, intent(out) :: resource_id
+    integer :: i
+    if (.not. balancer%is_assignable (worker_id)) then
+       resource_id = -1
+       RETURN
+    end if
+    if (balancer%worker(worker_id)%is_assigned ()) then
+       resource_id = balancer%worker(worker_id)%get_resource ()
+       RETURN
+    end if
+    associate (state => balancer%state(BALANCER_SIMPLE_CHANNEL))
+      if (.not. state%has_resource ()) then
+         resource_id = 0
+         return
+      end if
+      resource_id = state%assign_resource ()
+      if (balancer%parallel_grid(resource_id)) then
+         do i = 1, balancer%n_workers
+            if (balancer%is_worker_pending (i)) then
+               write (msg_buffer, "(A,1X,I0,1X,A,1X,I0,1X,A)") "WORKER", i, "ASSIGNED"
+               call msg_bug ()
+            end if
+            call balancer%worker(i)%add_resource (resource_id)
+         end do
+         call balancer%resource(resource_id)%set_active (n_workers = balancer%n_workers)
+      else
+         call balancer%worker(worker_id)%add_resource (resource_id)
+         call balancer%resource(resource_id)%set_active (n_workers = 1)
+      end if
+    end associate
+  end subroutine balancer_simple_assign_worker
+
+  subroutine balancer_simple_free_worker (balancer, worker_id, resource_id)
+    class(balancer_simple_t), intent(inout) :: balancer
+    integer, intent(in) :: worker_id
+    integer, intent(in) :: resource_id
+    integer :: i
+    if (.not. balancer%worker(worker_id)%is_assigned ()) return
+    if (.not. resource_id == balancer%worker(worker_id)%get_resource ()) then
+       call msg_bug ("Balancer simple: resource and associated resource do not match.")
+    end if
+    associate (state => balancer%state(BALANCER_SIMPLE_CHANNEL))
+      call balancer%resource(resource_id)%set_inactive ()
+      call state%free_resource (resource_id)
+      if (balancer%parallel_grid(resource_id)) then
+         do i = 1, balancer%n_workers
+            call balancer%worker(i)%free ()
+         end do
+      else
+         call balancer%worker(worker_id)%free ()
+      end if
+    end associate
+  end subroutine balancer_simple_free_worker
+end module balancer_simple
+@ %def balancer_simple
+@ \subsection{Balancer Channel}
+<<[[balancer_channel.f90]]>>=
+<<File header>>
+module balancer_channel
+  use kinds, only: default
+  use io_units
+  use diagnostics
+
+  use balancer_base
+
+  implicit none
+
+  private
+
+  real(default), parameter :: BETA = 1.5_default
+
+  integer, parameter :: N_BALANCER_CHANNEL_STATE = 2, &
+       CHANNEL_STATE = 1, &
+       GRID_STATE = 2
+
+  type, extends(balancer_base_t) :: balancer_channel_t
+     private
+     integer :: n_parallel_grids = 0
+     integer :: n_parallel_channels = 0
+     integer :: n_grid_workers = 0
+     integer :: n_channel_workers = 0
+     logical, dimension(:), allocatable :: parallel_grid
+   contains
+     procedure :: init => balancer_channel_init
+     procedure :: write => balancer_channel_write
+     procedure :: update_state => balancer_channel_update_state
+     procedure :: has_resource_group => balancer_channel_has_resource_group
+     procedure :: get_resource_group => balancer_channel_get_resource_group
+     procedure :: get_resource_master => balancer_channel_get_resource_master
+     procedure :: assign_worker => balancer_channel_assign_worker
+     procedure :: free_worker => balancer_channel_free_worker
+  end type balancer_channel_t
+
+  public :: balancer_channel_t
+contains
+  subroutine balancer_channel_init (balancer, n_workers, n_resources)
+    class(balancer_channel_t), intent(out), target :: balancer
+    integer, intent(in) :: n_workers
+    integer, intent(in) :: n_resources
+    call balancer%base_init (n_workers, n_resources)
+    allocate (balancer%parallel_grid(n_resources), source = .false.)
+  end subroutine balancer_channel_init
+
+  subroutine balancer_channel_write (balancer, unit)
+    class(balancer_channel_t), intent(in) :: balancer
+    integer, intent(in), optional :: unit
+    integer :: u, n_size
+    u = given_output_unit (unit)
+    write (u, "(A)") "Channel Balancer."
+    write (u, "(A,1X,I3)") "Parallel grids: ", balancer%n_parallel_grids
+    write (u, "(A,1X,I3)") "Parallel channels: ", balancer%n_parallel_channels
+    write (u, "(A,1X,I3)") "Grid workers: ", balancer%n_grid_workers
+    write (u, "(A,1X,I3)") "Channel workers: ", balancer%n_channel_workers
+    n_size = min (25, size (balancer%parallel_grid))
+    write (u, "(A,25(1X,L1))") "Parallel Grids:", balancer%parallel_grid(:n_size)
+    call balancer%base_write (u)
+  end subroutine balancer_channel_write
+
+  subroutine balancer_channel_update_state (balancer, weight, parallel_grid)
+    class(balancer_channel_t), intent(inout) :: balancer
+    real(default), dimension(:), intent(in) :: weight
+    logical, dimension(:), intent(in) :: parallel_grid
+    real(default) :: min_parallel_weight
+    balancer%parallel_grid = parallel_grid
+    min_parallel_weight = balancer%n_resources**(1._default - 1_default / BETA) &
+         / balancer%n_workers**BETA
+    balancer%parallel_grid = &
+         balancer%parallel_grid .and. (weight >= min_parallel_weight)
+    if (balancer%n_resources >= balancer%n_workers) then
+       !! Apply full multi-channel parallelization.
+       balancer%n_parallel_grids = 0
+       balancer%n_parallel_channels = balancer%n_resources
+       balancer%parallel_grid = .false.
+       balancer%n_grid_workers = 0
+       balancer%n_channel_workers = balancer%n_workers
+    else
+       if (count (balancer%parallel_grid) == balancer%n_resources) then
+          !! Apply full VEGAS parallelization.
+          balancer%n_parallel_grids = balancer%n_resources
+          balancer%n_parallel_channels = 0
+          balancer%n_grid_workers = balancer%n_workers
+          balancer%n_channel_workers = 0
+       else
+          !! Apply mixed mode.
+          balancer%n_parallel_grids = count (balancer%parallel_grid)
+          balancer%n_parallel_channels = balancer%n_resources - balancer%n_parallel_grids
+          call compute_mixed_mode (weight)
+       end if
+    end if
+    if(allocated (balancer%state)) then
+       deallocate (balancer%state)
+    end if
+    call allocate_state ()
+  contains
+    subroutine compute_mixed_mode (weight)
+      real(default), dimension(:), intent(in) :: weight
+      real(default) :: weight_parallel_grids, &
+           ratio_weight, &
+           ratio_n_channels, &
+           ratio
+      !! Apply mixed mode.
+      weight_parallel_grids = sum (weight, balancer%parallel_grid)
+      !! Overall normalization of weight, \f$\alpha_{\text{grids}} +
+      !! \alpha_{\text{channels}} = 1\f$.
+      !! \f$\alpha_{\text{channels}} = 1 - \alpha_{\text{grids}}\f$
+      ratio_weight = weight_parallel_grids / (1 - weight_parallel_grids)
+      ratio_n_channels = real (balancer%n_parallel_grids, default) &
+           / (balancer%n_resources - balancer%n_parallel_grids)
+      !! The average computation of channel is proportional to its weight.
+      !! Reweight number of channels (per mode) by their summed weights.
+      !! R = w * N / (w * N + w' * N'); primed refer to parallel grid entities.
+      !!   = 1 / (1 + w' / w * N' / N)
+      ratio = 1 / (1  + ratio_weight * ratio_n_channels)
+      ratio = min (max (ratio, 0.0_default), 1.0_default) !! Safe-guard ratio computation.
+      !! In the case of small numbers of workers and a very small ratio,
+      !! nint can assign no worker to channel/grid parallelization,
+      !! which is still requested by n_parallel_channels/grids.
+      !! In that case, we have to enforce: n_worker = n_channel_worker + n_grid_worker
+      balancer%n_channel_workers = nint (ratio * balancer%n_workers)
+      balancer%n_grid_workers = nint ((1 - ratio) * balancer%n_workers)
+      !! In the case of small numbers of workers and a very small ratio,
+      !! nint can assign no worker to channel/grid parallelization,
+      !! which is still requested by n_parallel_channels/grids.
+      !! In that case, we have to enforce: n_worker = n_channel_worker + n_grid_worker
+      if (balancer%n_workers >= 2 &
+           .AND. (balancer%n_parallel_channels > 0 .and. balancer%n_channel_workers < 1)) then
+         balancer%n_channel_workers = 1
+         balancer%n_grid_workers = balancer%n_grid_workers - 1
+      end if
+      !! The grid resources will only be increased to N = 2
+      !! if more than 3 workers are present.
+      if (balancer%n_workers >= 3 &
+           .AND. (balancer%n_parallel_grids > 0 .and. balancer%n_grid_workers < 2)) then
+         balancer%n_grid_workers = 2
+         balancer%n_channel_workers = balancer%n_channel_workers - 2
+      end if
+    end subroutine compute_mixed_mode
+
+    subroutine allocate_state ()
+      type(resource_state_t), dimension(:), allocatable :: state
+      integer :: ch
+      allocate (state(N_BALANCER_CHANNEL_STATE))
+      call state(CHANNEL_STATE)%init ( &
+           mode = STATE_SINGLE, &
+           n_workers = balancer%n_channel_workers)
+      call state(GRID_STATE)%init ( &
+           mode = STATE_ALL, &
+           n_workers = balancer%n_grid_workers)
+      do ch = 1, balancer%n_resources
+         if (balancer%parallel_grid(ch)) then
+            call state(GRID_STATE)%add_resource (ch)
+         else
+            call state(CHANNEL_STATE)%add_resource (ch)
+         end if
+      end do
+      call state(CHANNEL_STATE)%freeze ()
+      call state(GRID_STATE)%freeze ()
+      call balancer%add_state (state)
+    end subroutine allocate_state
+  end subroutine balancer_channel_update_state
+
+  pure function balancer_channel_has_resource_group (balancer, resource_id) &
+       result (flag)
+    class(balancer_channel_t), intent(in) :: balancer
+    integer, intent(in) :: resource_id
+    logical :: flag
+    if (.not. balancer%resource(resource_id)%is_active ()) then
+       flag = .false.
+       return
+    end if
+    flag = balancer%parallel_grid(resource_id)
+  end function balancer_channel_has_resource_group
+
+  pure subroutine balancer_channel_get_resource_group (balancer, resource_id, group)
+    class(balancer_channel_t), intent(in) :: balancer
+    integer, intent(in) :: resource_id
+    integer, dimension(:), allocatable, intent(out) :: group
+    integer :: i
+    if (.not. balancer%has_resource_group (resource_id)) return
+    group = pack ([(i, i = 1, balancer%n_workers)], &
+         mask = balancer%worker%get_resource () == resource_id)
+  end subroutine balancer_channel_get_resource_group
+
+  pure integer function balancer_channel_get_resource_master (balancer, resource_id) &
+       result (worker_id)
+    class(balancer_channel_t), intent(in) :: balancer
+    integer, intent(in) :: resource_id
+    integer :: i
+    if (.not. balancer%resource(resource_id)%is_active ()) then
+       worker_id = -1
+       return
+    end if
+    !! Linear search.
+    !! First element in worker group is defined as master.
+    associate (worker => balancer%worker)
+      do i = 1, balancer%n_workers
+         if (worker(i)%get_resource () == resource_id) then
+            worker_id = i
+            exit
+         end if
+      end do
+    end associate
+  end function balancer_channel_get_resource_master
+
+  subroutine balancer_channel_assign_worker (balancer, worker_id, resource_id)
+    class(balancer_channel_t), intent(inout) :: balancer
+    integer, intent(in) :: worker_id
+    integer, intent(out) :: resource_id
+    integer :: i_state
+    if (.not. balancer%is_assignable (worker_id)) then
+       resource_id = -1
+       return
+    end if
+    if (balancer%worker(worker_id)%is_assigned ()) then
+       resource_id = balancer%worker(worker_id)%get_resource ()
+       return
+    end if
+    associate (state => balancer%state)
+      i_state = balancer%worker(worker_id)%get_state ()
+      if (.not. state(i_state)%has_resource ()) then
+         resource_id = 0
+         return
+      end if
+      resource_id = state(i_state)%assign_resource ()
+      select case (state(i_state)%mode)
+      case (STATE_SINGLE)
+         call balancer%worker(worker_id)%add_resource (resource_id)
+         call balancer%resource(resource_id)%set_active (n_workers = 1)
+      case (STATE_ALL)
+         call fill_resource_group (i_state, resource_id)
+      end select
+    end associate
+  contains
+    subroutine fill_resource_group (i_state, resource_id)
+      integer, intent(in) :: i_state
+      integer, intent(in) :: resource_id
+      integer :: i, n_workers
+      n_workers = 0
+      do i = 1, balancer%n_workers
+         if (.not. balancer%worker(i)%get_state () == i_state) cycle
+         if (balancer%is_worker_pending (i)) then
+            write (msg_buffer, "(A,1X,I0,1X,A,1X,I0,1X,A)") "WORKER", i, "STATE", i_state, "ASSIGNED"
+            call msg_bug ()
+         end if
+         call balancer%worker(i)%add_resource (resource_id)
+         n_workers = n_workers + 1
+      end do
+      if (n_workers /= balancer%state(i_state)%n_workers) then
+         call msg_bug ("Number of assigned workers unequal to number of state workers.")
+      end if
+      call balancer%resource(resource_id)%set_active (n_workers = n_workers)
+    end subroutine fill_resource_group
+  end subroutine balancer_channel_assign_worker
+
+  !> Free worker from associated resource.
+  !!
+  !! Idempotent. Depending on state association, given resource must equal worker's resource (check) for single state.
+  !! For all state, the *current* resource of the worker may differ (grouping behavior!), only in case, that the older resource is inactive, return as idempotent.
+  !! Else, free all worker from resource group.
+  subroutine balancer_channel_free_worker (balancer, worker_id, resource_id)
+    class(balancer_channel_t), intent(inout) :: balancer
+    integer, intent(in) :: worker_id
+    integer, intent(in) :: resource_id
+    integer :: i, i_state
+    if (.not. balancer%worker(worker_id)%is_assigned ()) return
+    associate (state => balancer%state)
+      i_state = balancer%worker(worker_id)%get_state ()
+      select case (state(i_state)%mode)
+      case (STATE_SINGLE)
+         if (.not. resource_id == balancer%worker(worker_id)%get_resource ()) then
+            call msg_bug ("Channel balancer: resource and associated resource do not match.")
+         end if
+         call balancer%resource(resource_id)%set_inactive ()
+         call state(i_state)%free_resource (resource_id)
+         call balancer%worker(worker_id)%free ()
+      case (STATE_ALL)
+         if (resource_id /= balancer%worker(worker_id)%get_resource ()) then
+            if (balancer%resource(resource_id)%is_active ()) then
+               msg_buffer = "Channel balancer: resource is still active,&
+                    & but worker is assigned to another resource."
+               call msg_bug ()
+            else
+               !! Special case: Worker was already freed from (now inactive) resource_id (by another call to free_worker),
+               !! and in the mean time assigned to a new resource. So, nothing to do.
+               return
+            end if
+         end if
+         call balancer%resource(resource_id)%set_inactive ()
+         call state(i_state)%free_resource (resource_id)
+         do i = 1, balancer%n_workers
+            if (.not. balancer%worker(i)%get_state () == i_state) cycle
+            call balancer%worker(i)%free ()
+         end do
+      end select
+    end associate
+  end subroutine balancer_channel_free_worker
+end module balancer_channel
+@ %def balancer_channel
+@ \subsection{Request Callback}
+\begin{description}
+\item[request handler] Base type and interface for providing two-sided communication in a callback fashion.
+\item[request handler manager] Manages handler with a binary tree.
+\end{description}
+<<[[request_callback.f90]]>>=
+module request_callback
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+  use binary_tree
+  use diagnostics
+
+  use mpi_f08 !NODEP!
+
+  implicit none
+
+  private
+
+  !> Request handler.
+  !!
+  !! A request handler allows to dispatch an object for communication a priori
+  !! for a slave and a master.
+  !! Typically, each slave register its own request handles, whereas the master
+  !! requests all possible requests handles matching those of the slaves.
+  !! The requests can then be used later on, e.g. during a computation, a slave
+  !! may add a request to the master worker and starts sending an object.
+  !! The master worker looks up the appropriate request handler, which then
+  !! closes the communication, i.e. by a receive call.
+  !! Most important: Only a pointer to the buffer object is stored, therefore, the calling function
+  !! has to ensure, that the communication object (buffer) will not be changed
+  !! during a request handle (receive or send).
+  !!
+  !! Remark: The handler allows for a tag offset which allows to uniqify the the communication.
+  !!         The problem occurs when multiple callback need to handled simultanously and MPI needs to connect the communication calls accordingly.
+  !!         Each message has a tuple of (source, tag, comm) associated, we can uniquify this tuple by a unique tag.
+  !!         tag = tag_offset + {1, …, N_requests} where tag_offsets are multiple of N_requests.
+  !!         The latter condition should checked by a modulo.
+  !! What happens if the communication is out of order (is this a problem? check with standard)?
+  type, abstract :: request_handler_t
+     integer :: n_requests = 0
+     integer :: tag_offset = 0
+     type(MPI_REQUEST), dimension(:), allocatable :: request
+     type(MPI_STATUS), dimension(:), allocatable :: status
+     logical :: activated = .false.
+     logical :: finished = .false.
+   contains
+     procedure :: base_write => request_handler_base_write
+     procedure(request_handler_write), deferred :: write
+     !! \todo{sbrass} implement initialization procedure.
+     procedure(request_handler_handle), deferred :: handle
+     procedure(request_handler_client_handle), deferred :: client_handle
+     procedure :: allocate => request_handler_allocate
+     procedure :: get_status => request_handler_get_status
+     procedure :: testall => request_handler_testall
+     procedure :: waitall => request_handler_waitall
+     procedure :: free => request_handler_free
+  end type request_handler_t
+
+  type :: request_handler_manager_t
+     private
+     type(MPI_COMM) :: comm
+     type(binary_tree_t) :: tree
+   contains
+     procedure :: init => request_handler_manager_init
+     procedure :: write => request_handler_manager_write
+     procedure :: add => request_handler_manager_add
+     procedure :: clear => request_handler_manager_clear
+     procedure :: has_handler => request_handler_manager_has_handler
+     procedure :: test => request_handler_manager_test
+     procedure :: wait => request_handler_manager_wait
+     procedure :: waitall => request_handler_manager_waitall
+     procedure, private :: fill_status => request_handler_manager_fill_status
+     procedure, private :: handler_at => request_handler_manager_handler_at
+     procedure :: callback => request_handler_manager_callback
+     procedure :: client_callback => request_handler_manager_client_callback
+  end type request_handler_manager_t
+
+  abstract interface
+     subroutine request_handler_write (handler, unit)
+       import :: request_handler_t
+       class(request_handler_t), intent(in) :: handler
+       integer, intent(in), optional :: unit
+     end subroutine request_handler_write
+
+     !> Handle a request from server side.
+     !!
+     !! The message tag can be used in order to uniquify the respective messages between master and slave.
+     !! E.g. by explicitly setting it, or by using it in a computation i * N_R + j, i \in {1, …, N} and j \in {1, …, N_R}.
+     !!
+     !! Must set *activated* to .true. when called.
+     !! \param[in] source Integer rank of the source in comm.
+     !! \param[in] tag Specify the message tag.
+     !! \param[in] comm MPI communicator.
+     subroutine request_handler_handle (handler, source_rank, comm)
+       import :: request_handler_t, MPI_COMM
+       class(request_handler_t), intent(inout) :: handler
+       integer, intent(in) :: source_rank
+       type(MPI_COMM), intent(in) :: comm
+     end subroutine request_handler_handle
+
+     !> Handle a request from client side.
+     !!
+     !! Must set *activated* to .true. when called.
+     !! \param[in] rank Integer of the receiver in comm.
+     !! \param[in] tag Specify the message tag.
+     !! \param[in] comm MPI communicator.
+     subroutine request_handler_client_handle (handler, dest_rank, comm)
+       import :: request_handler_t, MPI_COMM
+       class(request_handler_t), intent(inout) :: handler
+       integer, intent(in) :: dest_rank
+       type(MPI_COMM), intent(in) :: comm
+     end subroutine request_handler_client_handle
+  end interface
+
+  public :: request_handler_t, request_handler_manager_t
+contains
+  !!
+  !! Request handler.
+  !!
+  subroutine request_handler_base_write (handler, unit)
+    class(request_handler_t), intent(in) :: handler
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = ERROR_UNIT; if (present (unit)) u = unit
+    write (u, "(A,1X,I0)") "N_REQUESTS", handler%n_requests
+    write (u, "(A,1X,I0)") "TAG_OFFSET", handler%tag_offset
+    write (u, "(A,1X,L1)") "FINISHED", handler%finished
+    write (u, "(A,1X,L1)") "ACTIVATED", handler%activated
+    write (u, "(A)") "I | SOURCE | TAG | ERROR | REQUEST_NULL"
+    do i = 1, handler%n_requests
+       write (u, "(A,4(1X,I0),1X,L1)") "REQUEST", i, &
+            handler%status(i)%MPI_SOURCE, &
+            handler%status(i)%MPI_TAG, &
+            handler%status(i)%MPI_ERROR, &
+            (handler%request(i) == MPI_REQUEST_NULL)
+    end do
+  end subroutine request_handler_base_write
+
+  !> Allocate MPI request and status object.
+  !!
+  !! Must be called during or after object-initialization.
+  !!
+  !! \param[inout] handler Handler must be intent inout, as the calling function may already manipulated the extended object.
+  !! \param[in] n_requests Number of MPI requests the objects needs to be able to handle.
+  !! \param[in] tag_offset First tag to be used, all other must follow in an increasing manner until tag_offset + (N_r + 1).
+  !! Proof: tag \in {tag_offset, tag_offset + n_requests}.
+  subroutine request_handler_allocate (handler, n_requests, tag_offset)
+    class(request_handler_t), intent(inout) :: handler
+    integer, intent(in) :: n_requests
+    integer, intent(in) :: tag_offset
+    allocate (handler%request(n_requests), source = MPI_REQUEST_NULL)
+    allocate (handler%status(n_requests))
+    handler%n_requests = n_requests
+    if (mod (tag_offset, n_requests) /= 0) &
+         call msg_bug ("Error during handler allocate, tag_offset is not a multiple of n_requests.")
+    !! What is the max.-allowed MPI_TAG?
+    handler%tag_offset = tag_offset
+    handler%activated = .false.
+    handler%finished = .false.
+  end subroutine request_handler_allocate
+
+  !> Get status from request objects in a non-destructive way.
+  subroutine request_handler_get_status (handler)
+    class(request_handler_t), intent(inout) :: handler
+    integer :: i
+    logical :: flag
+    if (.not. handler%activated) return
+    handler%finished = .true.
+    do i = 1, handler%n_requests
+       call MPI_REQUEST_GET_STATUS (handler%request(i), flag, &
+            handler%status(i))
+       handler%finished = handler%finished .and. flag
+    end do
+  end subroutine request_handler_get_status
+
+  !> Call MPI_WATIALL and raise finished flag.
+  subroutine request_handler_waitall (handler)
+    class(request_handler_t), intent(inout) :: handler
+    integer :: error
+    if (.not. handler%activated .or. handler%finished) return
+    call MPI_WAITALL (handler%n_requests, handler%request, handler%status, error)
+    if (error /= 0) then
+       call msg_bug ("Request: Error occured during waitall on handler.")
+    end if
+    handler%finished = .true.
+  end subroutine request_handler_waitall
+
+  logical function request_handler_testall (handler) result (flag)
+    class(request_handler_t), intent(inout) :: handler
+    integer :: error
+    if (.not. handler%activated .or. .not. handler%finished) then
+       call MPI_TESTALL (handler%n_requests, handler%request, handler%finished, &
+            handler%status, error)
+       ! call print_status ()
+       if (error /= 0) then
+          call msg_bug ("Request: Error occured during testall on handler.")
+       end if
+    end if
+    flag = handler%finished
+  contains
+    subroutine print_status ()
+      integer :: i
+      do i = 1, handler%n_requests
+         associate (status => handler%status(i))
+           write (ERROR_UNIT, *) status%MPI_SOURCE, status%MPI_TAG, status%MPI_ERROR
+         end associate
+      end do
+    end subroutine print_status
+  end function request_handler_testall
+
+  subroutine request_handler_free (handler)
+    class(request_handler_t), intent(inout) :: handler
+    integer :: i, error
+    do i = 1, handler%n_requests
+       if (handler%request(i) == MPI_REQUEST_NULL) cycle
+       call MPI_REQUEST_FREE (handler%request(i), error)
+       if (error /= 0) then
+          call msg_bug ("Request: Error occured during free request on handler.")
+       end if
+    end do
+  end subroutine request_handler_free
+
+  !!
+  !! Request handler manager.
+  !!
+  subroutine request_handler_manager_init (rhm, comm)
+    class(request_handler_manager_t), intent(out) :: rhm
+    type(MPI_COMM), intent(in) :: comm
+    call MPI_COMM_DUP (comm, rhm%comm)
+  end subroutine request_handler_manager_init
+
+  subroutine request_handler_manager_write (rhm, unit)
+    class(request_handler_manager_t), intent(in) :: rhm
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = ERROR_UNIT; if (present (unit)) u = unit
+    write (u, "(A)") "[REQUEST_CALLBACK_MANAGER]"
+    call rhm%tree%write (u)
+  end subroutine request_handler_manager_write
+
+  subroutine request_handler_manager_add (rhm, handler_id, handler)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    integer, intent(in) :: handler_id
+    class(request_handler_t), pointer, intent(in) :: handler
+    class(*), pointer :: obj
+    obj => handler
+    call rhm%tree%insert (handler_id, obj)
+  end subroutine request_handler_manager_add
+
+  subroutine request_handler_manager_clear (rhm)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    call rhm%tree%clear ()
+  end subroutine request_handler_manager_clear
+
+  !> Get status (in a non-destructive way) for all associated handler.
+  subroutine request_handler_manager_fill_status (rhm)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    type(binary_tree_iterator_t) :: iterator
+    integer :: handler_id
+    class(request_handler_t), pointer :: handler
+    call iterator%init (rhm%tree)
+    do while (iterator%is_iterable ())
+       call iterator%next (handler_id)
+       call rhm%handler_at (handler_id, handler)
+       call handler%get_status ()
+    end do
+  end subroutine request_handler_manager_fill_status
+
+  logical function request_handler_manager_test (rhm, handler_id) result (flag)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    integer, intent(in) :: handler_id
+    class(request_handler_t), pointer :: handler
+    call rhm%handler_at (handler_id, handler)
+    flag = handler%testall ()
+  end function request_handler_manager_test
+
+  subroutine request_handler_manager_wait (rhm, handler_id)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    integer, intent(in) :: handler_id
+    class(request_handler_t), pointer :: handler
+    call rhm%handler_at (handler_id, handler)
+    call handler%waitall ()
+  end subroutine request_handler_manager_wait
+
+  subroutine request_handler_manager_waitall (rhm)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    type(binary_tree_iterator_t) :: iterator
+    integer :: handler_id
+    call iterator%init (rhm%tree)
+    do while (iterator%is_iterable ())
+       call iterator%next (handler_id)
+       !! Test handler (destructive test on request handler).
+       if (.not. rhm%test (handler_id)) &
+            call rhm%wait (handler_id)
+    end do
+  end subroutine request_handler_manager_waitall
+
+  subroutine request_handler_manager_handler_at (rhm, handler_id, handler)
+    class(request_handler_manager_t), intent(in) :: rhm
+    integer, intent(in) :: handler_id
+    class(request_handler_t), pointer, intent(out) :: handler
+    class(*), pointer :: obj
+    call rhm%tree%search (handler_id, obj)
+    select type (obj)
+    class is (request_handler_t)
+       handler => obj
+    class default
+       call msg_bug ("Object is not derived from request_handler_t.")
+    end select
+  end subroutine request_handler_manager_handler_at
+
+  function request_handler_manager_has_handler (rhm, handler_id) result (flag)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    integer, intent(in) :: handler_id
+    logical :: flag
+    flag = rhm%tree%has_key (handler_id)
+  end function request_handler_manager_has_handler
+
+  !> Call server-sided procedure of callback with handler_id.
+  !!
+  !! \param[in] handler_id
+  !! \param[in] source
+  subroutine request_handler_manager_callback (rhm, handler_id, source_rank)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    integer, intent(in) :: handler_id
+    integer, intent(in) :: source_rank
+    class(request_handler_t), pointer :: handler
+    if (.not. rhm%tree%has_key (handler_id)) return
+    call rhm%handler_at (handler_id, handler)
+    call handler%handle (source_rank = source_rank, comm = rhm%comm)
+  end subroutine request_handler_manager_callback
+
+  !> Call client-sided procedure of callback with handler_id.
+  !!
+  !! \param[in] handler_id
+  !! \param[in] source Destination rank.
+  subroutine request_handler_manager_client_callback (rhm, handler_id, dest_rank)
+    class(request_handler_manager_t), intent(inout) :: rhm
+    integer, intent(in) :: handler_id
+    integer, intent(in) :: dest_rank
+    class(request_handler_t), pointer :: handler
+    if (.not. rhm%tree%has_key (handler_id)) return
+    call rhm%handler_at (handler_id, handler)
+    call handler%client_handle (dest_rank = dest_rank, comm = rhm%comm)
+  end subroutine request_handler_manager_client_callback
+end module request_callback
+@ %def request_callback

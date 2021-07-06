@@ -2,7 +2,15 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 3.0.0+
+	Version 3.0.1
+
+2021-07-08
+	RELEASE: version 3.0.1
+
+2021-07-06
+	MPI parallelization now comes with two incarnations:
+	- standard MPI parallelization ("simple", default)
+	- MPI with load balancer ("load")
 
 2021-07-05
 	Bug fix for C++17 default compilers w/ HepMC3/ROOT interface

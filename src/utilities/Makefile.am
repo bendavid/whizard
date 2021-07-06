@@ -29,14 +29,24 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libutilities.la
+check_LTLIBRARIES = libutilities_ut.la
 
 libutilities_la_SOURCES = \
-  file_utils.f90 \
-  file_registries.f90 \
-  string_utils.f90 \
-  format_utils.f90 \
-  format_defs.f90 \
-  numeric_utils.f90
+	file_utils.f90 \
+	file_registries.f90 \
+	string_utils.f90 \
+	format_utils.f90 \
+	format_defs.f90 \
+	numeric_utils.f90 \
+	binary_tree.f90 \
+	array_list.f90 \
+	queue.f90 \
+	iterator.f90
+
+libutilities_ut_la_SOURCES = \
+	binary_tree_ut.f90 binary_tree_uti.f90 \
+	array_list_ut.f90 array_list_uti.f90 \
+	iterator_ut.f90 iterator_uti.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = utilities.nw
@@ -48,27 +58,29 @@ nodist_execmod_HEADERS = \
   ${libutilities_la_SOURCES:.f90=.$(FCMOD)}
 
 # Dump module names into file Modules
-libutilities_Modules = ${libutilities_la_SOURCES:.f90=}
+libutilities_Modules = ${libutilities_la_SOURCES:.f90=} ${libutilities_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libutilities_Modules); do \
-          echo $$module >> $@.new; \
-        done
+					echo $$module >> $@.new; \
+				done
 	@if diff $@ $@.new -q >/dev/null; then \
-          rm $@.new; \
+					rm $@.new; \
 	else \
-          mv $@.new $@; echo "Modules updated"; \
-        fi
+					mv $@.new $@; echo "Modules updated"; \
+				fi
 BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories
 module_lists = \
-  ../basics/Modules
+	../basics/Modules \
+	../testing/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libutilities_la_SOURCES)
+Module_dependencies.sed: $(libutilities_la_SOURCES) \
+	$(libutilities_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
@@ -90,14 +102,14 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libutilities_la_SOURCES)
+Makefile.depend: $(libutilities_la_SOURCES) $(libutilities_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
-	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
-	  grep '^ *use ' $$src \
-	    | grep -v '!NODEP!' \
-	    | sed -e 's/^ *use */'$$module'.lo: /' \
-	          -f Module_dependencies.sed; \
+		module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
+		grep '^ *use ' $$src \
+			| grep -v '!NODEP!' \
+			| sed -e 's/^ *use */'$$module'.lo: /' \
+						-f Module_dependencies.sed; \
 	done > $@
 
 DISTCLEANFILES += Makefile.depend
@@ -107,7 +119,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics
+AM_FCFLAGS = -I../basics -I../testing
 
 
 ########################################################################
@@ -140,16 +152,16 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 utilities.stamp: $(PRELUDE) $(srcdir)/utilities.nw $(POSTLUDE)
 	@rm -f utilities.tmp
 	@touch utilities.tmp
-	for src in $(libutilities_la_SOURCES); do \
-	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
-        done
+	for src in $(libutilities_la_SOURCES) $(libutilities_ut_la_SOURCES); do \
+		$(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+				done
 	@mv -f utilities.tmp utilities.stamp
 
-$(libutilities_la_SOURCES): utilities.stamp
+$(libutilities_la_SOURCES) $(libutilities_ut_la_SOURCES): utilities.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
-	  rm -f utilities.stamp; \
-	  $(MAKE) $(AM_MAKEFLAGS) utilities.stamp; \
+		rm -f utilities.stamp; \
+		$(MAKE) $(AM_MAKEFLAGS) utilities.stamp; \
 	fi
 
 endif

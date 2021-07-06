@@ -40,6 +40,8 @@ Warning: No cuts have been defined.
 | Starting integration for process 'rambo_vamp_2_p'
 | Integrate: iterations = 2:100:"gw", 2:200
 | Integrator: 1 channels, 2 dimensions
+| Integrator: Write grid header and grids to 'rambo_vamp_2_p.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

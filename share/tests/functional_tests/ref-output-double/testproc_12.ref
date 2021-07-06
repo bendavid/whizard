@@ -31,6 +31,8 @@ Warning: No cuts have been defined.
 | Starting integration for process 'testproc_12_p1'
 | Integrate: iterations = 1:1000
 | Integrator: 1 channels, 2 dimensions
+| Integrator: Write grid header and grids to 'testproc_12_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -63,6 +65,8 @@ Warning: No cuts have been defined.
 | Starting integration for process 'testproc_12_p1'
 | Integrate: iterations = 1:1000
 | Integrator: 1 channels, 2 dimensions
+| Integrator: Write grid header and grids to 'testproc_12_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -95,6 +99,8 @@ Warning: No cuts have been defined.
 | Starting integration for process 'testproc_12_p1'
 | Integrate: iterations = 1:1000
 | Integrator: 1 channels, 2 dimensions
+| Integrator: Write grid header and grids to 'testproc_12_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -102,9 +108,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | VAMP2: header: parameter mismatch, discarding pass from file 'testproc_12_p1.m1.vg2'.
 | VAMP2: Initialize new grids and write to file 'testproc_12_p1.m1.vg2'.
-   1        800  3.0985849E+04  0.00E+00    0.00    0.00* 100.00
+   1        800  3.0985849E+04  2.12E-05    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
-   1        800  3.0985849E+04  0.00E+00    0.00    0.00  100.00
+   1        800  3.0985849E+04  2.12E-05    0.00    0.00  100.00
 |=============================================================================|
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
@@ -130,6 +136,8 @@ Warning: No cuts have been defined.
 | Starting integration for process 'testproc_12_p1'
 | Integrate: iterations = 1:1000
 | Integrator: 1 channels, 2 dimensions
+| Integrator: Write grid header and grids to 'testproc_12_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -137,9 +145,9 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | VAMP2: header: parameter mismatch, discarding pass from file 'testproc_12_p1.m1.vg2'.
 | VAMP2: Initialize new grids and write to file 'testproc_12_p1.m1.vg2'.
-   1        800  3.0985849E+04  0.00E+00    0.00    0.00* 100.00
+   1        800  3.0985849E+04  2.12E-05    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
-   1        800  3.0985849E+04  0.00E+00    0.00    0.00  100.00
+   1        800  3.0985849E+04  2.12E-05    0.00    0.00  100.00
 |=============================================================================|
 | There were no errors and    4 warning(s).
 | WHIZARD run finished.

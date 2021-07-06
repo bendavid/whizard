@@ -58,8 +58,7 @@ BUILT_SOURCES = Modules
 ## Fortran module dependencies
 # Get module lists from other directories
 module_lists = \
-  ../basics/Modules \
-  ../utilities/Modules
+  ../basics/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules

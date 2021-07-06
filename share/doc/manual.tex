@@ -283,7 +283,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{3.0.0}
+\newcommand{\thisversion}{3.0.1}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -743,11 +743,13 @@ development, ca. 2015-2020:
 {\bf \whizard\ \texttt{3.0}} and onwards, the NLO series:
 \nopagebreak[4]
 \begin{center}
-\begin{tabular}{|l|l|l|}\hline
-  3.0.0 & 04/2021 & NLO QCD automation \& UFO Majorana support
-  released
-  \\\hline\hline
-\end{tabular}
+  \begin{tabular}{|l|l|l|}\hline
+    3.0.1 & 07/2021 & MPI load balancer, rescan of ILC mass production
+    \\
+    3.0.0 & 04/2021 & NLO QCD automation \& UFO Majorana support
+    released
+    \\\hline\hline
+  \end{tabular}
 \end{center}
 }
 
@@ -1945,7 +1947,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 3.0.0
+    |                               WHIZARD 3.0.1
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -1976,7 +1978,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 3.0.0
+|                               WHIZARD 3.0.1
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2035,7 +2037,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 3.0.0
+ |                               WHIZARD 3.0.1
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -2259,14 +2261,24 @@ options that \whizard\ accepts.
 \subsection{Working Parallel on Several Computers}
 \label{sec:mpi}
 
-For integration (only VAMP2), \whizard\ supports parallel execution via MPI
-by communicating between parallel tasks on a single machine or distributed over
-several machines.
+For integration (only VAMP2), \whizard\ supports parallel execution via MPI by communicating between parallel tasks on a single machine or distributed over several machines.
 
-During integration the calculation of channels is distributed along several
-workers where a master worker collects the results and adapts weights and grids.
-In wortwhile cases (e.g. high number of calls in one channel), the calculation
-of a single grid is distributed.
+During integration the calculation of channels is distributed along several workers where a master worker collects the results and adapts weights and grids.
+In wortwhile cases (e.g. high number of calls in one channel), the calculation of a single grid is additionally distributed.
+For that, we provide two different parallelization methods, which can be steered by
+\verb|$vamp_parallel_method|, implementing the dualistic parallelization approach between channels and single grids. The \ttt{simple} method provides a locally-fixed assignment approach without the need of intermediate communication between the MPI workers.
+Whereas the \ttt{load} method provides a global queue with a master worker acting as a (communication) governor, therefore, excluding itself as potential "computing" worker.
+The governor receives and distributes work requests from all other workers, and, finally, receives their results.
+The methods differ from each other only in the way how they distribute excessive workers, in the case, where there are more workers than channels.
+Here, the \ttt{load} method implements a balancing condition based on the channel weights in contrast to the simplistic ansatz.
+
+Both methods use a full non-blocking communication approach in order to collect the integration results of each channel after each iteration.
+After finishing the computation of a channel, the associated slave worker spawns a callback mechansim leading to the initialization of a sending process to the master.
+The master worker organizes, depending on the parallelization method, the correct closing of the sending process for a given channel by a matching receiving process.
+The callback approach allows us to concurrently communicate and produce integration results providing an increased parallelization portion, i.e.\ better HPC performance and utilization.
+
+The \ttt{load} method comes with a drawback that it does not work with less than three workers.
+Hence, we recommend (e.g.\ for debugging purpose of the parallel setup) to use the \ttt{simple} method, and to use the \ttt{load} method only for direct production runs.
 
 In order to use these advancements, \whizard\ requires an installed MPI-3.1 capable
 library (e.g. OpenMPI) and configuration and compilation with the appropriate flags,
@@ -2278,6 +2290,7 @@ recommended to use the RNGstream as random number generator.
 \begin{code}
   $integration_method = 'vamp2'
   $rng_method = 'rng_stream'
+  $vamp_parallel_method = 'simple' !! or 'load'
 \end{code}
 
 \whizard\ has then to be called by mpirun
@@ -2288,12 +2301,12 @@ recommended to use the RNGstream as random number generator.
 \end{footnotesize}
 where the number of parallel tasks can be set by \ttt{-np} and a hostfile can be
 given by \ttt{--hostfile}. It is recommended to use \ttt{--output-filename} which
-lets mpirun redirect the standard (error) output to a file, for each worker separatly.
+lets mpirun redirect the standard (error) output to a file, for each worker separately.
 
 \subsubsection{Notes on Parallelization with MPI}
 
 The parallelization of \whizard\ requires that all instances of the
-parallel run be able to write and read all files by produced
+parallel run be able to write and read all files produced by
 \whizard\ in a network file system as the current implementation does
 not handle parallel I/O. Usually, high-performance clusters have
 support for at least one network filesystem.
@@ -2302,7 +2315,7 @@ Furthermore, not all functions of \whizard\ are currently supported or
 are only supported in a limited way in parallel mode. Currently the
 \verb|?rebuild_<flags>| for the phase space and the matrix element
 library are not yet available, as well as the calculation of matrix
-elements with resonance history.
+elements with resonance histories.
 
 Some features that have been missing in the very first implementation
 of the parallelized integration have now been made available, like
@@ -2620,8 +2633,8 @@ in a separate directory (not necessarily a subdirectory). Then the
 compilation will go through:
 \begin{footnotesize}
 \begin{Verbatim}[frame=single]
-$ zcat whizard-3.0.0.tar.gz | tar xf -
-$ cd whizard-3.0.0
+$ zcat whizard-3.0.1.tar.gz | tar xf -
+$ cd whizard-3.0.1
 $ mkdir _build
 $ cd _build
 $ ../configure FC=gfortran
@@ -11985,7 +11998,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>3.0.0</generator_version>
+  <generator_version>3.0.1</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1

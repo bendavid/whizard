@@ -114,6 +114,8 @@ alphas_power = 3
 | Integrate: iterations = 1:640:"gw"
 | Integrator: 2 chains, 64 channels, 11 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ee4tj_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 640 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -129,6 +131,8 @@ alphas_power = 3
 | Integrate: iterations = 1:640:"gw"
 | Integrator: 2 chains, 64 channels, 14 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ee4tj_p1.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 640 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -136,14 +140,16 @@ alphas_power = 3
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_ee4tj_p1.m2.vg2'.
 | VAMP2: set chain: use chained weights.
-   1        640 -6.1255904E-06  3.37E-06   55.00   13.91*  11.45
+   1        640 -6.1255904E-06  3.37E-06   55.00   13.91*  16.23
 |-----------------------------------------------------------------------------|
-   1        640 -6.1255904E-06  3.37E-06   55.00   13.91   11.45
+   1        640 -6.1255904E-06  3.37E-06   55.00   13.91   16.23
 |=============================================================================|
 | Starting integration for process 'nlo_ee4tj_p1' part 'virtual'
 | Integrate: iterations = 1:640:"gw"
 | Integrator: 2 chains, 64 channels, 11 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ee4tj_p1.m3.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 640 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

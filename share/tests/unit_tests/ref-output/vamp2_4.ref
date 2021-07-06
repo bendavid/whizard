@@ -70,6 +70,6 @@
 
 * Integrate with n_it = 3 and n_calls = 5000 (Precision)
 
-  Result:  2.00011E+00 +/-  5.53554E-04
+  Result:  1.99971E+00 +/-  5.68290E-04
 
 * Cleanup

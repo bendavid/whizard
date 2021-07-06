@@ -112,6 +112,8 @@ alphas_power = 1
 | Integrate: iterations = 1:140:"gw"
 | Integrator: 3 chains, 14 channels, 8 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_eettzj_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 140 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -127,6 +129,8 @@ alphas_power = 1
 | Integrate: iterations = 1:140:"gw"
 | Integrator: 3 chains, 14 channels, 11 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_eettzj_p1.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 140 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -134,14 +138,16 @@ alphas_power = 1
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_eettzj_p1.m2.vg2'.
 | VAMP2: set chain: use chained weights.
-   1        140  5.0632195E-02  8.19E-02  161.77   19.14*  13.65
+   1        140  5.0632195E-02  8.19E-02  161.77   19.14*  20.75
 |-----------------------------------------------------------------------------|
-   1        140  5.0632195E-02  8.19E-02  161.77   19.14   13.65
+   1        140  5.0632195E-02  8.19E-02  161.77   19.14   20.75
 |=============================================================================|
 | Starting integration for process 'nlo_eettzj_p1' part 'virtual'
 | Integrate: iterations = 1:140:"gw"
 | Integrator: 3 chains, 14 channels, 8 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_eettzj_p1.m3.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 140 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -157,7 +163,7 @@ alphas_power = 1
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  4.6008251E-01  1.08E-01   23.42    0.00*  16.66
+   1          0  4.6008251E-01  1.08E-01   23.42    0.00*  17.47
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  ( 40.8331 +-  27.11890 ) %
 |=============================================================================|

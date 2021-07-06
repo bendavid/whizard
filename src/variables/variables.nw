@@ -4195,6 +4195,14 @@ procedure with type [[V_NONE]].
           'searches for them in the ' // &
           'current directory.  (cf. also  \ttt{\$job\_id}, ' // &
           '\ttt{\$run\_id}, \ttt{\$compile\_workspace})'))
+    call var_list%append_int (var_str ("vamp_grid_checkpoint"), 1, &
+          intrinsic=.true., &
+          description=var_str ('Integer parameter for setting checkpoints to save ' // &
+          'the current state of the grids and the results so far of the integration. ' // &
+          'Allowed are all positive integer. Zero values corresponds to a checkpoint ' // &
+          'after each integration pass, a one value to a checkpoint after each iteration ' // &
+          '(default) and an \(N\) value correspond to a checkpoint after \(N\) iterations ' // &
+          ' or after each pass, respectively.'))
     call var_list%append_string (var_str ("$vamp_grid_format"), var_str ("ascii"), &
          intrinsic=.true., &
          description=var_str ('Character string that tells \whizard\ ' // &
@@ -4206,6 +4214,17 @@ procedure with type [[V_NONE]].
          '\ttt{.vgx2} storing the grid data.' // &
          'The main purpose of the binary format is to perform faster I/O, e.g. for HPC runs.' // &
          '\whizard\ can convert between the different file formats automatically.'))
+    call var_list%append_string (var_str ("$vamp_parallel_method"), var_str ("simple"), &
+         intrinsic=.true., &
+         description=var_str ('Character string that tells \whizard\ ' // &
+         'the parallel method to use for parallel integration within \ttt{vamp2}.' // &
+         ' (i) \ttt{simple} (default) is a local work sharing approach without the need of communication ' // &
+         'between all workers except for the communication during result collection.' // &
+         ' (ii) \ttt{load} is a global queue approach where the master worker acts as a' // &
+         'governor listening and providing work for each worker. The queue is filled and assigned with workers ' // &
+         'a-priori with respect to the assumed computational impact of each channel.' // &
+         'Both approaches use the same mechanism for result collection using non-blocking ' // &
+         'communication allowing for a efficient usage of the computing resources.'))
   end subroutine var_list_set_integration_defaults
 
 @ %def var_list_set_integration_defaults

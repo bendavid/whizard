@@ -132,6 +132,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:500:"gw"
 | Integrator: 3 chains, 5 channels, 4 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ppzw_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 500 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -147,6 +149,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:500:"gw"
 | Integrator: 3 chains, 5 channels, 7 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ppzw_p1.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 500 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -154,14 +158,16 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_ppzw_p1.m2.vg2'.
 | VAMP2: set chain: use chained weights.
-   1        500  7.4808395E+03  5.59E+03   74.76   16.72*   1.58
+   1        500  7.4808395E+03  5.59E+03   74.76   16.72*   1.83
 |-----------------------------------------------------------------------------|
-   1        500  7.4808395E+03  5.59E+03   74.76   16.72    1.58
+   1        500  7.4808395E+03  5.59E+03   74.76   16.72    1.83
 |=============================================================================|
 | Starting integration for process 'nlo_ppzw_p1' part 'virtual'
 | Integrate: iterations = 1:500:"gw"
 | Integrator: 3 chains, 5 channels, 4 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ppzw_p1.m3.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 500 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -177,6 +183,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:500:"gw"
 | Integrator: 3 chains, 5 channels, 5 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ppzw_p1.m4.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 500 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -184,15 +192,15 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_ppzw_p1.m4.vg2'.
 | VAMP2: set chain: use chained weights.
-   1        416  9.3555985E+02  6.77E+02   72.34   14.75*   2.14
+   1        416  9.3555985E+02  6.77E+02   72.34   14.75*   2.55
 |-----------------------------------------------------------------------------|
-   1        416  9.3555985E+02  6.77E+02   72.34   14.75    2.14
+   1        416  9.3555985E+02  6.77E+02   72.34   14.75    2.55
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  3.7882742E+04  1.12E+04   29.67    0.00*   1.70
+   1          0  3.7882742E+04  1.12E+04   29.67    0.00*   1.76
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  ( 69.7375 +-  40.21210 ) %
 |=============================================================================|

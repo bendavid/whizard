@@ -133,6 +133,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 10 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_pptttt_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 2000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -148,6 +150,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 13 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_pptttt_p1.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 2000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -155,14 +159,16 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_pptttt_p1.m2.vg2'.
 | VAMP2: set chain: use chained weights.
-   1       1992  1.2530138E-01  4.52E-01  360.86  161.06*   6.57
+   1       1992  1.2530138E-01  4.52E-01  360.86  161.06*  12.03
 |-----------------------------------------------------------------------------|
-   1       1992  1.2530138E-01  4.52E-01  360.86  161.06    6.57
+   1       1992  1.2530138E-01  4.52E-01  360.86  161.06   12.03
 |=============================================================================|
 | Starting integration for process 'nlo_pptttt_p1' part 'virtual'
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 10 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_pptttt_p1.m3.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 2000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -178,6 +184,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:2000:"gw"
 | Integrator: 4 chains, 128 channels, 11 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_pptttt_p1.m4.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 2000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -185,15 +193,15 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | VAMP2: Initialize new grids and write to file 'nlo_pptttt_p1.m4.vg2'.
 | VAMP2: set chain: use chained weights.
-   1       1976  1.9642699E+00  1.07E+00   54.45   24.21*   6.77
+   1       1976  1.9642699E+00  1.07E+00   54.45   24.21*   7.80
 |-----------------------------------------------------------------------------|
-   1       1976  1.9642699E+00  1.07E+00   54.45   24.21    6.77
+   1       1976  1.9642699E+00  1.07E+00   54.45   24.21    7.80
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0  1.4903642E+01  4.02E+00   26.98    0.00*   6.85
+   1          0  1.4903642E+01  4.02E+00   26.98    0.00*   7.01
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
 |  (103.6863 +-  56.54290 ) %
 |=============================================================================|

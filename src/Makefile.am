@@ -202,7 +202,8 @@ libwhizard_ut_la_LIBADD = \
   rng/librng_ut.la \
   parsing/libparsing_ut.la \
   combinatorics/libcombinatorics_ut.la \
-  system/libsystem_ut.la
+  system/libsystem_ut.la \
+  utilities/libutilities_ut.la
 
 ## -------------------------------------------------------------------
 ## WHIZARD C API test library

@@ -2814,7 +2814,7 @@ diagnostics.
 @ %def openmp_set_num_threads_verbose
 @
 \subsection{Controlling MPI}
-The overall MPI handling has to be defined a context specific way,
+The overall MPI handling has to be defined in a context specific way,
 but we can simplify things like logging or receiving [[n_size]] or [[rank]].
 <<OS interface: public>>=
   public :: mpi_set_logging

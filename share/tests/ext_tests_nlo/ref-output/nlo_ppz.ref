@@ -132,6 +132,8 @@ relative_error_goal =  4.000000000000E-03
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'ppz.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -147,6 +149,8 @@ relative_error_goal =  4.000000000000E-03
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 1 channels, 5 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'ppz.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -162,6 +166,8 @@ relative_error_goal =  4.000000000000E-03
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'ppz.m3.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -177,6 +183,8 @@ relative_error_goal =  4.000000000000E-03
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 1 chains, 1 channels, 3 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'ppz.m4.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

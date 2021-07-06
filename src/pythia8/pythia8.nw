@@ -956,7 +956,7 @@ the remaining string is empty after splitting with respect to [[;]].
             do while (len (line) > 0)
                call split (line, token, ";")
                if (debug_active (D_SHOWER)) &
-                    print *, "→ ", char(token), " | ", char(line)
+                    print *, "-> ", char(token), " | ", char(line)
                call pythia%read_string (trim(token))
             end do
          end if
@@ -1464,7 +1464,7 @@ subroutine pythia8_import_pythia_particles (&
        end if
        if (debug2_active (D_SHOWER)) then
           print *, "Shower: ", mask(i_pythia)
-          print *, "i_pythia: ", i_pythia, " → i_whizard: ", whizard_idx(i_pythia)
+          print *, "i_pythia: ", i_pythia, " -> i_whizard: ", whizard_idx(i_pythia)
        end if
     end do ADD_PARTICLE
   contains

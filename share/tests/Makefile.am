@@ -41,12 +41,12 @@ EXTRA_DIST = \
 
 TESTSUITE_MACROS = testsuite.m4
 TESTSUITE_TOOLS = \
-    check-debug-output-hadro.py \
     check-debug-output.py \
+    check-debug-output-hadro.py \
     check-hepmc-weights.py \
     compare-histograms.py \
-    compare-integrals-multi.py \
     compare-integrals.py \
+    compare-integrals-multi.py \
     compare-methods.py
 
 REF_OUTPUT_FILES = \
@@ -81,6 +81,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/api_hepmc3_cc_1.ref \
     unit_tests/ref-output/api_lcio_1.ref \
     unit_tests/ref-output/api_lcio_cc_1.ref \
+    unit_tests/ref-output/array_list_1.ref \
     unit_tests/ref-output/auto_components_1.ref \
     unit_tests/ref-output/auto_components_2.ref \
     unit_tests/ref-output/auto_components_3.ref \
@@ -93,6 +94,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/beam_structures_4.ref \
     unit_tests/ref-output/beam_structures_5.ref \
     unit_tests/ref-output/beam_structures_6.ref \
+    unit_tests/ref-output/binary_tree_1.ref \
     unit_tests/ref-output/blha_1.ref \
     unit_tests/ref-output/blha_2.ref \
     unit_tests/ref-output/blha_3.ref \
@@ -270,6 +272,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/isr_handler_3.ref \
     unit_tests/ref-output/iterations_1.ref \
     unit_tests/ref-output/iterations_2.ref \
+    unit_tests/ref-output/iterator_1.ref \
     unit_tests/ref-output/jets_1.ref \
     unit_tests/ref-output/lcio_interface_1.ref \
     unit_tests/ref-output/lexer_1.ref \
@@ -831,7 +834,6 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/testproc_9.ref \
     functional_tests/ref-output/testproc_10.ref \
     functional_tests/ref-output/testproc_11.ref \
-    functional_tests/ref-output/testproc_12.ref \
     functional_tests/ref-output/ufo_1.ref \
     functional_tests/ref-output/ufo_2.ref \
     functional_tests/ref-output/ufo_3.ref \
@@ -912,6 +914,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/multi_comp_1.ref \
     functional_tests/ref-output-double/multi_comp_2.ref \
     functional_tests/ref-output-double/multi_comp_3.ref \
+    functional_tests/ref-output-double/testproc_12.ref \
     functional_tests/ref-output-double/nlo_3.ref \
     functional_tests/ref-output-double/nlo_4.ref \
     functional_tests/ref-output-double/nlo_5.ref \
@@ -972,6 +975,7 @@ REF_OUTPUT_FILES_PREC = \
     functional_tests/ref-output-prec/multi_comp_1.ref \
     functional_tests/ref-output-prec/multi_comp_2.ref \
     functional_tests/ref-output-prec/multi_comp_3.ref \
+    functional_tests/ref-output-prec/testproc_12.ref \
     functional_tests/ref-output-prec/nlo_3.ref \
     functional_tests/ref-output-prec/nlo_4.ref \
     functional_tests/ref-output-prec/parton_shower_2.ref \
@@ -1491,7 +1495,6 @@ EXT_ILC_SIN = \
     ext_tests_ilc/ilc_higgs_coupling_500.sin \
     ext_tests_ilc/ilc_higgs_coupling_background_360.sin \
     ext_tests_ilc/ilc_higgs_coupling_background_500.sin
-
 
 EXT_SHOWER_SIN = \
     ext_tests_shower/shower_1_norad.sin \

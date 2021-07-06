@@ -1135,6 +1135,33 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call format_test (u, results)
 @
+\subsubsection{Binary Tree}
+<<Main: use tests>>=
+  use binary_tree_ut, only: binary_tree_test
+<<Main: test cases>>=
+  case ("binary_tree")
+     call binary_tree_test (u, results)
+<<Main: all tests>>=
+  call binary_tree_test (u, results)
+@
+\subsubsection{Array List}
+<<Main: use tests>>=
+  use array_list_ut, only: array_list_test
+<<Main: test cases>>=
+  case ("array_list")
+     call array_list_test (u, results)
+<<Main: all tests>>=
+  call array_list_test (u, results)
+@
+\subsubsection{Iterator}
+<<Main: use tests>>=
+  use iterator_ut, only: iterator_test
+<<Main: test cases>>=
+  case ("iterator")
+     call iterator_test (u, results)
+<<Main: all tests>>=
+  call iterator_test (u, results)
+@
 \subsubsection{MD5}
 <<Main: use tests>>=
   use md5_ut, only: md5_test

@@ -91,6 +91,8 @@ $restrictions = "!W+:W-"
 | Integrate: iterations = 1:100
 | Integrator: 2 chains, 5 channels, 7 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'nlo_ppzj_sim_1_p1.m2.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 100 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

@@ -75,6 +75,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 1:1000
 | Integrator: 2 chains, 5 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'testproc_11_p2.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|

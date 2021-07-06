@@ -45,6 +45,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 3:1000:"g", 3:1000
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'event_eff_2_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -53,16 +55,16 @@ Warning: No cuts have been defined.
 | VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
 | VAMP2: set chain: use chained weights.
    1        800  8.6990044E+01  7.71E-02    0.09    0.03*  66.87
-   2        800  8.6806923E+01  6.12E-02    0.07    0.02*  49.30
-   3        800  8.6830909E+01  6.08E-02    0.07    0.02*  66.03
+   2        800  8.6815804E+01  6.11E-02    0.07    0.02*  49.78
+   3        800  8.6825431E+01  6.05E-02    0.07    0.02*  67.68
 |-----------------------------------------------------------------------------|
-   3       2400  8.6859799E+01  3.76E-02    0.04    0.02   66.03    1.91   3
+   3       2400  8.6860840E+01  3.75E-02    0.04    0.02   67.68    1.85   3
 |-----------------------------------------------------------------------------|
-   4        800  8.6934110E+01  6.29E-02    0.07    0.02   68.86
-   5        800  8.7037881E+01  6.11E-02    0.07    0.02*  68.91
-   6        800  8.6971940E+01  6.32E-02    0.07    0.02   68.94
+   4        800  8.6934756E+01  6.24E-02    0.07    0.02   70.88
+   5        800  8.7032837E+01  6.05E-02    0.07    0.02*  70.93
+   6        800  8.6972878E+01  6.29E-02    0.07    0.02   70.96
 |-----------------------------------------------------------------------------|
-   6       2400  8.6982429E+01  3.60E-02    0.04    0.02   68.94    0.72   3
+   6       2400  8.6981297E+01  3.57E-02    0.04    0.02   70.96    0.65   3
 |=============================================================================|
 | Starting simulation for process 'event_eff_2_p1'
 | RNG: Initializing TAO random-number generator
@@ -73,7 +75,10 @@ Warning: No cuts have been defined.
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  69.64 %
+| Events: actual unweighting efficiency =  71.63 %
+Warning: Encountered events with excess weight: 1 events (  0.100 %)
+| Maximum excess weight = 6.353E-04
+| Average excess weight = 6.353E-07
 | Events: closing raw file 'event_eff_2_p1.evx'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
@@ -103,6 +108,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 3:1000:"g", 3:1000
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'event_eff_2_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -111,30 +118,30 @@ Warning: No cuts have been defined.
 | VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
 | VAMP2: set chain: use chained weights.
    1        800  8.6787815E+01  1.63E-01    0.19    0.05*  33.31
-   2        800  8.7189309E+01  1.36E-01    0.16    0.04*  70.58
-   3        800  8.6997292E+01  1.34E-01    0.15    0.04*  42.41
+   2        800  8.7191410E+01  1.35E-01    0.16    0.04*  71.27
+   3        800  8.6999478E+01  1.34E-01    0.15    0.04*  43.40
 |-----------------------------------------------------------------------------|
-   3       2400  8.7014301E+01  8.22E-02    0.09    0.05   42.41    1.81   3
+   3       2400  8.7016142E+01  8.21E-02    0.09    0.05   43.40    1.83   3
 |-----------------------------------------------------------------------------|
-   4        800  8.6954300E+01  1.24E-01    0.14    0.04*  67.35
-   5        800  8.6963253E+01  1.21E-01    0.14    0.04*  67.60
-   6        800  8.6831489E+01  1.26E-01    0.15    0.04   67.49
+   4        800  8.6940229E+01  1.23E-01    0.14    0.04*  69.34
+   5        800  8.6971432E+01  1.21E-01    0.14    0.04*  69.61
+   6        800  8.6821729E+01  1.26E-01    0.15    0.04   69.48
 |-----------------------------------------------------------------------------|
-   6       2400  8.6918249E+01  7.14E-02    0.08    0.04   67.49    0.35   3
+   6       2400  8.6913208E+01  7.12E-02    0.08    0.04   69.48    0.40   3
 |=============================================================================|
 | Starting simulation for process 'event_eff_2_p1'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Simulation: requested number of events = 1000
-|             corr. to luminosity [fb-1] =   1.1505E+01
+|             corr. to luminosity [fb-1] =   1.1506E+01
 | Events: writing to raw file 'event_eff_2_p1.evx'
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  69.40 %
+| Events: actual unweighting efficiency =  71.33 %
 Warning: Encountered events with excess weight: 3 events (  0.300 %)
 | Maximum excess weight = 2.209E-03
-| Average excess weight = 5.218E-06
+| Average excess weight = 5.217E-06
 | Events: closing raw file 'event_eff_2_p1.evx'
 ?negative_weights = true
 | RNG: Initializing TAO random-number generator
@@ -165,6 +172,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 3:1000:"g", 3:1000
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'event_eff_2_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -173,16 +182,16 @@ Warning: No cuts have been defined.
 | VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
 | VAMP2: set chain: use chained weights.
    1        800 -8.6707576E+01  1.62E-01    0.19    0.05*  33.99
-   2        800 -8.6712716E+01  1.29E-01    0.15    0.04*  72.70
-   3        800 -8.6793578E+01  1.22E-01    0.14    0.04*  52.78
+   2        800 -8.6718790E+01  1.29E-01    0.15    0.04*  73.41
+   3        800 -8.6811445E+01  1.23E-01    0.14    0.04*  53.74
 |-----------------------------------------------------------------------------|
-   3       2400 -8.6744179E+01  7.78E-02    0.09    0.04   52.78    0.14   3
+   3       2400 -8.6753469E+01  7.79E-02    0.09    0.04   53.74    0.19   3
 |-----------------------------------------------------------------------------|
-   4        800 -8.6852754E+01  1.17E-01    0.13    0.04*  61.08
-   5        800 -8.7096507E+01  1.20E-01    0.14    0.04   61.18
-   6        800 -8.6946719E+01  1.24E-01    0.14    0.04   61.19
+   4        800 -8.6868484E+01  1.17E-01    0.14    0.04*  63.54
+   5        800 -8.7088695E+01  1.20E-01    0.14    0.04   63.63
+   6        800 -8.6942541E+01  1.25E-01    0.14    0.04   63.64
 |-----------------------------------------------------------------------------|
-   6       2400 -8.6963742E+01  6.95E-02    0.08    0.04   61.19    1.07   3
+   6       2400 -8.6965790E+01  6.95E-02    0.08    0.04   63.64    0.89   3
 |=============================================================================|
 | Starting simulation for process 'event_eff_2_p1'
 | RNG: Initializing TAO random-number generator
@@ -193,7 +202,7 @@ Warning: No cuts have been defined.
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  60.10 %
+| Events: actual unweighting efficiency =  62.77 %
 | Events: closing raw file 'event_eff_2_p1.evx'
 ?negative_weights = true
 | RNG: Initializing TAO random-number generator
@@ -224,6 +233,8 @@ Warning: No cuts have been defined.
 | Integrate: iterations = 3:1000:"g", 3:1000
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP2 channel equivalences
+| Integrator: Write grid header and grids to 'event_eff_2_p1.m1.vg2'
+| Integrator: Grid checkpoint after each iteration
 | Integrator: 1000 initial calls, 20 max. bins, stratified = T
 | Integrator: VAMP2
 |=============================================================================|
@@ -232,28 +243,28 @@ Warning: No cuts have been defined.
 | VAMP2: Initialize new grids and write to file 'event_eff_2_p1.m1.vg2'.
 | VAMP2: set chain: use chained weights.
    1        800 -4.3608894E+01  1.58E-01    0.36    0.10*  29.56
-   2        800 -4.3545396E+01  1.44E-01    0.33    0.09*  62.37
-   3        800 -4.3426646E+01  1.39E-01    0.32    0.09*  36.98
+   2        800 -4.3548658E+01  1.44E-01    0.33    0.09*  62.98
+   3        800 -4.3438612E+01  1.37E-01    0.32    0.09*  37.73
 |-----------------------------------------------------------------------------|
-   3       2400 -4.3519369E+01  8.45E-02    0.19    0.10   36.98    0.40   3
+   3       2400 -4.3524259E+01  8.42E-02    0.19    0.09   37.73    0.35   3
 |-----------------------------------------------------------------------------|
-   4        800 -4.3231798E+01  1.35E-01    0.31    0.09*  59.81
-   5        800 -4.3492986E+01  1.35E-01    0.31    0.09*  60.20
-   6        800 -4.3353281E+01  1.24E-01    0.29    0.08*  60.38
+   4        800 -4.3242251E+01  1.34E-01    0.31    0.09*  61.67
+   5        800 -4.3484073E+01  1.34E-01    0.31    0.09*  62.04
+   6        800 -4.3359433E+01  1.24E-01    0.29    0.08*  62.24
 |-----------------------------------------------------------------------------|
-   6       2400 -4.3359035E+01  7.58E-02    0.17    0.09   60.38    0.93   3
+   6       2400 -4.3361873E+01  7.55E-02    0.17    0.09   62.24    0.81   3
 |=============================================================================|
 | Starting simulation for process 'event_eff_2_p1'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 7
 | Simulation: requested number of events = 1000
-|             corr. to luminosity [fb-1] =  -2.3063E+01
+|             corr. to luminosity [fb-1] =  -2.3062E+01
 | Events: writing to raw file 'event_eff_2_p1.evx'
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  63.37 %
+| Events: actual unweighting efficiency =  66.14 %
 | Events: closing raw file 'event_eff_2_p1.evx'
-| There were no errors and    5 warning(s).
+| There were no errors and    6 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

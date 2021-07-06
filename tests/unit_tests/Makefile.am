@@ -12,13 +12,13 @@
 #     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -40,6 +40,9 @@ UNIT_TESTS = \
     su_algebra.run \
     bloch_vectors.run \
     polarizations.run \
+    binary_tree.run \
+    array_list.run \
+    iterator.run \
     md5.run \
     cputime.run \
     lexers.run \
@@ -148,12 +151,12 @@ UNIT_TESTS = \
 XFAIL_UNIT_TESTS =
 
 UNIT_TESTS_REQ_EV_ANA = \
-    phs_wood_vis.run \
-    prc_omega_diags.run \
-    integrations_history.run
+		phs_wood_vis.run \
+		prc_omega_diags.run \
+		integrations_history.run
 
 UNIT_TESTS_REQ_FASTJET = \
-    jets.run
+		jets.run
 
 UNIT_TESTS_REQ_HEPMC2 = \
     hepmc2.run \
@@ -181,12 +184,12 @@ UNIT_TESTS_REQ_OCAML = \
     api_cc.run
 
 UNIT_TESTS_REQ_RECOLA = \
-   prc_recola.run
+	 prc_recola.run
 
 UNIT_TESTS_REQ_LHAPDF5 = \
-    sf_lhapdf5.run 
+		sf_lhapdf5.run
 UNIT_TESTS_REQ_LHAPDF6 = \
-    sf_lhapdf6.run 
+		sf_lhapdf6.run
 
 TEST_DRIVERS_RUN = \
     $(UNIT_TESTS) \
@@ -202,7 +205,7 @@ TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
 
 ########################################################################
 
-TESTS = 
+TESTS =
 XFAIL_TESTS =
 TESTS_SRC =
 
@@ -221,7 +224,7 @@ XFAIL_TESTS += $(XFAIL_UNIT_TESTS)
 
 
 EXTRA_DIST = $(TEST_DRIVERS_SH)
-    $(TESTS_SRC)
+		$(TESTS_SRC)
 
 ########################################################################
 # Force building the whizard_ut executable in the main src directory.
@@ -430,8 +433,8 @@ clean-local: clean-macosx
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.mdl
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
-	rm -f *.hep *.up.hep *.hep.out *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
+	rm -f *.hep *.up.hep *.hep.out *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9]
+	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9]
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
 	rm -f *.fds api_*.out

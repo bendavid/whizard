@@ -1,4 +1,4 @@
-%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: integration and event generation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Multi-Channel Integration}
@@ -11404,7 +11404,7 @@ end module mci_vamp2
     real(default), dimension(:), intent(in) :: x
     f = self%integrand
     if (signal_is_pending ()) then
-       call msg_message ("MCI VAMP2: function evaluate_func: signal received")
+       call msg_message ("VAMP2: function evaluate_func: signal received")
        call terminate_now_if_signal ()
     end if
     call terminate_now_if_single_event ()
@@ -11908,7 +11908,9 @@ we replace [[n_calls]] with [[n_min_calls]].
      logical :: pass_complete = .false.
      logical :: it_complete = .false.
      type(string_t) :: grid_filename
+     integer :: grid_checkpoint = 1
      logical :: binary_grid_format = .false.
+     type(string_t) :: parallel_method
      character(32) :: md5sum_adapted = ""
    contains
    <<MCI vamp2: mci vamp2: TBP>>
@@ -12011,6 +12013,30 @@ additional information about the multi-channel parameters.
             "Integrator: Using VAMP2 channel equivalences"
        call msg_message (unit = unit)
     end if
+    if (mci%binary_grid_format) then
+       write (msg_buffer, "(A,A,A,A)") &
+            "Integrator: Write grid header to '" // char (mci%get_grid_filename ()) // &
+            "' and grids to '" // char (mci%get_grid_filename (binary_grid_format = .true.)) // "'"
+    else
+       write (msg_buffer, "(A,A,A)") &
+            "Integrator: Write grid header and grids to '" // char (mci%get_grid_filename ()) // "'"
+    end if
+    call msg_message (unit = unit)
+    select case (mci%grid_checkpoint)
+    case (0)
+       write (msg_buffer, "(A)") &
+            "Integrator: Grid checkpoint after each pass"
+    case (1)
+       write (msg_buffer, "(A)") &
+            "Integrator: Grid checkpoint after each iteration"
+    case (2:)
+       write (msg_buffer, "(A,1X,I0,1X,A)") &
+            "Integrator: Grid checkpoint after", mci%grid_checkpoint, &
+            "iterations and after each pass"
+    case default
+       call msg_bug ("Integrator: Cannot assign grid checkpoint (value is negative).")
+    end select
+    call msg_message (unit = unit)
     write (msg_buffer, "(A,2(1x,I0,1x,A),L1)") &
          "Integrator:", num_calls, &
          "initial calls,", n_bins, &
@@ -12122,7 +12148,7 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
     class(mci_vamp2_t), intent(inout) :: mci
     type(string_t), intent(in) :: prefix
     if (.not. mci%grid_filename_set) then
-       call msg_warning ("Cannot add prefix to invalid integrator filename!")
+       call msg_warning ("VAMP2: Cannot add prefix to invalid integrator filename!")
     end if
     mci%grid_filename = prefix // "/" // mci%grid_filename
   end subroutine mci_vamp2_prepend_grid_path
@@ -12449,7 +12475,7 @@ track this set of integrator.
     mci%n_adapt_grids = 0
     mci%n_adapt_weights = 0
     if (mci%integrator_defined) then
-       call msg_bug ("[MCI VAMP2]: init integrator: &
+       call msg_bug ("VAMP2: init integrator: &
             & integrator is already initialised.")
     end if
     mci%integrator = vamp2_t (mci%n_channel, mci%n_dim, &
@@ -12469,7 +12495,7 @@ track this set of integrator.
   subroutine mci_vamp2_reset_result (mci)
     class(mci_vamp2_t), intent(inout) :: mci
     if (.not. mci%integrator_defined) then
-       call msg_bug ("[MCI VAMP2] reset results: integrator undefined")
+       call msg_bug ("VAMP2: reset results: integrator undefined")
     end if
     call mci%integrator%reset_result ()
   end subroutine mci_vamp2_reset_result
@@ -12487,7 +12513,7 @@ channel weight
     class(mci_vamp2_t), intent(inout) :: mci
     integer :: n_calls
     if (.not. mci%integrator_defined) then
-       call msg_bug ("[MCI VAMP2] set calls: grids undefined")
+       call msg_bug ("VAMP2: set calls: grids undefined")
     end if
     call mci%integrator%set_calls (n_calls)
   end subroutine mci_vamp2_set_calls
@@ -12547,9 +12573,18 @@ and we added new iterations to the current pass, or we allocated a new integrato
       end if
       call mci%integrator%set_equivalences (mci%equivalences)
     end associate
+  <<MCI vamp2: mci vamp2 init integration: allocate request>>
   end subroutine mci_vamp2_init_integration
 
 @ %def mci_vamp2_init
+@ Allocate request object and load into integrator object.
+<<MPI: MCI vamp2: mci vamp2 init integration: allocate request>>=
+  if (mci%parallel_method /= "") then
+     call mci%integrator%allocate_request (method = char (mci%parallel_method))
+  else
+     call msg_message ("VAMP2: Use default parallel method: simple.")
+     call mci%integrator%allocate_request (method = "simple")
+  end if
 @ Integrate. Perform a new integration pass (possibly reusing previous results),
 which may consist of several iterations.
 We reinitialise the sampling new each time and set the workspace again.
@@ -12590,10 +12625,10 @@ Note: recording the efficiency is not supported yet.
             type is (mci_vamp2_instance_t)
                call mci%integrator%integrate (instance%func, mci%rng, &
                     & iterations = 1, &
-                    & opt_reset_result = .true., &
-                    & opt_refine_grid = mci%adapt_grids, &
-                    & opt_adapt_weight = mci%adapt_weights, &
-                    & opt_verbose = mci%verbose)
+                    & reset_result = .true., &
+                    & refine_grids = mci%adapt_grids, &
+                    & adapt_weights = mci%adapt_weights, &
+                    & verbose = mci%verbose)
             end select
             if (signal_is_pending ()) return
             mci%it_complete = .true.
@@ -12643,7 +12678,9 @@ Note: recording the efficiency is not supported yet.
          end if
          if (.not. mci%integrator_from_file &
               .and. mci%grid_filename_set) then
-            <<MCI vamp2: mci vamp2 integrate: post sampling>> call mci%write_grids ()
+            <<MCI vamp2: mci vamp2 integrate: post sampling>>
+            call checkpoint_and_write_grids (it = it, &
+                 final_it = (it == current_pass%n_it))
          end if
          if (.not. current_pass%is_final_pass) then
             call check_goals (it, success)
@@ -12693,7 +12730,36 @@ in to the pass list.
   call MPI_Waitall (5, request, MPI_STATUSES_IGNORE)
 @ We only allow the master to write the grids to file.
 <<MPI: MCI vamp2: mci vamp2 integrate: post sampling>>=
-  if (rank == 0)
+  if (rank == 0) &
+@ Write grids to [[grid_filename]] at a given checkpoint.
+
+We qualify each iteration and pass as possible checkpoint.
+However, we allow the user to alter the checkpoint behavior:
+\begin{itemize}
+\item after every iteration,
+\item after every pass,
+\item after a \(N\) iterations and every pass.
+\end{itemize}
+The user sets the Sindarin variable [[vamp_grid_checkpoint]] to an integer
+value where the value 0 represents each pass, value 1 each iteration, and a
+value \(> 1\) means after \(N\) iterations (or at the last iteration of a pass).
+<<MCI vamp2: mci vamp2 integrate: procedures>>=
+  subroutine checkpoint_and_write_grids (it, final_it)
+    integer, intent(in) :: it
+    logical, intent(in) :: final_it
+    select case (mci%grid_checkpoint)
+    case (0)
+       if (.not. final_it) return
+    case (1)
+    case(2:)
+       if (.not. (final_it &
+            .or. mod (it, mci%grid_checkpoint) == 0)) return
+    case default
+       call msg_bug ("VAMP2: Grid checkpoint must be a positive integer.")
+    end select
+    call mci%write_grids ()
+  end subroutine checkpoint_and_write_grids
+
 @ Check whether we are already finished with this pass.
 <<MCI vamp2: mci vamp2 integrate: procedures>>=
   subroutine check_goals (it, success)
@@ -12703,21 +12769,21 @@ in to the pass list.
     associate (current_pass => mci%list_pass%current)
       if (error_reached (it)) then
          current_pass%n_it = it
-         call msg_message ("[MCI VAMP2] error goal reached; &
+         call msg_message ("VAMP2: error goal reached; &
               &skipping iterations")
          success = .true.
          return
       end if
       if (rel_error_reached (it)) then
          current_pass%n_it = it
-         call msg_message ("[MCI VAMP2] relative error goal reached; &
+         call msg_message ("VAMP2: relative error goal reached; &
               &skipping iterations")
          success = .true.
          return
       end if
       if (accuracy_reached (it)) then
          current_pass%n_it = it
-         call msg_message ("[MCI VAMP2] accuracy goal reached; &
+         call msg_message ("VAMP2: accuracy goal reached; &
               &skipping iterations")
          success = .true.
          return
@@ -12872,7 +12938,7 @@ generating an event.
        end do generate
        if (mci%integrator%get_evt_weight () < 0.) then
           if (.not. mci%negative_weights) then
-             call msg_fatal ("MCI VAMP2 cannot sample negative weights!")
+             call msg_fatal ("VAMP2: cannot sample negative weights!")
           end if
           instance%event_weight = -1._default
        else
@@ -12893,7 +12959,7 @@ generating an event.
     class(mci_instance_t), intent(inout) :: instance
     class(mci_sampler_t), intent(inout) :: sampler
     class(mci_state_t), intent(in) :: state
-    call msg_bug ("MCI VAMP2 rebuild event not implemented yet.")
+    call msg_bug ("VAMP2: rebuild event not implemented yet.")
   end subroutine mci_vamp2_rebuild_event
 
 @ %def mci_vamp2_rebuild_event
@@ -13086,7 +13152,7 @@ but more the current value!
     class(mci_vamp2_instance_t), intent(in) :: mci
     real(default) :: weight
     if (.not. mci%event_generated) then
-       call msg_bug ("MCI VAMP2: get event weight: no event generated")
+       call msg_bug ("VAMP2: get event weight: no event generated")
     end if
     weight = mci%event_weight
   end function mci_vamp2_instance_get_event_weight
@@ -13100,7 +13166,7 @@ but more the current value!
     class(mci_vamp2_instance_t), intent(in) :: mci
     real(default) :: excess
     if (.not. mci%event_generated) then
-       call msg_bug ("MCI VAMP2: get event excess: no event generated")
+       call msg_bug ("VAMP2: get event excess: no event generated")
     end if
     excess = mci%event_excess
   end function mci_vamp2_instance_get_event_excess
@@ -13763,9 +13829,10 @@ Allocate an integrator according to the variable [[$integration_method]].
     type(grid_parameters_t) :: grid_par
     type(history_parameters_t) :: history_par
     type(mci_vamp2_config_t) :: mci_vamp2_config
+    integer :: grid_checkpoint
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
     logical :: dispatch_nlo, binary_grid_format
-    type(string_t) :: grid_path
+    type(string_t) :: grid_path, parallel_method
     dispatch_nlo = .false.; if (present (is_nlo)) dispatch_nlo = is_nlo
     integration_method = &
          var_list%get_sval (var_str ("$integration_method"))
@@ -13814,7 +13881,9 @@ Allocate an integrator according to the variable [[$integration_method]].
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
           mci%verbose = verbose
+          mci%grid_checkpoint = grid_checkpoint
           mci%binary_grid_format = binary_grid_format
+          mci%parallel_method = parallel_method
        end select
     case default
        call msg_fatal ("Integrator '" &
@@ -13909,6 +13978,8 @@ Allocate an integrator according to the variable [[$integration_method]].
          var_list%get_lval (var_str ("?rebuild_grids"))
     negative_weights = &
          var_list%get_lval (var_str ("?negative_weights")) .or. dispatch_nlo
+    grid_checkpoint = &
+         var_list%get_ival (var_str ("vamp_grid_checkpoint"))
     select case (char (var_list%get_sval (var_str ("$vamp_grid_format"))))
     case ("binary","Binary","BINARY")
        binary_grid_format = .true.
@@ -13916,6 +13987,14 @@ Allocate an integrator according to the variable [[$integration_method]].
        binary_grid_format = .false.
     case default
        binary_grid_format = .false.
+    end select
+    select case (char (var_list%get_sval (var_str ("$vamp_parallel_method"))))
+    case ("simple","Simple","SIMPLE")
+       parallel_method = var_str ("simple")
+    case ("load","Load","LOAD")
+       parallel_method = var_str ("load")
+    case default
+       parallel_method = var_str ("simple")
     end select
   end subroutine unpack_options_vamp2
 

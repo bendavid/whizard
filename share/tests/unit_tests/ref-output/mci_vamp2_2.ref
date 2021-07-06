@@ -9,7 +9,7 @@
 
  VAMP2 integrator:
    Integral             =  1.0002686E+00
-   Error                =  4.6165589E-04
+   Error                =  4.6165588E-04
    Efficiency           =  9.1781237E-02
    Number of channels   = 1
    Number of dimensions = 1
@@ -44,10 +44,10 @@
    adapt grids   = F
    adapt weights = F
    Results:  [it, calls, valid, integral, error, efficiency]
-     1 1000 1000  9.9946112E-01  4.5355335E-04  9.2368436E-02
-     2 1000 1000  9.9972191E-01  4.4140069E-04  9.1756076E-02
-     3 1000 1000  1.0002686E+00  4.6165589E-04  9.1781237E-02
- MD5 sum (including results) = 'D33112EB826DEB52C05632A5FA046043'
+     1 1000 1000  9.9946112E-01  4.5355334E-04  9.2368436E-02
+     2 1000 1000  9.9972191E-01  4.4140068E-04  9.1756076E-02
+     3 1000 1000  1.0002686E+00  4.6165588E-04  9.1781237E-02
+ MD5 sum (including results) = '4079A7EA31C89C49E1DF9CC88330D73A'
 
 * Contents of mci_instance:
 

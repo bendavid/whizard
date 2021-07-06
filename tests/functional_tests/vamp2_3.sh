@@ -1,5 +1,5 @@
 #!/bin/sh
-### Check WHIZARD for a simple test process
+### Check VAMP2 for different grid checkpoint configurations
 name=`basename @script@`
 echo "Running script $0"
 if test -f OCAML_FLAG; then
@@ -10,4 +10,3 @@ else
     echo "No O'Mega matrix elements available, test skipped"
     exit 77
 fi
-
