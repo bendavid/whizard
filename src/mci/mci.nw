@@ -12201,8 +12201,8 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
          dest = c
          src = eq%c
          n_dim_perm = size (eq%perm)
-         perm(dim_offset+1:n_dim_perm) = eq%perm + dim_offset
-         mode(dim_offset+1:n_dim_perm) = eq%mode
+         perm(dim_offset+1:dim_offset+n_dim_perm) = eq%perm + dim_offset
+         mode(dim_offset+1:dim_offset+n_dim_perm) = eq%mode
          call mci%equivalences%set_equivalence &
               (i, dest, src, perm, mode)
        end associate
