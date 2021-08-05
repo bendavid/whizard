@@ -3645,7 +3645,9 @@ resonances are possible for all ftuples
   end subroutine region_data_init_phs_identifiers
 
 @ %def region_data_init_phs_identifiers
-@
+@ Gathers all ftuples from all ALRs.
+There are at most $n \cdot (n-1)$ ftuples with $i$ and $j$ in the final state
+and up to $3n$ ftuples with $i$ in the initial state.
 <<fks regions: reg data: TBP>>=
   procedure :: get_all_ftuples => region_data_get_all_ftuples
 <<fks regions: procedures>>=
@@ -3653,14 +3655,14 @@ resonances are possible for all ftuples
     class(region_data_t), intent(in) :: reg_data
     type(ftuple_t), intent(inout), dimension(:), allocatable :: ftuples
     type(ftuple_t), dimension(:), allocatable :: ftuple_tmp
-    integer :: i, j, alr
-    !!! Can have at most n * (n-1) ftuples
+    integer :: i, j, alr, n_fs
     j = 0
-    allocate (ftuple_tmp (reg_data%n_legs_real * (reg_data%n_legs_real - 1)))
+    n_fs = reg_data%n_legs_real - reg_data%n_in
+    allocate (ftuple_tmp (n_fs * (n_fs - 1) + 3 * n_fs))
     do i = 1, reg_data%n_regions
        associate (region => reg_data%regions(i))
           do alr = 1, region%nregions
-             if (.not. any (region%ftuples(alr) == ftuple_tmp)) then
+             if (.not. any (ftuple_equal_ireg (region%ftuples(alr), ftuple_tmp))) then
                 j = j + 1
                 ftuple_tmp(j) = region%ftuples(alr)
              end if
@@ -8986,7 +8988,11 @@ extracted higher up.
   end subroutine real_partition_fixed_order_write
 
 @ %def real_partition_fixed_order_write
-@
+@ Implements the suppression factor
+\begin{equation}
+  F(\Phi_{n+1}) = 1 - \prod_{(i,j) \in P_{FKS}} \theta \left[ m_i + m_j + h - \sqrt{(p_j + p_j)^2} \right]
+\end{equation}
+to split the real matrix element into singular and finite part.
 <<real subtraction: real partition fixed order: TBP>>=
   procedure :: get_f => real_partition_fixed_order_get_f
 <<real subtraction: procedures>>=
@@ -8994,16 +9000,25 @@ extracted higher up.
     real(default) :: f
     class(real_partition_fixed_order_t), intent(in) :: partition
     type(vector4_t), intent(in), dimension(:) :: p
-    integer :: i
+    integer :: i, em
     f = zero
-    do i = 1, size (partition%fks_pairs)
+    PAIRS: do i = 1, size (partition%fks_pairs)
        associate (ii => partition%fks_pairs(i)%ireg)
-          if ((p(ii(1)) + p(ii(2)))**1 < p(ii(1))**1 + p(ii(2))**1 + partition%scale) then
-             f = one
-             exit
+          if (ii(1) == 0) then
+            IS: do em = 1, 2
+               if ((p(em) + p(ii(2)))**1 < p(em)**1 + p(ii(2))**1 + partition%scale) then
+                  f = one
+                  exit PAIRS
+               end if
+            end do IS
+          else
+             if ((p(ii(1)) + p(ii(2)))**1 < p(ii(1))**1 + p(ii(2))**1 + partition%scale) then
+                f = one
+                exit PAIRS
+             end if
           end if
        end associate
-    end do
+    end do PAIRS
   end function real_partition_fixed_order_get_f
 
 @ %def real_partition_fixed_order_get_f

@@ -4819,7 +4819,7 @@ correlations that are lost in the individual particle entries.
   public :: particle_set_t
 <<Particles: types>>=
   type :: particle_set_t
-     ! private !!! 
+     ! private !!!
      integer :: n_beam = 0
      integer :: n_in  = 0
      integer :: n_vir = 0
@@ -5162,7 +5162,7 @@ virtual.
        end select
     end do
   end subroutine particle_set_transfer
-  
+
 @ %def particle_set_transfer
 @ Insert a new particle as an intermediate into a previously empty position.
 
@@ -5228,7 +5228,7 @@ children.
        call pset%prt(c)%set_parents ([i])
     end do
   end subroutine particle_set_insert
-  
+
 @ %def particle_set_insert
 @ This should be done after completing all insertions: recover color
 assignments for the inserted particles, working backwards from
@@ -5347,9 +5347,9 @@ with invalid color assignments.  If the array size is zero, all is fine.
     index = pack ([(i, i = 1, n)], mask)
     if (present (prt))  prt = pack (particle_set%prt, mask)
   end subroutine particle_set_find_prt_invalid_color
-  
+
 @ %def particle_set_find_prt_invalid_color
-@ 
+@
 <<Particles: particle set: TBP>>=
   generic :: get_momenta => get_momenta_all
   generic :: get_momenta => get_momenta_indices
@@ -5442,7 +5442,7 @@ is possible.  The reconstructed momentum is not projected on-shell.
     p = particle_set%get_momenta (index)
     call particle_set%set_momentum (i, sum (p))
   end subroutine particle_set_recover_momentum
-  
+
 @ %def particle_set_recover_momentum
 @
 <<Particles: particle set: TBP>>=
@@ -5481,7 +5481,7 @@ is possible.  The reconstructed momentum is not projected on-shell.
   end subroutine particle_set_replace_outgoing_momenta
 
 @ %def particle_set_replace_outgoing_momenta
-@ 
+@
 <<Particles: particle set: TBP>>=
   procedure :: get_outgoing_momenta => particle_set_get_outgoing_momenta
 <<Particles: procedures>>=
@@ -6720,7 +6720,7 @@ To be on the safe side, allocate four times the original size.
 @ %def particle_set_to_hepevt_form
 @ This procedure aims at reconstructing the momenta of an interaction,
 given a particle set.  The main task is to find the original hard process, by
-following the event history. 
+following the event history.
 
 In-state: take those particles which are flagged as [[PRT_INCOMING]]
 
@@ -6864,7 +6864,7 @@ parent.
                      p_child(c) = 0
                   end if
                end do
-	       if (n_shift < 0) then
+               if (n_shift < 0) then
                   if (present (success)) then
                      success = .false.
                      return
@@ -6916,14 +6916,14 @@ parent.
          call state_flv%match (pdg_i, match, map_i)
          if (present (success)) then
             success = match
-	 end if
+         end if
          if (.not. match) then
-	    if (present (success)) then
-	       return
-	    else
+            if (present (success)) then
+               return
+            else
                call err_mismatch
             end if
-	 end if
+         end if
          allocate (mask_p (pset%n_tot), source = .false.)
          mask_p (p_in) = .true.
          mask_p (p_out) = .true.
@@ -8522,6 +8522,3 @@ remnants first.
   end subroutine particles_9
 
 @  %def particles_9
-
-
-

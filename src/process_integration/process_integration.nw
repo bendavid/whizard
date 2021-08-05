@@ -12798,7 +12798,9 @@ stored in the kinematics subobject to their source.  This is a side effect.
   end subroutine term_instance_return_beam_momenta
 
 @ %def term_instance_return_beam_momenta
-@
+@ Applies the real partition by computing the real partition function $F(\Phi)$
+and multiplying either $\mathcal{R}_\text{sin} = \mathcal{R} \cdot F$ or
+$\mathcal{R}_\text{fin} = \mathcal{R} \cdot (1-F)$.
 <<Instances: term instance: TBP>>=
   procedure :: apply_real_partition => term_instance_apply_real_partition
 <<Instances: procedures>>=
@@ -12807,7 +12809,7 @@ stored in the kinematics subobject to their source.  This is a side effect.
     type(process_t), intent(in) :: process
     real(default) :: f, sqme
     integer :: i_component
-    integer :: i_amp, n_amps
+    integer :: i_amp, n_amps, qn_index
     logical :: is_subtraction
     i_component = term%config%i_component
     if (process%component_is_selected (i_component) .and. &
@@ -12815,14 +12817,18 @@ stored in the kinematics subobject to their source.  This is a side effect.
        is_subtraction = process%get_component_type (i_component) == COMP_REAL_SING &
             .and. term%k_term%emitter < 0
        if (is_subtraction) return
+       select case (process%get_component_type (i_component))
+       case (COMP_REAL_FIN)
+          call term%connected%trace%set_duplicate_flv_zero()
+       end select
        select type (pcm => process%get_pcm_ptr ())
        type is (pcm_nlo_t)
           f = pcm%real_partition%get_f (term%p_hard)
        end select
        n_amps = term%connected%trace%get_n_matrix_elements ()
        do i_amp = 1, n_amps
-          sqme = real (term%connected%trace%get_matrix_element ( &
-               term%connected%trace%get_qn_index (i_amp, i_sub = 0)))
+          qn_index = term%connected%trace%get_qn_index (i_amp, i_sub = 0)
+          sqme = real (term%connected%trace%get_matrix_element (qn_index))
           if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
           select type (pcm => term%pcm_instance%config)
           type is (pcm_nlo_t)
@@ -12839,7 +12845,7 @@ stored in the kinematics subobject to their source.  This is a side effect.
              end select
           end select
           if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
-          call term%connected%trace%set_matrix_element (i_amp, cmplx (sqme, zero, default))
+          call term%connected%trace%set_matrix_element (qn_index, cmplx (sqme, zero, default))
        end do
     end if
   end subroutine term_instance_apply_real_partition

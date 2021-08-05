@@ -62,6 +62,7 @@ TESTS_EXTENDED = \
 	nlo_eettzj.run \
 	nlo_eettzjj.run \
 	nlo_eettzz.run \
+	nlo_ppjj_real_partition.run \
 	nlo_ppz.run \
 	nlo_ppzj_sim_1.run \
 	nlo_ppzj_sim_2.run \
@@ -135,6 +136,7 @@ nlo_eetthh.run: nlo_settings.sin
 nlo_eetthz.run: nlo_settings.sin
 nlo_ee4t.run: nlo_settings.sin
 nlo_ee4tj.run: nlo_settings.sin
+nlo_ppjj_real_partition.run: nlo_settings.sin
 nlo_ppz.run: nlo_settings.sin
 nlo_ppw.run: nlo_settings.sin
 nlo_ppzz.run: nlo_settings.sin
