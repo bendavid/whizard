@@ -862,7 +862,7 @@ REF_OUTPUT_FILES_BASE = \
     ext_tests_nlo/ref-output/nlo_eettzj.ref \
     ext_tests_nlo/ref-output/nlo_eettzjj.ref \
     ext_tests_nlo/ref-output/nlo_eettzz.ref \
-    ext_tests_nlo/ref-output/nlo_ppjj_real_partition.ref \
+    ext_tests_nlo/ref-output/nlo_ppzj_real_partition.ref \
     ext_tests_nlo/ref-output/nlo_pptttt.ref \
     ext_tests_nlo/ref-output/nlo_ppw.ref \
     ext_tests_nlo/ref-output/nlo_ppz.ref \
@@ -1543,7 +1543,7 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_eettzj.sin \
     ext_tests_nlo/nlo_eettzjj.sin \
     ext_tests_nlo/nlo_eettzz.sin \
-    ext_tests_nlo/nlo_ppjj_real_partition.sin \
+    ext_tests_nlo/nlo_ppzj_real_partition.sin \
     ext_tests_nlo/nlo_pptttt.sin \
     ext_tests_nlo/nlo_ppw.sin \
     ext_tests_nlo/nlo_ppz.sin \
