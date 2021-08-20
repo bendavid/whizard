@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.1+
 
+2021-08-20
+	Bug fix: correctly reading in NLO fixed order events
+
 2021-08-06
         Generalize optional partitioning of the NLO real phase space
 

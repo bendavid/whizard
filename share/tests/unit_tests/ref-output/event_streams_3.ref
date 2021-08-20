@@ -10,6 +10,7 @@
    Check MD5 sum     = T
    Alpha_s from file = F
    Scale from file   = F
+   Events for fNLO   = F
    Writing to file   = event_streams_3.evx
 
 * Reallocate raw eio stream for reading
@@ -20,6 +21,7 @@
    Check MD5 sum     = T
    Alpha_s from file = F
    Scale from file   = F
+   Events for fNLO   = F
    Reading from file = event_streams_3.evx
 
 * Reread event
@@ -31,6 +33,7 @@
    Check MD5 sum     = T
    Alpha_s from file = F
    Scale from file   = F
+   Events for fNLO   = F
    Writing to file   = event_streams_3.evx
 
 ========================================================================
@@ -144,6 +147,7 @@ event_excess* =>  0.000000000000E+00
    Check MD5 sum     = T
    Alpha_s from file = F
    Scale from file   = F
+   Events for fNLO   = F
    Reading from file = event_streams_3.evx
 
 * Reread two events and display 2nd event

@@ -12707,9 +12707,11 @@ choose to calculate all terms at once together with the seed kinematics, use
   procedure :: compute_hard_kinematics => &
        term_instance_compute_hard_kinematics
 <<Instances: procedures>>=
-  subroutine term_instance_compute_hard_kinematics (term, skip_term, success)
+  subroutine term_instance_compute_hard_kinematics &
+       (term, recover, skip_term, success)
     class(term_instance_t), intent(inout) :: term
     integer, intent(in), optional :: skip_term
+    logical, intent(in), optional :: recover
     logical, intent(out) :: success
     type(vector4_t), dimension(:), allocatable :: p
     if (allocated (term%core_state)) &
@@ -12718,6 +12720,9 @@ choose to calculate all terms at once together with the seed kinematics, use
        if (term%config%i_term_global == skip_term) return
     end if
 
+    if (present (recover)) then
+       if (recover) return
+    end if
     if (term%nlo_type == NLO_REAL .and. term%k_term%emitter >= 0) then
        call term%k_term%evaluate_radiation (term%p_seed, p, success)
        select type (config => term%pcm_instance%config)
@@ -12759,14 +12764,19 @@ left undefined.  We remedy this by calling [[receive_kinematics]] once.
   procedure :: recover_seed_kinematics => &
        term_instance_recover_seed_kinematics
 <<Instances: procedures>>=
-  subroutine term_instance_recover_seed_kinematics (term)
+  subroutine term_instance_recover_seed_kinematics (term, p_seed_ref)
     class(term_instance_t), intent(inout) :: term
     integer :: n_in
+    type(vector4_t), dimension(:), intent(in), optional :: p_seed_ref
     n_in = term%k_term%n_in
     call term%k_term%get_incoming_momenta (term%p_seed(1:n_in))
     associate (int_eff => term%isolated%int_eff)
        call int_eff%set_momenta (term%p_seed(1:n_in), outgoing = .false.)
-       term%p_seed(n_in + 1 : ) = int_eff%get_momenta (outgoing = .true.)
+       if (present (p_seed_ref)) then
+          term%p_seed(n_in + 1 : ) = p_seed_ref
+       else
+          term%p_seed(n_in + 1 : ) = int_eff%get_momenta (outgoing = .true.)
+       end if
     end associate
     call term%isolated%receive_kinematics ()
   end subroutine term_instance_recover_seed_kinematics
@@ -15040,8 +15050,10 @@ recovered, and we are just computing the rest.
   procedure :: compute_seed_kinematics => &
        process_instance_compute_seed_kinematics
 <<Instances: procedures>>=
-  subroutine process_instance_compute_seed_kinematics (instance, skip_term)
+  subroutine process_instance_compute_seed_kinematics &
+       (instance, recover, skip_term)
     class(process_instance_t), intent(inout) :: instance
+    logical, intent(in), optional :: recover
     integer, intent(in), optional :: skip_term
     integer :: channel, skip_component, i, j
     logical :: success
@@ -15054,6 +15066,9 @@ recovered, and we are just computing the rest.
        skip_component = instance%term(skip_term)%config%i_component
     else
        skip_component = 0
+    end if
+    if (present (recover)) then
+       if (recover) return
     end if
     if (instance%evaluation_status >= STAT_ACTIVATED) then
        success = .true.
@@ -15126,7 +15141,7 @@ a channel, reconstruct the MC parameter set.
   subroutine process_instance_recover_mcpar (instance, i_term)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: i_term
-    integer :: channel
+    integer :: channel, i
     if (instance%evaluation_status >= STAT_EFF_KINEMATICS) then
        channel = instance%selected_channel
        if (channel == 0) then
@@ -15134,6 +15149,16 @@ a channel, reconstruct the MC parameter set.
        end if
        call instance%term(i_term)%recover_mcpar &
             (instance%mci_work(instance%i_mci), channel)
+       if (instance%term(i_term)%nlo_type == NLO_REAL) then
+          do i = 1, size (instance%term)
+             if (i /= i_term .and. instance%term(i)%nlo_type == NLO_REAL) then
+                if (instance%term(i)%active) then
+                   call instance%term(i)%recover_mcpar &
+                        (instance%mci_work(instance%i_mci), channel)
+                end if
+             end if
+          end do
+       end if
     end if
   end subroutine process_instance_recover_mcpar
 
@@ -15164,21 +15189,24 @@ components, from the seed kinematics.
   procedure :: compute_hard_kinematics => &
        process_instance_compute_hard_kinematics
 <<Instances: procedures>>=
-  subroutine process_instance_compute_hard_kinematics (instance, skip_term)
+  subroutine process_instance_compute_hard_kinematics (instance, recover, skip_term)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in), optional :: skip_term
+    logical, intent(in), optional :: recover
     integer :: i
     logical :: success
     success = .true.
     if (instance%evaluation_status >= STAT_SEED_KINEMATICS) then
        do i = 1, size (instance%term)
           if (instance%term(i)%active) then
-             call instance%term(i)%compute_hard_kinematics (skip_term, success)
+             call instance%term(i)%compute_hard_kinematics &
+                  (recover, skip_term, success)
              if (.not. success) exit
              !!! Ren scale is zero when this is commented out! Understand!
              if (instance%term(i)%nlo_type == NLO_REAL) &
-                  call instance%term(i)%redo_sf_chain (instance%mci_work(instance%i_mci), &
-                       instance%selected_channel)
+                  call instance%term(i)%redo_sf_chain &
+                     (instance%mci_work(instance%i_mci), &
+                      instance%selected_channel)
           end if
        end do
        if (success) then
@@ -15200,8 +15228,23 @@ for one specific term.
   subroutine process_instance_recover_seed_kinematics (instance, i_term)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: i_term
-    if (instance%evaluation_status >= STAT_EFF_KINEMATICS) &
+    type(vector4_t), dimension(:), allocatable :: p_seed_ref
+    integer :: i
+    if (instance%evaluation_status >= STAT_EFF_KINEMATICS) then
        call instance%term(i_term)%recover_seed_kinematics ()
+       if (instance%term(i_term)%nlo_type == NLO_REAL) then
+          allocate (p_seed_ref (instance%term(i_term)%isolated%int_eff%get_n_out ()))
+          p_seed_ref = instance%term(i_term)%isolated%int_eff%get_momenta &
+               (outgoing = .true.)
+          do i = 1, size (instance%term)
+             if (i /= i_term .and. instance%term(i)%nlo_type == NLO_REAL) then
+                if (instance%term(i)%active) then
+                   call instance%term(i)%recover_seed_kinematics (p_seed_ref)
+                end if
+             end if
+          end do
+       end if
+    end if
   end subroutine process_instance_recover_seed_kinematics
 
 @ %def process_instance_recover_seed_kinematics
@@ -15403,8 +15446,9 @@ terms, iterating over all active process components.
 <<Instances: process instance: TBP>>=
   procedure :: evaluate_trace => process_instance_evaluate_trace
 <<Instances: procedures>>=
-  subroutine process_instance_evaluate_trace (instance)
+  subroutine process_instance_evaluate_trace (instance, recover)
     class(process_instance_t), intent(inout) :: instance
+    logical, intent(in), optional :: recover
     class(prc_core_t), pointer :: core => null ()
     integer :: i, i_real_fin, i_core
     real(default) :: alpha_s, alpha_qed
@@ -15466,6 +15510,9 @@ terms, iterating over all active process components.
                            call msg_bug("Attempting to compute EW corrections with alpha_qed = -1")
                         end if
                      end select
+                  end if
+                  if (present (recover)) then
+                     if (recover)  return
                   end if
                   select case (term%nlo_type)
                   case (NLO_REAL)
@@ -15836,17 +15883,20 @@ Before calling this, we should call [[choose_mci]].
     logical, intent(in) :: update_sqme
     logical, intent(in) :: recover_phs
     real(default), intent(in), allocatable, optional :: scale_forced
-    logical :: skip_phs
+    logical :: skip_phs, recover
     call instance%activate ()
     instance%evaluation_status = STAT_EFF_KINEMATICS
     call instance%recover_hard_kinematics (i_term)
     call instance%recover_seed_kinematics (i_term)
     call instance%select_channel (channel)
+    recover = instance%pcm%config%is_nlo ()
     if (recover_phs) then
        call instance%recover_mcpar (i_term)
        call instance%recover_beam_momenta (i_term)
-       call instance%compute_seed_kinematics (i_term)
-       call instance%compute_hard_kinematics (i_term)
+       call instance%compute_seed_kinematics &
+            (recover = recover, skip_term = i_term)
+       call instance%compute_hard_kinematics &
+            (recover = recover, skip_term = i_term)
        call instance%compute_eff_kinematics (i_term)
        call instance%compute_other_channels (i_term)
     else
@@ -15855,7 +15905,7 @@ Before calling this, we should call [[choose_mci]].
     call instance%evaluate_expressions (scale_forced)
     if (update_sqme) then
        call instance%reset_core_kinematics ()
-       call instance%evaluate_trace ()
+       call instance%evaluate_trace (recover)
     end if
   end subroutine process_instance_recover
 

@@ -10052,14 +10052,17 @@ object in the [[pcm_instance]].
 has already been called for one generation point. If this variable,
 [[i_evaluation]], is zero, this means that [[evt_nlo_generate_weighted]] is called
 for the first time, so that the generation of an $N$-particle event is required.
-In all other cases, emission events are generated.\\
+In all other cases, emission events are generated.
+
 During a separate integration of the real component, the first event of
 each event group will become the counterevent. In this case, we return
-the sum of all subtraction matrix elements. \\
+the sum of all subtraction matrix elements.
+
 During a combined integration, the first event will be a combination of all
 Born-like events. To get the sum of their matrix elements, we subtract the
 sum of all real emissions from the sum of all matrix elements as the real
-contribution is the only non-Born contribution. \\
+contribution is the only non-Born contribution.
+
 Note that the argument named [[probablity]], the use of the routine
 [[generate_weighted]] and the procedure we use to generate NLO events via an
 event transformation is an abuse of the interface which should be refactored.
@@ -11240,9 +11243,12 @@ For testing purpose, we allow for providing them explicitly, as an option.
                (event%selected_i_mci, event%selected_i_term)
           evt => evt%next
        end do
-       if (debug_on) call msg_debug (D_TRANSFORMS, "Before event transformations")
-       if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
-       if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "Before event transformations")
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        evt => event%transform_first
        do while (associated (evt))
           call print_transform_name_if_debug ()
@@ -11300,10 +11306,14 @@ For testing purpose, we allow for providing them explicitly, as an option.
              call event%link_particle_set (evt%particle_set)
           end if
        end if
-       if (debug_on) call msg_debug (D_TRANSFORMS, "After event transformations")
-       if (debug_on) call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
-       if (debug_on) call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
-       if (debug_on) call msg_debug (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "After event transformations")
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
+       if (debug_on) call msg_debug &
+            (D_TRANSFORMS, "evt%particle_set_exists", evt%particle_set_exists)
     end if
   contains
     subroutine print_transform_name_if_debug ()
@@ -12690,6 +12700,7 @@ initialization, which should enforce some compatibility mode.
      logical :: check = .false.
      logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
+     logical :: fixed_order_nlo = .false.
      integer :: file_version = CURRENT_FILE_VERSION
    contains
    <<EIO raw: eio raw: TBP>>
@@ -12715,6 +12726,8 @@ of the current object status.
          object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
+    write (u, "(3x,A,L1)")    "Events for fNLO   = ", &
+         object%fixed_order_nlo
     if (object%reading) then
        write (u, "(3x,A,A)")  "Reading from file = ", char (object%filename)
     else if (object%writing) then
@@ -12747,10 +12760,10 @@ of the current object status.
   procedure :: set_parameters => eio_raw_set_parameters
 <<EIO raw: procedures>>=
   subroutine eio_raw_set_parameters (eio, check, use_alphas_from_file, &
-       use_scale_from_file, version_string, extension)
+       use_scale_from_file, fixed_order_nlo, version_string, extension)
     class(eio_raw_t), intent(inout) :: eio
     logical, intent(in), optional :: check, use_alphas_from_file, &
-         use_scale_from_file
+         use_scale_from_file, fixed_order_nlo
     type(string_t), intent(in), optional :: version_string
     type(string_t), intent(in), optional :: extension
     if (present (check))  eio%check = check
@@ -12758,6 +12771,8 @@ of the current object status.
          use_alphas_from_file
     if (present (use_scale_from_file))  eio%use_scale_from_file = &
          use_scale_from_file
+    if (present (fixed_order_nlo))  eio%fixed_order_nlo = &
+         fixed_order_nlo
     if (present (version_string)) then
        select case (char (version_string))
        case ("", "2.2.4")
@@ -13089,6 +13104,12 @@ a different version of [[event%set_hard_particle_set]].
           call event%set_hard_particle_set (pset)
           if (eio%use_alphas_from_file .or. eio%use_scale_from_file) then
              call event%recalculate (update_sqme = .true.)
+             if (eio%fixed_order_nlo) then
+                if (event%weight_prc /= event%weight_ref .and. &
+                     event%weight_prc == 0) then
+                   event%weight_prc = event%weight_ref
+                end if
+             end if
           end if
           call pset%final ()
           deallocate (pset)
@@ -13849,6 +13870,7 @@ which is defined here.
     class(event_callback_t), allocatable, intent(in) :: event_callback
     logical :: check, keep_beams, keep_remnants, recover_beams
     logical :: use_alphas_from_file, use_scale_from_file
+    logical :: fixed_order_nlo_events
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
     logical :: output_cross_section, ensure_order
     type(string_t) :: lhef_version, lhef_extension, raw_version
@@ -13876,6 +13898,8 @@ which is defined here.
          var_list%get_lval (var_str ("?use_alphas_from_file"))
     use_scale_from_file = &
          var_list%get_lval (var_str ("?use_scale_from_file"))
+    fixed_order_nlo_events = &
+         var_list%get_lval (var_str ("?fixed_order_nlo_events"))
     select case (char (method))
     case ("raw")
        allocate (eio_raw_t :: eio)
@@ -13888,7 +13912,8 @@ which is defined here.
           extension_raw = &
                var_list%get_sval (var_str ("$extension_raw"))
           call eio%set_parameters (check, use_alphas_from_file, &
-               use_scale_from_file, raw_version, extension_raw)
+               use_scale_from_file, fixed_order_nlo_events, &
+               raw_version, extension_raw)
        end select
     case ("checkpoint")
        allocate (eio_checkpoints_t :: eio)
