@@ -384,11 +384,14 @@ WO_FC_VETO_GFORTRAN_4()
 ### Veto against buggy gfortran 6.5.0 version
 WO_FC_VETO_GFORTRAN_65()
 
-### Veto against ifort 15/16/17
+### Veto against ifort 15/16/17/18
 WO_FC_VETO_IFORT_15_18()
 
 ### Veto against ifort 19.0.0/1/2
 WO_FC_VETO_IFORT_190012()
+
+### Veto against ifort 21.0/1/2
+WO_FC_VETO_IFORT_21012()
 
 ### Require extension '.f90' for all compiler checks
 AC_FC_SRCEXT([f90])

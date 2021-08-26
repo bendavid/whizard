@@ -165,6 +165,7 @@ FC_IS_IFORT15161718="no"
 fi
 AC_SUBST([FC_IS_IFORT15161718])
 
+
 ### Catch buggy ifort version 19.0.0/1/2
 if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.2"; then
 FC_IS_IFORT190012="yes"
@@ -172,6 +173,14 @@ FC_IS_IFORT190012="yes"
 FC_IS_IFORT190012="no"
 fi
 AC_SUBST([FC_IS_IFORT190012])
+
+### Catch buggy ifort version 21.1/1/2
+if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "21.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "21.1.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "21.2.0"; then
+FC_IS_IFORT21012="yes"
+  else
+FC_IS_IFORT21012="no"
+fi
+AC_SUBST([FC_IS_IFORT21012])
 
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
@@ -219,7 +228,14 @@ AC_MSG_ERROR([*************************************************************])
 fi 
 ])
 
-
+AC_DEFUN([WO_FC_VETO_IFORT_21012],
+[dnl
+if test "$FC_IS_IFORT21012" = "yes"; then
+AC_MSG_NOTICE([error: *****************************************************])
+AC_MSG_NOTICE([error: ifort v21.0/1/2 suffer from a compiler bug, disabled.])
+AC_MSG_ERROR([*****************************************************])
+fi
+])
 
 ### Determine Fortran flags and file extensions
 AC_DEFUN([WO_FC_PARAMETERS],
