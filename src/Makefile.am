@@ -250,10 +250,6 @@ whizard_SOURCES =
 ## Without dummy, libtool uses the C linker (default: ld)
 nodist_EXTRA_whizard_SOURCES = dummy.f90
 
-if IS_IFORT_DARWIN
-whizard_LDFLAGS =  $(AM_LDFLAGS) -static
-endif
-
 whizard_LDADD = main/libwhizard_main.la
 whizard_LDADD += ./libwhizard.la
 whizard_LDADD += prebuilt/libwhizard_prebuilt.la
@@ -277,10 +273,6 @@ whizard_ut_SOURCES =
 ## Without dummy, libtool uses the C linker (default: ld)
 nodist_EXTRA_whizard_ut_SOURCES = dummy.f90
 
-if IS_IFORT_DARWIN
-whizard_ut_LDFLAGS =  $(AM_LDFLAGS) -static
-endif
-
 whizard_ut_LDADD = ./libwhizard_ut.la
 whizard_ut_LDADD += ./libwhizard.la
 whizard_ut_LDADD += prebuilt/libwhizard_prebuilt.la
@@ -299,10 +291,6 @@ whizard_ut_LDADD += $(LDFLAGS_LOOPTOOLS)
 check_PROGRAMS += whizard_ut_c
 
 whizard_ut_c_SOURCES =
-
-if IS_IFORT_DARWIN
-whizard_ut_c_LDFLAGS =  $(AM_LDFLAGS) -static
-endif
 
 whizard_ut_c_LDADD = ./libwhizard_ut_c.la
 whizard_ut_c_LDADD += ./libwhizard.la
@@ -325,10 +313,6 @@ check_PROGRAMS += whizard_ut_cc
 ## Without dummy, libtool uses the C linker (default: ld)
 whizard_ut_cc_SOURCES =
 nodist_EXTRA_whizard_ut_cc_SOURCES = dummy_cc.cc
-
-if IS_IFORT_DARWIN
-whizard_ut_cc_LDFLAGS =  $(AM_LDFLAGS) -static
-endif
 
 whizard_ut_cc_LDADD = ./libwhizard_ut_cc.la
 whizard_ut_cc_LDADD += ./libwhizard.la
