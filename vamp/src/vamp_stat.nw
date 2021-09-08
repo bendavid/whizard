@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP vamp_stat code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: vamp_stat.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Statistics}
 <<[[vamp_stat.f90]]>>=
 ! vamp_stat.f90 --
@@ -12,8 +10,6 @@ module vamp_stat
   implicit none
   private
   <<Declaration of [[vamp_stat]] procedures>>
-  character(len=*), public, parameter :: VAMP_STAT_RCS_ID = &
-       "$Id: vamp_stat.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[vamp_stat]] procedures>>
 end module vamp_stat

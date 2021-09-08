@@ -1,5 +1,5 @@
 #! /usr/bin/awk -f
-# $Id: tex-comments.sh 314 2010-04-17 20:32:33Z ohl $
+# tex-comments.sh --
 
 /^@begin docs / { code = 0 }
 /^@begin code / { code = 1 }

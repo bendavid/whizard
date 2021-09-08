@@ -1,5 +1,4 @@
-% circemacs.mp4
-% $Id: circemacs.mp4,v 1.11 1996/10/22 22:11:34 ohl Exp $
+% circemacs.mp4 --
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MetaPost's `input' doesn't blend well with verbatimtex.
 % Let's use m4(1) instead.

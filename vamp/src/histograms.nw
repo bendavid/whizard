@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP histograms code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: histograms.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Histogramming}
 \begin{dubious}
    Merged WK's improvements for WHIZARD.  TODO \emph{after} merging:
@@ -29,8 +27,6 @@ module histograms
   <<Interfaces of [[histograms]] procedures>>
   <<Variables in [[histograms]]>>
   <<Declaration of [[histograms]] types>>
-  character(len=*), public, parameter :: HISTOGRAMS_RCS_ID = &
-       "$Id: histograms.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[histograms]] procedures>>
 end module histograms

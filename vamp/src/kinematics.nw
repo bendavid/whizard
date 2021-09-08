@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP kinematics code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: kinematics.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Kinematics}
 <<[[kinematics.f90]]>>=
 ! kinematics.f90 --
@@ -17,8 +15,6 @@ module kinematics
   <<Declaration of [[kinematics]] procedures>>
   <<Interfaces of [[kinematics]] procedures>>
   <<Declaration of [[kinematics]] types>>
-  character(len=*), public, parameter :: KINEMATICS_RCS_ID = &
-       "$Id: kinematics.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[kinematics]] procedures>>
 end module kinematics
@@ -293,8 +289,6 @@ module phase_space
   <<Declaration of [[phase_space]] procedures>>
   <<Interfaces of [[phase_space]] procedures>>
   <<Declaration of [[phase_space]] types>>
-  character(len=*), public, parameter :: PHASE_SPACE_RCS_ID = &
-       "$Id: kinematics.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[phase_space]] procedures>>
 end module phase_space

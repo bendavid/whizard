@@ -1,5 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
-% $Id: prelude.nw 314 2010-04-17 20:32:33Z ohl $
+% prelude.nw -- -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \iffalse %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -117,19 +116,6 @@ parallel on workstation clusters and other parallel hardware.
     {}
 \makeatother
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\newenvironment{RCS}%
- {\newwrite\RCSfile
-  \immediate\openout\RCSfile=\jobname.rcs\relax}%
- {\immediate\closeout\RCSfile}
-\def\RCSId$#1: #2 ${%
-  %%%\message{RCSId: #2}%
-  \immediate\write\RCSfile{\string\texttt{#2}\string\\}
-  \ignorespaces}
-\def\RCSInfo{{
-  \InputIfFileExists{\jobname.rcs}%
-    {\catcode`\_=11}%
-    {No RCS information available!}}}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newenvironment{procedures}%
  {\begin{list}{}%
    {\setlength{\leftmargin}{2em}%
@@ -194,13 +180,10 @@ parallel on workstation clusters and other parallel hardware.
 \fi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Revision Control}
-\RCSInfo
 \newpage
 \tableofcontents
 %%% \listoffigures
 %%% \listoftables
-\begin{RCS}
-\RCSId$Id: prelude.nw 314 2010-04-17 20:32:33Z ohl $
 \newpage
 \begin{empfile}
 \begin{fmffile}{\jobname pics}

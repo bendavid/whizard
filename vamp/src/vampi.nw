@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP vampi code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: vampi.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Interface to MPI}
 The module [[vamp]] makes no specific assumptions about the
 hardware and software supporting parallel execution.  In this section,
@@ -19,7 +17,6 @@ renamed so that [[vamp_parallel_mpi]] can redefine them:
 module vamp_serial_mpi
   use vamp, &
        <<[[vamp0_* => vamp_*]]>>
-       VAMP0_RCS_ID => VAMP_RCS_ID
   public
 end module vamp_serial_mpi
 @ %def vamp_serial_mpi
@@ -41,8 +38,6 @@ module vamp_parallel_mpi
   <<Interfaces of [[vampi]] procedures>>
   <<Parameters in [[vampi]]>>
   <<Declaration of [[vampi]] types>>
-  character(len=*), public, parameter :: VAMPI_RCS_ID = &
-       "$Id: vampi.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[vampi]] procedures>>
 end module vamp_parallel_mpi

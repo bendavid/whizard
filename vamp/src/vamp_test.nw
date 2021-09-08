@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP vamp_test code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: vamp_test.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Self Test}
 \section{No Mapping Mode}
 \label{sec:test}
@@ -409,7 +407,6 @@ program vamp_test
   use kinds
   use tao_random_numbers
   use coordinates
-  use divisions, only: DIVISIONS_RCS_ID
   use vamp
   use vamp_test_functions !NODEP!
   use vamp_tests !NODEP!
@@ -440,8 +437,6 @@ program vamp_test
   width = 0.0001
   print *, "Starting VAMP 1.0 self test..."
   print *, "serial code"
-  print *, VAMP_RCS_ID
-  print *, DIVISIONS_RCS_ID
   call system_clock (start_ticks)
   call single_channel (rng, region, samples, iterations, &
           single_integral, single_standard_dev, single_chi_squared)
@@ -498,8 +493,6 @@ program vampi_test
   use kinds
   use tao_random_numbers
   use coordinates
-  use divisions, only: DIVISIONS_RCS_ID
-  use vamp, only: VAMP_RCS_ID
   use vampi
   use mpi90
   use vamp_test_functions !NODEP!
@@ -539,9 +532,6 @@ program vampi_test
      else
         print *, "parallel code running serially"
      end if
-     print *, VAMP_RCS_ID
-     print *, VAMPI_RCS_ID
-     print *, DIVISIONS_RCS_ID
   end if
   command_loop: do
      <<Parse the commandline in [[vamp_test]] and set [[command]]>>

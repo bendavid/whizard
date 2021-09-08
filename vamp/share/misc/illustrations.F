@@ -1,4 +1,4 @@
-! $Id: illustrations.F 314 2010-04-17 20:32:33Z ohl $
+! illustrations.F --
 
 module foo
   use kinds

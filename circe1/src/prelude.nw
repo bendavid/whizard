@@ -1,4 +1,4 @@
-% $Id: prelude.nw 6466 2015-01-10 16:06:40Z jr_reuter $
+% prelude.nw --
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \iffalse %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -775,7 +775,6 @@ write (*, 1000) 'delta(sigma) (Gauss) =', (s-1d0)*100d0
 over energies and accelerator designs
 <<[[circe1_sample.f90]]>>=
 ! circe1_sample.f90 -- canonical beam spectra for linear collider physics
-! $Id: prelude.nw 6466 2015-01-10 16:06:40Z jr_reuter $
 <<Copyleft notice>>
 module sample_routines
   use kinds
@@ -822,7 +821,6 @@ end module sample_routines
 @ with the following result
 <<Sample output>>=
  circe1:message: starting up ...
- circe1:message: $Id: prelude.nw 6466 2015-01-10 16:06:40Z jr_reuter $
  circe1:message: updating `roots' to   90.0                                  
  circe1:message: updating `ver' to  7                                        
  circe1:message: updating `rev' to 20000501                                  

@@ -2,7 +2,6 @@
 \section{Implementation of [[circe1]]}
 <<[[circe1.f90]]>>=
 ! circe1.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 7444 2016-02-17 15:37:20Z jr_reuter $
 <<Copyleft notice>>
 <<Main module>>
 @
@@ -40,7 +39,6 @@ The file \texttt{circe.h} contains symbolic names for various magic
 constants used by \Kirke/:
 <<[[circe.h]]>>=
 c circe.h -- canonical beam spectra for linear collider physics
-c $Id: circe1.nw 7444 2016-02-17 15:37:20Z jr_reuter $
 <<Main module>>=
 module circe1
   use kinds
@@ -159,8 +157,6 @@ all negative variables to ensure initialization:
       circe1_params%chat = 1
       if (xchat .ne. 0) then
          call circem ('MESSAGE', 'starting up ...')
-         call circem ('MESSAGE', & 
-            '$Id: circe1.nw 7444 2016-02-17 15:37:20Z jr_reuter $')
       endif
 @
 <<Update circe1 parameters>>=

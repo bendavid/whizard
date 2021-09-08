@@ -144,8 +144,6 @@ module tao_random_numbers
      integer(kind=int32), dimension(:), pointer :: buffer       =>null()
      integer :: buffer_end, last
   end type tao_random_state
-  character(len=*), public, parameter :: TAO_RANDOM_NUMBERS_RCS_ID = &
-       "tao_random_numbers.f90 --"
 contains
   subroutine seed_static (seed)
     integer, optional, intent(in) :: seed
@@ -800,7 +798,6 @@ contains
     integer, dimension(:), allocatable :: ibuf
     real(kind=double), dimension(:), allocatable :: dbuf
     integer :: i, ibuf_size, dbuf_size
-    print *, TAO_RANDOM_NUMBERS_RCS_ID
     print *, "testing the 30-bit tao_random_numbers ..."
     call tao_random_luxury ()
     call tao_random_seed (SEED)

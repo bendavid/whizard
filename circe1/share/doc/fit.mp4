@@ -1,5 +1,4 @@
-% fit.mp
-% $Id: fit.mp4,v 1.2 1996/07/26 10:52:25 ohl Exp $
+% fit.mp --
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 include(`circemacs.mp4')
 include(`output/Slices.mp4')

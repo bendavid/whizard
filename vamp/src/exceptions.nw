@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP exceptions code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: exceptions.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Errors and Exceptions}
 \label{sec:exceptions}
 Fortran95 does not allow \emph{any} I/O in [[pure]] and [[elemental]]
@@ -19,8 +17,6 @@ module exceptions
   <<Interfaces of [[exceptions]] procedures>>
   <<Variables in [[exceptions]]>>
   <<Declaration of [[exceptions]] types>>
-  character(len=*), public, parameter :: EXCEPTIONS_RCS_ID = &
-       "$Id: exceptions.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[exceptions]] procedures>>
 end module exceptions

@@ -1,4 +1,4 @@
-! $Id:$
+! gg.f90 --
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 module kinds
@@ -52,8 +52,6 @@ module histograms
      real(kind=double), dimension(2) :: x_min, x_max
      real(kind=double), dimension(:,:), pointer :: bins, bins2
   end type histogram2
-  character(len=*), public, parameter :: HISTOGRAMS_RCS_ID = &
-       "$Id: triangle90.f90,v 1.8 1998/09/09 11:10:14 ohl Exp $"
 contains
   elemental subroutine create_histogram1 (h, x_min, x_max, nb)
     type(histogram), intent(out) :: h

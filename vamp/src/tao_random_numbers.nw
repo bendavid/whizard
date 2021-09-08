@@ -1,6 +1,5 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% tao_random_numbers.nw -- -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP tao_random_numbers code as NOWEB source
-% $Id: tao_random_numbers.nw 314 2010-04-17 20:32:33Z ohl $ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcommand{\modpoly}{%
   \;(\text{modulo } z^K+z^L+1)}
@@ -1078,8 +1077,6 @@ module tao_random_numbers
   <<Variables in [[tao_random_numbers]]>>
   <<Variables in 30-bit [[tao_random_numbers]]>>
   <<Declaration of 30-bit [[tao_random_numbers]] types>>
-  character(len=*), public, parameter :: TAO_RANDOM_NUMBERS_RCS_ID = &
-       "$Id: tao_random_numbers.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[tao_random_numbers]]>>
   <<Implementation of 30-bit [[tao_random_numbers]]>>
@@ -1102,8 +1099,6 @@ module tao52_random_numbers
   <<Variables in [[tao_random_numbers]]>>
   <<Variables in 52-bit [[tao_random_numbers]]>>
   <<Declaration of 52-bit [[tao_random_numbers]] types>>
-  character(len=*), public, parameter :: TAO52_RANDOM_NUMBERS_RCS_ID = &
-       "$Id: tao_random_numbers.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[tao_random_numbers]]>>
   <<Implementation of 52-bit [[tao_random_numbers]]>>
@@ -1535,7 +1530,6 @@ subroutine tao_random_test (name)
   integer, dimension(:), allocatable :: ibuf
   real(kind=tao_r64), dimension(:), allocatable :: dbuf
   integer :: i, ibuf_size, dbuf_size
-  print *, TAO_RANDOM_NUMBERS_RCS_ID
   print *, "testing the 30-bit tao_random_numbers ..."
   <<Perform simple tests of [[tao_random_numbers]]>>
   <<Perform more tests of [[tao_random_numbers]]>>
@@ -1647,7 +1641,6 @@ subroutine tao_random_test (name)
   integer, dimension(:), allocatable :: ibuf
   real(kind=tao_r64), dimension(:), allocatable :: dbuf
   integer :: i, ibuf_size, dbuf_size
-  print *, TAO52_RANDOM_NUMBERS_RCS_ID
   print *, "testing the 52-bit tao_random_numbers ..."
   <<Perform simple tests of [[tao_random_numbers]]>>
   <<Perform more tests of [[tao_random_numbers]]>>

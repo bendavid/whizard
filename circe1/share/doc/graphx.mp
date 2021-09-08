@@ -1,6 +1,5 @@
 % graphx.mp --
 % Copyright (C) 1995-2011 by ohl@physik.uni-wuerzburg.de
-% $Id: graphx.nw,v 1.13 1995/08/29 22:16:59 ohl Exp $
 %
 % Graphx is free software; you can redistribute it and/or modify it
 % under the terms of the GNU General Public License as published by 

@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP divisions code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: divisions.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Implementation}
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The Abstract Datatype \texttt{division}}
@@ -22,8 +20,6 @@ module divisions
   <<Variables in [[divisions]]>>
   <<Declaration of [[divisions]] types>>
   <<Constants in [[divisions]]>>
-  character(len=*), public, parameter :: DIVISIONS_RCS_ID = &
-       "$Id: divisions.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[divisions]] procedures>>
 end module divisions

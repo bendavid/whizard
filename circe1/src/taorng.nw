@@ -1,5 +1,4 @@
 % taorng.nw --
-% $Id: taorng.nw 6466 2015-01-10 16:06:40Z jr_reuter $ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \NeedsTeXFormat{LaTeX2e}
 \documentclass[a4paper]{article}

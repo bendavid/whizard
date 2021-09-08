@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP vamp_test0 code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: vamp_test0.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Mapped Mode}
 In this chapter we perfom a test of the major features of Vamp.  A
 function with many peaks is integrated with the traditional Vegas
@@ -615,8 +613,6 @@ program vamp_test0
   do_print = .true.
   print *, "Starting VAMP 1.0 self test..."
   print *, "serial code"
-  print *, VAMP_RCS_ID
-  print *, DIVISIONS_RCS_ID
   call tao_random_create (rng, 0)
   call get_environment_variable (name="VAMP_RANDOM_TESTS", status=status)
   if (status == 0) then
@@ -685,8 +681,6 @@ logical :: do_print
 <<Modules used by [[vamp_test0]]>>=
 use kinds
 use tao_random_numbers
-use divisions, only: DIVISIONS_RCS_ID
-use vamp, only: VAMP_RCS_ID
 use vamp_test0_functions !NODEP!
 use vamp_tests0 !NODEP!
 @
@@ -741,7 +735,6 @@ end module vamp_tests0
 program vampi_test0
   <<Modules used by [[vamp_test0]]>>
   use mpi90
-  use vampi, only: VAMPI_RCS_ID
   implicit none
   <<Variables in [[vamp_test0]]>>
   integer :: num_proc, proc_id
@@ -756,9 +749,6 @@ program vampi_test0
      else
         print *, "parallel code running serially"
      end if
-     print *, VAMP_RCS_ID
-     print *, VAMPI_RCS_ID
-     print *, DIVISIONS_RCS_ID
   else
      do_print = .false.
   end if

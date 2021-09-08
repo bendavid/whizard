@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP utils code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: utils.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Miscellaneous Utilities}
 <<[[utils.f90]]>>=
 ! utils.f90 --
@@ -15,8 +13,6 @@ module utils
   <<Parameters in [[utils]]>>
   <<Variables in [[utils]]>>
   <<Interfaces of [[utils]] procedures>>
-  character(len=*), public, parameter :: UTILS_RCS_ID = &
-       "$Id: utils.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   <<Implementation of [[utils]] procedures>>
 end module utils

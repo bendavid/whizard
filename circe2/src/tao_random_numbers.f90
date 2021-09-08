@@ -126,8 +126,6 @@ module tao_random_numbers
      integer(kind=tao_i32), dimension(:), allocatable :: buffer
      integer :: buffer_end, last
   end type tao_random_state
-  character(len=*), public, parameter :: TAO_RANDOM_NUMBERS_RCS_ID = &
-       "$Id: tao_random_numbers.nw 314 2010-04-17 20:32:33Z ohl $"
 contains
   subroutine seed_static (seed)
     integer, optional, intent(in) :: seed
@@ -690,7 +688,6 @@ contains
     integer, dimension(:), allocatable :: ibuf
     real(kind=tao_r64), dimension(:), allocatable :: dbuf
     integer :: i, ibuf_size, dbuf_size
-    print *, TAO_RANDOM_NUMBERS_RCS_ID
     print *, "testing the 30-bit tao_random_numbers ..."
     ! call tao_random_luxury ()
     call tao_random_seed (SEED)

@@ -1,8 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
 % VAMP specfun code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: specfun.nw 314 2010-04-17 20:32:33Z ohl $
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Special Functions}
 <<[[specfun.f90]]>>=
 ! specfun.f90 --
@@ -13,9 +11,6 @@ module specfun
   implicit none
   private
   <<Declaration of [[specfun]] procedures>>
-  character(len=*), public, parameter :: SPECFUN_RCS_ID = &
-       "$Id: specfun.nw 314 2010-04-17 20:32:33Z ohl $"
-  !WK:
   real(kind=default), public, parameter :: &
        PI = 3.1415926535897932384626433832795028841972_default
 contains
