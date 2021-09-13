@@ -22,7 +22,7 @@ mtop = 175 GeV
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 
-?nlo_use_real_partition = true
+$real_partition_mode = "on"
 real_partition_scale = 10 GeV
 $fks_mapping_type = "resonances"
 

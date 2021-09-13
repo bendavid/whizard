@@ -7646,11 +7646,11 @@ input channel, [[i_in]] is the corresponding index.
   function event_stream_array_is_valid (es_array) result (flag)
     class(event_stream_array_t), intent(in) :: es_array
     logical :: flag
-    
+
     flag = allocated (es_array%entry)
-    
+
   end function event_stream_array_is_valid
-  
+
 @ %def event_stream_array_is_valid
 @ Finalize all streams.
 <<Event streams: event stream array: TBP>>=
@@ -11136,9 +11136,8 @@ var list by the global var list.
        call process%init_nlo_settings (global%var_list)
     end if
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
-    if (.not. combined_integration &
-         .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) &
-              selected_mci = process%extract_active_component_mci ()
+    if (.not. combined_integration) &
+         selected_mci = process%extract_active_component_mci ()
     call prepare_process_instance (process_instance, process, local%model, &
          local = local)
 
@@ -11155,7 +11154,7 @@ var list by the global var list.
           end do
       end if
     end if
-    
+
     if (support_resonance_history) then
        prclib_saved => local%prclib
        call entry%setup_resonant_subprocesses (local, process)
@@ -11342,7 +11341,7 @@ objects and store them.
   end subroutine entry_prepare_expressions
 
 @ %def entry_prepare_expressions
-@ 
+@
 \subsubsection{Extra (NLO) entries}
 Initializes the list of additional NLO entries.  The routine gets the
 information about how many entries to associate from [[region_data]].
@@ -11639,7 +11638,7 @@ support at present.
                &photon-pT generation not supported yet")
        end if
     end if
-    
+
     if (process%contains_unstable (local%model) &
          .and. entry%resonant_subprocess_set%is_active ()) then
        call msg_fatal ("Simulation: resonant subprocess insertion with &
@@ -12145,7 +12144,7 @@ event file version. It can be
   end type simulation_t
 
 @ %def simulation_t
-@ 
+@
 \subsubsection{Output of the simulation data}
 [[write_config]] writes just the configuration.  [[write]]
 as a method of the base type [[event_t]]
@@ -12473,7 +12472,7 @@ latter should guarantee identical physics.
   end subroutine simulation_final
 
 @ %def simulation_final
-@ 
+@
 \subsubsection{Simulation-object initialization}
 We can deduce all data from the given list of
 process IDs and the global data set.  The process objects are taken
@@ -12762,11 +12761,11 @@ the settings accessible via the local environment.
 <<Simulations: procedures>>=
   subroutine simulation_setup_openmp (simulation)
     class(simulation_t), intent(inout) :: simulation
-    
+
     call openmp_set_num_threads_verbose &
          (simulation%local%get_ival (var_str ("openmp_num_threads")), &
          simulation%local%get_lval (var_str ("?openmp_logging")))
-    
+
   end subroutine simulation_setup_openmp
 
 @ %def simulation_setup_openmp
@@ -12905,7 +12904,7 @@ weights.
   end function simulation_select_mci
 
 @ %def simulation_select_mci
-@ 
+@
 \subsubsection{Generate-event loop}
 The requested number of events should be set by this, in time for the
 event-array initializers that may use this number.
@@ -12916,17 +12915,17 @@ event-array initializers that may use this number.
   subroutine simulation_set_n_events_requested (simulation, n)
     class(simulation_t), intent(inout) :: simulation
     integer, intent(in) :: n
-    
+
     simulation%n_evt_requested = n
-    
+
   end subroutine simulation_set_n_events_requested
 
   function simulation_get_n_events_requested (simulation) result (n)
     class(simulation_t), intent(in) :: simulation
     integer :: n
-    
+
     n = simulation%n_evt_requested
-    
+
   end function simulation_get_n_events_requested
 
 @ %def simulation_set_n_events_requested
@@ -12983,7 +12982,7 @@ equal to 1 and to [[n_events]], respectively.
     integer, intent(out) :: begin_it
     integer, intent(out) :: end_it
     type(event_stream_array_t), intent(inout), optional :: es_array
-    
+
     integer :: n_evt_requested
     logical :: has_input
     integer :: n_events_print
@@ -12997,7 +12996,7 @@ equal to 1 and to [[n_events]], respectively.
 
     has_input = .false.
     if (present (es_array)) has_input = es_array%has_input ()
-    
+
     is_weighted = .not. simulation%entry(1)%config%unweighted
     is_polarized = simulation%entry(1)%config%factorization_mode &
          /= FM_IGNORE_HELICITY
@@ -13065,8 +13064,8 @@ equal to 1 and to [[n_events]], respectively.
   end subroutine simulation_startup_message_generate
 
 @ %def simulation_startup_message_generate
-@ 
-The body of the event loop: generate and process a single event.  
+@
+The body of the event loop: generate and process a single event.
 
 Optionally transfer the current event to one of the provided event handles,
 for in and/or output streams.  This works for any stream for which the I/O
@@ -13080,7 +13079,7 @@ stream type matches the event-handle type.
     type(event_stream_array_t), intent(inout), optional :: es_array
     class(event_handle_t), intent(inout), optional :: event_handle_out
     class(event_handle_t), intent(inout), optional :: event_handle_in
-    
+
     type(entry_t), pointer :: current_entry
     logical :: generate_new
     logical :: passed
@@ -13199,7 +13198,7 @@ stream type matches the event-handle type.
   subroutine simulation_after_last_event (simulation, begin_it, end_it)
     class(simulation_t), intent(inout) :: simulation
     integer, intent(in) :: begin_it, end_it
-    
+
     call msg_message ("        ... event sample complete.")
   <<Simulations: simulation generate: extra finalize>>
 
@@ -13235,19 +13234,19 @@ Extra logging for MPI only.
        .or. simulation%local%get_lval (var_str ("?mpi_logging"))
   call mpi_set_logging (mpi_logging)
 @ %def simulation_activate_extra_logging
-@ 
+@
 Extra subroutine to be called before the first event:
 <<Simulations: simulation generate: extra init>>=
 <<MPI: Simulations: simulation generate: extra init>>=
   call simulation%init_event_loop_mpi (n_evt_requested, begin_it, end_it)
-@ 
+@
 Extra subroutine to be called after the last event:
 <<Simulations: simulation generate: extra finalize>>=
 <<MPI: Simulations: simulation generate: extra finalize>>=
   call simulation%final_event_loop_mpi (begin_it, end_it)
-@ 
+@
 For MPI event generation, the event-loop interval (1\dots n) is split up
-into intervals of [[n_workers]]. 
+into intervals of [[n_workers]].
 <<MPI: Simulations: simulation: TBP>>=
   procedure, private :: init_event_loop_mpi => simulation_init_event_loop_mpi
 <<MPI: Simulations: procedures>>=
@@ -13280,7 +13279,7 @@ into intervals of [[n_workers]].
     call msg_message ()
 
   contains
-  
+
     subroutine compute_and_scatter_intervals (n_events, begin_it, end_it)
       integer, intent(in) :: n_events
       integer, intent(out) :: begin_it, end_it
@@ -13314,7 +13313,7 @@ into intervals of [[n_workers]].
   end subroutine simulation_init_event_loop_mpi
 
 @ %def simulation_init_event_loop_mpi
-@ 
+@
 Synchronize, reduce and collect stuff after the event loop has completed.
 <<MPI: Simulations: simulation: TBP>>=
   procedure, private :: final_event_loop_mpi => simulation_final_event_loop_mpi
@@ -13335,7 +13334,7 @@ Synchronize, reduce and collect stuff after the event loop has completed.
           "MPI: Number of generated events locally", n_events_local, " and in world", n_events_global
      call msg_message ()
      call simulation%counter%allreduce_record ()
-     
+
   end subroutine simulation_final_event_loop_mpi
 
 @ %def simulation_final_event_loop_mpi
@@ -13487,7 +13486,7 @@ if [[update_weight]] is set.)  Otherwise, we accept the reference values.
        str3 = "(process parameters updated) "
     else
        str3 = ""
-    end if   
+    end if
     write (msg_buffer, "(A,1x,A,1x,A,A,A)")  char (str1), char (str2), &
          "events ", char (str3), "..."
     call msg_message ()
@@ -13606,19 +13605,19 @@ this to read access, we return a pointer.
   function simulation_get_process_index (simulation) result (i_prc)
     class(simulation_t), intent(in), target :: simulation
     integer :: i_prc
-    
+
     i_prc = simulation%i_prc
-    
+
   end function simulation_get_process_index
-    
+
   function simulation_get_event_ptr (simulation) result (event)
     class(simulation_t), intent(in), target :: simulation
     class(event_t), pointer :: event
-    
+
     event => simulation%entry(simulation%i_prc)
-    
+
   end function simulation_get_event_ptr
-    
+
 @ %def simulation_get_process_index
 @ %def simulation_get_event_ptr
 @
@@ -17986,7 +17985,15 @@ determines [[n_components]].
     method = var_list%get_sval (var_str ("$method"))
     born_me_method = var_list%get_sval (var_str ("$born_me_method"))
     if (born_me_method == var_str (""))  born_me_method = method
-    use_real_finite = var_list%get_lval (var_str ('?nlo_use_real_partition'))
+    select case (char (var_list%get_sval (var_str ("$real_partition_mode"))))
+    case ("default", "off", "singular")
+       use_real_finite = .false.
+    case ("all", "on", "finite")
+       use_real_finite = .true.
+    case default
+       call msg_fatal ("The real partition mode can only be " // &
+            "default, off, all, on, singular or finite.")
+    end select
     if (nlo_fixed_order) then
        real_tree_me_method = &
             var_list%get_sval (var_str ("$real_tree_me_method"))
@@ -18319,24 +18326,16 @@ on into an object (the pcm?).
     type(rt_data_t), intent(in) :: local
     type(var_list_t), pointer :: var_list => null ()
     real :: mult_real, mult_virt, mult_dglap
-    logical :: nlo, combined, powheg
+    logical :: combined, powheg
     logical :: case_lo_but_any_other
-    logical :: case_nlo_powheg_but_not_combined
     logical :: fixed_order_nlo_events
+    logical :: real_finite_only
     var_list => local%get_var_list_ptr ()
-    nlo = local%nlo_fixed_order
     combined = var_list%get_lval (var_str ('?combined_nlo_integration'))
     powheg = var_list%get_lval (var_str ('?powheg_matching'))
-    case_lo_but_any_other = .not. nlo .and. any ([combined, powheg])
-    case_nlo_powheg_but_not_combined = &
-         nlo .and. powheg .and. .not. combined
-    if (case_lo_but_any_other) then
-       call msg_fatal ("Option mismatch: Leading order process is selected &
-            &but either powheg_matching or combined_nlo_integration &
-            &is set to true.")
-    else if (case_nlo_powheg_but_not_combined) then
-       call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
-            &to be set to true.")
+    if (powheg .and. .not. combined) then
+       call msg_fatal ("POWHEG matching requires the 'combined_nlo_integration' &
+            &-option to be set to true.")
     end if
     fixed_order_nlo_events = &
          var_list%get_lval (var_str ('?fixed_order_nlo_events'))
@@ -18347,23 +18346,32 @@ on into an object (the pcm?).
             var_str ("is false. You can either switch to the combined NLO "), &
             var_str ("integration mode for the full process or choose one "), &
             var_str ("individual NLO component to generate events with.")])
-            associate (nlo_parts => local%selected_nlo_parts)
-               ! TODO (PS-2020-03-26): This technically leaves the possibility to skip this
-               ! message by deactivating the dglap component for a proton collider process.
-               ! To circumvent this, the selected_nlo_parts should be refactored.
-               if (combined .and. .not. (nlo_parts(BORN) &
-                    .and. nlo_parts(NLO_VIRTUAL) .and. nlo_parts(NLO_REAL))) then
-                 call msg_fatal ("A combined integration of anything else than", &
-                      [var_str ("all NLO components together is not supported.")])
-               end if
-            end associate
-            mult_real = local%var_list%get_rval (var_str ("mult_call_real"))
-            mult_virt = local%var_list%get_rval (var_str ("mult_call_virt"))
-            mult_dglap = local%var_list%get_rval (var_str ("mult_call_dglap"))
-            if (combined .and. (mult_real /= one .or. mult_virt /= one .or. mult_dglap /= one)) then
-               call msg_warning ("mult_call_real, mult_call_virt and mult_call_dglap", &
-               [var_str (" will be ignored because of ?combined_nlo_integration = true. ")])
-            end if
+    real_finite_only = local%var_list%get_sval (var_str ("$real_partition_mode")) == "finite"
+    associate (nlo_parts => local%selected_nlo_parts)
+       ! TODO (PS-2020-03-26): This technically leaves the possibility to skip this
+       ! message by deactivating the dglap component for a proton collider process.
+       ! To circumvent this, the selected_nlo_parts should be refactored.
+       if (combined .and. .not. (nlo_parts(BORN) &
+            .and. nlo_parts(NLO_VIRTUAL) .and. nlo_parts(NLO_REAL))) then
+          call msg_fatal ("A combined integration of anything else than", &
+               [var_str ("all NLO components together is not supported.")])
+       end if
+       if (real_finite_only .and. combined) then
+          call msg_fatal ("You cannot do a combined integration without", &
+               [var_str ("the real singular component.")])
+       end if
+       if (real_finite_only .and. count(nlo_parts([BORN,NLO_VIRTUAL,NLO_DGLAP])) > 1) then
+          call msg_fatal ("You cannot do a full NLO integration without", &
+               [var_str ("the real singular component.")])
+       end if
+    end associate
+    mult_real = local%var_list%get_rval (var_str ("mult_call_real"))
+    mult_virt = local%var_list%get_rval (var_str ("mult_call_virt"))
+    mult_dglap = local%var_list%get_rval (var_str ("mult_call_dglap"))
+    if (combined .and. (mult_real /= one .or. mult_virt /= one .or. mult_dglap /= one)) then
+       call msg_warning ("mult_call_real, mult_call_virt and mult_call_dglap", &
+       [var_str (" will be ignored because of ?combined_nlo_integration = true. ")])
+    end if
   end subroutine check_nlo_options
 
 @ %def check_nlo_options
@@ -28774,7 +28782,7 @@ call this.
 <<WHIZARD: variables>>=
   logical :: syntax_tables_exist = .false.
 @ %def syntax_tables_exist
-@ 
+@
 <<WHIZARD: public>>=
   public :: init_syntax_tables
   public :: final_syntax_tables
@@ -29219,5 +29227,5 @@ end module features
   case ("metapost")
      result = EVENT_ANALYSIS
      help = "graphical event analysis via LaTeX/MetaPost"
-@ 
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

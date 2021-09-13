@@ -76,7 +76,7 @@ Warning: No cuts have been defined.
    1          0     2.292E+02   2.19E+01    9.56    0.00    20.1
 |=============================================================================|
 seed = 1
-?nlo_use_real_partition = true
+$real_partition_mode = "on"
 real_partition_scale =  1.00000E+02
 | Process library 'real_partition_1_lib': unloading
 | Process library 'real_partition_1_lib': open

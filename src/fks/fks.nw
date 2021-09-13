@@ -6674,7 +6674,8 @@ end module real_subtraction
   integer, parameter, public :: POWHEG = 2
 
 @ %def real subtraction parameters
-@
+@ Translates the purpose into a string.
+% However, purpose is never set and this routine is never used.
 <<real subtraction: public>>=
   public :: this_purpose
 <<real subtraction: procedures>>=
@@ -7699,6 +7700,7 @@ is true).
              sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, &
                   alpha_coupling)
              if (rsub%purpose == INTEGRATION .or. rsub%purpose == FIXED_ORDER_EVENTS) then
+                !!! (PS-2021-09-13) This is always executed as purpose is never set.
                 i_con = rsub%get_i_contributor (alr)
                 sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
              end if
@@ -8334,6 +8336,7 @@ However, it still remains to be motivated analytically and to be validated.
     case (INTEGRATION, FIXED_ORDER_EVENTS)
        sqme = sqme * xi**2 / xi_tilde * real_kinematics%jac(i_phs)%jac(1)
     case (POWHEG)
+       !!! (PS 2021-09-21) This has been implemented but is never executed so far.
        if (.not. isr) then
           s = real_kinematics%cms_energy2
           sqme = sqme * real_kinematics%jac(i_phs)%jac(1) * s / (8 * twopi3) * xi

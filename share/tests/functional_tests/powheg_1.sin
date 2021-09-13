@@ -53,10 +53,13 @@ simulate (powheg_1_p1)
 n_events = 2
 simulate (powheg_1_p1)
 
-?nlo_use_real_partition = true
+$real_partition_mode = "on"
 real_partition_scale = 5 GeV
+
 process powheg_1_p2 = E1, e1 => t, T { nlo_calculation = full }
 integrate (powheg_1_p2) { iterations = 1:100:"gw" }
+
 expect (integral(powheg_1_p1) == integral(powheg_1_p2))
   {tolerance = 3 * sqrt(error(powheg_1_p1)**2 + error(powheg_1_p2)**2)}
+
 simulate (powheg_1_p2)

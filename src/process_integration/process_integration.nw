@@ -3634,6 +3634,14 @@ test).
          else
             active = .true.
          end if
+         select type (pcm => process%pcm)
+         type is (pcm_nlo_t)
+            if (pcm%use_real_partition .and. .not. pcm%use_real_singular) then
+               if (pcm%component_type(i) == COMP_REAL_SING) then
+                  active = .false.
+               end if
+            end if
+         end select
          if (present (phs_config)) then
             call pcm%init_component (process%component(i), &
               i, &
@@ -8767,7 +8775,6 @@ The [[results]] object records results, broken down in passes and iterations.
      logical :: negative_weights = .false.
      logical :: combined_integration = .false.
      integer :: real_partition_type = REAL_FULL
-     integer :: associated_real_component = 0
    contains
    <<Process mci: process mci entry: TBP>>
   end type process_mci_entry_t
@@ -8894,10 +8901,10 @@ MCI entry.
     integer, save :: i_rfin_offset = 0
     if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, "process_mci_entry_create_component_list")
     if (mci_entry%combined_integration) then
-       n = get_n_components (mci_entry%real_partition_type)
-       allocate (i_list (n))
        if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
             "mci_entry%real_partition_type", mci_entry%real_partition_type)
+       n = get_n_components (mci_entry%real_partition_type)
+       allocate (i_list (n))
        select case (mci_entry%real_partition_type)
        case (REAL_FULL)
           i_list = component_config%get_association_list ()
@@ -8918,10 +8925,10 @@ MCI entry.
        mci_entry%i_component(1) = i_component
     end if
   contains
-    function get_n_components (damping_type) result (n_components)
+    function get_n_components (real_partition_type) result (n_components)
       integer :: n_components
-      integer, intent(in) :: damping_type
-      select case (damping_type)
+      integer, intent(in) :: real_partition_type
+      select case (real_partition_type)
       case (REAL_FULL)
          n_components = size (component_config%get_association_list ())
       case (REAL_SINGULAR)
@@ -8933,18 +8940,6 @@ MCI entry.
   end subroutine process_mci_entry_create_component_list
 
 @ %def process_mci_entry_create_component_list
-@
-<<Process mci: process mci entry: TBP>>=
-  procedure :: set_associated_real_component &
-      => process_mci_entry_set_associated_real_component
-<<Process mci: procedures>>=
-  subroutine process_mci_entry_set_associated_real_component (mci_entry, i)
-     class(process_mci_entry_t), intent(inout) :: mci_entry
-     integer, intent(in) :: i
-     mci_entry%associated_real_component = i
-  end subroutine process_mci_entry_set_associated_real_component
-
-@ %def process_mci_entry_set_associated_real_component
 @ Set some additional parameters.
 <<Process mci: process mci entry: TBP>>=
   procedure :: set_parameters => process_mci_entry_set_parameters
@@ -9838,6 +9833,7 @@ corresponding instance.  This is the nontrivial NLO version.
      type(nlo_settings_t) :: settings
      type(region_data_t) :: region_data
      logical :: use_real_partition = .false.
+     logical :: use_real_singular = .false.
      real(default) :: real_partition_scale = 0
      class(real_partition_t), allocatable :: real_partition
      type(dalitz_plot_t) :: dalitz_plot
@@ -9865,8 +9861,20 @@ Initialize configuration data, using environment variables.
     call pcm%settings%init (var_list, fks_template)
     pcm%combined_integration = &
          var_list%get_lval (var_str ('?combined_nlo_integration'))
-    pcm%use_real_partition = &
-         var_list%get_lval (var_str ("?nlo_use_real_partition"))
+    select case (char (var_list%get_sval (var_str ("$real_partition_mode"))))
+    case ("default", "off")
+       pcm%use_real_partition = .false.
+       pcm%use_real_singular = .false.
+    case ("all", "on", "singular")
+       pcm%use_real_partition = .true.
+       pcm%use_real_singular = .true.
+    case ("finite")
+       pcm%use_real_partition = .true.
+       pcm%use_real_singular = .false.
+    case default
+       call msg_fatal ("The real partition mode can only be " // &
+            "default, off, all, on, singular or finite.")
+    end select
     pcm%real_partition_scale = &
          var_list%get_rval (var_str ("real_partition_scale"))
     pcm%vis_fks_regions = &
@@ -9976,8 +9984,8 @@ Setup for the NLO/PHS processes: two phase-space configurations, (1)
 Born/wood, (2) real correction/FKS.  All components use either one of these
 two configurations.
 
-TODO wk 2018: The [[first_real_component]] identifier is really ugly.  Nothing should
-rely on the ordering.
+TODO wk 2018: The [[first_real_component]] identifier is really ugly.
+Nothing should rely on the ordering.
 <<Pcm: pcm nlo: TBP>>=
   procedure :: init_phs_config => pcm_nlo_init_phs_config
 <<Pcm: procedures>>=
@@ -10012,11 +10020,19 @@ rely on the ordering.
        case (BORN, NLO_VIRTUAL, NLO_SUBTRACTION)
           pcm%i_phs_config(i) = 1
        case (NLO_REAL)
-          if (first_real_component) then
-             pcm%i_phs_config(i) = 2
-             if (pcm%use_real_partition)  first_real_component = .false.
+          if (pcm%use_real_partition) then
+             if (pcm%use_real_singular) then
+                if (first_real_component) then
+                   pcm%i_phs_config(i) = 2
+                   first_real_component = .false.
+                else
+                   pcm%i_phs_config(i) = 1
+                end if
+             else
+                pcm%i_phs_config(i) = 1
+             end if
           else
-             pcm%i_phs_config(i) = 1
+             pcm%i_phs_config(i) = 2
           end if
        case (NLO_MISMATCH, NLO_DGLAP, GKS)
           pcm%i_phs_config(i) = 2
@@ -10242,8 +10258,8 @@ core array is not needed.
 relation depends on the [[combined_integration]] setting.  If we integrate
 components separately, each component gets its own record, except for the
 subtraction component.  If we do the combination, there is one record for
-the master (Born) component and a second one for the real-finite component, if
-present.
+the master (Born) component and a second one for the real-finite component,
+if present.
 
 Each entry acquires some NLO-specific initialization.  Generic configuration
 follows later.
@@ -11505,7 +11521,7 @@ Jacobian factors.
 @ Generate kinematics, given a phase-space channel and a MC
 parameter set. The main result is the momentum array [[p]], but we
 also fill the momentum entries in the structure-function chain and the
-Jacobian-factor array [[f]].  Regarding phase space, We fill only the
+Jacobian-factor array [[f]].  Regarding phase space, we fill only the
 parameter arrays for the selected channel.
 <<Kinematics: kinematics: TBP>>=
   procedure :: compute_selected_channel => kinematics_compute_selected_channel

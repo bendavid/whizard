@@ -3867,10 +3867,16 @@ but we assume that the generator cuts applied for parton showering are weak cuts
 avoid divergent phase space regions, thus $\mathcal{B}$ is large and does not influence $N$
 so we can skip these phase space points.
 
+A more appropriate way to solve this problem of Born zeroes is given by the real partition.
+With real partition, there are two possible cases if $\mathcal{B} = 0$: if the real phase
+space point belongs to the real singular, the real kinematic is Born-like and very likely
+also fails the cuts. If the real kinematic is not Born-like, it belongs to the real finite.
+In both cases, it is $\mathcal{R} = \mathcal{B} = 0$ and we can savely skip the phase space
+point.
+
 In cases where just the real kinematic failed the cuts, $\mathcal{R}$ was artificially set
-to zero and we have no way to recover it. These cases will have no influence on $N$.
-It might be possible that this leads to an underestimate of $N$ in some bins.
-The number of POWHEG excess events will be an indicator for the severity of this effect.
+to zero and we have no way to recover it. We skip these phase space points too. If we apply
+the same cuts during integration and event generation, these points are not relevant.
 <<POWHEG matching: powheg matching hook: TBP>>=
   procedure :: evaluate => powheg_matching_hook_evaluate
 <<POWHEG matching: procedures>>=

@@ -132,7 +132,7 @@ n_events = 2
 | Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'powheg_1_p1.debug'
 Warning: There have been    1 ( 11.11%) POWHEG grid excesses.
-?nlo_use_real_partition = true
+$real_partition_mode = "on"
 real_partition_scale =  5.00000E+00
 | Process library 'powheg_1_lib': unloading
 | Process library 'powheg_1_lib': open

@@ -24,7 +24,7 @@ process real_partition_1_p1 = e1, E1 => u, U { nlo_calculation = real }
 integrate (real_partition_1_p1)
 
 seed = 1
-?nlo_use_real_partition = true
+$real_partition_mode = "on"
 # Large scale to reduce required statistics
 real_partition_scale = 100 GeV
 

@@ -39,7 +39,7 @@ scale = let int njet = count [jet] in
           sqrts
         endif
 
-?nlo_use_real_partition = true
+$real_partition_mode = "on"
 real_partition_scale = 10 GeV
 
 process ppzj_wp = pr, pr => Z, jet { nlo_calculation = real $restrictions="!W+:W-" }

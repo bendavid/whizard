@@ -216,7 +216,7 @@ we introduce a MD5 sum calculator.
      end subroutine mci_compute_md5sum
   end interface
 
-@ %def mci_compute_md5sum@
+@ %def mci_compute_md5sum
 @ Record the index of the MCI object within a process.  For
 multi-component processes with more than one integrator, the
 integrator should know about its own index, so file names can be
@@ -11510,6 +11510,34 @@ may contain extra passes, these are ignored.
   end subroutine list_pass_update_from_ref
 
 @ %def list_pass_update_from_ref
+<<MCI vamp2: list pass: TBP>>=
+  procedure :: has_last_integral => list_pass_has_last_integral
+  procedure :: get_last_integral => list_pass_get_last_integral
+<<MCI vamp2: procedures>>=
+  function list_pass_has_last_integral(self) result (flag)
+    class(list_pass_t), intent(in) :: self
+    logical :: flag
+    flag = associated(self%current)
+    if (flag) flag = self%current%integral_defined
+  end function list_pass_has_last_integral
+
+  subroutine list_pass_get_last_integral(self, integral, error, efficiency)
+    class(list_pass_t), intent(in) :: self
+    real(default), intent(out) :: integral
+    real(default), intent(out) :: error
+    real(default), intent(out) :: efficiency
+    if (self%has_last_integral()) then
+       integral = self%current%get_integral()
+       error = self%current%get_error()
+       efficiency = self%current%get_efficiency()
+    else
+       integral = 0
+       error = 0
+       efficiency = 0
+    end if
+  end subroutine list_pass_get_last_integral
+
+@ %def list_pass_has_last_integral list_pass_get_last_integral
 @ Output. Write the complete linked list to the specified unit.
 <<MCI vamp2: list pass: TBP>>=
   procedure :: write => list_pass_write
@@ -12249,10 +12277,11 @@ that the user wants to perform and average all iterations in this pass.
     select type (mci_ref)
     type is (mci_vamp2_t)
        call mci%list_pass%update_from_ref (mci_ref%list_pass, success)
-       if (mci%list_pass%current%integral_defined) then
-          mci%integral = mci%list_pass%current%get_integral ()
-          mci%error = mci%list_pass%current%get_error ()
-          mci%efficiency = mci%list_pass%current%get_efficiency ()
+       if (mci%list_pass%has_last_integral()) then
+          call mci%list_pass%get_last_integral( &
+               integral = mci%integral, &
+               error = mci%error, &
+               efficiency = mci%efficiency)
           mci%integral_known = .true.
           mci%error_known = .true.
           mci%efficiency_known = .true.

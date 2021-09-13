@@ -2692,7 +2692,7 @@ slash, so the default is [[.]].
        cmd = ""
     end if
   end function workspace_cmd
-  
+
 @ %def workspace_prefix
 @ %def workspace_path
 @ %def workspace_cmd
@@ -3412,12 +3412,12 @@ NOTE: temporarily made public.
     class(test_writer_1_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_1_before_compile
-  
+
   subroutine test_writer_1_after_compile (writer, id)
     class(test_writer_1_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_1_after_compile
-  
+
 @ %def test_writer_1_type_name
 @ %def test_writer_1_mk test_writer_1_if
 @ %def test_writer_1_md5sum test_writer_1_int_sub
@@ -3538,12 +3538,12 @@ lines.  Since all procedures are NOPASS, we can reuse two of the TBP.
     class(test_writer_2_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_2_before_compile
-  
+
   subroutine test_writer_2_after_compile (writer, id)
     class(test_writer_2_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_2_after_compile
-  
+
 @ %def test_writer_2_type_name test_writer_2_wr
 @ %def test_writer_2_before_compile test_writer_2_after_compile
 @
@@ -3891,12 +3891,12 @@ We will reuse this later, therefore public.
     class(test_writer_4_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_4_before_compile
-  
+
   subroutine test_writer_4_after_compile (writer, id)
     class(test_writer_4_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_4_after_compile
-  
+
 @ %def test_writer_2_type_name test_writer_4_wr
 @ %def test_writer_4_before_compile test_writer_4_after_compile
 @
@@ -4214,7 +4214,7 @@ so no wrapper is needed.
     if (.not. verbose) then
        write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
     end if
-    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"    
+    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
   end subroutine test_writer_5_mk
 
   subroutine test_writer_5_src (writer, id)
@@ -4248,12 +4248,12 @@ so no wrapper is needed.
     class(test_writer_5_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_5_before_compile
-  
+
   subroutine test_writer_5_after_compile (writer, id)
     class(test_writer_5_t), intent(in) :: writer
     type(string_t), intent(in) :: id
   end subroutine test_writer_5_after_compile
-  
+
 @ %def test_writer_5_type_name test_writer_5_mk
 @ %def test_writer_5_if
 @ %def test_writer_5_before_compile test_writer_5_after_compile
@@ -4589,7 +4589,7 @@ Makefile writer.
     write (unit, "(5A)")  char (id), ".lo: ", char (id), ".c"
     if (.not. verbose) then
        write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
-    end if    
+    end if
     write (unit, "(5A)")  TAB, "$(LTCCOMPILE) $<"
   end subroutine test_writer_6_mk
 
@@ -5417,7 +5417,7 @@ the provided templates.
 @ %def process_component_def_show
 @ Compute the MD5 sum of a process component.  We reset the stored MD5
 sum to the empty string (so a previous value is not included in the
-calculation), the write a temporary file and calculate the MD5 sum of
+calculation), then write a temporary file and calculate the MD5 sum of
 that file.
 
 This implies that all data that are displayed by the [[write]] method
@@ -5708,7 +5708,9 @@ abstract type.
     logical :: valid
     i_skip = 0; if (present (i_skip_in)) i_skip = i_skip_in
     n = count (component%associated_components /= 0) - 1
-    if (i_skip > 0) n = n - 1
+    if (i_skip > 0) then
+       if (component%associated_components(i_skip) > 0) n = n - 1
+    end if
     allocate (list (n))
     j = 1
     do i = 1, size(component%associated_components)
@@ -6569,7 +6571,7 @@ Return the number of processes supported by the library.
     entry => current
   end function process_def_list_get_process_def_ptr
 
-@ %def process_def_list_get_process_def_ptr  
+@ %def process_def_list_get_process_def_ptr
 @ Return true if a given process is in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: contains => process_def_list_contains
@@ -7248,7 +7250,7 @@ The [[workspace]] optional argument puts any library code in a subdirectory.
   end subroutine process_library_write_makefile
 
 @ %def process_library_write_makefile
-@ 
+@
 @ Write the driver source code for the library to file, if there are
 external processes.
 <<Process libraries: process library: TBP>>=
@@ -7275,7 +7277,7 @@ external processes.
           call msg_message ("Process library '" // char (lib%basename) &
                // "': writing driver")
           unit = free_unit ()
-          open (unit, & 
+          open (unit, &
                file = char (workspace_prefix (workspace) &
                &            // lib%driver%basename // ".f90"), &
                status="replace", action="write")

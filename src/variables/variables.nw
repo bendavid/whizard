@@ -6186,24 +6186,25 @@ procedure with type [[V_NONE]].
          'the real component does not pass a cut, its subtraction term ' // &
          'shall be discarded for that phase space point as well or not. ' // &
          '(cf. also \ttt{?nlo\_use\_born\_scale})'))
-    call var_list%append_log (var_str ("?nlo_use_real_partition"), &
-         .false., intrinsic = .true., &
-         description=var_str (' If set to \ttt{true}, the real matrix ' // &
-         'element is split into a finite and a singular part using a ' // &
-         'partition function $f$, such that $\mathcal{R} ' // &
-         '= [1-f(p_T^2)]\mathcal{R} + f(p_T^2)\mathcal{R} = ' // &
-         '\mathcal{R}_{\text{fin}} ' // &
-         '+ \mathcal{R}_{\text{sing}}$. The emission ' // &
-         'generation is then performed using $\mathcal{R}_{\text{sing}}$, ' // &
-         'whereas $\mathcal{R}_{\text{fin}}$ is treated separately. ' // &
+    call var_list%append_string (var_str ("$real_partition_mode"), var_str ("default"), &
+         intrinsic=.true., &
+         description=var_str ('String variable to choose which parts of the real cross ' // &
+         'section are to be integrated. With the default value (\ttt{"default"}) ' // &
+         'or \ttt{"off"} the real cross section is integrated as usual without partition. ' // &
+         'If set to \ttt{"on"} or \ttt{"all"}, the real cross section is split into singular ' // &
+         'and finite part using a partition function $F$, such that $\mathcal{R} ' // &
+         '= [1-F(p_T^2)]\mathcal{R} + F(p_T^2)\mathcal{R} = \mathcal{R}_{\text{fin}} ' // &
+         '+ \mathcal{R}_{\text{sing}}$. The emission generation is then performed ' // &
+         'using $\mathcal{R}_{\text{sing}}$, whereas $\mathcal{R}_{\text{fin}}$ ' // &
+         'is treated separately. If set to \ttt{"singular"} (\ttt{"finite"}), ' // &
+         'only the singular (finite) real component is integrated.' // &
          '(cf. also \ttt{real\_partition\_scale})'))
     call var_list%append_real (var_str ("real_partition_scale"), &
          10._default, intrinsic = .true., &
          description=var_str ('This real variable sets the invariant mass ' // &
          'of the FKS pair used as a separator between the singular and the ' // &
          'finite part of the real subtraction terms in an NLO calculation, ' // &
-         'e.g. in $e^+e^- \to ' // &
-         't\bar tj$. (cf. also \ttt{?nlo\_use\_real\_partition})'))
+         'e.g. in $e^+e^- \to t\bar tj$. (cf. also \ttt{\$real\_partition\_mode})'))
     call var_list%append_log (var_str ("?nlo_reuse_amplitudes_fks"), &
          .false., intrinsic = .true., &
          description=var_str ('Only compute real and virtual amplitudes for ' // &
