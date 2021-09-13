@@ -37,13 +37,20 @@ module type T =
           flavor * Momentum.Default.t) Tree.t) list
   end
 
-module Make (FM : Fusion.Maker) (TM : Target.Maker) (M : Model.T) :
-    T with type flavor = M.flavor
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+(* Wrap the two instances of [Fusion.Maker] for
+   amplitudes and phase space into a single functor to
+   make sure that the Dirac and Majorana versions match.
+   Don't export the slightly unsafe
+   [module Make (FM : Fusion.Maker) (PM : Fusion.Maker)
+    (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor]. *)
+
+module Binary (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor
+module Binary_Majorana (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor
+   
+module Mixed23 (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor
+module Mixed23_Majorana (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor
+module Mixed23_Majorana_vintage (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor
+
+module Nary (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor
+module Nary_Majorana (TM : Target.Maker) (M : Model.T) : T with type flavor = M.flavor

@@ -321,7 +321,7 @@ i*)
 
   end
 
-module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran_Majorana)(SYM)
+module O = Omega.Mixed23(Targets.Fortran_Majorana)(SYM)
 let _ = O.main ()
 
 

@@ -616,7 +616,7 @@ module Anomtop (Flags : SM_flags) =
       | Width f -> "width" ^ flavor_symbol f
   end
 
-module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran)
+module O = Omega.Mixed23(Targets.Fortran)
     (Anomtop(SM_no_anomalous))
 let _ = O.main ()
 

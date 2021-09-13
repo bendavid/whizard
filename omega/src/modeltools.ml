@@ -573,3 +573,116 @@ module Static (M : Model.T) =
         ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol =
       ()
   end
+
+(* \thocwmodulesection{Topology Only} *)
+
+(* UFO models can have more than one Lorentz structure for a
+   given flavor combination.  This messes up the phase space
+   generation.  There we need to be able to ignore the redundant
+   flavor combinations. *)
+
+(* Filter vertices with more than one Lorentz structure
+   for a combination of flavors.  Only the first Lorentz
+   structure is kept. *)
+let filter_couplings flavor_coupling_list =
+  List.map
+    (fun (f, c_list) -> (f, List.hd c_list))
+    (ThoList.factorize flavor_coupling_list)
+
+let triple_to_nested (a, b, c) = (a, (b, c))
+
+let nested_to_triple (a, (b, c)) = (a, b, c)
+
+let filter_couplings_triples fc =
+  List.map
+    nested_to_triple
+    (filter_couplings (List.map triple_to_nested fc))
+
+(* \begin{dubious}
+     It would be clearer to replace [constant Coupling.t] by
+     [unit] in the resultig model, but that would require
+     much more code duplication.
+   \end{dubious} *)
+
+module Topology (M : Model.T) =
+  struct
+    type flavor = M.flavor
+    type gauge = M.gauge
+    type constant = M.constant
+    module Ch = M.Ch
+    let color = M.color
+    let nc = M.nc
+    let charges = M.charges
+    let pdg = M.pdg
+    let lorentz = M.lorentz
+    let propagator = M.propagator
+    let width = M.width
+    let conjugate = M.conjugate
+    let fermion = M.fermion
+    let max_degree = M.max_degree
+    let vertices () =
+      let (v3, v4, vn) = M.vertices () in
+      (filter_couplings_triples v3,
+       filter_couplings_triples v4,
+       filter_couplings_triples vn)
+    let fuse2 f1 f2 = filter_couplings (M.fuse2 f1 f2)
+    let fuse3 f1 f2 f3 = filter_couplings (M.fuse3 f1 f2 f3)
+    let fuse f_list = filter_couplings (M.fuse f_list)
+    let flavors = M.flavors
+    let external_flavors = M.external_flavors
+    let goldstone = M.goldstone
+    let parameters = M.parameters
+    let flavor_of_string = M.flavor_of_string
+    let flavor_to_string = M.flavor_to_string
+    let flavor_to_TeX = M.flavor_to_TeX
+    let flavor_symbol = M.flavor_symbol
+    let gauge_symbol = M.gauge_symbol
+    let mass_symbol = M.mass_symbol
+    let width_symbol = M.width_symbol
+    let constant_symbol = M.constant_symbol
+    let options = M.options
+    let caveats = M.caveats
+  end
+
+module Topology3 (M : Model.T) =
+  struct
+    type flavor = M.flavor
+    type gauge = M.gauge
+    type constant = M.constant
+    module Ch = M.Ch
+    let color = M.color
+    let nc = M.nc
+    let charges = M.charges
+    let pdg = M.pdg
+    let lorentz = M.lorentz
+    let propagator = M.propagator
+    let width = M.width
+    let conjugate = M.conjugate
+    let fermion = M.fermion
+    let max_degree = M.max_degree
+    let vertices () =
+      let (v3, _, vn) = M.vertices () in
+      (filter_couplings_triples v3,
+       [],
+       filter_couplings_triples
+         (List.filter (fun (f, _, _) -> List.length f < 3) vn))
+    let fuse2 f1 f2 = filter_couplings (M.fuse2 f1 f2)
+    let fuse3 f1 f2 f3 = []
+    let fuse = function
+      | [_; _] as f_list -> filter_couplings (M.fuse f_list)
+      | _ -> []
+    let flavors = M.flavors
+    let external_flavors = M.external_flavors
+    let goldstone = M.goldstone
+    let parameters = M.parameters
+    let flavor_of_string = M.flavor_of_string
+    let flavor_to_string = M.flavor_to_string
+    let flavor_to_TeX = M.flavor_to_TeX
+    let flavor_symbol = M.flavor_symbol
+    let gauge_symbol = M.gauge_symbol
+    let mass_symbol = M.mass_symbol
+    let width_symbol = M.width_symbol
+    let constant_symbol = M.constant_symbol
+    let options = M.options
+    let caveats = M.caveats
+  end

@@ -959,7 +959,7 @@ module Zprime (Flags : SM_flags) =
       | K_Matrix_Pole i -> "kp" ^ string_of_int i
   end
 
-module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran)
+module O = Omega.Mixed23(Targets.Fortran)
     (Zprime(SM_no_anomalous))
 let _ = O.main ()
 

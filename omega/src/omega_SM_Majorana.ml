@@ -22,15 +22,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Make
-    (Fusion.Mixed23_Majorana)(Targets.Fortran_Majorana)
-    (Modellib_SM.SM(Modellib_SM.SM_no_anomalous))
+module O = Omega.Mixed23_Majorana(Targets.Fortran_Majorana)(Modellib_SM.SM(Modellib_SM.SM_no_anomalous))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -23,7 +23,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Make(Fusion.Mixed23)(Targets.VM)
+module O = Omega.Mixed23(Targets.VM)
                      (Modellib_BSM.TwoHiggsDoublet(Modellib_BSM.THDM_CKM))
 let _ = O.main ()
 

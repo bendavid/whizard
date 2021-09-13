@@ -22,7 +22,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Make(Fusion.Mixed23)(Targets.VM)
+module O = Omega.Mixed23(Targets.VM)
                      (Modellib_SM.SM(Modellib_SM.SM_no_anomalous_ckm))
 let _ = O.main ()
 

@@ -2747,22 +2747,38 @@ i*)
           Printf.printf "  tex_name \"had_r^{(8)}\"\n";
           Printf.printf "\n"
 
-        let write_vertices model vertices  =
+        let vertex_to_string model v =
+          String.concat
+            " "
+            (List.map
+               (fun s ->
+                 "\"" ^ (SMap.find s model.particles).Particle.name ^ "\"")
+               (Array.to_list v.Vertex.particles))
+
+        let write_vertices3 model vertices  =
           Printf.printf "# Vertices (for phasespace generation only)\n";
           Printf.printf "# NB: particles should be sorted increasing in mass.\n";
           Printf.printf "#     This is NOT implemented yet!\n";
           List.iter
             (fun v ->
-              let particles =
-                String.concat
-                  " "
-                  (List.map
-                     (fun s ->
-                       "\"" ^ (SMap.find s model.particles).Particle.name ^ "\"")
-                     (Array.to_list v.Vertex.particles)) in
-              Printf.printf "vertex %s\n" particles)
+              if Array.length v.Vertex.particles = 3 then
+                Printf.printf "vertex %s\n" (vertex_to_string model v))
             (values vertices);
           Printf.printf "\n"
+
+        let write_vertices_higher model vertices  =
+          Printf.printf
+            "# Higher Order Vertices (ignored by phasespace generation)\n";
+          List.iter
+            (fun v ->
+              if Array.length v.Vertex.particles <> 3 then
+                Printf.printf "# vertex %s\n" (vertex_to_string model v))
+            (values vertices);
+          Printf.printf "\n"
+
+        let write_vertices model vertices  =
+          write_vertices3 model vertices;
+          write_vertices_higher model vertices
 
         let write () =
           match !initialized with

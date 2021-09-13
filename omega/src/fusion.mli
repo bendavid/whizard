@@ -259,6 +259,10 @@ module Nary_Majorana : functor (B : Tuple.Bound) -> Maker
    by~\cite{HELAC:2000}.  Our pruning of the DAG might
    be responsible for this.  *)
 
+module Helac_Binary : Maker
+module Helac_Binary_Majorana : Maker
+module Helac_Mixed23 : Maker
+module Helac_Mixed23_Majorana : Maker
 module Helac : functor (B : Tuple.Bound) -> Maker
 module Helac_Majorana : functor (B : Tuple.Bound) -> Maker
 

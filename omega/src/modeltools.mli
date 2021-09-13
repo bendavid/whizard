@@ -71,10 +71,14 @@ module Mutable : functor (FGC : sig type f and g and c end) ->
 
 module Static (M : Model.T) : Model.Mutable
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+(* \thocwmodulesection{Topology Only} *)
+
+module Topology (M : Model.T) : Model.T
+  with type flavor = M.flavor
+  and type gauge = M.gauge
+  and type constant = M.constant
+
+module Topology3 (M : Model.T) : Model.T
+  with type flavor = M.flavor
+  and type gauge = M.gauge
+  and type constant = M.constant

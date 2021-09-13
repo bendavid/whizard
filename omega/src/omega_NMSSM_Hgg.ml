@@ -23,14 +23,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Make(Fusion_vintage.Mixed23_Majorana)(Targets.Fortran_Majorana)
-    (Modellib_NMSSM.NMSSM_func(Modellib_NMSSM.NMSSM_Hgg))
+module O = Omega.Mixed23_Majorana_vintage(Targets.Fortran_Majorana)(Modellib_NMSSM.NMSSM_func(Modellib_NMSSM.NMSSM_Hgg))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

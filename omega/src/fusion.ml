@@ -3168,6 +3168,13 @@ module Helac (B: Tuple.Bound) =
 module Helac_Majorana (B: Tuple.Bound) =
   Make(Tuple.Nary(B))(Stat_Majorana)(Topology.Helac(B))
 
+module B2 = struct let max_arity () = 2 end
+module B3 = struct let max_arity () = 3 end
+module Helac_Binary = Helac(B2)
+module Helac_Binary_Majorana = Helac(B2)
+module Helac_Mixed23 = Helac(B3)
+module Helac_Mixed23_Majorana = Helac(B3)
+
 (* \thocwmodulesection{Multiple Amplitudes} *)
 
 module type Multi =

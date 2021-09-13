@@ -22,21 +22,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module Bound (M : Model.T) : Tuple.Bound =
-  struct
-    (* \begin{dubious}
-         Above [max_degree = 6], the performance drops \emph{dramatically}!
-       \end{dubious} *)
-    let max_arity () =
-      pred (M.max_degree ())
-  end
-
-module O = Omega.Make(Fusion.Nary_Majorana(Bound(UFO.Model)))(Targets.Fortran_Majorana)(UFO.Model)
+module O = Omega.Nary_Majorana(Targets.Fortran_Majorana)(UFO.Model)
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

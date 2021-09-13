@@ -22,7 +22,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Make(Fusion.Mixed23)(Targets.Fortran)(Modellib_SM.Phi4)
+module O = Omega.Mixed23(Targets.Fortran)(Modellib_SM.Phi4)
 let _ = O.main ()
 
 (*i

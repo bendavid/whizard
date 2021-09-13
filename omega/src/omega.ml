@@ -38,7 +38,8 @@ module type T =
           flavor * Momentum.Default.t) Tree.t) list
   end
 
-module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Model.T) =
+module Make (Fusion_Maker : Fusion.Maker) (PHS_Maker : Fusion.Maker)
+         (Target_Maker : Target.Maker) (M : Model.T) =
   struct
 
     module CM = Colorize.It(M)
@@ -82,8 +83,9 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
      uncolored model.
    \end{dubious} *)
 
-    module PHS =
-      Fusion.Helac_Majorana(struct let max_arity () = pred (M.max_degree ()) end)(P)(M)
+    module MT = Modeltools.Topology3(M)
+    module PHS = PHS_Maker(P)(MT)
+    module CT = Cascade.Make(MT)(P)
 
 (* Form a ['a list] from a ['a option array], containing
    the elements that are not [None] in order. *)
@@ -616,6 +618,9 @@ i*)
 
         begin match !phase_space_out with
         | Some name ->
+           let selectors =
+             let fin, fout = List.hd processes in
+             CT.to_selectors (CT.of_string_list (List.length fin + List.length fout) !cascades) in
            let ch = open_out name in
            begin try
              List.iter
@@ -714,3 +719,29 @@ i*)
       failwith "Omega().diagrams: disabled"
 
   end
+
+module Binary (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion.Binary)(Fusion.Helac_Binary)(TM)(M)
+module Binary_Majorana (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion.Binary_Majorana)(Fusion.Helac_Binary_Majorana)(TM)(M)
+module Mixed23 (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion.Mixed23)(Fusion.Helac_Mixed23)(TM)(M)
+module Mixed23_Majorana (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion.Mixed23_Majorana)(Fusion.Helac_Mixed23_Majorana)(TM)(M)
+module Mixed23_Majorana_vintage (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion_vintage.Mixed23_Majorana)(Fusion.Helac_Mixed23_Majorana)(TM)(M)
+
+module Bound (M : Model.T) : Tuple.Bound =
+  struct
+    (* \begin{dubious}
+         Above [max_degree = 6], the performance drops \emph{dramatically}!
+       \end{dubious} *)
+    let max_arity () =
+      pred (M.max_degree ())
+  end
+
+module Nary (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion.Nary(Bound(M)))(Fusion.Helac(Bound(M)))(TM)(M)
+module Nary_Majorana (TM : Target.Maker) (M : Model.T) =
+  Make(Fusion.Nary_Majorana(Bound(M)))(Fusion.Helac_Majorana(Bound(M)))(TM)(M)
+
