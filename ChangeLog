@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.1+
 
+2021-09-13
+	Modular NLO event generation with real partition
+
 2021-08-20
 	Bug fix: correctly reading in NLO fixed order events
 
