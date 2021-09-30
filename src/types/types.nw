@@ -4325,7 +4325,6 @@ recombine and leave this open for generalization.
     type(prt_t) :: prt_gam, prt_comb
     logical :: recombine, ok
     integer :: i, n, i_gam, n_gam, n_rec, pdg_orig
-    allocate (prt_rec (0))
     n = subevt_get_length (pl)
     n_gam = 0
     FIND_FIRST_PHOTON: do i = 1, n
