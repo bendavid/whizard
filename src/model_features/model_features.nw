@@ -5883,6 +5883,54 @@ test.
   end subroutine cluster_p
 
 @ %def cluster_p
+@ Recombine photons with other particles (usually charged leptons and
+maybe quarks) given in the same subevent.  If [[en0]] is present,
+create a mask which is true only for those particles that pass the test.
+<<Eval trees: procedures>>=
+  subroutine photon_recombination_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout), optional :: en0
+    logical, dimension(:), allocatable :: mask1
+    type(prt_t), dimension(:), allocatable :: prt
+    integer :: n, i
+    real(default) :: reco_r0
+    logical :: keep_flv
+    reco_r0 = en1%photon_rec_r0
+    n = subevt_get_length (en1%pval)
+    allocate (prt (n))
+    do i = 1, n
+       prt(i) = subevt_get_prt (en1%pval, i)
+       if (.not. prt_is_recombinable (prt (i))) then
+          call msg_fatal ("Only charged leptons, quarks, and " //&
+               "photons can be included in photon recombination.")
+       end if
+    end do
+    if (count (prt_is_photon (prt)) > 1) &
+         call msg_fatal ("Photon recombination is supported " // &
+            "only for single photons.")
+    allocate (mask1 (n))
+    if (present (en0)) then
+       do i = 1, n
+          en0%index = i
+          en0%prt1 = subevt_get_prt (en1%pval, i)
+          call eval_node_evaluate (en0)
+          mask1(i) = en0%lval
+       end do
+    else
+       mask1 = .true.
+    end if
+    if (associated (en1%var_list)) then
+       keep_flv = en1%var_list%get_lval &
+            (var_str("?keep_flavors_when_recombining"))
+    else
+       keep_flv = .false.
+    end if
+    call subevt_recombine &
+         (subevt, en1%pval, mask1, reco_r0, keep_flv)
+  end subroutine photon_recombination_p
+
+@ %def photon_recombination_p
 @ Select all particles of the first argument.  If [[en0]] is present,
 create a mask which is true only for those particles that pass the
 test.
@@ -6383,64 +6431,6 @@ ignored.
   end function no_pp
 
 @ %def all_pp any_pp no_pp
-@ Recombine photons with the particles of the first argument.  If [[en0]] is present,
-create a mask which is true only for those particles that pass the test.
-<<Eval trees: procedures>>=
-  subroutine photon_recombination_pp (subevt, en1, en2, en0)
-    type(subevt_t), intent(inout) :: subevt
-    type(eval_node_t), intent(in) :: en1
-    type(eval_node_t), intent(in) :: en2
-    type(eval_node_t), intent(inout), optional :: en0
-    logical, dimension(:), allocatable :: mask1
-    type(prt_t), dimension(:), allocatable :: prt_gam0
-    type(prt_t) :: prt
-    integer :: n1, i
-    real(default) :: reco_r0
-    logical :: keep_flv
-    reco_r0 = en1%photon_rec_r0
-    n1 = subevt_get_length (en1%pval)
-    if (n1 == 0) then
-       subevt = en2%pval
-    else
-       if (n1 > 1) then
-          call msg_fatal ("Photon recombination is supported " // &
-               "only for single photons.")
-       end if
-       allocate (prt_gam0 (n1), mask1 (n1))
-       do i = 1, n1
-          prt_gam0(i) = subevt_get_prt (en1%pval, i)
-       end do
-       if (present (en0)) then
-          do i = 1, n1
-             en0%index = i
-             en0%prt1 = prt_gam0(i)
-             if (.not. prt_is_photon (en0%prt1)) &
-                  call msg_fatal ("Photon recombination can only " // &
-                  "be applied to photons.")
-             call eval_node_evaluate (en0)
-             mask1(i) = en0%lval
-          end do
-       else
-          mask1 = .true.
-       end if
-       do i = 1, subevt_get_length (en2%pval)
-          if (.not. prt_is_recombinable (subevt_get_prt (en2%pval, i))) then
-             call msg_fatal ("Only charged leptons and QCD partons " //&
-                  "can be recombined with photons")
-          end if
-       end do
-       if (associated (en1%var_list)) then
-          keep_flv = en1%var_list%get_lval &
-               (var_str("?keep_flavors_when_recombining"))
-       else
-          keep_flv = .false.
-       end if
-       call subevt_recombine &
-            (subevt, en2%pval, prt_gam0(1), mask1(1), reco_r0, keep_flv)
-    end if
-  end subroutine photon_recombination_pp
-
-@ %def photon_recombination_pp
 The conditional restriction encoded in the [[eval_node_t]] [[en_0]] is
 applied only to the photons from [[en1]], not to the objects being
 isolated from in [[en2]].
@@ -9277,6 +9267,11 @@ appropriate (unary/binary) observables.
           call var_list%get_rptr (var_str ("jet_p"), en1%jet_p)
           call var_list%get_rptr (var_str ("jet_ycut"), en1%jet_ycut)
           call var_list%get_rptr (var_str ("jet_dcut"), en1%jet_dcut)
+       case ("photon_recombination")
+          en1%var_list => var_list
+          call eval_node_init_prt_fun_unary &
+               (en, en1, key, photon_recombination_p)
+          call var_list%get_rptr (var_str ("photon_rec_r0"), en1%photon_rec_r0)
        case ("select")
           call eval_node_init_prt_fun_unary (en, en1, key, select_p)
        case ("extract")
@@ -9308,11 +9303,6 @@ appropriate (unary/binary) observables.
           call eval_node_init_prt_fun_binary (en, en1, en2, key, select_pp)
        case ("sort")
           call eval_node_init_prt_fun_binary (en, en1, en2, key, sort_pp)
-       case ("photon_recombination")
-          en1%var_list => var_list
-          call eval_node_init_prt_fun_binary &
-               (en, en1, en2, key, photon_recombination_pp)
-          call var_list%get_rptr (var_str ("photon_rec_r0"), en1%photon_rec_r0)
        case default
           call msg_bug (" Binary particle function '" // char (key) // &
                "' undefined")

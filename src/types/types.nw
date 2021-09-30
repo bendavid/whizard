@@ -3167,7 +3167,8 @@ is not set.
     type(prt_t), intent(in) :: prt
     flag = prt_is_parton (prt) .or. &
            abs(prt%pdg) == TOP_Q .or. &
-           prt_is_lepton (prt)
+           prt_is_lepton (prt) .or. &
+           prt_is_photon (prt)
   end function prt_is_recombinable
 
 @ %def prt_is_recombinable
@@ -4299,46 +4300,83 @@ that have been constructed by FastJet and its interface.
   end subroutine subevt_cluster
 
 @ %def subevt_cluster
-@ Do recombination.
+@ Do recombination. The incoming subevent [[pl]] is left unchanged if
+it either does not contain photons at all, or consists just of a
+single photon and nothing else or the photon does have a larger $R>R_0$
+distance to the nearest other particle or does not fulfill the
+[[mask1]] condition. Otherwise, the subevent is one entry shorter and
+contains a single recombined particle whose original flavor is kept
+depending on the setting [[keep_flv]]. When this subroutine is called,
+it is explicitly assumed that there is only one photon. For the
+moment, we take here the first photon from the subevent to possibly
+recombine and leave this open for generalization.
 <<Subevents: public>>=
   public :: subevt_recombine
 <<Subevents: procedures>>=
-  subroutine subevt_recombine (subevt, pl, prt, mask1, reco_r0, keep_flv)
+  subroutine subevt_recombine (subevt, pl, mask1, reco_r0, keep_flv)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
-    type(prt_t), intent(in) :: prt
-    logical, intent(in) :: mask1, keep_flv
+    type(prt_t), dimension(:), allocatable :: prt_rec
+    logical, dimension(:), intent(in) :: mask1
+    logical, intent(in) :: keep_flv
     real(default), intent(in) :: reco_r0
     real(default), dimension(:), allocatable :: del_rij
     integer, dimension(:), allocatable :: i_sortr
-    type(prt_t) :: prt_comb
-    logical :: ok
-    integer :: i, n, pdg_orig
+    type(prt_t) :: prt_gam, prt_comb
+    logical :: recombine, ok
+    integer :: i, n, i_gam, n_gam, n_rec, pdg_orig
+    allocate (prt_rec (0))
     n = subevt_get_length (pl)
-    allocate (del_rij (n), i_sortr (n))
-    do i = 1, n
-      del_rij(i) = eta_phi_distance(prt_get_momentum (prt), &
-            prt_get_momentum (pl%prt(i)))
-    end do
-    i_sortr = order (del_rij)
-    call subevt_reset (subevt, pl%n_active)
-    do i = 1, n
-       if (i == i_sortr(1)) then
-          if (del_rij (i_sortr (1)) <= reco_r0 .and. mask1) then
-             pdg_orig = prt_get_pdg (pl%prt (i_sortr (1)))
-             call prt_combine (prt_comb, prt, pl%prt(i_sortr (1)), ok)
-             if (ok) then
-                subevt%prt(i_sortr (1)) = prt_comb
-                if (keep_flv)  call prt_set_pdg &
-                     (subevt%prt(i_sortr (1)), pdg_orig)
+    n_gam = 0
+    FIND_FIRST_PHOTON: do i = 1, n
+       if (prt_is_photon (pl%prt (i))) then
+          n_gam = n_gam + 1
+          prt_gam = pl%prt (i)
+          i_gam = i
+          exit FIND_FIRST_PHOTON
+       end if
+    end do FIND_FIRST_PHOTON
+    n_rec = n - n_gam
+    if (n_gam == 0) then
+       subevt = pl
+    else
+       if (n_rec > 0) then
+          allocate (prt_rec (n_rec))
+          do i = 1, n_rec
+             if (i == i_gam)  cycle
+             if (i < i_gam) then
+                prt_rec(i) = pl%prt(i)
+             else
+                prt_rec(i) = pl%prt(i+n_gam)
              end if
+          end do
+          allocate (del_rij (n_rec), i_sortr (n_rec))
+          del_rij(1:n_rec) = eta_phi_distance(prt_get_momentum (prt_gam), &
+               prt_get_momentum (prt_rec(1:n_rec)))
+          i_sortr = order (del_rij)
+          recombine = del_rij (i_sortr (1)) <= reco_r0 .and. mask1(i_gam)
+          if (recombine) then
+             call subevt_reset (subevt, pl%n_active-n_gam)
+             do i = 1, n_rec
+                if (i == i_sortr(1)) then
+                   pdg_orig = prt_get_pdg (prt_rec(i_sortr (1)))
+                   call prt_combine (prt_comb, prt_gam, prt_rec(i_sortr (1)), ok)
+                   if (ok) then
+                      subevt%prt(i_sortr (1)) = prt_comb
+                      if (keep_flv)  call prt_set_pdg &
+                           (subevt%prt(i_sortr (1)), pdg_orig)
+                   end if
+                else
+                   subevt%prt(i) = prt_rec(i)
+                end if
+             end do
           else
-             subevt%prt(i) = pl%prt(i)
+             subevt = pl
           end if
        else
-          subevt%prt(i) = pl%prt(i)
+          subevt = pl
        end if
-    end do
+    end if
   end subroutine subevt_recombine
 
 @ %def subevt_recombine
