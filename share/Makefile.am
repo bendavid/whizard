@@ -169,7 +169,9 @@ dist_pdf_DATA = \
 	pdf_builtin/CT14llo.pds \
 	pdf_builtin/CT14lo.pds \
 	pdf_builtin/CT14n.00.pds \
-	pdf_builtin/CT14nn.00.pds
+	pdf_builtin/CT14nn.00.pds \
+	pdf_builtin/CT18n.00.pds \
+	pdf_builtin/CT18nn.00.pds
 
 ## Files containing precompiled cross sections for muli
 ## to be installed with the 'muli' prefix kept

@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.1+
 
+2021-10-14
+	CT18 PDFs included (NLO, NNLO)
+
 2021-09-30
 	Bug fix: keep non-recombined photons in the event record
 

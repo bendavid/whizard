@@ -33,7 +33,7 @@ noinst_LTLIBRARIES = libpdf_builtin.la
 
 libpdf_builtin_la_SOURCES = \
 	cteq6pdf.f90 pdf_builtin.f90 mrst2004qed.f90 mstwpdf.f90 \
-	ct10pdf.f90 CJpdf.f90 ct14pdf.f90
+	ct10pdf.f90 CJpdf.f90 ct14pdf.f90 ct18pdf.f90
 
 $(libpdf_builtin_la_OBJECTS): \
 	../basics/kinds.$(FCMOD) \
@@ -52,7 +52,8 @@ nodist_execmod_HEADERS = \
   mrst2004qed.$(FCMOD) \
   mstwpdf.$(FCMOD) \
   ct10pdf.$(FCMOD) \
-  ct14pdf.$(FCMOD)
+  ct14pdf.$(FCMOD) \
+  ct18pdf.$(FCMOD)
 
 SUFFIXES = .lo .$(FCMOD)
 
@@ -84,7 +85,7 @@ endif
 ########################################################################
 ## Explicit dependencies
 
-pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pdf.lo
+pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pdf.lo ct18pdf.lo
 
 pdf_builtin.$(FCMOD): pdf_builtin.lo
 cteq6pdf.$(FCMOD): cteq6pdf.lo
@@ -93,6 +94,7 @@ mrst2004qed.$(FCMOD): mrst2004qed.lo
 mstwpdf.$(FCMOD): mstwpdf.lo
 ct10pdf.$(FCMOD): ct10pdf.lo
 ct14pdf.$(FCMOD): ct14pdf.lo
+ct18pdf.$(FCMOD): ct18pdf.lo
 
 ########################################################################
 ## Non-standard cleanup tasks

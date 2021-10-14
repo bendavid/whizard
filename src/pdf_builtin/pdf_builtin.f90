@@ -6,11 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -42,6 +38,7 @@ module pdf_builtin
   use ct10pdf
   use CJ_pdf
   use ct14pdf
+  use ct18pdf
 
   implicit none
   save
@@ -49,14 +46,14 @@ module pdf_builtin
   private
 
 ! The available sets
-  integer, parameter :: nsets = 22
+  integer, parameter :: nsets = 24
   integer, parameter, public :: &
        CTEQ6M = 1, CTEQ6D = 2, CTEQ6L = 3, CTEQ6L1 = 4, &
        MRST2004QEDp = 5, MRST2004QEDn = 6, MSTW2008LO = 7, MSTW2008NLO = 8, &
        MSTW2008NNLO = 9, CT10 = 10, CJ12_max = 11, CJ12_mid = 12, &
        CJ12_min = 13, MMHT2014LO = 14, MMHT2014NLO = 15, MMHT2014NNLO = 16, &
        CT14LL = 17, CT14L = 18, CT14N = 19, CT14NN = 20, CJ15_LO = 21, &
-       CJ15_NLO = 22
+       CJ15_NLO = 22, CT18N = 23, CT18NN = 24
 
 ! Limits
   real(kind=default), parameter :: &
@@ -73,7 +70,8 @@ module pdf_builtin
        mmht2014_q_min = mstw2008_q_min, mmht2014_q_max = mstw2008_q_max, &
        mmht2014_x_min = mstw2008_x_min, mmht2014_x_max = mstw2008_x_max, &
        ct14_q_min = 1.3, ct14_q_max = 1.E5, ct14_x_min = 1.E-9, &
-       ct14_x_max = 1.
+       ct14_x_max = 1., ct18_q_min = 1.3, ct18_q_max = 1.E5, &
+       ct18_x_min = 1.E-9, ct18_x_max = 1.
 
 ! Lambda_QCD and quark masses
 
@@ -122,6 +120,7 @@ module pdf_builtin
   integer :: cj12_initialized = -1
   integer :: ct14_initialized = -1
   integer :: cj15_initialized = -1
+  integer :: ct18_initialized = -1
   logical :: &
        mrst2004qedp_initialized =  .false., &
        mrst2004qedn_initialized =  .false.
@@ -190,6 +189,10 @@ contains
        name = var_str ("CT14N")
     case (CT14NN)
        name = var_str ("CT14NN")
+    case (CT18N)
+       name = var_str ("CT18N")
+    case (CT18NN)
+       name = var_str ("CT18NN")
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -225,6 +228,8 @@ contains
     case (MMHT2014LO, MMHT2014NLO, MMHT2014NNLO)
        flag = .false.
     case (CT14LL, CT14L, CT14N, CT14NN)
+       flag = .false.
+    case (CT18N, CT18NN)
        flag = .false.
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
@@ -309,6 +314,14 @@ contains
        if (ct14_initialized == pdftype) return
        ct14_initialized = pdftype
        call setct14 (char (mprefix), 4)
+    case (CT18N)
+       if (ct18_initialized == pdftype) return
+       ct18_initialized = pdftype
+       call setct18 (char (prefix), 1)
+    case (CT18NN)
+       if (ct18_initialized == pdftype) return
+       ct18_initialized = pdftype
+       call setct18 (char (prefix), 2)
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -492,6 +505,24 @@ contains
             getct14pdf ( 2, mx, mq), getct14pdf ( 1, mx, mq), &
             getct14pdf ( 3, mx, mq), getct14pdf ( 4, mx, mq), &
             getct14pdf ( 5, mx, mq), 0._double ]
+    case (CT18N, CT18NN)
+       if (ct18_initialized < 0) &
+            call msg_fatal ("pdf_builtin: internal: PDF set " // &
+            char (pdf_get_name (pdftype)) // " requested without initialization!")
+       if (ct18_initialized /= pdftype) &
+            call msg_fatal ( &
+            "PDF sets " // char (pdf_get_name (pdftype)) // " and " // &
+            char (pdf_get_name (ct18_initialized)) // &
+            " cannot be used simultaneously")
+       mx = max (min (x, ct18_x_max), ct18_x_min)
+       mq = max (min (q, ct18_q_max), ct18_q_min)
+       if (present (f)) f = [ 0._double, &
+            getct18pdf (-5, mx, mq), getct18pdf (-4, mx, mq), &
+            getct18pdf (-3, mx, mq), getct18pdf (-1, mx, mq), &
+            getct18pdf (-2, mx, mq), getct18pdf ( 0, mx, mq), &
+            getct18pdf ( 2, mx, mq), getct18pdf ( 1, mx, mq), &
+            getct18pdf ( 3, mx, mq), getct18pdf ( 4, mx, mq), &
+            getct18pdf ( 5, mx, mq), 0._double ]
        if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
             char (pdf_get_name (pdftype)) // " which does not provide it!")
     case default
@@ -628,6 +659,15 @@ contains
             char (pdf_get_name (ct14_initialized)) // &
             " cannot be used simultaneously")
        as = CT14Alphas(qdummy)
+    case (CT18N, CT18NN)
+       call msg_fatal ("pdf_builtin: internal: PDF set " // &
+            char (pdf_get_name (pdftype)) // " requested without initialization!")
+       if (ct18_initialized /= pdftype) &
+            call msg_fatal ( &
+            "PDF sets " // char (pdf_get_name (pdftype)) // " and " // &
+            char (pdf_get_name (ct18_initialized)) // &
+            " cannot be used simultaneously")
+       as = CT18Alphas(qdummy)
     case default
          call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select

@@ -887,8 +887,104 @@ $pdf_builtin_set = "CJ15NLO"
 |-----------------------------------------------------------------------------|
    6        994  1.1720028E+00  3.77E-02    3.21    1.01   12.71    0.07   2
 |=============================================================================|
+$pdf_builtin_set = "CT18N"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 18
+| Initializing integration for process pdf_builtin_1_p:
+| Beam structure: p, p => pdf_builtin
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Initialized builtin PDF CT18N
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pdf_builtin_1_p'
+|   Library name  = 'pdf_builtin_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pdf_builtin_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'pdf_builtin_1_p'
+| Integrate: iterations = 4:500:"gw", 2:500
+| Integrator: 2 chains, 2 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        500  1.1715907E+00  4.27E-01   36.45    8.15*   1.17
+   2        499  1.6095837E+00  2.01E-01   12.51    2.79*   3.01
+   3        498  1.5526329E+00  6.73E-02    4.34    0.97*  20.09
+   4        497  1.4281262E+00  9.12E-02    6.39    1.42    8.05
+|-----------------------------------------------------------------------------|
+   4       1994  1.5104437E+00  5.19E-02    3.44    1.53    8.05    0.69   4
+|-----------------------------------------------------------------------------|
+   5        497  1.5589805E+00  1.03E-01    6.58    1.47    5.28
+   6        497  1.3755809E+00  7.07E-02    5.14    1.15*   4.66
+|-----------------------------------------------------------------------------|
+   6        994  1.4345885E+00  5.82E-02    4.06    1.28    4.66    2.17   2
+|=============================================================================|
+$pdf_builtin_set = "CT18NN"
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 19
+| Initializing integration for process pdf_builtin_1_p:
+| Beam structure: p, p => pdf_builtin
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Initialized builtin PDF CT18NN
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pdf_builtin_1_p'
+|   Library name  = 'pdf_builtin_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pdf_builtin_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'pdf_builtin_1_p'
+| Integrate: iterations = 4:500:"gw", 2:500
+| Integrator: 2 chains, 2 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        500  1.9511136E+00  7.08E-01   36.29    8.11*   0.97
+   2        499  1.7873010E+00  1.65E-01    9.23    2.06*   4.73
+   3        498  1.3235333E+00  7.35E-02    5.55    1.24*  15.84
+   4        497  1.3196387E+00  6.32E-02    4.79    1.07*  16.50
+|-----------------------------------------------------------------------------|
+   4       1994  1.3600592E+00  4.59E-02    3.38    1.51   16.50    2.69   4
+|-----------------------------------------------------------------------------|
+   5        497  1.4866406E+00  7.20E-02    4.84    1.08   13.60
+   6        497  1.3823893E+00  6.38E-02    4.61    1.03*  12.64
+|-----------------------------------------------------------------------------|
+   6        994  1.4282346E+00  4.78E-02    3.34    1.05   12.64    1.17   2
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 20
 | Initializing integration for process pdf_builtin_2_p:
 | Beam structure: A, A
 | Beam data (collision):
@@ -919,21 +1015,21 @@ $pdf_builtin_set = "CJ15NLO"
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        500  1.0464442E+03  5.31E+01    5.08    1.14*  40.99
-   2        500  1.0132287E+03  2.22E+01    2.19    0.49*  59.87
-   3        500  1.0172638E+03  1.81E+01    1.78    0.40*  46.09
-   4        500  1.0400389E+03  1.86E+01    1.79    0.40   47.54
+   1        500  9.9850364E+02  5.26E+01    5.27    1.18*  39.18
+   2        500  9.7991986E+02  2.36E+01    2.41    0.54*  58.09
+   3        500  9.8189923E+02  1.80E+01    1.84    0.41*  65.79
+   4        500  1.0018731E+03  1.66E+01    1.66    0.37*  52.94
 |-----------------------------------------------------------------------------|
-   4       2000  1.0254391E+03  1.10E+01    1.07    0.48   47.54    0.43   4
+   4       2000  9.9033953E+02  1.06E+01    1.07    0.48   52.94    0.31   4
 |-----------------------------------------------------------------------------|
-   5        500  1.0265212E+03  1.79E+01    1.74    0.39*  46.90
-   6        500  1.0092843E+03  1.88E+01    1.86    0.42   46.10
+   5        500  1.0140312E+03  1.64E+01    1.61    0.36*  45.48
+   6        500  1.0179215E+03  1.70E+01    1.67    0.37   45.64
 |-----------------------------------------------------------------------------|
-   6       1000  1.0183337E+03  1.29E+01    1.27    0.40   46.10    0.44   2
+   6       1000  1.0159073E+03  1.18E+01    1.16    0.37   45.64    0.03   2
 |=============================================================================|
 $pdf_builtin_set = "mrst2004qedp"
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 19
+| RNG: Setting seed for random-number generator to 21
 | Initializing integration for process pdf_builtin_2_p:
 | Beam structure: p, p => pdf_builtin
 | Beam data (collision):
@@ -967,17 +1063,17 @@ $pdf_builtin_set = "mrst2004qedp"
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        500  1.5068619E-01  8.38E-02   55.63   12.44*   1.03
-   2        500  1.3618227E-01  1.28E-02    9.43    2.11*   6.37
-   3        500  1.2428578E-01  6.46E-03    5.20    1.16*  14.92
-   4        500  1.4899071E-01  1.71E-02   11.48    2.57    4.59
+   1        500  8.1109041E-02  2.94E-02   36.25    8.11*   2.19
+   2        500  1.2249840E-01  1.91E-02   15.61    3.49*   4.11
+   3        500  1.2765975E-01  9.51E-03    7.45    1.66*   9.66
+   4        500  1.6386841E-01  2.26E-02   13.79    3.08    3.27
 |-----------------------------------------------------------------------------|
-   4       2000  1.2906145E-01  5.46E-03    4.23    1.89    4.59    0.76   4
+   4       2000  1.2783431E-01  7.69E-03    6.01    2.69    3.27    1.72   4
 |-----------------------------------------------------------------------------|
-   5        500  1.3576340E-01  6.37E-03    4.70    1.05*   4.16
-   6        500  1.3025172E-01  5.71E-03    4.39    0.98*   3.99
+   5        500  1.8472325E-01  2.30E-02   12.45    2.78*   3.06
+   6        500  1.4898879E-01  2.23E-02   14.95    3.34    1.81
 |-----------------------------------------------------------------------------|
-   6       1000  1.3270659E-01  4.25E-03    3.21    1.01    3.99    0.41   2
+   6       1000  1.6627675E-01  1.60E-02    9.62    3.04    1.81    1.25   2
 |=============================================================================|
 | WHIZARD run finished.
 |=============================================================================|
