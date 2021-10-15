@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.1+
 
+2021-10-15
+	Bug fix: 2HDM did not allow H+, H- as external particles
+
 2021-10-14
 	CT18 PDFs included (NLO, NNLO)
 

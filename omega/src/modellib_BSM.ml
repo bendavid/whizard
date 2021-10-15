@@ -7833,6 +7833,8 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
       | "h0" -> O Hh
       | "H0" -> O HH
       | "A0" -> O HA
+      | "Hp" | "H+" -> O Hp
+      | "Hm" | "H-" -> O Hm
       | _ -> invalid_arg "Modellib_BSM.TwoHiggsDoublet.flavor_of_string"
 
     let flavor_to_string = function
