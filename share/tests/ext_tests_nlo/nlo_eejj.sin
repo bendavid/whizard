@@ -6,15 +6,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        count [@eta_selected] >= 2
 
 scale = let subevt @clustered_jets = cluster [jet] in
-        let int njet = count [@clustered_jets] in
-        if njet == 2 then
-           ( eval Pt [extract index 1 [@clustered_jets]]
-           + eval Pt [extract index 2 [@clustered_jets]]) / 2
-        elsif njet == 3 then
-           ( eval Pt [extract index 1 [@clustered_jets]]
-           + eval Pt [extract index 2 [@clustered_jets]]
-           + eval Pt [extract index 3 [@clustered_jets]]) / 2
-        endif
+        sum Pt/2 [@clustered_jets]
 
 alpha_power = 2
 alphas_power = 0

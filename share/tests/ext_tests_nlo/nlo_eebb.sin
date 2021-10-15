@@ -10,15 +10,7 @@ alias jet = u:U:d:D:s:S:c:C:gl
 $exclude_gauge_splittings = "t:b"
 ?combined_nlo_integration = true
 
-scale = let int njet = count [jet] in
-        if njet == 0 then
-           (sqrt (eval Pt [extract index 1 [b]]**2 + eval M [extract index 1 [b]]**2)
-          + sqrt (eval Pt [extract index 1 [B]]**2 + eval M [extract index 1 [B]]**2)) / 2
-        else
-           (sqrt (eval Pt [extract index 1 [b]]**2 + eval M [extract index 1 [b]]**2)
-          + sqrt (eval Pt [extract index 1 [B]]**2 + eval M [extract index 1 [B]]**2)
-          + eval Pt [extract index 1 [jet]]) / 2
-        endif
+scale = eval Ht/2 [b:B:jet]
 
 #?combined_nlo_integration = true
 process nlo_eebb_p1 = e1, E1 => b, B { nlo_calculation = full }

@@ -23,8 +23,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @eta_selected_b = select if abs(Eta) < 4 [@pt_selected_b] in
        count [@eta_selected_b] >= 2
 
-scale = (eval Pt [extract index 1 [b]] + eval Pt [extract index 1 [B]]
-       + eval Pt [extract index 1 [jet]]) / 2
+scale = eval Ht/2 [b:B:jet]
 
 #?combined_nlo_integration = true
 process nlo_eebbj_p1 = e1, E1 => b, B, jet { nlo_calculation = full }

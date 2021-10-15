@@ -9,21 +9,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        count [@eta_selected] >= 2
 
 scale = let subevt @clustered_jets = cluster [jet] in
-        let int njet = count [@clustered_jets] in
-        if njet == 2 then
-          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-          + sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
-          + eval Pt [extract index 1 [@clustered_jets]]
-          + eval Pt [extract index 2 [@clustered_jets]]) / 2
-        elsif njet == 3 then
-          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-          + sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
-          + eval Pt [extract index 1 [@clustered_jets]]
-          + eval Pt [extract index 2 [@clustered_jets]]
-          + eval Pt [extract index 3 [@clustered_jets]]) / 2
-        endif
+        sum sqrt(Pt^2 + M^2)/2 [t:T:Z] + sum Pt/2 [@clustered_jets]
 
 #?combined_nlo_integration = true
 process nlo_eettzjj_p1 = e1, E1 => t, T, Z, jet, jet {nlo_calculation = full }

@@ -15,21 +15,7 @@ alphas_power = 4
 ?alphas_from_lhapdf = true
 
 scale = let subevt @clustered_jets = cluster [jet] in
-        let int njet = count [@clustered_jets] in
-        if njet == 0 then
-          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-         + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-         + sqrt (eval Pt [extract index 2 [t]]**2 + eval M [extract index 2 [t]]**2)
-         + sqrt (eval Pt [extract index 2 [T]]**2 + eval M [extract index 2 [T]]**2)) / 2
-        elsif njet == 1 then
-          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-         + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-         + sqrt (eval Pt [extract index 2 [t]]**2 + eval M [extract index 2 [t]]**2)
-         + sqrt (eval Pt [extract index 2 [T]]**2 + eval M [extract index 2 [T]]**2)
-         + eval Pt [extract index 1 [@clustered_jets]]) / 2
-        else
-          sqrts
-        endif
+        sum sqrt(Pt^2 + M^2)/2 [t:T] + sum Pt/2 [@clustered_jets]
 
 ?combined_nlo_integration = false
 !?nlo_use_real_partition = true

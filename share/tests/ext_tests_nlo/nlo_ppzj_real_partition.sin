@@ -27,17 +27,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
        count [@eta_selected] >= 1
 
-scale = let int njet = count [jet] in
-        if njet == 1 then
-          (sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
-          + eval Pt [extract index 1 [jet]]) / 2
-        elsif njet == 2 then
-          (sqrt (eval Pt [extract index 1 [Z]]**2 + eval M [extract index 1 [Z]]**2)
-          + eval Pt [extract index 1 [jet]]
-          + eval Pt [extract index 2 [jet]]) / 2
-        else
-          sqrts
-        endif
+scale = eval Ht/2 [Z:jet]
 
 $real_partition_mode = "on"
 real_partition_scale = 10 GeV

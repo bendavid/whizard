@@ -32,17 +32,7 @@ $integration_method = "vamp2"
 beams = p, p => pdf_builtin
 sqrts = 13000 GeV
 
-scale = let int njet = count [jet] in
-        if njet == 0 then
-          (eval Pt [extract index 1 [elec]]
-         + eval Pt [extract index 2 [elec]]) / 2
-        elsif njet == 1 then
-          (eval Pt [extract index 1 [elec]]
-         + eval Pt [extract index 2 [elec]]
-         + eval Pt [extract index 1 [jet]]) / 2
-        else
-          sqrts
-        endif
+scale = sum Pt/2 [jet:elec]
 
 ?combined_nlo_integration = true
 

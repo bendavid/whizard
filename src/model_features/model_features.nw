@@ -3798,22 +3798,26 @@ leafs are literal constants or named-parameter references.
   integer, parameter :: EN_CONDITIONAL = 5, EN_BLOCK = 6
   integer, parameter :: EN_RECORD_CMD = 7
   integer, parameter :: EN_OBS1_INT = 11, EN_OBS2_INT = 12
+  integer, parameter :: EN_OBSEV_INT = 13
   integer, parameter :: EN_OBS1_REAL = 21, EN_OBS2_REAL = 22
+  integer, parameter :: EN_OBSEV_REAL = 23
   integer, parameter :: EN_PRT_FUN_UNARY = 101, EN_PRT_FUN_BINARY = 102
   integer, parameter :: EN_EVAL_FUN_UNARY = 111, EN_EVAL_FUN_BINARY = 112
   integer, parameter :: EN_LOG_FUN_UNARY = 121, EN_LOG_FUN_BINARY = 122
   integer, parameter :: EN_INT_FUN_UNARY = 131, EN_INT_FUN_BINARY = 132
   integer, parameter :: EN_REAL_FUN_UNARY = 141, EN_REAL_FUN_BINARY = 142
+  integer, parameter :: EN_REAL_FUN_CUM = 151
   integer, parameter :: EN_FORMAT_STR = 161
 
 @ %def EN_UNKNOWN EN_UNARY EN_BINARY EN_CONSTANT EN_VARIABLE EN_CONDITIONAL
 @ %def EN_RECORD_CMD
-@ %def EN_OBS1_INT EN_OBS2_INT EN_OBS1_REAL EN_OBS2_REAL
+@ %def EN_OBS1_INT EN_OBS2_INT EN_OBS1_REAL EN_OBS2_REAL EN_OBSEV_INT EN_OBSEV_REAL
 @ %def EN_PRT_FUN_UNARY EN_PRT_FUN_BINARY
 @ %def EN_EVAL_FUN_UNARY EN_EVAL_FUN_BINARY
 @ %def EN_LOG_FUN_UNARY EN_LOG_FUN_BINARY
 @ %def EN_INT_FUN_UNARY EN_INT_FUN_BINARY
 @ %def EN_REAL_FUN_UNARY EN_REAL_FUN_BINARY
+@ %def EN_REAL_FUN_CUM
 @ %def EN_FORMAT_STR
 @ This is exported only for use within unit tests.
 <<Eval trees: public>>=
@@ -3843,6 +3847,8 @@ leafs are literal constants or named-parameter references.
      procedure(obs_unary_real),  nopass, pointer :: obs1_real => null ()
      procedure(obs_binary_int),  nopass, pointer :: obs2_int  => null ()
      procedure(obs_binary_real), nopass, pointer :: obs2_real => null ()
+     procedure(obs_sev_int), nopass, pointer :: obsev_int => null ()
+     procedure(obs_sev_real), nopass, pointer :: obsev_real => null ()
      integer, pointer :: prt_type => null ()
      integer, pointer :: index => null ()
      real(default), pointer :: tolerance => null ()
@@ -3877,6 +3883,8 @@ leafs are literal constants or named-parameter references.
      procedure(binary_cut),  nopass, pointer :: op2_cut  => null ()
      procedure(binary_evi),  nopass, pointer :: op2_evi  => null ()
      procedure(binary_evr),  nopass, pointer :: op2_evr  => null ()
+     procedure(cum_evi), nopass, pointer :: opcum_evi => null ()
+     procedure(cum_evr), nopass, pointer :: opcum_evr => null ()
    contains
    <<Eval trees: eval node: TBP>>
   end type eval_node_t
@@ -3908,6 +3916,11 @@ pointers are ignored.
        call eval_node_final_rec (node%arg1)
        deallocate (node%index)
        deallocate (node%prt1)
+    case (EN_REAL_FUN_CUM)
+       if (associated (node%arg0))  call eval_node_final_rec (node%arg0)
+       call eval_node_final_rec (node%arg1)
+       deallocate (node%index)
+       deallocate (node%prt1)
     case (EN_PRT_FUN_BINARY, EN_EVAL_FUN_BINARY, &
           EN_LOG_FUN_BINARY, EN_INT_FUN_BINARY, EN_REAL_FUN_BINARY)
        if (associated (node%arg0))  call eval_node_final_rec (node%arg0)
@@ -3934,6 +3947,7 @@ pointers are ignored.
           EN_LOG_FUN_UNARY, EN_LOG_FUN_BINARY, &
           EN_INT_FUN_UNARY, EN_INT_FUN_BINARY, &
           EN_REAL_FUN_UNARY, EN_REAL_FUN_BINARY, &
+          EN_REAL_FUN_CUM, &
           EN_FORMAT_STR, EN_RECORD_CMD)
        select case (node%result_type)
        case (V_LOG);  deallocate (node%lval)
@@ -4146,6 +4160,20 @@ Initialize a leaf node with a literal constant.
     node%value_is_known = .false.
   end subroutine eval_node_init_obs2_int_ptr
 
+  subroutine eval_node_init_obsev_int_ptr (node, name, obsev_iptr, pval)
+    type(eval_node_t), intent(out) :: node
+    type(string_t), intent(in) :: name
+    procedure(obs_sev_int), intent(in), pointer :: obsev_iptr
+    type(subevt_t), intent(in), target :: pval
+    node%type = EN_OBSEV_INT
+    node%tag = name
+    node%result_type = V_INT
+    node%obsev_int => obsev_iptr
+    node%pval => pval
+    allocate (node%rval, node%value_is_known)
+    node%value_is_known = .false.
+  end subroutine eval_node_init_obsev_int_ptr
+
   subroutine eval_node_init_obs1_real_ptr (node, name, obs1_rptr, p1)
     type(eval_node_t), intent(out) :: node
     type(string_t), intent(in) :: name
@@ -4175,10 +4203,26 @@ Initialize a leaf node with a literal constant.
     node%value_is_known = .false.
   end subroutine eval_node_init_obs2_real_ptr
 
+  subroutine eval_node_init_obsev_real_ptr (node, name, obsev_rptr, pval)
+    type(eval_node_t), intent(out) :: node
+    type(string_t), intent(in) :: name
+    procedure(obs_sev_real), intent(in), pointer :: obsev_rptr
+    type(subevt_t), intent(in), target :: pval
+    node%type = EN_OBSEV_REAL
+    node%tag = name
+    node%result_type = V_REAL
+    node%obsev_real => obsev_rptr
+    node%pval => pval
+    allocate (node%rval, node%value_is_known)
+    node%value_is_known = .false.
+  end subroutine eval_node_init_obsev_real_ptr
+
 @ %def eval_node_init_obs1_int_ptr
 @ %def eval_node_init_obs2_int_ptr
 @ %def eval_node_init_obs1_real_ptr
 @ %def eval_node_init_obs2_real_ptr
+@ %def eval_node_init_obsev_int_ptr
+@ %def eval_node_init_obsev_real_ptr
 @
 \subsubsection{Branch nodes}
 Initialize a branch node, sub-nodes are given.
@@ -4512,7 +4556,7 @@ value.
     procedure(unary_evr) :: proc
     node%type = EN_REAL_FUN_UNARY
     node%tag = name
-    node%result_type = V_INT
+    node%result_type = V_REAL
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     allocate (node%index, source = 0)
@@ -4527,7 +4571,7 @@ value.
     procedure(binary_evr) :: proc
     node%type = EN_REAL_FUN_BINARY
     node%tag = name
-    node%result_type = V_INT
+    node%result_type = V_REAL
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
@@ -4537,7 +4581,23 @@ value.
     node%op2_evr => proc
   end subroutine eval_node_init_real_fun_binary
 
+  subroutine eval_node_init_real_fun_cum (node, arg1, name, proc)
+    type(eval_node_t), intent(out) :: node
+    type(eval_node_t), intent(in), target :: arg1
+    type(string_t), intent(in) :: name
+    procedure(cum_evr) :: proc
+    node%type = EN_REAL_FUN_CUM
+    node%tag = name
+    node%result_type = V_REAL
+    call eval_node_allocate_value (node)
+    node%arg1 => arg1
+    allocate (node%index, source = 0)
+    allocate (node%prt1)
+    node%opcum_evr => proc
+  end subroutine eval_node_init_real_fun_cum
+
 @ %def eval_node_init_real_fun_unary eval_node_init_real_fun_binary
+@ %def eval_node_init_real_fun_cum
 @ Initialize a node for a string formatting function (sprintf).
 <<Eval trees: procedures>>=
   subroutine eval_node_init_format_string (node, fmt, arg, name, n_args)
@@ -4577,6 +4637,10 @@ pseudo-observable is always known when it is referred to.
     if (.not. associated (node%prt2)) then
        call var_list_set_observables_unary &
             (node%var_list, node%prt1)
+       if (associated (node%pval)) then
+          call var_list_set_observables_sev &
+               (node%var_list, node%pval)
+       end if
     else
        call var_list_set_observables_binary &
             (node%var_list, node%prt1, node%prt2)
@@ -4603,7 +4667,8 @@ pseudo-observable is always known when it is referred to.
           EN_EVAL_FUN_UNARY, EN_EVAL_FUN_BINARY, &
           EN_LOG_FUN_UNARY, EN_LOG_FUN_BINARY, &
           EN_INT_FUN_UNARY, EN_INT_FUN_BINARY, &
-          EN_REAL_FUN_UNARY, EN_REAL_FUN_BINARY)
+          EN_REAL_FUN_UNARY, EN_REAL_FUN_BINARY, &
+          EN_REAL_FUN_CUM)
        write (u, "(A)", advance="no")  "[" // char (node%tag) // "] ="
     case (EN_CONSTANT)
        write (u, "(A)", advance="no")  "[const] ="
@@ -4706,7 +4771,8 @@ pseudo-observable is always known when it is referred to.
        call eval_node_write_rec (node%arg1, unit, ind+1)
        call eval_node_write_rec (node%arg2, unit, ind+1)
     case (EN_PRT_FUN_UNARY, EN_EVAL_FUN_UNARY, &
-          EN_LOG_FUN_UNARY, EN_INT_FUN_UNARY, EN_REAL_FUN_UNARY)
+          EN_LOG_FUN_UNARY, EN_INT_FUN_UNARY, EN_REAL_FUN_UNARY, &
+          EN_REAL_FUN_CUM)
        if (associated (node%arg0)) &
             call eval_node_write_rec (node%arg0, unit, ind+1)
        call eval_node_write_rec (node%arg1, unit, ind+1)
@@ -4888,6 +4954,20 @@ unnecessary copying.  Therefore, subroutines instead of functions.
        type(eval_node_t), intent(in) :: arg1, arg2
        type(eval_node_t), intent(inout), optional :: arg0
      end subroutine binary_evr
+  end interface
+  abstract interface
+     integer function cum_evi (arg1, arg0)
+       import eval_node_t
+       type(eval_node_t), intent(in) :: arg1
+       type(eval_node_t), intent(inout) :: arg0
+     end function cum_evi
+  end interface
+  abstract interface
+     real(default) function cum_evr (arg1, arg0)
+       import eval_node_t, default
+       type(eval_node_t), intent(in) :: arg1
+       type(eval_node_t), intent(inout) :: arg0
+     end function cum_evr
   end interface
 
 @ The following subroutines set the procedure pointer:
@@ -6194,7 +6274,41 @@ condition, it returns simply the length of the subevent.
   end subroutine count_a
 
 @ %def count_a
-@
+@ The following functions return either an integer or a real
+value, namely the sum or the product of the values of the
+corresponding expression.
+<<Eval trees: procedures>>=
+  function sum_a (en1, en0) result (rval)
+    real(default) :: rval
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout) :: en0
+    integer :: i, n
+    n = subevt_get_length (en1%pval)
+    rval = 0._default
+    do i = 1, n
+       en0%index = i
+       en0%prt1 = subevt_get_prt (en1%pval, i)
+       call eval_node_evaluate (en0)
+       rval = rval + en0%rval
+    end do
+  end function sum_a
+
+  function prod_a (en1, en0) result (rval)
+    real(default) :: rval
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout) :: en0
+    integer :: i, n
+    n = subevt_get_length (en1%pval)
+    rval = 1._default
+    do i = 1, n
+       en0%index = i
+       en0%prt1 = subevt_get_prt (en1%pval, i)
+       call eval_node_evaluate (en0)
+       rval = rval * en0%rval
+    end do
+  end function prod_a
+
+@ %def sum_a prod_a
 \subsubsection{Binary particle-list functions}
 This joins two subevents, stored in the evaluation nodes [[en1]]
 and [[en2]].  If [[en0]] is also present, it amounts to a logical test
@@ -7146,6 +7260,8 @@ a real constant.
     case ("eval_fun")
        call eval_node_compile_eval_function (en, pn, var_list)
     case ("count_fun")
+       call eval_node_compile_count_function (en, pn, var_list)
+    case ("sum_fun", "prod_fun")
        call eval_node_compile_numeric_function (en, pn, var_list)
     case default
        call parse_node_mismatch &
@@ -7347,6 +7463,8 @@ They are handled by [[eval_node_compile_cvariable]].
     procedure(obs_unary_real), pointer :: obs1_rptr
     procedure(obs_binary_int), pointer :: obs2_iptr
     procedure(obs_binary_real), pointer :: obs2_rptr
+    procedure(obs_sev_int), pointer :: obsev_iptr
+    procedure(obs_sev_real), pointer :: obsev_rptr
     type(prt_t), pointer :: p1, p2
     if (debug_active (D_MODEL_F)) then
        print *, "read variable";  call parse_node_write (pn)
@@ -7409,12 +7527,18 @@ They are handled by [[eval_node_compile_cvariable]].
           case (V_OBS2_INT)
              call var_list%get_obs2_iptr (var_name, obs2_iptr, p1, p2)
              call eval_node_init_obs2_int_ptr (en, var_name, obs2_iptr, p1, p2)
+          case (V_OBSEV_INT)
+             call var_list%get_obsev_iptr (var_name, obsev_iptr, pptr)
+             call eval_node_init_obsev_int_ptr (en, var_name, obsev_iptr, pptr)
           case (V_OBS1_REAL)
              call var_list%get_obs1_rptr (var_name, obs1_rptr, p1)
              call eval_node_init_obs1_real_ptr (en, var_name, obs1_rptr, p1)
           case (V_OBS2_REAL)
              call var_list%get_obs2_rptr (var_name, obs2_rptr, p1, p2)
              call eval_node_init_obs2_real_ptr (en, var_name, obs2_rptr, p1, p2)
+          case (V_OBSEV_REAL)
+             call var_list%get_obsev_rptr (var_name, obsev_rptr, pptr)
+             call eval_node_init_obsev_real_ptr (en, var_name, obsev_rptr, pptr)
           case default
              call parse_node_write (pn)
              call msg_fatal ("Variable of this type " // &
@@ -9326,7 +9450,10 @@ appropriate (unary/binary) observables.
 
 @ %def eval_node_compile_prt_function
 @ The [[eval]] expression is similar, but here the expression [[arg0]]
-is mandatory, and the whole thing evaluates to a numeric value.
+is mandatory, and the whole thing evaluates to a numeric value. To
+guarantee initialization of variables defined on subevents instead of
+a single (namely the first) particle of a subevent, we make sure that
+[[en]] points to the subevent stored in [[en1]].
 <<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_eval_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -9352,8 +9479,11 @@ is mandatory, and the whole thing evaluates to a numeric value.
        call eval_node_compile_pexpr (en2, pn_arg2, var_list)
        call eval_node_init_eval_fun_binary (en, en1, en2, key)
     end if
+    en%pval => en1%pval
     call eval_node_set_observables (en, var_list)
     call eval_node_compile_expr (en0, pn_arg0, en%var_list)
+    if (en0%result_type == V_INT)  &
+         call insert_conversion_node (en0, V_REAL)
     if (en0%result_type /= V_REAL) &
          call msg_fatal (" 'eval' function does not result in real value")
     call eval_node_set_expr (en, en0)
@@ -9462,9 +9592,9 @@ create a logical [[eval_node_t]] with value [[.true.]].
   end subroutine eval_node_compile_log_function
 
 @ %def eval_node_compile_log_function
-@ Numeric functions of subevents.
+@ Count function of subevents.
 <<Eval trees: procedures>>=
-  recursive subroutine eval_node_compile_numeric_function (en, pn, var_list)
+  recursive subroutine eval_node_compile_count_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
@@ -9473,12 +9603,12 @@ create a logical [[eval_node_t]] with value [[.true.]].
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
     if (debug_active (D_MODEL_F)) then
-       print *, "read numeric_function";  call parse_node_write (pn)
+       print *, "read count_function";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
     case ("count_fun")
        pn_clause => parse_node_get_sub_ptr (pn)
-       pn_key  => parse_node_get_sub_ptr (pn_clause)
+       pn_key => parse_node_get_sub_ptr (pn_clause)
        pn_cond => parse_node_get_next_ptr (pn_key)
        if (associated (pn_cond)) then
           pn_arg0 => parse_node_get_sub_ptr (pn_cond, 2)
@@ -9518,6 +9648,59 @@ create a logical [[eval_node_t]] with value [[.true.]].
           call eval_node_set_expr (en, en0, V_INT)
        end select
     end if
+    if (debug_active (D_MODEL_F)) then
+       call eval_node_write (en)
+       print *, "done count_function"
+    end if
+  end subroutine eval_node_compile_count_function
+
+@ %def eval_node_compile_count_function
+@ Numeric functions of subevents.
+<<Eval trees: procedures>>=
+  recursive subroutine eval_node_compile_numeric_function (en, pn, var_list)
+    type(eval_node_t), pointer :: en
+    type(parse_node_t), intent(in) :: pn
+    type(var_list_t), intent(in), target :: var_list
+    type(parse_node_t), pointer :: pn_key, pn_args
+    type(parse_node_t), pointer :: pn_arg0, pn_arg1, pn_arg2
+    type(eval_node_t), pointer :: en0, en1
+    type(string_t) :: key
+    type(var_entry_t), pointer :: var
+    if (debug_active (D_MODEL_F)) then
+       print *, "read numeric_function";  call parse_node_write (pn)
+    end if
+    select case (char (parse_node_get_rule_key (pn)))
+    case ("sum_fun", "prod_fun")
+       if (debug_active (D_MODEL_F)) then
+          print *, "read sum_fun"; call parse_node_write (pn)
+       end if
+       pn_key => parse_node_get_sub_ptr (pn)
+       pn_arg0 => parse_node_get_next_ptr (pn_key)
+       pn_args => parse_node_get_next_ptr (pn_arg0)
+    end select
+    pn_arg1 => parse_node_get_sub_ptr (pn_args)
+    pn_arg2 => parse_node_get_next_ptr (pn_arg1)
+    key = parse_node_get_key (pn_key)
+    call eval_node_compile_pexpr (en1, pn_arg1, var_list)
+    if (associated (pn_arg2)) then
+       call msg_fatal ("The " // char (key) // &
+            " function can only be used for unary observables.")
+    end if
+    allocate (en)
+    select case (char (key))
+    case ("sum")
+       call eval_node_init_real_fun_cum (en, en1, key, sum_a)
+    case ("prod")
+       call eval_node_init_real_fun_cum (en, en1, key, prod_a)
+    case default
+       call msg_bug ("Unary subevent function '" // char (key) // &
+            "' undefined")
+    end select
+    call eval_node_set_observables (en, var_list)
+    call eval_node_compile_expr (en0, pn_arg0, en%var_list)
+    if (en0%result_type == V_INT) &
+         call insert_conversion_node (en0, V_REAL)
+    call eval_node_set_expr (en, en0, V_REAL)
     if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done numeric_function"
@@ -10213,11 +10396,17 @@ determine the result.
     case (EN_OBS2_INT)
        en%ival = en%obs2_int (en%prt1, en%prt2)
        en%value_is_known = .true.
+    case (EN_OBSEV_INT)
+       en%ival = en%obsev_int (en%pval)
+       en%value_is_known = .true.
     case (EN_OBS1_REAL)
        en%rval = en%obs1_real (en%prt1)
        en%value_is_known = .true.
     case (EN_OBS2_REAL)
        en%rval = en%obs2_real (en%prt1, en%prt2)
+       en%value_is_known = .true.
+    case (EN_OBSEV_REAL)
+       en%rval = en%obsev_real (en%pval)
        en%value_is_known = .true.
     case (EN_PRT_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
@@ -10343,6 +10532,14 @@ determine the result.
           else
              call en%op2_evr (en%rval, en%arg1, en%arg2)
           end if
+       end if
+     case (EN_REAL_FUN_CUM)
+        call eval_node_evaluate (en%arg1)
+        en%value_is_known = .true.
+        if (en%value_is_known) then
+           en%arg0%index => en%index
+           en%arg0%prt1 => en%prt1
+           en%rval = en%opcum_evr (en%arg1, en%arg0)
        end if
     case (EN_FORMAT_STR)
        if (associated (en%arg0)) then
@@ -10869,12 +11066,17 @@ We have two different flavors of the syntax: with and without particles.
   subroutine define_numeric_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "ALT numeric_pexpr = " &
-         // "eval_fun | count_fun")
+         // "eval_fun | count_fun | sum_fun | " &
+         // "prod_fun")
     call ifile_append (ifile, "SEQ eval_fun = eval expr pargs1")
     call ifile_append (ifile, "SEQ count_fun = count_clause pargs1")
     call ifile_append (ifile, "SEQ count_clause = count condition?")
+    call ifile_append (ifile, "SEQ sum_fun = sum expr pargs1")
+    call ifile_append (ifile, "SEQ prod_fun = prod expr pargs1")
     call ifile_append (ifile, "KEY eval")
     call ifile_append (ifile, "KEY count")
+    call ifile_append (ifile, "KEY sum")
+    call ifile_append (ifile, "KEY prod")
   end subroutine define_numeric_pexpr_syntax
 
 @ %def define_numeric_pexpr_syntax

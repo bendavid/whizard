@@ -12,9 +12,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        count [@eta_selected] >= 1
        and all abs(Pt) > 20 GeV [A] and all abs(Eta) < 2 [A]
 
-scale = (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-      +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-      + eval Pt [extract index 1 [A]] + eval Pt [extract index 1[jet]]) / 2
+scale = eval Ht/2 [t:T:A:jet]
 
 #?combined_nlo_integration = true
 process nlo_eettaj_p1 = e1, E1 => t, T, A, jet { nlo_calculation = full }

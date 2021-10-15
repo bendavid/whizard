@@ -41,7 +41,7 @@ module variables
   use io_units
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_12, FMT_19
-  use constants, only: eps0, tiny_07
+  use constants, only: eps0
   use os_interface, only: paths_t
   use physics_defs, only: LAMBDA_QCD_REF
   use system_dependencies
@@ -76,11 +76,12 @@ Variable (and constant) values can be of one of the following types:
   integer, parameter, public :: V_CMPLX = 4, V_SEV = 5, V_PDG = 6, V_STR = 7
   integer, parameter, public :: V_OBS1_INT = 11, V_OBS2_INT = 12
   integer, parameter, public :: V_OBS1_REAL = 21, V_OBS2_REAL = 22
+  integer, parameter, public :: V_OBSEV_INT = 13, V_OBSEV_REAL = 23
   integer, parameter, public :: V_UOBS1_INT = 31, V_UOBS2_INT = 32
   integer, parameter, public :: V_UOBS1_REAL = 41, V_UOBS2_REAL = 42
 
-@ %def V_NONE V_LOG V_INT V_REAL V_CMPLX V_PRT V_SEV V_PDG
-@ %def V_OBS1_INT V_OBS2_INT V_OBS1_REAL V_OBS2_REAL
+@ %def V_NONE V_LOG V_INT V_REAL V_CMPLX V_PRT V_SEV V_PDG V_OBS1_INT
+@ %def V_OBS2_INT V_OBSEV_INT V_OBS1_REAL V_OBS2_REAL V_OBSEV_REAL
 @ %def V_UOBS1_INT V_UOBS2_INT V_UOBS1_REAL V_UOBS2_REAL
 @
 \subsubsection{The type}
@@ -147,6 +148,8 @@ similar; the current implementation has $O(N)$ lookup.
      procedure(obs_unary_real),  nopass, pointer :: obs1_real => null ()
      procedure(obs_binary_int),  nopass, pointer :: obs2_int  => null ()
      procedure(obs_binary_real), nopass, pointer :: obs2_real => null ()
+     procedure(obs_sev_int),  nopass, pointer :: obsev_int  => null ()
+     procedure(obs_sev_real), nopass, pointer :: obsev_real => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      type(var_entry_t), pointer :: next => null ()
@@ -162,6 +165,8 @@ similar; the current implementation has $O(N)$ lookup.
   public :: obs_unary_real
   public :: obs_binary_int
   public :: obs_binary_real
+  public :: obs_sev_int
+  public :: obs_sev_real
 <<Variables: interfaces>>=
   abstract interface
      function obs_unary_int (prt1) result (ival)
@@ -191,8 +196,24 @@ similar; the current implementation has $O(N)$ lookup.
        type(prt_t), intent(in) :: prt1, prt2
      end function obs_binary_real
   end interface
+  abstract interface
+     function obs_sev_int (sev) result (ival)
+       import
+       integer :: ival
+       type(subevt_t), intent(in) :: sev
+     end function obs_sev_int
+  end interface
+  abstract interface
+     function obs_sev_real (sev) result (rval)
+       import
+       real(default) :: rval
+       type(subevt_t), intent(in) :: sev
+     end function obs_sev_real
+  end interface
 
-@ %def obs_unary_int obs_unary_real obs_binary_real
+@ %def obs_unary_int obs_unary_real
+@ %def obs_binary_int obs_binary_real
+@ %def obs_sev_int obs_sev_real
 @
 \subsubsection{Initialization}
 Initialize an entry, optionally with a physical value.  We also
@@ -472,7 +493,19 @@ not yet set.
     var%is_defined = .true.
   end subroutine var_entry_init_obs
 
-@ %def var_entry_init_obs
+  subroutine var_entry_init_obs_sev (var, name, type, pval)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    integer, intent(in) :: type
+    type(subevt_t), intent(in), target :: pval
+    var%type = type
+    var%name = name
+    var%pval => pval
+    var%is_intrinsic = .true.
+    var%is_defined = .true.
+  end subroutine var_entry_init_obs_sev
+
+@ %def var_entry_init_obs var_entry_init_obs_sev
 @ Mark an entry as undefined it it is a user-defined variable object, so force
 re-initialization.
 <<Variables: procedures>>=
@@ -681,8 +714,10 @@ re-initialization.
        end if
     case (V_OBS1_INT);  write (u, "(A)", advance=advance) "[int] = unary observable"
     case (V_OBS2_INT);  write (u, "(A)", advance=advance) "[int] = binary observable"
+    case (V_OBSEV_INT);  write (u, "(A)", advance=advance) "[int] = subeventary observable"
     case (V_OBS1_REAL); write (u, "(A)", advance=advance) "[real] = unary observable"
     case (V_OBS2_REAL); write (u, "(A)", advance=advance) "[real] = binary observable"
+    case (V_OBSEV_REAL); write (u, "(A)", advance=advance) "[real] = subeventary observable"
     case (V_UOBS1_INT);  write (u, "(A)", advance=advance) "[int] = unary user observable"
     case (V_UOBS2_INT);  write (u, "(A)", advance=advance) "[int] = binary user observable"
     case (V_UOBS1_REAL); write (u, "(A)", advance=advance) "[real] = unary user observable"
@@ -895,8 +930,21 @@ always return false.
     ptr => var%obs2_real
   end subroutine var_entry_assign_obs2_real_ptr
 
+  subroutine var_entry_assign_obsev_int_ptr (ptr, var)
+    procedure(obs_sev_int), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%obsev_int
+  end subroutine var_entry_assign_obsev_int_ptr
+
+  subroutine var_entry_assign_obsev_real_ptr (ptr, var)
+    procedure(obs_sev_real), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%obsev_real
+  end subroutine var_entry_assign_obsev_real_ptr
+
 @ %def var_entry_assign_obs1_int_ptr var_entry_assign_obs1_real_ptr
 @ %def var_entry_assign_obs2_int_ptr var_entry_assign_obs2_real_ptr
+@ %def var_entry_assigbn_obsev_int_ptr var_entry_assign_obsev_real_ptr
 @
 \subsection{Setting values}
 Undefine the value.
@@ -2295,8 +2343,10 @@ This bunch of methods handles the procedure-pointer cases.
 <<Variables: var list: TBP>>=
   procedure :: get_obs1_iptr => var_list_get_obs1_iptr
   procedure :: get_obs2_iptr => var_list_get_obs2_iptr
+  procedure :: get_obsev_iptr => var_list_get_obsev_iptr
   procedure :: get_obs1_rptr => var_list_get_obs1_rptr
   procedure :: get_obs2_rptr => var_list_get_obs2_rptr
+  procedure :: get_obsev_rptr => var_list_get_obsev_rptr
 <<Variables: procedures>>=
   subroutine var_list_get_obs1_iptr (var_list, name, obs1_iptr, p1)
     class(var_list_t), intent(in) :: var_list
@@ -2332,6 +2382,22 @@ This bunch of methods handles the procedure-pointer cases.
     end if
   end subroutine var_list_get_obs2_iptr
 
+  subroutine var_list_get_obsev_iptr (var_list, name, obsev_iptr, pval)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_sev_int), pointer, intent(out) :: obsev_iptr
+    type(subevt_t), pointer, intent(out) :: pval
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_OBSEV_INT)
+    if (associated (var)) then
+       call var_entry_assign_obsev_int_ptr (obsev_iptr, var)
+       pval => var_entry_get_pval_ptr (var)
+    else
+       obsev_iptr => null ()
+       pval => null ()
+    end if
+  end subroutine var_list_get_obsev_iptr
+
   subroutine var_list_get_obs1_rptr (var_list, name, obs1_rptr, p1)
     class(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: name
@@ -2366,10 +2432,28 @@ This bunch of methods handles the procedure-pointer cases.
     end if
   end subroutine var_list_get_obs2_rptr
 
+  subroutine var_list_get_obsev_rptr (var_list, name, obsev_rptr, pval)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_sev_real), pointer, intent(out) :: obsev_rptr
+    type(subevt_t), pointer, intent(out) :: pval
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_OBSEV_REAL)
+    if (associated (var)) then
+       call var_entry_assign_obsev_real_ptr (obsev_rptr, var)
+       pval => var_entry_get_pval_ptr (var)
+    else
+       obsev_rptr => null ()
+       pval => null ()
+    end if
+  end subroutine var_list_get_obsev_rptr
+
 @ %def var_list_get_obs1_iptr
 @ %def var_list_get_obs2_iptr
+@ %def var_list_get_obsev_iptr
 @ %def var_list_get_obs1_rptr
 @ %def var_list_get_obs2_rptr
+@ %def var_list_get_obsev_rptr
 @
 \subsection{Process Result Variables}
 These variables are associated to process (integration) runs and their
@@ -2423,6 +2507,8 @@ to evaluate and the function are part of the variable-list entry.
   public :: var_list_append_obs2_iptr
   public :: var_list_append_obs1_rptr
   public :: var_list_append_obs2_rptr
+  public :: var_list_append_obsev_iptr
+  public :: var_list_append_obsev_rptr
 <<Variables: procedures>>=
   subroutine var_list_append_obs1_iptr (var_list, name, obs1_iptr, p1)
     type(var_list_t), intent(inout) :: var_list
@@ -2448,6 +2534,18 @@ to evaluate and the function are part of the variable-list entry.
     call var_list_append (var_list, var)
   end subroutine var_list_append_obs2_iptr
 
+  subroutine var_list_append_obsev_iptr (var_list, name, obsev_iptr, sev)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_sev_int) :: obsev_iptr
+    type(subevt_t), intent(in), target :: sev
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_obs_sev (var, name, V_OBSEV_INT, sev)
+    var%obsev_int => obsev_iptr
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_obsev_iptr
+
   subroutine var_list_append_obs1_rptr (var_list, name, obs1_rptr, p1)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -2471,6 +2569,18 @@ to evaluate and the function are part of the variable-list entry.
     var%obs2_real => obs2_rptr
     call var_list_append (var_list, var)
   end subroutine var_list_append_obs2_rptr
+
+  subroutine var_list_append_obsev_rptr (var_list, name, obsev_rptr, sev)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_sev_real) :: obsev_rptr
+    type(subevt_t), intent(in), target :: sev
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_obs_sev (var, name, V_OBSEV_REAL, sev)
+    var%obsev_real => obsev_rptr
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_obsev_rptr
 
 @ %def var_list_append_obs1_iptr
 @ %def var_list_append_obs2_iptr
@@ -6293,6 +6403,7 @@ cannot be evaluated for single particles.
 <<Observables: public>>=
   public :: var_list_set_observables_unary
   public :: var_list_set_observables_binary
+  public :: var_list_set_observables_sev
 <<Observables: procedures>>=
   subroutine var_list_set_observables_unary (var_list, prt1)
     type(var_list_t), intent(inout) :: var_list
@@ -6391,8 +6502,15 @@ cannot be evaluated for single particles.
          (var_list, var_str ("_User_obs_int"), prt1, prt2)
   end subroutine var_list_set_observables_binary
 
+  subroutine var_list_set_observables_sev (var_list, pval)
+    type(var_list_t), intent(inout) :: var_list
+    type(subevt_t), intent(in), target:: pval
+    call var_list_append_obsev_rptr &
+         (var_list, var_str ("Ht"), obs_ht, pval)
+  end subroutine var_list_set_observables_sev
+
 @ %def var_list_set_observables_unary var_list_set_observables_binary
-@
+@ %def var_list_set_observables_nary
 \subsection{Checks}
 <<Observables: public>>=
   public :: var_list_check_observable
@@ -6417,9 +6535,10 @@ Check if a variable name is defined as an observable:
     logical :: flag
     type(string_t), intent(in) :: string
     select case (char (string))
-    case ("PDG", "Hel", "Ncol", &
+    case ("PDG", "Hel", "Ncol", "Nacl", &
          "M", "M2", "E", "Px", "Py", "Pz", "P", "Pl", "Pt", &
-         "Theta", "Phi", "Rap", "Eta", "Theta_star", "Dist", "kT")
+         "Theta", "Phi", "Rap", "Eta", "Theta_star", "Dist", "kT", &
+         "Ht")
        flag = .true.
     case default
        flag = .false.
@@ -6878,3 +6997,19 @@ combined.
   end function obs_ktmeasure
 
 @ %def obs_ktmeasure
+@ Subeventary observables, e.g. the transverse mass $H_T$.
+<<Observables: procedures>>=
+  real(default) function obs_ht (sev) result (ht)
+    type(subevt_t), intent(in) :: sev
+    integer :: i, n
+    type(prt_t) :: prt
+    n = subevt_get_length (sev)
+    ht = 0
+    do i = 1, n
+       prt = subevt_get_prt (sev, i)
+       ht = ht + &
+            sqrt (obs_pt1(prt)**2 + obs_mass_squared1(prt))
+    end do
+  end function obs_ht
+
+@ %def obs_ht

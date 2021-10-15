@@ -14,18 +14,7 @@ alphas_nf = 4
 alpha_power = 2
 alphas_power = 2
 
-scale = if count[gl] == 0 then
-  (  sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-  +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-  +  sqrt (eval Pt [extract index 1 [b]]**2 + eval M [extract index 1 [b]]**2)
-  +  sqrt (eval Pt [extract index 1 [B]]**2 + eval M [extract index 1 [B]]**2)) / 2
-elsif count[gl] > 0 then
-  (  sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-  +  sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-  +  sqrt (eval Pt [extract index 1 [b]]**2 + eval M [extract index 1 [b]]**2)
-  +  sqrt (eval Pt [extract index 1 [B]]**2 + eval M [extract index 1 [B]]**2)
-  +  eval Pt [extract index 1 [gl]] ) / 2
-endif
+scale = eval Ht/2 [t:T:b:B:gl]
 
 $exclude_gauge_splittings = "b:t"
 

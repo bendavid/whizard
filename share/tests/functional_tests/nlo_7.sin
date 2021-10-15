@@ -40,13 +40,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
        count [@eta_selected] >= 2
 
-scale = let int njet = count [jet] in
-        if njet == 2 then
-           (eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]) / 2
-        else
-           (eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]
-           +eval Pt [extract index 3 [jet]]) / 2
-        endif
+scale = sum Pt/2 [jet]
 
 seed = 1558
 

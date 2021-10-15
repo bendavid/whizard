@@ -11,8 +11,7 @@ cuts = all abs(Pt) > 30 GeV [jet] and all abs(Eta) < 4 [jet]
        and all abs(Pt) > 30 GeV [bjet] and all abs(Eta) < 4 [bjet]
        and count [cluster if E > 0 GeV [bjet]] > 1
 
-scale = (eval Pt [extract index 1 [b]] + eval Pt [extract index 1 [B]]
-       + eval Pt [extract index 1 [jet]]) / 2
+scale = eval Ht/2 [b:B:jet]
 
 #?combined_nlo_integration = true
 process nlo_eebbjj_p1 = e1, E1 => b, B, u, U { nlo_calculation = full }

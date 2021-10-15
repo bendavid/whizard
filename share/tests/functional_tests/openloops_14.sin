@@ -60,17 +60,7 @@ cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
        count [@eta_selected] >= 3
 
-scale = let int njet = count [jet] in
-       if njet == 3 then
-          (eval Pt [extract index 1 [jet]]
-          +eval Pt [extract index 2 [jet]]
-          +eval Pt [extract index 3 [jet]]) / 2
-       else
-          (eval Pt [extract index 1 [jet]]
-          +eval Pt [extract index 2 [jet]]
-          +eval Pt [extract index 3 [jet]]
-          +eval Pt [extract index 4 [jet]]) / 2
-       endif
+scale = sum Pt/2 [jet]
 
 ?combined_nlo_integration = true
 

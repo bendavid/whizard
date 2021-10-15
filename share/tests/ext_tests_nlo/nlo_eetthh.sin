@@ -4,19 +4,7 @@ alpha_power = 4
 alphas_power = 0
 
 scale = let subevt @clustered_jets = cluster [jet] in
-        let int njet = count [@clustered_jets] in
-        if njet == 0 then
-          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-          + sqrt (eval Pt [extract index 1 [H]]**2 + eval M [extract index 1 [H]]**2)
-          + sqrt (eval Pt [extract index 2 [H]]**2 + eval M [extract index 2 [H]]**2)) / 2
-        elsif njet == 1 then
-          (sqrt (eval Pt [extract index 1 [t]]**2 + eval M [extract index 1 [t]]**2)
-          + sqrt (eval Pt [extract index 1 [T]]**2 + eval M [extract index 1 [T]]**2)
-          + sqrt (eval Pt [extract index 1 [H]]**2 + eval M [extract index 1 [H]]**2)
-          + sqrt (eval Pt [extract index 2 [H]]**2 + eval M [extract index 2 [H]]**2)
-          + eval Pt [extract index 1 [@clustered_jets]]) / 2
-        endif
+        sum sqrt(Pt^2 + M^2)/2 [t:T:H] + sum Pt/2 [@clustered_jets]
 
 #?combined_nlo_integration = true
 process nlo_eetthh_p1 = e1, E1 => t, T, H, H { nlo_calculation = full }
