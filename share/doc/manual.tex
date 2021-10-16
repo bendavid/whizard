@@ -4474,7 +4474,7 @@ An example for photon recombination is shown here:
   process eevv = e1, E1 => A, lep, lep, lep, lep
   photon_rec_r0 = 0.15
   cuts = let subevt @reco =
-         photon_recombination if abs (Eta) < 2.5 [A, lep] in
+         photon_recombination if abs (Eta) < 2.5 [A:lep] in
          ....
 \end{verbatim}
 \end{footnotesize}
@@ -4623,8 +4623,10 @@ in ...
 
 Observables (invariant mass \ttt{M}, energy \ttt{E}, \ldots) are used in
 expressions just like ordinary numeric variables.  By convention, their names
-start with a capital letter.  They are computed using a particle momentum (or
-two particle momenta) which are taken from a subsequent subevent argument.
+start with a capital letter.  They are computed using a particle
+momentum (unary observables), or two particle momenta (binary
+observables) or all momenta of the particles (n-ary/subeventary
+observables) which are taken from a subsequent subevent argument.
 
 We can extract the value of an observable for an event and make it available
 for computing the \ttt{scale} value, or for histogramming etc.:
@@ -4673,6 +4675,46 @@ particle reference in square brackets after the expression allows to compute
 derived observables -- observables which are functions of new observables --
 without the need for hard-coding them as new functions.
 
+For subeventary observables, e.g. \ttt{Ht}, the momenta of all
+particles in the subevent are taken to evaluate the observables, e.g.
+\begin{quote}
+\begin{verbatim}
+  eval Ht/2 [t:T:Z:jet]
+\end{verbatim}
+\end{quote}
+takes the (half of) the transverse mass of all tops, $Z$s and jets in
+the final state.
+
+
+\subsubsection{sum}
+
+This \sindarin\ statement works similar to the \ttt{eval} statement
+above, with the syntax
+\begin{quote}
+\begin{verbatim}
+  sum <expr> [<subevt>]
+\end{verbatim}
+\end{quote}
+It sums the \ttt{<expr>} over all elements of the subevents
+\ttt{<subevt>}, e.g.
+\begin{quote}
+\begin{verbatim}
+  sum sqrt(Pt^2 + M^2)/2 [t:T:H:Z]
+\end{verbatim}
+\end{quote}
+would calculate the transverse mass (square root of the sum of squared
+transverse momentum and squared mass) of all tops, Higgs and $Z$
+bosons in the final state.
+
+\subsubsection{prod}
+
+Identical to \ttt{sum}, but takes the product, not the sum of the
+expression \ttt{<expr>} evaluated over the full subevent. Syntax:
+\begin{quote}
+\begin{verbatim}
+  prod <expr> [<subevt>]
+\end{verbatim}
+\end{quote}
 
 \subsection{Cuts and event selection}
 \label{sec:cuts}
@@ -17067,7 +17109,7 @@ volt. (cf. also \ttt{keV}, \ttt{meV}, \ttt{MeV}, \ttt{GeV}, \ttt{TeV})
 Evaluator that tells \whizard\ to evaluate the following expr:
 \ttt{eval {\em <expr>}}. Examples are: \ttt{eval Rap [e1]}, \ttt{eval
   M / 1 GeV [combine [q,Q]]} etc. (cf. also \ttt{cuts},
-\ttt{selection}, \ttt{record})
+\ttt{selection}, \ttt{record}, \ttt{sum}, \ttt{prod})
 %%%%%
 \item
 \ttt{ewa} \newline
@@ -17211,6 +17253,13 @@ defined, either before or after the histogram definition. Possible optional
 arguments of the \ttt{histogram} command are the minimal and maximal values
 of the axes (\ttt{x\_min}, \ttt{x\_max}, \ttt{y\_min}, \ttt{y\_max}).
 (cf. \ttt{graph}, \ttt{plot}, \ttt{record})
+%%%%%
+\item
+\ttt{Ht} \newline
+Subeventary observable specifier for the transverse mass
+($\sqrt{p_T^2 + m^2}$ in the c.m. frame) summed over all particles in
+the subevent given as argument, e.g. \ttt{eval Ht [t:T:Z]}. (cf.
+\ttt{eval}, \ttt{sum}, \ttt{prod}, \ttt{Pt}, \ttt{M})
 %%%%%
 \item
 \ttt{if} \newline
@@ -17627,6 +17676,14 @@ activity, i.e. the photon fragmentation. (cf. also \ttt{cluster},
 \ttt{sort}, \ttt{+})
 %%%%%
 \item
+\ttt{photon\_recombination} \newline
+Similar to the \ttt{cluster} statement takes a subevent as argument
+and combines a (single) photon with the closest non-photon object
+given in the subevent. Depends on the \sindarin\ variable
+\ttt{photon\_rec\_r0} which gives the $R$ radius within which the photon
+is recombined. (cf. also \ttt{cluster}, \ttt{collect}, \ttt{combine})
+%%%%%
+\item
 \ttt{Pl} \newline
 Unary (binary) observable specifier for the longitudinal momentum
 ($p_z$ in the c.m. frame) of a single (two) particle(s),
@@ -17682,6 +17739,12 @@ with the \oMega\ matrix element generator, using template matrix
 elements with different normalizations, or completely internal matrix
 element; for \oMega\ matrix elements there is also the possibility to
 specify possible restrictions (cf. \ttt{\$restrictions}).
+%%%%%
+\item
+\ttt{prod} \newline
+Takes the product of an expression \ttt{<expr>} over the elements of
+the given subevent \ttt{<subevt>}, \ttt{prod <expr> [<subevt>]}, e.g.
+\ttt{prod Hel [e1:E1]} (cf. \ttt{eval}, \ttt{sum}).
 %%%%%
 \item
 \ttt{Pt} \newline
@@ -18037,6 +18100,12 @@ block. (cf. also \ttt{\$sample}, \ttt{sample\_format})
 Specifier for the \ttt{sample\_format} command to demand the
 generation of binary StdHEP event files based on the HEPRUP/HEPEUP common
 blocks. (cf. also \ttt{\$sample}, \ttt{sample\_format})
+%%%%%
+\item
+\ttt{sum} \newline
+Takes the sum of an expression \ttt{<expr>} over the elements of
+the given subevent \ttt{<subevt>}, \ttt{sum <expr> [<subevt>]}, e.g.
+\ttt{sum Pt/2 [jets]} (cf. \ttt{eval}, \ttt{prod}).
 %%%%%
 \item
 \ttt{tan} \newline
