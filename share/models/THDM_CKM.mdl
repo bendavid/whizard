@@ -297,27 +297,27 @@ vertex E3 n3 Wm
 # vertex U u Hh
 # vertex U u HH
 # vertex U u HA
-# vertex U c Hh
-# vertex U c HH
-# vertex U c HA
-# vertex U t Hh
-# vertex U t HH
-# vertex U t HA
-# vertex C u Hh
-# vertex C u HH
-# vertex C u HA
-# vertex C c Hh
-# vertex C c HH
-# vertex C c HA
-# vertex C t Hh
-# vertex C t HH
-# vertex C t HA
-# vertex T u Hh
-# vertex T u HH
-# vertex T u HA
-# vertex T c Hh
-# vertex T c HH
-# vertex T c HA
+vertex U c Hh
+vertex U c HH
+vertex U c HA
+vertex U t Hh
+vertex U t HH
+vertex U t HA
+vertex C u Hh
+vertex C u HH
+vertex C u HA
+vertex C c Hh
+vertex C c HH
+vertex C c HA
+vertex C t Hh
+vertex C t HH
+vertex C t HA
+vertex T u Hh
+vertex T u HH
+vertex T u HA
+vertex T c Hh
+vertex T c HH
+vertex T c HA
 vertex T t Hh
 vertex T t HH
 vertex T t HA
@@ -325,36 +325,36 @@ vertex T t HA
 # vertex D d Hh
 # vertex D d HH
 # vertex D d HA
-# vertex D s Hh
-# vertex D s HH
-# vertex D s HA
+vertex D s Hh
+vertex D s HH
+vertex D s HA
 # vertex D b Hh
 # vertex D b HH
 # vertex D b HA
 # vertex S d Hh
 # vertex S d HH
 # vertex S d HA
-# vertex S s Hh
-# vertex S s HH
-# vertex S s HA
-# vertex S b Hh
-# vertex S b HH
-# vertex S b HA
-# vertex B d Hh
-# vertex B d HH
-# vertex B d HA
-# vertex B s Hh
-# vertex B s HH
-# vertex B s HA
+vertex S s Hh
+vertex S s HH
+vertex S s HA
+vertex S b Hh
+vertex S b HH
+vertex S b HA
+vertex B d Hh
+vertex B d HH
+vertex B d HA
+vertex B s Hh
+vertex B s HH
+vertex B s HA
 vertex B b Hh
 vertex B b HH
 vertex B b HA
 
 # vertex U d Hp
-# vertex U s Hp
+vertex U s Hp
 vertex U b Hp
-# vertex C d Hp
-# vertex C s Hp
+vertex C d Hp
+vertex C s Hp
 vertex C b Hp
 vertex T d Hp
 vertex T s Hp
@@ -373,47 +373,47 @@ vertex B t Hm
 # vertex E1 n1 Hm
 # vertex E1 n2 Hm
 # vertex E1 n3 Hm
-# vertex E2 n1 Hm
-# vertex E2 n2 Hm
-# vertex E2 n3 Hm
-# vertex E3 n1 Hm
-# vertex E3 n2 Hm
-# vertex E3 n3 Hm
+vertex E2 n1 Hm
+vertex E2 n2 Hm
+vertex E2 n3 Hm
+vertex E3 n1 Hm
+vertex E3 n2 Hm
+vertex E3 n3 Hm
 
 # vertex N1 e1 Hp
-# vertex N1 e2 Hp
-# vertex N1 e3 Hp
+vertex N1 e2 Hp
+vertex N1 e3 Hp
 # vertex N2 e1 Hp
-# vertex N2 e2 Hp
-# vertex N2 e3 Hp
+vertex N2 e2 Hp
+vertex N2 e3 Hp
 # vertex N3 e1 Hp
-# vertex N3 e2 Hp
-# vertex N3 e3 Hp
+vertex N3 e2 Hp
+vertex N3 e3 Hp
 
 # vertex E1 e1 Hh
 # vertex E1 e1 HH
 # vertex E1 e1 HA
-# vertex E1 e2 Hh
-# vertex E1 e2 HH
-# vertex E1 e2 HA
-# vertex E1 e3 Hh
-# vertex E1 e3 HH
-# vertex E1 e3 HA
-# vertex E2 e1 Hh
-# vertex E2 e1 HH
-# vertex E2 e1 HA
-# vertex E2 e2 Hh
-# vertex E2 e2 HH
-# vertex E2 e2 HA
-# vertex E2 e3 Hh
-# vertex E2 e3 HH
-# vertex E2 e3 HA
-# vertex E3 e1 Hh
-# vertex E3 e1 HH
-# vertex E3 e1 HA
-# vertex E3 e2 Hh
-# vertex E3 e2 HH
-# vertex E3 e2 HA
+vertex E1 e2 Hh
+vertex E1 e2 HH
+vertex E1 e2 HA
+vertex E1 e3 Hh
+vertex E1 e3 HH
+vertex E1 e3 HA
+vertex E2 e1 Hh
+vertex E2 e1 HH
+vertex E2 e1 HA
+vertex E2 e2 Hh
+vertex E2 e2 HH
+vertex E2 e2 HA
+vertex E2 e3 Hh
+vertex E2 e3 HH
+vertex E2 e3 HA
+vertex E3 e1 Hh
+vertex E3 e1 HH
+vertex E3 e1 HA
+vertex E3 e2 Hh
+vertex E3 e2 HH
+vertex E3 e2 HA
 vertex E3 e3 Hh
 vertex E3 e3 HH
 vertex E3 e3 HA
