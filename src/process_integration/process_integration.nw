@@ -1667,18 +1667,30 @@ first factor in the convolution.  Otherwise, use the final interaction
 of the stored [[sf_chain]], after creating an intermediate interaction
 that includes a correlated color state.  We assume that for a
 caller-provided [[int]], this is not necessary.
+
+For fixed-order NLO differential distribution, we are interested at
+the partonic level, no parton showering takes place as this would
+demand for a proper matching. So, the flows in the [[connected_state]]
+are not needed, and the color part will be masked for the interaction
+coming from the [[sf_chain]]. The squared matrix elements coming from
+the OLP provider at the moment do not come with flows anyhow. This
+needs to be revised once the matching to the shower is completed.
 <<Parton states: connected state: TBP>>=
   procedure :: setup_connected_flows => connected_state_setup_connected_flows
 <<Parton states: procedures>>=
   subroutine connected_state_setup_connected_flows &
-       (state, isolated, int, resonant, qn_filter_conn)
+       (state, isolated, int, resonant, qn_filter_conn, mask_color)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
-    logical, intent(in), optional :: resonant
+    logical, intent(in), optional :: resonant, mask_color
     type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t) :: mask
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_sf
     type(interaction_t), pointer :: src_int
+    logical :: mask_c
+    mask_c = .false.
+    if (present (mask_color))  mask_c = mask_color
     mask = quantum_numbers_mask (.false., .false., .true.)
     if (present (int)) then
        src_int => int
@@ -1687,6 +1699,11 @@ caller-provided [[int]], this is not necessary.
        call state%flows_sf%init_color_contractions (src_int)
        state%has_flows_sf = .true.
        src_int => state%flows_sf%interaction_t
+       if (mask_c) then
+          allocate (mask_sf (src_int%get_n_tot ()))
+          mask_sf = quantum_numbers_mask (.false., .true., .false.)
+          call src_int%reduce_state_matrix (mask_sf, keep_order = .true.)
+       end if
     end if
     call state%flows%init_product (src_int, isolated%flows, mask, &
          qn_filter_conn = qn_filter_conn, &
@@ -12980,12 +12997,20 @@ and summed over color and helicity. They should not be squared again.
     class(prc_core_t), intent(in) :: core
     class(model_data_t), intent(in), target :: model
     integer :: n_in
+    logical :: mask_color
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
     n_in = term%int_hard%get_n_in ()
     allocate (mask_in (n_in))
     mask_in = term%k_term%sf_chain%get_out_mask ()
     call setup_isolated (term%isolated, core, model, mask_in, term%config%col)
-    call setup_connected (term%connected, term%isolated, term%nlo_type)
+    select type (pcm_instance => term%pcm_instance)
+    type is (pcm_instance_nlo_t)
+       mask_color = pcm_instance%is_fixed_order_nlo_events ()
+    class default
+       mask_color = .false.
+    end select
+    call setup_connected (term%connected, term%isolated, core, &
+         term%nlo_type, mask_color)
   contains
     subroutine setup_isolated (isolated, core, model, mask, color)
       type(isolated_state_t), intent(inout), target :: isolated
@@ -13000,14 +13025,17 @@ and summed over color and helicity. They should not be squared again.
       class default
          call isolated%setup_square_matrix (core, model, mask, color)
       end select
-      !!! TODO (PS-09-10-20) We should not square the flows if they come from BLHA either
+      !!! TODO (PS-09-10-20) We should not square the flows
+      !!! if they come from BLHA either
       call isolated%setup_square_flows (core, model, mask)
     end subroutine setup_isolated
 
-    subroutine setup_connected (connected, isolated, nlo_type)
+    subroutine setup_connected (connected, isolated, core, nlo_type, mask_color)
       type(connected_state_t), intent(inout), target :: connected
       type(isolated_state_t), intent(in), target :: isolated
-      integer :: nlo_type
+      class(prc_core_t), intent(in) :: core
+      integer, intent(in) :: nlo_type
+      logical, intent(in) :: mask_color
       type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
       call connected%setup_connected_matrix (isolated)
       if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL &
@@ -13023,7 +13051,13 @@ and summed over color and helicity. They should not be squared again.
       end if
       call term%init_interaction_qn_index (core, connected%matrix, 0, model, &
            is_polarized = .false.)
-      call connected%setup_connected_flows (isolated)
+      select type (core)
+      class is (prc_blha_t)
+         call connected%setup_connected_flows &
+              (isolated, mask_color = mask_color)
+      class default
+         call connected%setup_connected_flows (isolated)
+      end select
       call connected%setup_state_flv (isolated%get_n_out ())
     end subroutine setup_connected
   end subroutine term_instance_setup_event_data

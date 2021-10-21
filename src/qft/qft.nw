@@ -12809,7 +12809,7 @@ end module evaluators
 The evaluator contains an array of [[pairing_array]] objects.  This
 makes up the multiplication table.
 
-Each pairing array contains two list of matrix element indices and a
+Each pairing array contains two lists of matrix element indices and a
 list of numerical factors.  The matrix element indices correspond to
 the input interactions.  The corresponding matrix elements are to be
 multiplied and optionally multiplied by a factor.  The results are
@@ -13643,7 +13643,6 @@ assignments remain fixed from now on.
     allocate (qn_mask_in(2)%mask (int_in2%get_n_tot ()))
     qn_mask_in(1)%mask = int_in1%get_mask ()
     qn_mask_in(2)%mask = int_in2%get_mask ()
-
     call connection_table_init (connection_table, &
          state_in1, state_in2, &
          qn_mask_conn_initial,  &
@@ -13665,7 +13664,6 @@ assignments remain fixed from now on.
          int_in1, int_in2, connection_index, prt_map_in, prt_map_conn, &
          prt_is_connected, connections_are_resonant)
     call connection_table_final (connection_table)
-
 
     if (eval%get_n_matrix_elements () == 0) then
        print *, "Evaluator product"

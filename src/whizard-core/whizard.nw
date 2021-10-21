@@ -11176,15 +11176,6 @@ var list by the global var list.
 
     call entry%connect_qcd ()
 
-    select type (pcm => process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-        select type (config => pcm%config)
-        type is (pcm_nlo_t)
-           if (config%settings%fixed_order_nlo) &
-                call pcm%set_fixed_order_event_mode ()
-       end select
-    end select
-
     if (present (global)) then
        call entry%connect (process_instance, local%model, global%process_stack)
     else
@@ -11265,6 +11256,8 @@ does not affect parameters.
           type is (pcm_nlo_t)
              if (.not. config%settings%combined_integration) &
                   call pcm%set_radiation_event ()
+             if (config%settings%fixed_order_nlo) &
+                  call pcm%set_fixed_order_event_mode ()
           end select
        end select
        call process%prepare_any_external_code ()
