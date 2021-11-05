@@ -356,6 +356,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/phs_forest_1.ref \
     unit_tests/ref-output/phs_forest_2.ref \
     unit_tests/ref-output/phs_none_1.ref \
+    unit_tests/ref-output/phs_points_1.ref \
     unit_tests/ref-output/phs_rambo_1.ref \
     unit_tests/ref-output/phs_rambo_2.ref \
     unit_tests/ref-output/phs_rambo_3.ref \

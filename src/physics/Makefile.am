@@ -36,6 +36,7 @@ libphysics_la_SOURCES = \
   physics_defs.f90 \
   c_particles.f90 \
   lorentz.f90 \
+  phs_points.f90 \
   sm_physics.f90 \
   sm_qcd.f90 \
   sm_qed.f90 \
@@ -43,7 +44,8 @@ libphysics_la_SOURCES = \
 
 libphysics_ut_la_SOURCES = \
   sm_physics_uti.f90 sm_physics_ut.f90 \
-  sm_qcd_uti.f90 sm_qcd_ut.f90
+  sm_qcd_uti.f90 sm_qcd_ut.f90 \
+  phs_points_uti.f90 phs_points_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = physics.nw

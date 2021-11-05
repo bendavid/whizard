@@ -5749,7 +5749,7 @@ end module virtual
   public :: virtual_t
 <<virtual: types>>=
   type :: virtual_t
-     type(nlo_settings_t), pointer :: settings
+     type(nlo_settings_t) :: settings
      real(default), dimension(:,:), allocatable :: gamma_0, gamma_p, c_flv
      real(default) :: ren_scale2, fac_scale, es_scale2
      integer, dimension(:), allocatable :: n_is_neutrinos
@@ -5775,7 +5775,7 @@ end module virtual
     class(virtual_t), intent(inout) :: virt
     integer, intent(in), dimension(:,:) :: flv_born
     integer, intent(in) :: n_in
-    type(nlo_settings_t), intent(in), pointer :: settings
+    type(nlo_settings_t), intent(in) :: settings
     type(string_t), intent(in) :: nlo_corr_type
     class(model_data_t), intent(in) :: model
     logical, intent(in) :: has_pdfs
@@ -5804,7 +5804,7 @@ end module virtual
     case default
        call msg_fatal ('Virtual selection: Possible values are "Full", "OLP" or "Subtraction')
     end select
-    virt%settings => settings
+    virt%settings = settings
     virt%has_pdfs = has_pdfs
   contains
 
@@ -8722,9 +8722,9 @@ equivalent to those used by POWHEG.
                     TR = N_col*sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
             end if
             sqme_coll = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
-                 rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                 rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em), &
-                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em), &
+                 rsub%real_kinematics%p_born_lab%phs_point(1)%get (), &
+                 rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em), &                 
+                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em), &                 
                  xi, alpha_coupling, rsub%isr_kinematics%isr_mode)
          else
             if (sregion%nlo_correction_type == "QCD") then
@@ -8792,9 +8792,9 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
                     TR = N_col*sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
             end if
             sqme_cs = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
-                 rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
+                 rsub%real_kinematics%p_born_lab%phs_point(1)%get (), &
                  rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em_pdf), &
-                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em_pdf), &
+                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em_pdf), &                      
                  zero, alpha_coupling, rsub%isr_kinematics%isr_mode)
          else
             if (sregion%nlo_correction_type == "QCD") then
@@ -8807,7 +8807,7 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             end if
             sqme_cs = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta(i_con), &
-                 rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
+                 rsub%real_kinematics%p_born_lab%phs_point(1)%get (), &
                  rsub%sqme_born(sregion%uborn_index), &
                  mom_times_sqme_spin_c, &
                  zero, alpha_coupling, sregion%double_fsr)

@@ -9766,6 +9766,8 @@ module evt_nlo
   use io_units, only: given_output_unit
   use constants
   use lorentz
+  use phs_points, only: phs_point_t
+  use phs_points, only: assignment(=), operator(*), size
   use diagnostics
   use numeric_utils, only: nearly_equal
   use format_utils, only: write_separator
@@ -9775,7 +9777,7 @@ module evt_nlo
   use interactions, only: interaction_t
   use particles
   use instances, only: process_instance_t
-  use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
+  use pcm, only: pcm_nlo_t, pcm_nlo_workspace_t
   use process_stacks
   use event_transforms
   use prc_core, only: prc_core_t
@@ -9906,14 +9908,14 @@ object in the [[pcm_instance]].
     type(process_stack_t), intent(in), optional :: process_stack
     if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
     call evt%base_connect (process_instance, model, process_stack)
-    select type (pcm => process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       select type (config => pcm%config)
+    select type (pcm_work => process_instance%pcm_work)
+    class is (pcm_nlo_workspace_t)
+       select type (pcm => process_instance%pcm)
        type is (pcm_nlo_t)
-          call config%setup_phs_generator (pcm, evt%phs_fks_generator, &
+          call pcm%setup_phs_generator (pcm_work, evt%phs_fks_generator, &
                process_instance%get_sqrts ())
-          call evt%set_i_evaluation_mappings (config%region_data, &
-               pcm%real_kinematics%alr_to_i_phs)
+          call evt%set_i_evaluation_mappings (pcm%region_data, &
+               pcm_work%real_kinematics%alr_to_i_phs)
        end select
     end select
     call evt%set_mode (process_instance)
@@ -9973,7 +9975,7 @@ object in the [[pcm_instance]].
       i_evaluation = 1
       do i_term = 1, evt%process%get_n_terms ()
          if (evt%process_instance%term(i_term)%nlo_type /= NLO_REAL) cycle
-         term_emitter = evt%process_instance%term(i_term)%k_term%emitter
+         term_emitter = evt%process_instance%kin(i_term)%emitter
          if (term_emitter < 0) then
             evt%i_evaluation_to_i_term (0) = i_term
          else if (evt%i_evaluation_to_emitter(i_evaluation) == term_emitter) then
@@ -10191,6 +10193,7 @@ The parameter [[n_in]] from the [[int_matrix]] is still $0$ as it has been shift
   end subroutine evt_nlo_make_particle_set
 
 @ %def evt_nlo_make_particle_set
+@
 <<Evt Nlo: evt nlo: TBP>>=
   procedure :: evaluate_real_kinematics => evt_nlo_evaluate_real_kinematics
 <<Evt Nlo: procedures>>=
@@ -10199,11 +10202,13 @@ The parameter [[n_in]] from the [[int_matrix]] is still $0$ as it has been shift
     integer :: alr, i_phs, i_con, emitter
     real(default), dimension(3) :: x_rad
     logical :: use_contributors
+    integer :: n_regions
     integer :: i_term
+    type(vector4_t), dimension(:), allocatable :: p_real
 
-    select type (pcm => evt%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       x_rad = pcm%real_kinematics%x_rad
+    select type (pcm_work => evt%process_instance%pcm_work)
+    class is (pcm_nlo_workspace_t)
+       x_rad = pcm_work%real_kinematics%x_rad
        associate (event_deps => evt%event_deps)
           i_term = evt%get_i_term ()
           event_deps%p_born_lab%phs_point(1) = &
@@ -10213,43 +10218,60 @@ The parameter [[n_in]] from the [[int_matrix]] is still $0$ as it has been shift
           call evt%phs_fks_generator%set_sqrts_hat &
                (event_deps%p_born_cms%get_energy (1, 1))
           use_contributors = allocated (event_deps%contributors)
-          do alr = 1, pcm%get_n_regions ()
-             i_phs = pcm%real_kinematics%alr_to_i_phs(alr)
+          select type (pcm => evt%process_instance%pcm)
+          type is (pcm_nlo_t)
+             n_regions = pcm%region_data%n_regions
+          end select
+          do alr = 1, n_regions
+             i_phs = pcm_work%real_kinematics%alr_to_i_phs(alr)
              if (event_deps%phs_identifiers(i_phs)%evaluated) cycle
              emitter = event_deps%phs_identifiers(i_phs)%emitter
              associate (generator => evt%phs_fks_generator)
                 if (emitter <= evt%process%get_n_in ()) then
                    call generator%prepare_generation (x_rad, i_phs, emitter, &
-                        event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
+                        event_deps%p_born_cms%phs_point(1)%get (), &
+                        event_deps%phs_identifiers)
+                   ! TODO wk 19-02-28: intent of p_real (also below)?
+                   p_real = event_deps%p_real_lab%phs_point(i_phs)
                    call generator%generate_isr (i_phs, &
-                        event_deps%p_born_lab%phs_point(1)%p, &
-                        event_deps%p_real_lab%phs_point(i_phs)%p)
+                        event_deps%p_born_lab%phs_point(1)%get (), &
+                        p_real)
+                   event_deps%p_real_lab%phs_point(i_phs) = p_real
                    event_deps%p_real_cms%phs_point(i_phs) &
                         = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
                 else
                    if (use_contributors) then
                       i_con = event_deps%alr_to_i_con(alr)
                       call generator%prepare_generation (x_rad, i_phs, emitter, &
-                           event_deps%p_born_cms%phs_point(1)%p, &
+                           event_deps%p_born_cms%phs_point(1)%get (), &
                            event_deps%phs_identifiers, event_deps%contributors, i_con)
+                      p_real = event_deps%p_real_cms%phs_point(i_phs)
                       call generator%generate_fsr (emitter, i_phs, i_con, &
-                           event_deps%p_born_cms%phs_point(1)%p, &
-                           event_deps%p_real_cms%phs_point(i_phs)%p)
+                           event_deps%p_born_cms%phs_point(1)%get (), &
+                           p_real)
+                      event_deps%p_real_cms%phs_point(i_phs) = p_real
                    else
                       call generator%prepare_generation (x_rad, i_phs, emitter, &
-                           event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
+                           event_deps%p_born_cms%phs_point(1)%get (), &
+                           event_deps%phs_identifiers)
+                      p_real = event_deps%p_real_cms%phs_point(i_phs)
                       call generator%generate_fsr (emitter, i_phs, &
-                           event_deps%p_born_cms%phs_point(1)%p, &
-                           event_deps%p_real_cms%phs_point(i_phs)%p)
+                           event_deps%p_born_cms%phs_point(1)%get (), &
+                           p_real)
+                      event_deps%p_real_cms%phs_point(i_phs) = p_real
                    end if
                    event_deps%p_real_lab%phs_point(i_phs) &
                         = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
                 end if
              end associate
-             call pcm%set_momenta (event_deps%p_born_lab%phs_point(1)%p, &
-                  event_deps%p_real_lab%phs_point(i_phs)%p, i_phs)
-             call pcm%set_momenta (event_deps%p_born_cms%phs_point(1)%p, &
-                  event_deps%p_real_cms%phs_point(i_phs)%p, i_phs, cms = .true.)
+             call pcm_work%set_momenta &
+                  (event_deps%p_born_lab%phs_point(1)%get (), &
+                  event_deps%p_real_lab%phs_point(i_phs)%get (), &
+                  i_phs)
+             call pcm_work%set_momenta &
+                  (event_deps%p_born_cms%phs_point(1)%get (), &
+                  event_deps%p_real_cms%phs_point(i_phs)%get (), &
+                  i_phs, cms = .true.)
              event_deps%phs_identifiers(i_phs)%evaluated = .true.
           end do
        end associate
@@ -10268,12 +10290,11 @@ subtraction terms.
     integer :: i_phs, i_term
     if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_sqmes")
     sqme = zero
-    select type (pcm => evt%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       i_phs = 1; i_term = evt%i_evaluation_to_i_term(0)
-       call evt%process_instance%compute_sqme_rad (i_term, i_phs, is_subtraction = .true.)
-       sqme = sqme + evt%process_instance%get_sqme (i_term)
-    end select
+    associate (event_deps => evt%event_deps)
+      i_phs = 1; i_term = evt%i_evaluation_to_i_term(0)
+      call evt%process_instance%compute_sqme_rad (i_term, i_phs, is_subtraction = .true.)
+      sqme = sqme + evt%process_instance%get_sqme (i_term)
+    end associate
   end function evt_nlo_compute_subtraction_sqmes
 
 @ %def evt_nlo_compute_subtraction_sqmes
@@ -10288,11 +10309,11 @@ emission matrix elements.
     if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
     i_phs = evt%get_i_phs ()
     i_term = evt%i_evaluation_to_i_term (evt%i_evaluation)
-    select type (pcm => evt%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       call evt%process_instance%compute_sqme_rad (i_term, i_phs, is_subtraction = .false.)
-       evt%sqme_rad = evt%process_instance%get_sqme (i_term)
-    end select
+    associate (event_deps => evt%event_deps)
+      call evt%process_instance%compute_sqme_rad (i_term, i_phs, &
+           is_subtraction = .false.)
+      evt%sqme_rad = evt%process_instance%get_sqme (i_term)
+    end associate
   end subroutine evt_nlo_compute_real
 
 @ %def evt_nlo_compute_real
@@ -10308,21 +10329,18 @@ the sum of all valid real matrix elements.
     integer :: i_phs, i_term
     if (debug_on) call msg_debug (D_TRANSFORMS, "evt_nlo_compute_all_sqme_rad")
     sqme = zero
-    select type (pcm => evt%process_instance%pcm)
-    class is (pcm_instance_nlo_t)
-       do i_term = 1, size (evt%process_instance%term)
-          if (evt%is_valid_event (i_term)) then
-             associate (term => evt%process_instance%term(i_term))
-                if (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction ()) then
-                   i_phs = term%k_term%i_phs
-                   call evt%process_instance%compute_sqme_rad ( &
-                        i_term, i_phs, is_subtraction = .false.)
-                   sqme = sqme + evt%process_instance%get_sqme (i_term)
-                end if
-             end associate
-          end if
-       end do
-    end select
+    do i_term = 1, size (evt%process_instance%term)
+       if (evt%is_valid_event (i_term)) then
+          associate (term => evt%process_instance%term(i_term))
+            if (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction ()) then
+               i_phs = evt%process_instance%kin(i_term)%i_phs
+               call evt%process_instance%compute_sqme_rad ( &
+                    i_term, i_phs, is_subtraction = .false.)
+               sqme = sqme + evt%process_instance%get_sqme (i_term)
+            end if
+          end associate
+       end if
+    end do
   end function evt_nlo_compute_all_sqme_rad
 
 @ %def evt_nlo_compute_all_sqme_rad
@@ -10347,15 +10365,15 @@ subevents as implemented in [[evt_nlo_generate_weighted]].
     if (evt%event_deps%lab_is_cm) then
        lt_lab_to_cms = identity
     else
-       n_legs_born = evt%event_deps%p_born_lab%phs_point(1)%n_momenta
-       if (p_lab%n_momenta == n_legs_born) then
+       n_legs_born = size (evt%event_deps%p_born_lab%phs_point(1))
+       if (size (p_lab) == n_legs_born) then
           i_boost = evt%get_i_term ()
           lt_lab_to_cms = evt%process_instance%get_boost_to_cms (i_boost)
        else
-          sqrts_hat = (p_lab%p(1) + p_lab%p(2))**1
-          p0 = p_lab%p(1) + p_lab%p(2)
+          sqrts_hat = (p_lab%select (1) + p_lab%select (2))**1
+          p0 = p_lab%select (1) + p_lab%select (2)
           lt = boost (p0, sqrts_hat)
-          p1 = inverse(lt) * p_lab%p(1)
+          p1 = inverse(lt) * p_lab%select (1)
           lt_lab_to_cms = inverse (lt * rotation_to_2nd (3, space_part (p1)))
        end if
     end if
@@ -10395,8 +10413,8 @@ It should not be called for ISR as in this case, the Born CMS and the real CMS d
     associate (event_deps => evt%event_deps)
        event_deps%lab_is_cm = process_instance%lab_is_cm (1)
        select type (pcm => process_instance%pcm)
-       type is (pcm_instance_nlo_t)
-          n_born = pcm%get_n_born ()
+       type is (pcm_nlo_t)
+          n_born = pcm%region_data%n_legs_born
        end select
        call event_deps%p_born_cms%init (n_born, 1)
        call event_deps%p_born_lab%init (n_born, 1)
@@ -10415,11 +10433,11 @@ It should not be called for ISR as in this case, the Born CMS and the real CMS d
     integer :: i_real
     associate (event_deps => evt%event_deps)
        select type (pcm => process_instance%pcm)
-       class is (pcm_instance_nlo_t)
-          n_real = pcm%get_n_real ()
+       class is (pcm_nlo_t)
+          n_real = pcm%region_data%n_legs_real
        end select
        i_real = evt%process%get_first_real_term ()
-       select type (phs => process_instance%term(i_real)%k_term%phs)
+       select type (phs => process_instance%kin(i_real)%phs)
        type is (phs_fks_t)
           event_deps%phs_identifiers = phs%phs_identifiers
        end select
@@ -10427,19 +10445,16 @@ It should not be called for ISR as in this case, the Born CMS and the real CMS d
        call event_deps%p_real_cms%init (n_real, n_phs)
        call event_deps%p_real_lab%init (n_real, n_phs)
        select type (pcm => process_instance%pcm)
-       type is (pcm_instance_nlo_t)
-          select type (config => pcm%config)
-          type is (pcm_nlo_t)
-             if (allocated (config%region_data%alr_contributors)) then
-                allocate (event_deps%contributors (size (config%region_data%alr_contributors)))
-                event_deps%contributors = config%region_data%alr_contributors
-             end if
-             if (allocated (config%region_data%alr_to_i_contributor)) then
-                allocate (event_deps%alr_to_i_con &
-                   (size (config%region_data%alr_to_i_contributor)))
-                event_deps%alr_to_i_con = config%region_data%alr_to_i_contributor
-             end if
-          end select
+       type is (pcm_nlo_t)
+          if (allocated (pcm%region_data%alr_contributors)) then
+             allocate (event_deps%contributors (size (pcm%region_data%alr_contributors)))
+             event_deps%contributors = pcm%region_data%alr_contributors
+          end if
+          if (allocated (pcm%region_data%alr_to_i_contributor)) then
+             allocate (event_deps%alr_to_i_con &
+                  (size (pcm%region_data%alr_to_i_contributor)))
+             event_deps%alr_to_i_con = pcm%region_data%alr_to_i_contributor
+          end if
        end select
     end associate
   end subroutine evt_nlo_setup_real_event_kinematics
@@ -10454,20 +10469,17 @@ It should not be called for ISR as in this case, the Born CMS and the real CMS d
     type(process_instance_t), intent(in) :: process_instance
     integer :: i_real
     select type (pcm => process_instance%pcm)
-    type is (pcm_instance_nlo_t)
-       select type (config => pcm%config)
-       type is (pcm_nlo_t)
-          if (config%settings%combined_integration) then
-             evt%mode = EVT_NLO_COMBINED
+    type is (pcm_nlo_t)
+       if (pcm%settings%combined_integration) then
+          evt%mode = EVT_NLO_COMBINED
+       else
+          i_real = evt%process%get_first_real_component ()
+          if (i_real == evt%process%extract_active_component_mci ()) then
+             evt%mode = EVT_NLO_SEPARATE_REAL
           else
-             i_real = evt%process%get_first_real_component ()
-             if (i_real == evt%process%extract_active_component_mci ()) then
-                evt%mode = EVT_NLO_SEPARATE_REAL
-             else
-                evt%mode = EVT_NLO_SEPARATE_BORNLIKE
-             end if
+             evt%mode = EVT_NLO_SEPARATE_BORNLIKE
           end if
-       end select
+       end if
     end select
   end subroutine evt_nlo_set_mode
 
@@ -10584,8 +10596,8 @@ by supplying [[qn_select]] explicitly based on the flavors chosen here.
              class default
                 sqme_flv = sqme_flv &
                      + real (term%connected%matrix%get_matrix_element ())
-                emitter = evt%process_instance%term(i)%k_term%emitter
-                n_in = evt%process_instance%term(i)%k_term%n_in
+                emitter = evt%process_instance%kin(i)%emitter
+                n_in = evt%process_instance%kin(i)%n_in
                 if (warn_once .and. term%nlo_type == NLO_REAL .and. emitter <= n_in) then
                    warn_once = .false.
                    call msg_warning("evt_nlo_prepare_new_event: fNLO flavor&
@@ -10650,7 +10662,7 @@ module events
   use rng_base
   use process, only: process_t
   use instances, only: process_instance_t
-  use pcm, only: pcm_instance_nlo_t
+  use pcm, only: pcm_nlo_workspace_t
   use process_stacks
   use event_base
   use event_transforms
@@ -11279,8 +11291,8 @@ For testing purpose, we allow for providing them explicitly, as an option.
           select type (evt)
           type is (evt_nlo_t)
              if (evt%i_evaluation > 0) then
-                emitter = evt%process_instance%term(i_term)%k_term%emitter
-                n_in = evt%process_instance%term(i_term)%k_term%n_in
+                emitter = evt%process_instance%kin(i_term)%emitter
+                n_in = evt%process_instance%kin(i_term)%n_in
                 if (emitter <= n_in) then
                    call evt%connected_set_real_IS_momenta ()
                 end if
@@ -11419,9 +11431,9 @@ values.
     logical :: is_nlo
     class(event_t), intent(in) :: event
     if (associated (event%instance)) then
-       select type (pcm => event%instance%pcm)
-       type is (pcm_instance_nlo_t)
-          is_nlo = pcm%is_fixed_order_nlo_events ()
+       select type (pcm_work => event%instance%pcm_work)
+       type is (pcm_nlo_workspace_t)
+          is_nlo = pcm_work%is_fixed_order_nlo_events ()
        class default
           is_nlo = .false.
        end select

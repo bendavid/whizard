@@ -3890,6 +3890,7 @@ module particles
   use numeric_utils
   use diagnostics
   use lorentz
+  use phs_points, only: phs_point_t, assignment(=)
   use model_data
   use flavors
   use colors
@@ -6076,7 +6077,7 @@ particle set.
   end function particle_set_get_indices
 
 @ %def particle_set_get_indices
-@
+@ Copy the subset of physical momenta to a [[phs_point]] container.
 <<Particles: particle set: TBP>>=
   procedure :: get_in_and_out_momenta => particle_set_get_in_and_out_momenta
 <<Particles: procedures>>=

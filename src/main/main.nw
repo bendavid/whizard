@@ -1216,6 +1216,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call cputime_test (u, results)
 @
+\subsubsection{PHS points}
+<<Main: use tests>>=
+  use phs_points_ut, only: phs_points_test
+<<Main: test cases>>=
+  case ("phs_points")
+     call phs_points_test (u, results)
+<<Main: all tests>>=
+  call phs_points_test (u, results)
+@
 \subsubsection{SM QCD}
 <<Main: use tests>>=
   use sm_qcd_ut, only: sm_qcd_test

@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.1+
 
+2021-11-05
+	Minor refactoring on phase space points and kinematics
+
 2021-10-21
 	NLO (QCD) differential distributions supported for full
 	  lepton collider setup: polarization, QED ISR, beamstrahlung

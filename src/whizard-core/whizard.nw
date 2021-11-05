@@ -10419,7 +10419,7 @@ module simulations
   use process_libraries, only: process_component_def_t
   use prc_core
   !  TODO: (bcn 2016-09-13) should be ideally only pcm_base
-  use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
+  use pcm, only: pcm_nlo_t, pcm_nlo_workspace_t
   !  TODO: (bcn 2016-09-13) details of process config should not be necessary here
   use process_config, only: COMP_REAL_FIN
   use process
@@ -11198,7 +11198,7 @@ var list by the global var list.
     class(entry_t), intent(inout) :: entry
     integer :: i_active_real
     select type (pcm => entry%instance%pcm)
-    class is (pcm_instance_nlo_t)
+    class is (pcm_nlo_t)
        i_active_real = entry%instance%get_real_of_mci ()
        if (debug_on) call msg_debug2 (D_CORE, "i_active_real", i_active_real)
        if (associated (entry%evt_powheg)) then
@@ -11250,14 +11250,14 @@ does not affect parameters.
     allocate (process_instance)
     call process_instance%init (process)
     if (process%is_nlo_calculation ()) then
-       select type (pcm => process_instance%pcm)
-       type is (pcm_instance_nlo_t)
-          select type (config => pcm%config)
+       select type (pcm_work => process_instance%pcm_work)
+       type is (pcm_nlo_workspace_t)
+          select type (pcm => process_instance%pcm)
           type is (pcm_nlo_t)
-             if (.not. config%settings%combined_integration) &
-                  call pcm%set_radiation_event ()
-             if (config%settings%fixed_order_nlo) &
-                  call pcm%set_fixed_order_event_mode ()
+             if (.not. pcm%settings%combined_integration) &
+                  call pcm_work%set_radiation_event ()
+             if (pcm%settings%fixed_order_nlo) &
+                  call pcm_work%set_fixed_order_event_mode ()
           end select
        end select
        call process%prepare_any_external_code ()
@@ -11349,11 +11349,8 @@ information about how many entries to associate from [[region_data]].
     integer :: mode
     evt => null ()
     select type (pcm => entry%instance%pcm)
-    class is (pcm_instance_nlo_t)
-       select type (config => pcm%config)
-       type is (pcm_nlo_t)
-          n_phs = config%region_data%n_phs
-       end select
+    type is (pcm_nlo_t)
+       n_phs = pcm%region_data%n_phs
     end select
     select type (entry)
     type is (entry_t)
@@ -29222,3 +29219,4 @@ end module features
      help = "graphical event analysis via LaTeX/MetaPost"
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+

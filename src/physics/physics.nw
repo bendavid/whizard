@@ -14,6 +14,8 @@ of WHIZARD.
 \item[lorentz]
   Define three-vectors, four-vectors and Lorentz
   transformations and common operations for them.
+\item[phs\_point]
+  Collections of Lorentz vectors.
 \item[sm\_physics]
   Here, running functions are stored for special kinematical setup like
   running coupling constants, Catani-Seymour dipoles, or Sudakov factors.
@@ -1282,7 +1284,9 @@ second version for an array of four-vectors.
   end function vector4_to_pythia6
 
 @ %def vector4_to_pythia6
-@ Transform the momentum of a [[c_prt]] object into a four-vector and
+@
+\subsection{Interface to [[c_prt]]}
+Transform the momentum of a [[c_prt]] object into a four-vector and
 vice versa:
 <<Lorentz: interfaces>>=
   interface assignment (=)
@@ -1331,137 +1335,6 @@ optional mass-squared value instead.
   end function vector4_to_c_prt
 
 @ %def vector4_to_c_prt
-@
-<<Lorentz: public>>=
-  public :: phs_point_t
-<<Lorentz: types>>=
-  type :: phs_point_t
-     type(vector4_t), dimension(:), allocatable :: p
-     integer :: n_momenta = 0
-  contains
-  <<Lorentz: phs point: TBP>>
-  end type phs_point_t
-
-@ %def phs_point_t
-@
-<<Lorentz: interfaces>>=
-  interface operator(==)
-     module procedure phs_point_eq
-  end interface
-<<Lorentz: procedures>>=
-  elemental function phs_point_eq (phs_point_1, phs_point_2) result (eq)
-    logical :: eq
-    type(phs_point_t), intent(in) :: phs_point_1, phs_point_2
-    eq = all (phs_point_1%p == phs_point_2%p)
-  end function phs_point_eq
-
-@ %def phs_point_eq
-@
-<<Lorentz: interfaces>>=
-  interface operator(*)
-     module procedure prod_LT_phs_point
-  end interface
-<<Lorentz: procedures>>=
-  elemental function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
-    type(phs_point_t) :: phs_point_LT
-    type(lorentz_transformation_t), intent(in) :: L
-    type(phs_point_t), intent(in) :: phs_point
-    phs_point_LT = size (phs_point%p)
-    phs_point_LT%p = L * phs_point%p
-  end function prod_LT_phs_point
-
-@ %def prod_LT_phs_point
-@
-<<Lorentz: interfaces>>=
-  interface assignment(=)
-     module procedure phs_point_from_n, phs_point_from_vector4, &
-                      phs_point_from_phs_point
-  end interface
-<<Lorentz: procedures>>=
-  pure subroutine phs_point_from_n (phs_point, n_particles)
-    type(phs_point_t), intent(out) :: phs_point
-    integer, intent(in) :: n_particles
-    allocate (phs_point%p (n_particles))
-    phs_point%n_momenta = n_particles
-    phs_point%p = vector4_null
-  end subroutine phs_point_from_n
-
-@ %def phs_point_init_from_n
-@
-<<Lorentz: phs point: TBP>>=
-<<Lorentz: procedures>>=
-  pure subroutine phs_point_from_vector4 (phs_point, p)
-    type(phs_point_t), intent(out) :: phs_point
-    type(vector4_t), intent(in), dimension(:) :: p
-    phs_point%n_momenta = size (p)
-    allocate (phs_point%p (phs_point%n_momenta), source = p)
-  end subroutine phs_point_from_vector4
-
-@ %def phs_point_init_from_p
-@
-<<Lorentz: procedures>>=
-  pure subroutine phs_point_from_phs_point (phs_point, phs_point_in)
-    type(phs_point_t), intent(out) :: phs_point
-    type(phs_point_t), intent(in) :: phs_point_in
-    phs_point%n_momenta = phs_point_in%n_momenta
-    allocate (phs_point%p (phs_point%n_momenta))
-    phs_point%p = phs_point_in%p
-  end subroutine phs_point_from_phs_point
-
-@ %def phs_point_from_phs_point
-@
-<<Lorentz: phs point: TBP>>=
-  procedure :: get_sqrts_in => phs_point_get_sqrts_in
-<<Lorentz: procedures>>=
-  function phs_point_get_sqrts_in (phs_point, n_in) result (msq)
-    real(default) :: msq
-    class(phs_point_t), intent(in) :: phs_point
-    integer, intent(in) :: n_in
-    msq = (sum (phs_point%p(1:n_in)))**2
-  end function phs_point_get_sqrts_in
-
-@ %def phs_point_get_sqrts_in
-@
-<<Lorentz: phs point: TBP>>=
-  procedure :: final => phs_point_final
-<<Lorentz: procedures>>=
-  subroutine phs_point_final (phs_point)
-    class(phs_point_t), intent(inout) :: phs_point
-    deallocate (phs_point%p)
-    phs_point%n_momenta = 0
-  end subroutine phs_point_final
-
-@ %def phs_point_final
-@
-<<Lorentz: phs point: TBP>>=
-  procedure :: write => phs_point_write
-<<Lorentz: procedures>>=
-  subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
-      check_conservation, ultra, n_in)
-    class(phs_point_t), intent(in) :: phs_point
-    integer, intent(in), optional :: unit
-    logical, intent(in), optional :: show_mass
-    logical, intent(in), optional :: testflag, ultra
-    logical, intent(in), optional :: check_conservation
-    integer, intent(in), optional :: n_in
-    call vector4_write_set (phs_point%p, unit = unit, show_mass = show_mass, &
-         testflag = testflag, check_conservation = check_conservation, &
-         ultra = ultra, n_in = n_in)
-  end subroutine phs_point_write
-
-@ %def phs_point_write
-@
-<<Lorentz: phs point: TBP>>=
-  procedure :: get_x => phs_point_get_x
-<<Lorentz: procedures>>=
-  function phs_point_get_x (phs_point, E_beam) result (x)
-    real(default), dimension(2) :: x
-    class(phs_point_t), intent(in) :: phs_point
-    real(default), intent(in) :: E_beam
-    x = phs_point%p(1:2)%p(0) / E_beam
-  end function phs_point_get_x
-
-@ %def phs_point_get_x
 @
 \subsection{Angles}
 Return the angles in a canonical system.  The angle $\phi$ is defined
@@ -3092,6 +2965,341 @@ formulae, $[ij]$ can be obtained by using the relation $S_{ij} =
   end subroutine spinor_product
 
 @ %def spinor_product
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Collections of Lorentz Vectors}
+The [[phs_point]] type is a container for an array of Lorentz vectors.  This
+allows us to transfer Lorentz-vector arrays more freely, and to collect vector
+arrays of non-uniform size.
+<<[[phs_points.f90]]>>=
+<<File header>>
+
+module phs_points
+
+<<Use kinds>>
+  use lorentz, only: vector4_t
+  use lorentz, only: vector4_null
+  use lorentz, only: vector4_write_set
+  use lorentz, only: lorentz_transformation_t
+  use lorentz, only: operator(==)
+  use lorentz, only: operator(*)
+  use lorentz, only: operator(**)
+  use lorentz, only: sum
+
+<<Standard module head>>
+
+<<PHS points: public>>
+
+<<PHS points: types>>
+
+<<PHS points: interfaces>>
+
+contains
+
+<<PHS points: procedures>>
+
+end module phs_points
+@ %def phs_points
+@
+\subsection{PHS point definition}
+This is a trivial container for an array of momenta.  The main
+application is to store a non-uniform array of phase-space points.
+<<PHS points: public>>=
+  public :: phs_point_t
+<<PHS points: types>>=
+  type :: phs_point_t
+     private
+     type(vector4_t), dimension(:), allocatable :: p
+  contains
+  <<PHS points: phs point: TBP>>
+  end type phs_point_t
+
+@ %def phs_point_t
+@
+\subsection{PHS point: basic tools}
+Output.  This is instrumented with options, which have to be
+provided by the caller.
+<<PHS points: phs point: TBP>>=
+  procedure :: write => phs_point_write
+<<PHS points: procedures>>=
+  subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
+      check_conservation, ultra, n_in)
+    class(phs_point_t), intent(in) :: phs_point
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_mass
+    logical, intent(in), optional :: testflag, ultra
+    logical, intent(in), optional :: check_conservation
+    integer, intent(in), optional :: n_in
+    if (allocated (phs_point%p)) then
+       call vector4_write_set (phs_point%p, &
+            unit = unit, &
+            show_mass = show_mass, &
+            testflag = testflag, &
+            check_conservation = check_conservation, &
+            ultra = ultra, &
+            n_in = n_in)
+    end if
+  end subroutine phs_point_write
+
+@ %def phs_point_write
+@ Non-intrinsic assignment
+<<PHS points: public>>=
+  public :: assignment(=)
+<<PHS points: interfaces>>=
+  interface assignment(=)
+     module procedure phs_point_from_n
+     module procedure phs_point_from_vector4
+     module procedure vector4_from_phs_point
+  end interface
+@ Initialize with zero momenta but fixed size
+<<PHS points: procedures>>=
+  pure subroutine phs_point_from_n (phs_point, n_particles)
+    type(phs_point_t), intent(out) :: phs_point
+    integer, intent(in) :: n_particles
+    allocate (phs_point%p (n_particles), source = vector4_null)
+  end subroutine phs_point_from_n
+
+@ %def phs_point_init_from_n
+@ Transform from/to plain vector array
+<<PHS points: procedures>>=
+  pure subroutine phs_point_from_vector4 (phs_point, p)
+    type(phs_point_t), intent(out) :: phs_point
+    type(vector4_t), dimension(:), intent(in) :: p
+    phs_point%p = p
+  end subroutine phs_point_from_vector4
+
+  pure subroutine vector4_from_phs_point (p, phs_point)
+    class(phs_point_t), intent(in) :: phs_point
+    type(vector4_t), dimension(:), allocatable, intent(out) :: p
+    if (allocated (phs_point%p))  p = phs_point%p
+  end subroutine vector4_from_phs_point
+
+@ %def phs_point_from_vector4
+@ %def vector4_from_phs_point
+@ Query the size of the momentum array (assuming it is allocated).
+<<PHS points: public>>=
+  public :: size
+<<PHS points: interfaces>>=
+  interface size
+     module procedure phs_point_size
+  end interface size
+<<PHS points: procedures>>=
+  pure function phs_point_size (phs_point) result (s)
+    class(phs_point_t), intent(in) :: phs_point
+    integer :: s
+    if (allocated (phs_point%p)) then
+       s = size (phs_point%p)
+    else
+       s = 0
+    end if
+  end function phs_point_size
+  
+@ %def phs_point_size
+@ Equality, implemented only for valid points.
+<<PHS points: public>>=
+  public :: operator(==)
+<<PHS points: interfaces>>=
+  interface operator(==)
+     module procedure phs_point_eq
+  end interface operator(==)
+<<PHS points: procedures>>=
+  elemental function phs_point_eq (phs_point_1, phs_point_2) result (flag)
+    class(phs_point_t), intent(in) :: phs_point_1, phs_point_2
+    logical :: flag
+    if (allocated (phs_point_1%p) .and. (allocated (phs_point_2%p))) then
+       flag = all (phs_point_1%p == phs_point_2%p)
+    else
+       flag = .false.
+    end if
+  end function phs_point_eq
+
+@ %def phs_point_eq
+@ Extract all momenta, as a method
+<<PHS points: phs point: TBP>>=
+  procedure :: get => phs_point_get
+<<PHS points: procedures>>=
+  pure function phs_point_get (phs_point) result (p)
+    class(phs_point_t), intent(in) :: phs_point
+    type(vector4_t), dimension(:), allocatable :: p
+    if (allocated (phs_point%p)) then
+       p = phs_point%p
+    else
+       allocate (p (0))
+    end if
+  end function phs_point_get
+
+@ %def phs_point_select
+@ Extract a subset of all momenta.
+<<PHS points: phs point: TBP>>=
+  procedure :: select => phs_point_select
+<<PHS points: procedures>>=
+  elemental function phs_point_select (phs_point, i) result (p)
+    class(phs_point_t), intent(in) :: phs_point
+    integer, intent(in) :: i
+    type(vector4_t) :: p
+    if (allocated (phs_point%p)) then
+       p = phs_point%p(i)
+    else
+       p = vector4_null
+    end if
+  end function phs_point_select
+
+@ %def phs_point_select
+@ Return the invariant mass squared for a subset of momenta
+<<PHS points: phs point: TBP>>=
+  procedure :: get_msq => phs_point_get_msq
+<<PHS points: procedures>>=
+  pure function phs_point_get_msq (phs_point, iarray) result (msq)
+    class(phs_point_t), intent(in) :: phs_point
+    integer, dimension(:), intent(in) :: iarray
+    real(default) :: msq
+    if (allocated (phs_point%p)) then
+       msq = (sum (phs_point%p(iarray)))**2
+    else
+       msq = 0
+    end if
+  end function phs_point_get_msq
+
+@ %def phs_point_get_msq
+
+@
+\subsection{Lorentz algebra pieces}
+Lorentz transformation.
+<<PHS points: public>>=
+  public :: operator(*)
+<<PHS points: interfaces>>=
+  interface operator(*)
+     module procedure prod_LT_phs_point
+  end interface operator(*)
+<<PHS points: procedures>>=
+  elemental function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
+    type(lorentz_transformation_t), intent(in) :: L
+    type(phs_point_t), intent(in) :: phs_point
+    type(phs_point_t) :: phs_point_LT
+    if (allocated (phs_point%p))  phs_point_LT%p = L * phs_point%p
+  end function prod_LT_phs_point
+
+@ %def prod_LT_phs_point
+@ Compute momentum sum, analogous to the standard [[sum]] function
+(mask), and additionally using an index array.
+<<PHS points: public>>=
+  public :: sum
+<<PHS points: interfaces>>=
+  interface sum
+     module procedure phs_point_sum
+     module procedure phs_point_sum_iarray
+  end interface sum
+<<PHS points: procedures>>=
+  pure function phs_point_sum (phs_point, mask) result (p)
+    class(phs_point_t), intent(in) :: phs_point
+    logical, dimension(:), intent(in), optional :: mask
+    type(vector4_t) :: p
+    if (allocated (phs_point%p)) then
+       p = sum (phs_point%p, mask)
+    else
+       p = vector4_null
+    end if
+  end function phs_point_sum
+  
+  pure function phs_point_sum_iarray (phs_point, iarray) result (p)
+    class(phs_point_t), intent(in) :: phs_point
+    integer, dimension(:), intent(in) :: iarray
+    type(vector4_t) :: p
+    logical, dimension(:), allocatable :: mask
+    integer :: i
+    allocate (mask (size (phs_point)), source = .false.)
+    mask(iarray) = .true.
+    p = sum (phs_point, mask)
+  end function phs_point_sum_iarray
+
+@ %def phs_point_sum
+@
+\subsection{Methods for specific applications}
+Convenience method: compute the pair of energy fractions w.r.t.\ the
+specified beam energy.  We assume that the momenta represent a
+scattering process (two incoming particles) in the c.m.\ frame.
+<<PHS points: phs point: TBP>>=
+  procedure :: get_x => phs_point_get_x
+<<PHS points: procedures>>=
+  pure function phs_point_get_x (phs_point, E_beam) result (x) 
+    class(phs_point_t), intent(in) :: phs_point
+    real(default), dimension(2) :: x
+    real(default), intent(in) :: E_beam
+    x = phs_point%p(1:2)%p(0) / E_beam
+  end function phs_point_get_x
+
+@ %def phs_point_get_x
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[phs_points_ut.f90]]>>=
+<<File header>>
+
+module phs_points_ut
+  use unit_tests
+  use phs_points_uti
+
+<<Standard module head>>
+
+<<PHS points: public test>>
+
+contains
+
+<<PHS points: test driver>>
+
+end module phs_points_ut
+@ %def phs_points_ut
+@
+<<[[phs_points_uti.f90]]>>=
+<<File header>>
+
+module phs_points_uti
+
+<<Use kinds>>
+  use phs_points
+
+<<Standard module head>>
+
+<<PHS points: test declarations>>
+
+contains
+
+<<PHS points: tests>>
+
+end module phs_points_uti
+@ %def phs_points_ut
+@ API: driver for the unit tests below.
+<<PHS points: public test>>=
+  public :: phs_points_test
+<<PHS points: test driver>>=
+  subroutine phs_points_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<PHS points: execute tests>>
+  end subroutine phs_points_test
+
+@ %def phs_points_test
+@
+\subsubsection{Splitting functions}
+<<PHS points: execute tests>>=
+  call test (phs_points_1, "phs_points_1", &
+       "Dummy test", &
+       u, results)
+<<PHS points: test declarations>>=
+  public :: phs_points_1
+<<PHS points: tests>>=
+  subroutine phs_points_1 (u)
+    integer, intent(in) :: u
+
+    write (u, "(A)")  "* Test output: phs_points_1"
+    write (u, "(A)")  "*   Purpose: none yet"
+    write (u, "(A)")
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_points_1"
+
+  end subroutine phs_points_1
+
+@ %def phs_points_1
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -4514,6 +4722,7 @@ cf. Jezabek / Kuehn 1989.
   end function ff1
 
 @ %def ff1
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[sm_physics_ut.f90]]>>=

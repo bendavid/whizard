@@ -57,6 +57,7 @@ UNIT_TESTS = \
     state_matrices.run \
     interactions.run \
     xml.run \
+    phs_points.run \
     sm_qcd.run \
     sm_physics.run \
     models.run \
