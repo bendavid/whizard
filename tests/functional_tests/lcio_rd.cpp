@@ -79,6 +79,9 @@ std::string getSimulatorStatusString(const MCParticle* mcp=0){
   return s ;
 }
 
+// For backwards compatibility of the reference output in the functional tests
+// output of the double parameters are output as "float"
+
 void printParameters( const EVENT::LCParameters& params ){
   
   StringVec intKeys ;
@@ -112,6 +115,23 @@ void printParameters( const EVENT::LCParameters& params ){
     }
     cout << endl ;
   }
+#if LCIO_VERSION_GE (2, 17)
+  StringVec doubleKeys ;
+  int nDoubleParameters = params.getDoubleKeys( doubleKeys ).size() ;
+  for(int i=0; i< nDoubleParameters ; i++ ){
+    DoubleVec doubleVec ;
+    params.getDoubleVals(  doubleKeys[i], doubleVec ) ;
+    int nDouble  = doubleVec.size()  ;
+    cout << " parameter " << doubleKeys[i] << " [float]: " ;
+    if( nDouble == 0 ){
+      cout << " [empty] " << std::endl ;
+    }
+    for(int j=0; j< nDouble ; j++ ){
+      cout << doubleVec[j] << ", " ;
+    }
+    cout << endl ;
+  }
+#endif
   StringVec stringKeys ;
   int nStringParameters = params.getStringKeys( stringKeys ).size() ;
   for(int i=0; i< nStringParameters ; i++ ){

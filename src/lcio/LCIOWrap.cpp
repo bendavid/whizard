@@ -55,18 +55,30 @@ extern "C" void lcio_set_weight( LCEventImpl* evt, double wgt ) {
 }
 
 extern "C" void lcio_set_sqme( LCEventImpl* evt, double sqme ) {
+#if LCIO_VERSION_GE (2, 17)
+  double sqme_dble = sqme;
+#else
   float sqme_dble = sqme;
+#endif
   evt->parameters().setValue ( "sqme" , sqme_dble );
 }
 
 extern "C" void lcio_set_alt_weight( LCEventImpl* evt, double wgt, int index ) {
+#if LCIO_VERSION_GE (2, 17)
+  double weight = wgt;
+#else
   float weight = wgt;
-  evt->parameters().setValue ( "alternateWeight"+to_string(index), weight );
+#endif
+  evt->parameters().setValue ( "weight_alt"+to_string(index), weight );
 }
 
 extern "C" void lcio_set_alt_sqme( LCEventImpl* evt, double sqme, int index ) {
+#if LCIO_VERSION_GE (2, 17)
+  double sqme_dble = sqme;
+#else
   float sqme_dble = sqme;
-  evt->parameters().setValue ( "alternateSqme"+to_string(index) , sqme_dble );
+#endif
+  evt->parameters().setValue ( "sqme_alt"+to_string(index) , sqme_dble );
 }
 
 extern "C" void lcio_set_alpha_qcd ( LCEventImpl* evt, double alphas ) {
@@ -174,8 +186,8 @@ extern "C" std::ostream& printParameters
     FloatVec floatVec ;
     params.getFloatVals(  floatKeys[i], floatVec ) ;
     int nFloat  = floatVec.size()  ;   
-    out << " parameter " << floatKeys[i] << " [float]: " ; 
-    if( nFloat == 0 ){ 
+    out << " parameter " << floatKeys[i] << " [float]: " ;
+    if( nFloat == 0 ){
       out << " [empty] " << std::endl ;
     }
     for(int j=0; j< nFloat ; j++ ){
@@ -183,6 +195,23 @@ extern "C" std::ostream& printParameters
     }
     out << endl ;
   }
+#if LCIO_VERSION_GE (2, 17)
+  StringVec doubleKeys ;
+  int nDoubleParameters = params.getDoubleKeys( doubleKeys ).size() ;
+  for(int i=0; i< nDoubleParameters ; i++ ){
+    DoubleVec doubleVec ;
+    params.getDoubleVals(  doubleKeys[i], doubleVec ) ;
+    int nDouble  = doubleVec.size()  ;
+    out << " parameter " << doubleKeys[i] << " [double]: " ;
+    if( nDouble == 0 ){
+      out << " [empty] " << std::endl ;
+    }
+    for(int j=0; j< nDouble ; j++ ){
+      out << doubleVec[j] << ", " ;
+    }
+    out << endl ;
+  }
+#endif
   StringVec stringKeys ;
   int nStringParameters = params.getStringKeys( stringKeys ).size() ;
   for(int i=0; i< nStringParameters ; i++ ){
