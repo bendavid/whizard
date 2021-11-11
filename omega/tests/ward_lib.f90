@@ -5,7 +5,8 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
+!     with contributions from
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -34,6 +35,11 @@ module ward_lib
   implicit none
   private
   public :: check
+
+  interface boost
+     module procedure boost_one, boost_many
+  end interface
+
 contains
 
   elemental function ieee_is_nan (x) result (yorn)
@@ -42,9 +48,11 @@ contains
     yorn = (x /= x)
   end function ieee_is_nan
 
-  subroutine check (physical, unphysical, roots, threshold, n, failures, attempts, seed)
+  subroutine check (physical, unphysical, roots, m1, m2, m3, m4, &
+       threshold, n, failures, attempts, seed)
     type(omega_procedures), intent(in) :: physical, unphysical
     real(kind=default), intent(in) :: roots, threshold
+    real(kind=default), intent(in), optional :: m1, m2, m3, m4
     integer, intent(in) :: n
     integer, intent(out) :: failures, attempts
     integer, intent(in), optional :: seed
@@ -54,12 +62,15 @@ contains
     ! integer :: i_prt
     integer, dimension(:,:), allocatable :: spin_states_phys, spin_states_unphys
     real(kind=default), dimension(:,:), allocatable :: p
+    real(kind=default), dimension(:), allocatable :: mass
     complex(kind=default), dimension(:), allocatable :: a
     character(len=80) :: msg
     complex(kind=default) :: wi
-    real(kind=default) :: a_avg
+    real(kind=default) :: a_avg, mass_thr
     failures = 0
     attempts = 0
+    !!! We take a numerical threshold which is smaller than the electron mass
+    mass_thr = 0.0001_default
     call quantum_numbers (physical, unphysical, n_out, n_flv, n_hel, n_col, match)
     if (.not.match) then
        failures = 1
@@ -96,9 +107,18 @@ contains
     allocate (spin_states_unphys(2+n_out,unphysical%number_spin_states()))
     call physical%spin_states(spin_states_phys)
     call unphysical%spin_states(spin_states_unphys)
-    call beams (ROOTS, 0.0_default, 0.0_default, p(:,1), p(:,2))
+    call beams (ROOTS, m1, m2, p(:,1), p(:,2))
     do i = 1, N
-       call massless_isotropic_decay (ROOTS, p(:,3:))
+       if (m3 > mass_thr .or. m4 > mass_thr) then
+          allocate (mass (n_out))
+          mass = 0
+          mass(1) = m3
+          mass(2) = m4
+          call massive_decay (ROOTS, mass, p(:,3:))
+          deallocate (mass)
+       else
+          call massless_isotropic_decay (ROOTS, p(:,3:))
+       end if
        call physical%new_event (p)
        call unphysical%new_event (p)
        do i_flv = 1, n_flv
@@ -322,4 +342,107 @@ contains
     enddo
   end subroutine massless_isotropic_decay
 
+  pure function mass2 (p) result (m2)
+    real (kind=default), dimension(0:), intent(in) :: p
+    real (kind=default) :: m2
+    m2 = p(0)*p(0) - p(1)*p(1) - p(2)*p(2) - p(3)*p(3)
+  end function mass2
+
+  pure subroutine boost_one (v, p, q)
+    real (kind=default), dimension(0:), intent(in) :: v, p
+    real (kind=default), dimension(0:), intent(out) :: q
+    q(0) = dot_product (p, v)
+    q(1:3) = p(1:3) &
+         + v(1:3) * (p(0) + dot_product (p(1:3), v(1:3)) / (1 + v(0)))
+  end subroutine boost_one
+
+  pure subroutine boost_many (v, p, q)
+    real (kind=default), dimension(0:), intent(in) :: v
+    real (kind=default), dimension(0:,:), intent(in) :: p
+    real (kind=default), dimension(0:,:), intent(out) :: q
+    integer :: k
+    do k = 1, size (p, dim = 2)
+       call boost_one (v, p(:,k), q(:,k))
+    enddo
+  end subroutine boost_many
+
+  !!! The massive RAMBO algorithm (not reweighted, therefore not isotropic)
+  subroutine massive_decay (roots, m, p)
+    real(kind=default), intent(in) :: roots
+    real(kind=default), dimension(:), intent(in) :: m
+    real(kind=default), dimension(0:,:), intent(out) :: p
+    real(kind=default), dimension(0:3,size(p,dim=2)) :: q
+    real(kind=default), dimension(size(p,dim=2)) :: p2, m2, p0
+    real(kind=default), dimension(0:3) :: qsum
+    real(kind=double), dimension(2) :: ran_double
+    real(kind=default), dimension(2) :: ran
+    real(kind=default) :: c, s, f, qq
+    real(kind=default) :: w, a, xu, u, umax, xv, v, vmax, x
+    real(kind=default) :: xi, delta
+    integer :: k, i
+    if (sum(m) > roots) then
+       print *, "no solution: sum(m) > roots"
+       p = 0
+       return
+    end if
+    m2 = m*m
+    ! Generate isotropic massive vectors
+    w = 1
+    do k = 1, size (p, dim = 2)
+       ! Kinderman/Monahan (a la Kleiss/Sterling)
+       a = 2 * m(k) / w
+       xu = 0.5 * (1 - a + sqrt (1 + a*a))
+       xv = 0.5 * (3 - a + sqrt (9 + 4*a + a*a))
+       umax = exp (-0.5*xu) * sqrt (sqrt (xu*xu + a*xu))
+       vmax = xv * exp (-0.5*xv) * sqrt (sqrt (xv*xv + a*xv))
+       rejection: do
+          call tao_random_number (ran_double)
+          ran = ran_double
+          u = ran(1) * umax
+          v = ran(2) * vmax
+          x = v / u
+          if (u*u < exp(-x) * sqrt (x*x + a*x)) then
+             qq = m(k) + w*x
+             exit rejection
+          end if
+       end do rejection
+       call tao_random_number (ran_double)
+       ran = ran_double
+       c = 2*ran(1) - 1
+       !!! select case (k)
+       !!!    case (1,3)
+       !!!        c = 1 - 0.0000002*ran(1)
+       !!!    case (2,4)
+       !!!        c = 0.0000002*ran(1) - 1
+       !!! end select
+       f = 2*PI*ran(2)
+       s = sqrt (1 - c*c)
+       q(0,k) = sqrt (qq*qq + m2(k))
+       q(1,k) = qq * s * sin(f)  
+       q(2,k) = qq * s * cos(f)
+       q(3,k) = qq * c
+    enddo
+    ! Boost the vectors to the common rest frame
+    qsum = sum (q, dim = 2)
+    call boost ((/ qsum(0), - qsum(1:3) /) / sqrt (mass2 (qsum)), q, p)
+    ! rescale momenta
+    do k = 1, size (p, dim = 2)
+       p2(k) = dot_product (p(1:3,k), p(1:3,k))
+    end do
+    i = 1
+    xi = 1
+    find_xi: do
+       p0 = sqrt (xi*xi*p2 + m2)
+       delta = sum (p0) - roots
+       if ((i > 100) .or. (abs (delta) <= 10 * epsilon (roots))) then
+          exit find_xi
+       end if
+       ! Newton / Ralphson iteration
+       xi = xi - delta / (xi * sum (p2 / p0))
+       i = i + 1
+    end do find_xi
+    p(0,:) = p0
+    p(1:3,:) = xi * p(1:3,:)
+  end subroutine massive_decay
+  
 end module ward_lib

@@ -10,7 +10,11 @@ models="qed qcd sym sm sm_top_anom"
 modules=""
 
 ########################################################################
-while read module threshold n roots model unphysical mode process; do 
+# m1 m2 are the masses of the incoming particles
+# m3 m4 are the masses of the first two outgoing particles, all further
+#            outgoing particles are assumed to be massless
+########################################################################
+while read module threshold n roots m1 m2 m3 m4 model unphysical mode process; do 
 
   case $module in
 
@@ -29,6 +33,10 @@ while read module threshold n roots model unphysical mode process; do
       eval threshold_$module=$threshold
       eval n_$module=$n
       eval roots_$module=$roots
+      eval m1_$module=$m1
+      eval m2_$module=$m2
+      eval m3_$module=$m3
+      eval m4_$module=$m4
       eval process_$module="'$process'"
       ########################################################################
 
@@ -116,6 +124,7 @@ cat <<EOF
   integer, parameter :: N = 1000
   real(kind=default), parameter :: THRESHOLD = 0.8
   real(kind=default), parameter :: ROOTS = 1000
+  real(kind=default) :: m1, m2, m3, m4
   integer, parameter :: SEED = 42
   integer :: failures, attempts, failed_processes, attempted_processes
   failed_processes = 0
@@ -134,11 +143,17 @@ eval process="\${process_$module}"
 eval n="\${n_$module}"
 eval threshold="\${threshold_$module}"
 eval roots="\${roots_$module}"
+eval m1="\${m1_$module}"
+eval m2="\${m2_$module}"
+eval m3="\${m3_$module}"
+eval m4="\${m4_$module}"
 
 cat <<EOF
   print *, "checking process '$process'"
   call check (load_physical_$module (), load_unphysical_$module (), &
               roots = real ($roots, kind=default), &
+	      m1 = real ($m1, kind=default), m2 = real ($m2, kind=default), &
+	      m3 = real ($m3, kind=default), m4 = real ($m4, kind=default), &
               threshold = real ($threshold, kind=default), &
               n = $n, seed = SEED, &
               failures = failures, attempts = attempts)

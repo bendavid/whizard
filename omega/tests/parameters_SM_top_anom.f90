@@ -49,15 +49,15 @@ module parameters_sm_top_anom
        n_tvaa, n_vlrz, n_tvaz, n_vlrw, n_tlrw, n_tvag, n_sph
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn, &
-       tvaa, tvaabb, vlrz, vlrcz, tvaz, tcvaz, tvazbb, tcvaa, tuvaa, &
-       vlrw, tlrw, tvag, tcvag, tuvag, sph, &
+       tvaa, tvaabb, vlrz, vlrcz, vlruz, tvaz, tcvaz, tvazbb, tcvaa, tuvaa, &
+       tuvaz, vlrw, tlrw, tvag, tcvag, tuvag, sph, &
        gvlr_qbub, gvlr_qbub_u, gvlr_qbub_d, gvlr_qbub_e, &
        gvlr_qgug, gslr_dbtr
   integer, public :: fun_flag
   logical, public :: bz=.false., bw=.false., ba=.false.
 
   public :: init_parameters, model_update_alpha_s, &
-       gmom, gtva_tta, gtva_tca, gtva_tua, &
+       gmom, gtva_tta, gtva_tca, gtva_tua, gtva_tuz, gvlr_tuz, &
        gvlr_ttz, gvlr_tcz, gtva_ttz, gtva_tcz, gvlr_btw, gvlr_tbw, &
        gtlr_btw, gtrl_tbw, gtlr_btwz, gtrl_tbwz, gtlr_btwa, gtrl_tbwa, &
        gtva_ttww, gtva_bba, gtva_bbz, gtva_bbww, &
@@ -81,10 +81,14 @@ contains
     tcvaa(2)    = 1 * imago
     tuvaa(1)    = 1
     tuvaa(2)    = 1 * imago
+    tuvaz(1)    = 1
+    tuvaz(2)    = 1 * imago
     vlrz(1)     = 1
     vlrz(2)     = 1
     vlrcz(1)    = 1
     vlrcz(2)    = 1 * imago
+    vlruz(1)    = 1
+    vlruz(2)    = 1 * imago
     tvaz(1)     = 1
     tvaz(2)     = 1 * imago
     tcvaz(1)    = 1
@@ -110,8 +114,8 @@ contains
     width(1:27) = 0
 !     mass(3)     = 0.095_default        ! s-quark mass 
 !     mass(4)     = 1.2_default          ! c-quark mass
-!     mass(5)     = 4.2_default          ! b-quark mass
-!     mass(6)     = 173.1_default        ! t-quark mass
+     mass(5)     = 4.2_default          ! b-quark mass
+     mass(6)     = 173.1_default        ! t-quark mass
 !     width(6)    = 1.523_default        ! t-quark width
 !     mass(11)    = 0.000510997_default  ! electron mass
 !     mass(13)    = 0.105658389_default  ! muon mass
@@ -364,6 +368,13 @@ contains
     c = - gmom (k2, i, vlrcz, lambda)
   end function gvlr_tcz
 
+  pure function gvlr_tuz (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, vlruz, lambda)
+  end function gvlr_tuz
+
   pure function gtva_ttz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
@@ -377,6 +388,13 @@ contains
     integer, intent(in) :: i
     c = - gmom (k2, i, tcvaz, lambda)
   end function gtva_tcz
+
+  pure function gtva_tuz (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tuvaz, lambda)
+  end function gtva_tuz
 
   pure function gtva_bbz (k2, i) result (c)
     complex(default) :: c
