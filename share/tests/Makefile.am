@@ -873,7 +873,19 @@ REF_OUTPUT_FILES_BASE = \
     ext_tests_nlo/ref-output/nlo_ppzj_sim_3.ref \
     ext_tests_nlo/ref-output/nlo_ppzj_sim_4.ref \
     ext_tests_nlo/ref-output/nlo_ppzw.ref \
-    ext_tests_nlo/ref-output/nlo_ppzz.ref
+    ext_tests_nlo/ref-output/nlo_ppzz.ref \
+    ext_tests_nlo/ref-output/nlo_ppee_ew.ref \
+    ext_tests_nlo/ref-output/nlo_pphee_ew.ref \
+    ext_tests_nlo/ref-output/nlo_pphjj_ew.ref \
+    ext_tests_nlo/ref-output/nlo_pphz_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppllll_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppllnn_ew.ref \
+    ext_tests_nlo/ref-output/nlo_pptj_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppwhh_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppww_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppwzh_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppz_ew.ref \
+    ext_tests_nlo/ref-output/nlo_ppzzz_ew.ref
 
 # Reference files that depend on the numerical precision
 REF_OUTPUT_FILES_DOUBLE = \
@@ -1556,7 +1568,20 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_ppzj_sim_4.sin \
     ext_tests_nlo/nlo_ppzw.sin \
     ext_tests_nlo/nlo_ppzz.sin \
-    ext_tests_nlo/nlo_settings.sin
+    ext_tests_nlo/nlo_ppee_ew.sin \
+    ext_tests_nlo/nlo_pphee_ew.sin \
+    ext_tests_nlo/nlo_pphjj_ew.sin \
+    ext_tests_nlo/nlo_pphz_ew.sin \
+    ext_tests_nlo/nlo_ppllll_ew.sin \
+    ext_tests_nlo/nlo_ppllnn_ew.sin \
+    ext_tests_nlo/nlo_pptj_ew.sin \
+    ext_tests_nlo/nlo_ppwhh_ew.sin \
+    ext_tests_nlo/nlo_ppww_ew.sin \
+    ext_tests_nlo/nlo_ppwzh_ew.sin \
+    ext_tests_nlo/nlo_ppz_ew.sin \
+    ext_tests_nlo/nlo_ppzzz_ew.sin \
+    ext_tests_nlo/nlo_settings.sin \
+    ext_tests_nlo/nlo_settings_ew.sin
 
 EXT_NLO_ADD_SIN = \
     ext_tests_nlo_add/nlo_decay_tbw.sin \

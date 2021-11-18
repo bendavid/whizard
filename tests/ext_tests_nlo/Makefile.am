@@ -71,8 +71,19 @@ TESTS_EXTENDED = \
 	nlo_ppw.run \
 	nlo_ppzz.run \
 	nlo_ppzw.run \
-	nlo_pptttt.run
-
+	nlo_pptttt.run \
+	nlo_ppee_ew.run \
+	nlo_pphee_ew.run \
+	nlo_pphjj_ew.run \
+	nlo_pphz_ew.run \
+	nlo_ppllll_ew.run \
+	nlo_ppllnn_ew.run \
+	nlo_pptj_ew.run \
+	nlo_ppwhh_ew.run \
+	nlo_ppww_ew.run \
+	nlo_ppwzh_ew.run \
+	nlo_ppz_ew.run \
+	nlo_ppzzz_ew.run
 XFAIL_TESTS_EXTENDED =
 
 TESTS_REQ_GAMELAN =
@@ -146,7 +157,21 @@ nlo_ppzj_sim_1.run: nlo_settings.sin
 nlo_ppzj_sim_2.run: nlo_settings.sin
 nlo_ppzj_sim_3.run: nlo_settings.sin
 nlo_ppzj_sim_4.run: nlo_settings.sin
+nlo_ppee_ew.run: nlo_settings_ew.sin
+nlo_pphee_ew.run: nlo_settings_ew.sin
+nlo_pphjj_ew.run: nlo_settings_ew.sin
+nlo_pphz_ew.run: nlo_settings_ew.sin
+nlo_ppllll_ew.run: nlo_settings_ew.sin
+nlo_ppllnn_ew.run: nlo_settings_ew.sin
+nlo_pptj_ew.run: nlo_settings_ew.sin
+nlo_ppwhh_ew.run: nlo_settings_ew.sin
+nlo_ppww_ew.run: nlo_settings_ew.sin
+nlo_ppwzh_ew.run: nlo_settings_ew.sin
+nlo_ppz_ew.run: nlo_settings_ew.sin
+nlo_ppzzz_ew.run: nlo_settings_ew.sin
 nlo_settings.sin: $(top_builddir)/share/tests/ext_tests_nlo/nlo_settings.sin
+	cp $< $@
+nlo_settings_ew.sin: $(top_builddir)/share/tests/ext_tests_nlo/nlo_settings_ew.sin
 	cp $< $@
 
 if MPOST_AVAILABLE
