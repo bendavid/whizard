@@ -1,5 +1,7 @@
 include("nlo_settings_ew.sin")
 
+?pacify = true
+
 alias jet = e1:E1:e2:E2:A:u:U:d:D:s:S:c:C:b:B
 
 wtop = 1.36918
