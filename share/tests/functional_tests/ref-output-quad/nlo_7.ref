@@ -95,7 +95,7 @@ $sample_normalization = "sigma"
 |=============================================================================|
    1          0     1.054E+05   7.27E+03    6.90    0.00    68.0
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  (  0.0000 +-   0.00000 ) %
+|  (   0.00 +-   0.00 ) %
 |=============================================================================|
 | Starting simulation for process 'nlo_7_p1'
 | Simulate: using integration grids from file 'nlo_7_p1.m1.vg'

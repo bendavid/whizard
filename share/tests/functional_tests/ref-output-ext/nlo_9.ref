@@ -109,7 +109,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
    1          0     1.827E+07   7.39E+06   40.46    0.00     4.1
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  (  0.0000 +-   0.00000 ) %
+|  (   0.00 +-   0.00 ) %
 |=============================================================================|
 | Starting simulation for process 'nlo_9_p1'
 | Simulate: activating fixed-order NLO events

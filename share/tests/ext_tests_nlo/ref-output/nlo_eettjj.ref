@@ -167,7 +167,7 @@ Warning:  Intermediate decay of zero-width particle H may be possible.
 |=============================================================================|
    1          0  1.2700765E+01  8.22E+00   64.73    0.00*   9.92
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  (-12.0531 +-  22.59596 ) %
+|  ( -12.05 +-  22.60 ) %
 |=============================================================================|
 | There were no errors and    2 warning(s).
 | WHIZARD run finished.
