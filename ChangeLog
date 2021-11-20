@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.1+
 
+2021-11-19
+	Support for a wide class of mixed NLO QCD/EW processes
+
 2021-11-18
 	Add pp processes for NLO EW corrections to testsuite
 

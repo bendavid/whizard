@@ -1533,6 +1533,21 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function is_elementary
 
 @ %def is_elementary
+@ Check if particle is an EW boson or scalar.
+<<PDG arrays: public>>=
+  public :: is_ew_boson_scalar
+<<PDG arrays: procedures>>=
+  elemental function is_ew_boson_scalar (pdg_nr)
+    integer, intent(in) :: pdg_nr
+    logical :: is_ew_boson_scalar
+    if (is_photon (pdg_nr) .or. is_massive_vector (pdg_nr) .or. pdg_nr == 25) then
+       is_ew_boson_scalar = .true.
+    else
+       is_ew_boson_scalar = .false.
+    end if
+  end function is_ew_boson_scalar
+
+@ %def is_ew_boson_scalar
 @ Check if particle is strongly interacting
 <<PDG arrays: pdg array: TBP>>=
   procedure :: has_colored_particles => pdg_array_has_colored_particles
@@ -1552,6 +1567,104 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function pdg_array_has_colored_particles
 
 @ %def pdg_array_has_colored_particles
+This function is a convenience function for the determination of
+possible compatibility of flavor structures of processes with certain
+orders of QCD and QED/EW coupling constants. It assumes the Standard
+Model (SM) as underlying physics model.
+The function is based on a naive counting of external particles which
+are connected to the process by the specific kind of couplings depending
+on the underlying theory (QCD and/or QED/EW) of which the corresponding
+particle is a part of. It is constructed in a way that the exclusion of
+coupling power combinations is well-defined.
+<<PDG arrays: public>>=
+  public :: query_coupling_powers
+<<PDG arrays: procedures>>=
+    function query_coupling_powers (flv, a_power, as_power) result (valid)
+       integer, intent(in), dimension(:) :: flv
+       integer, dimension(:, :), allocatable :: power_pair_array
+       integer, dimension(2) :: power_pair_ref
+       integer, intent(in) :: a_power, as_power
+       integer :: i, n_legs, n_gluons, n_quarks, n_gamWZH, n_leptons
+       logical, dimension(:), allocatable :: pairs_included
+       logical :: valid
+       integer :: n_bound
+       power_pair_ref = [a_power, as_power]
+       n_legs = size (flv)
+       allocate (power_pair_array (2, n_legs - 1))
+       do i = 1, n_legs - 1
+          power_pair_array (1, i) = n_legs - 1 - i
+          power_pair_array (2, i) = i - 1
+       end do
+       allocate (pairs_included (n_legs - 1))
+       pairs_included = .true.
+       n_gluons = count (is_gluon (flv))
+       n_gamWZH = count (is_ew_boson_scalar (flv))
+       n_quarks = count (is_quark (flv))
+       n_leptons = count (is_lepton (flv))
+       if (n_gluons >= 1 .and. n_gluons <= 3) then
+          do i = 1, n_gluons
+             pairs_included (i) = .false.
+          end do
+       else if (n_gluons > 2 .and. n_quarks <= 2 .and. n_gluons + n_quarks == n_legs) then
+          do i = 1, n_legs - 2
+             pairs_included (i) = .false.
+          end do
+       end if
+       n_bound = 0
+       if (n_gamWZH + n_leptons == n_legs) then
+          n_bound = n_gamWZH + n_leptons - 2
+       else if (n_quarks == 2 .and. n_leptons + n_quarks + n_gamWZH == n_legs) then
+          n_bound = n_legs - 2
+       else if (n_gamWZH + n_leptons > 0) then
+          n_bound = int (n_leptons/2.) + n_gamWZH
+       end if
+       if (n_bound > 0) then
+          do i = 1, n_bound
+             pairs_included (n_legs - i) = .false.
+          end do
+       end if
+       if (n_quarks == 4 .and. .not. qcd_ew_interferences (flv)) then
+          do i = 1, 2
+             pairs_included (n_legs - i) = .false.
+          end do
+       end if
+       valid = .false.
+       do i = 1, n_legs - 1
+          if (all (power_pair_array (:, i) == power_pair_ref) .and. pairs_included (i)) then
+             valid = .true.
+             exit
+          end if
+       end do
+    end function query_coupling_powers
+
+@ %def query_coupling_powers
+This functions checks if there is a flavor structure which possibly can
+induce QCD-EW interference amplitudes. It evaluates to [[true]] if there are
+at least 2 quark pairs whereby the quarks of at least one quark pair must
+have the same flavor.
+<<PDG arrays: public>>=
+  public :: qcd_ew_interferences
+<<PDG arrays: procedures>>=
+    function qcd_ew_interferences (flv) result (valid)
+       integer, intent(in), dimension(:) :: flv
+       integer :: i, n_pairs
+       logical :: valid, qqbar_pair
+       n_pairs = 0
+       valid = .false.
+       qqbar_pair = .false.
+       if (count (is_quark (flv)) >= 4) then
+          do i = DOWN_Q, TOP_Q
+             qqbar_pair = count (abs (flv) == i) >= 2
+             if (qqbar_pair) n_pairs = n_pairs + 1
+             if (n_pairs > 0) then
+                valid = .true.
+                exit
+             end if
+          end do
+       end if
+    end function qcd_ew_interferences
+
+@ %def qcd_ew_interferences
 @ Match two arrays.  Succeeds if any pair of entries matches.
 <<PDG arrays: procedures>>=
   function pdg_array_match_pdg_array (aval1, aval2) result (flag)

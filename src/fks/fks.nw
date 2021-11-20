@@ -252,6 +252,7 @@ the [[ftuple]]-object.
     integer :: i_res = 0
     integer :: splitting_type
     logical :: pseudo_isr = .false.
+    logical :: qcd_split = .false.
   contains
   <<fks regions: ftuple: TBP>>
   end type ftuple_t
@@ -283,6 +284,7 @@ the [[ftuple]]-object.
     ftuple_out%i_res = ftuple_in%i_res
     ftuple_out%splitting_type = ftuple_in%splitting_type
     ftuple_out%pseudo_isr = ftuple_in%pseudo_isr
+    ftuple_out%qcd_split = ftuple_in%qcd_split
   end subroutine ftuple_assign
 
 @ %def ftuple_assign
@@ -293,7 +295,8 @@ the [[ftuple]]-object.
     type(ftuple_t), intent(in) :: f1, f2
     value = all (f1%ireg == f2%ireg) .and. f1%i_res == f2%i_res &
          .and. f1%splitting_type == f2%splitting_type &
-         .and. (f1%pseudo_isr .eqv. f2%pseudo_isr)
+         .and. (f1%pseudo_isr .eqv. f2%pseudo_isr) &
+         .and. (f1%qcd_split .eqv. f2%qcd_split)
   end function ftuple_equal
 
 @ %def ftuple_equal
@@ -515,6 +518,41 @@ so we can equivalently choose $1$ or $2$ as the emitter here even if both have d
   end subroutine ftuple_determine_splitting_type_isr
 
 @ %def ftuple_determine_splitting_type_isr
+
+<<fks regions: ftuple: TBP>>=
+  procedure :: determine_sub_correction_type => ftuple_determine_sub_correction_type
+<<fks regions: procedures>>=
+  subroutine ftuple_determine_sub_correction_type (ftuple, flv_born, flv_real, i, j)
+    class(ftuple_t), intent(inout) :: ftuple
+    type(flv_structure_t), intent(in) :: flv_born, flv_real
+    type(flv_structure_t) :: flv_test_qcd
+    integer, intent(in) :: i, j
+    integer :: em
+    em = i; if (i == 0) em = 1
+    select case (ftuple%splitting_type)
+    case (V_TO_VV)
+       ftuple%qcd_split = is_gluon (flv_real%flst(em)) .and. is_gluon (flv_real%flst(j))
+    case (F_TO_VF)
+       ftuple%qcd_split = is_gluon (flv_real%flst(em))
+    case (F_TO_FV)
+       if (i == 0) then
+          ftuple%qcd_split = is_gluon (flv_real%flst(j))
+       else
+          ftuple%qcd_split = is_gluon (flv_real%flst(i)) .or. is_gluon (flv_real%flst(j))
+       end if
+    case (V_TO_FF)
+       if (any ([i, j] <= flv_real%n_in)) then
+          flv_test_qcd = flv_real%insert_particle_isr (i, j, GLUON)
+       else
+          flv_test_qcd = flv_real%insert_particle_fsr (i, j, GLUON)
+       end if
+       ftuple%qcd_split = flv_test_qcd .equiv. flv_born
+    case (UNDEFINED_SPLITTING)
+       ftuple%qcd_split = .false.
+    end select
+  end subroutine ftuple_determine_sub_correction_type
+
+@ %def ftuple_determine_sub_correction_type
 @ Two debug functions to check the consistency of [[ftuples]]
 <<fks regions: ftuple: TBP>>=
   procedure :: has_negative_elements => ftuple_has_negative_elements
@@ -1655,6 +1693,14 @@ also be supplied by a symmetry factor, explained below.
     write (u, flst_format, advance = 'no') sregion%flst_uborn%flst(nborn), ']'
     call write_vline (u)
     write (u, '(I7)', advance = 'no') sregion%uborn_index
+    call write_vline (u)
+    if (sregion%nlo_correction_type == "EW") then
+       write (u, '(A3)', advance = 'no') 'ew'
+    else if (sregion%nlo_correction_type == "QCD") then
+       write (u, '(A4)', advance = 'no') 'qcd'
+    else
+       write (u, '(A5)', advance = 'no') 'none'
+    end if
     write (u, '(A)')
   end subroutine singular_region_write
 
@@ -2138,6 +2184,9 @@ $\sum_\alpha S_\alpha = 1$.
     integer :: n_legs_born = 0
     integer :: n_legs_real = 0
     integer :: n_phs = 0
+    integer :: alpha_power = 0
+    integer :: alphas_power = 0
+    type(string_t) :: nlo_correction_type
     class(fks_mapping_t), allocatable :: fks_mapping
     integer, dimension(:), allocatable :: resonances
     type(resonance_contributors_t), dimension(:), allocatable :: alr_contributors
@@ -2172,29 +2221,43 @@ $\sum_\alpha S_\alpha = 1$.
   procedure :: init => region_data_init
 <<fks regions: procedures>>=
   subroutine region_data_init (reg_data, n_in, model, flavor_born, &
-         flavor_real, nlo_correction_type)
-    class(region_data_t), intent(inout) :: reg_data
-    integer, intent(in) :: n_in
+         flavor_real, nlo_correction_type, alpha_pow, alphas_pow)
+    class(region_data_t), intent(out) :: reg_data
+    integer, intent(in) :: n_in, alpha_pow, alphas_pow
     type(model_t), intent(in) :: model
     integer, intent(in), dimension(:,:) :: flavor_born, flavor_real
+    integer, dimension(:,:), allocatable ::  flv_real_tmp
     type(ftuple_list_t), dimension(:), allocatable :: ftuples
     integer, dimension(:), allocatable :: emitter
     type(flv_structure_t), dimension(:), allocatable :: flst_alr
-    integer :: i
+    integer :: i, n_real
     integer :: n_flv_real_before_check
     type(string_t), intent(in) :: nlo_correction_type
     reg_data%n_in = n_in
+    reg_data%alpha_power = alpha_pow
+    reg_data%alphas_power = alphas_pow
     reg_data%n_flv_born = size (flavor_born, dim = 2)
     reg_data%n_legs_born = size (flavor_born, dim = 1)
     reg_data%n_legs_real = reg_data%n_legs_born + 1
+    reg_data%nlo_correction_type = nlo_correction_type
     n_flv_real_before_check = size (flavor_real, dim = 2)
     allocate (reg_data%flv_born (reg_data%n_flv_born))
-    allocate (reg_data%flv_real (n_flv_real_before_check))
+    allocate (flv_real_tmp (reg_data%n_legs_real, n_flv_real_before_check))
     do i = 1, reg_data%n_flv_born
        call reg_data%flv_born(i)%init (flavor_born (:, i), n_in)
     end do
+    n_real = 0
     do i = 1, n_flv_real_before_check
-       call reg_data%flv_real(i)%init (flavor_real (:, i), n_in)
+       if (nlo_correction_type == "EW") then
+          if (.not. (query_coupling_powers &
+              (flavor_real (:, i), reg_data%alpha_power + 1, reg_data%alphas_power))) cycle
+       end if
+       n_real = n_real + 1
+       flv_real_tmp (:, n_real) = flavor_real (:, i)
+    end do
+    allocate (reg_data%flv_real (n_real))
+    do i = 1, n_real
+       call reg_data%flv_real(i)%init (flv_real_tmp (:, i), n_in)
     end do
 
     call reg_data%find_regions (model, ftuples, emitter, flst_alr)
@@ -2203,7 +2266,6 @@ $\sum_\alpha S_\alpha = 1$.
     call reg_data%find_emitters ()
     call reg_data%set_mass_color_and_charge (model)
     call reg_data%set_splitting_info ()
-
   end subroutine region_data_init
 
 @ %def region_data_init
@@ -2861,6 +2923,8 @@ are therefore equivalent.
                   call current_ftuple%set (leg1, leg2)
                   call current_ftuple%determine_splitting_type_fsr &
                        (flv_real, leg1, leg2)
+                  call current_ftuple%determine_sub_correction_type &
+                       (flv_born, flv_real, leg1, leg2)
                   i_ftuple = incr_i_ftuple_if_required (i_born, i_real, i_ftuple)
                   if (i_ftuple > size (ftuples)) then
                      call ftuples_tmp%append (current_ftuple)
@@ -2911,6 +2975,8 @@ are therefore equivalent.
                call current_ftuple%set(emitter, leg)
                call current_ftuple%determine_splitting_type_isr &
                     (flv_real, emitter, leg)
+               call current_ftuple%determine_sub_correction_type &
+                    (flv_born, flv_real, emitter, leg)
                i_ftuple = incr_i_ftuple_if_required (i_born, i_real, i_ftuple)
                if (i_ftuple > size (ftuples)) then
                   call ftuples_tmp%append (current_ftuple)
@@ -2977,6 +3043,7 @@ of the present one is increased.
     class(region_data_t), intent(inout) :: reg_data
     type(ftuple_list_t), intent(inout), dimension(:), allocatable :: ftuples
     type(string_t), intent(in) :: nlo_correction_type
+    type(string_t), dimension(:), allocatable :: nlo_correction_type_dyn
     integer :: n_independent_flv
     integer, intent(in), dimension(:) :: emitter
     type(flv_structure_t), intent(in), dimension(:) :: flv_alr
@@ -2986,7 +3053,7 @@ of the present one is increased.
     integer :: n_regions, maxregions
     integer, dimension(:), allocatable :: index
     integer :: i, i_flv, n_legs
-    logical :: equiv, valid_fs_splitting
+    logical :: equiv, valid_fs_splitting, pure_corr_type, corr_type_valid, non_singular_reg
     integer :: i_first, i_reg, i_reg_prev
     integer, dimension(:), allocatable :: region_to_ftuple, alr_limits
     integer, dimension(:), allocatable :: equiv_index
@@ -3002,21 +3069,44 @@ of the present one is increased.
     allocate (index (0))
     allocate (region_to_ftuple (maxregions))
     allocate (equiv_index (maxregions))
+    allocate (nlo_correction_type_dyn (maxregions))
 
     call setup_region_mappings (n_independent_flv, alr_limits, region_to_ftuple)
+    nlo_correction_type_dyn = nlo_correction_type
     i_first = 1
     i_reg = 1
     SCAN_FLAVORS: do i_flv = 1, n_independent_flv
        SCAN_FTUPLES: do i = i_first, i_first + alr_limits (i_flv) - 1
           equiv = .false.
+          corr_type_valid = .true.
+          non_singular_reg = .false.
           if (i == i_first) then
              flv_alr_registered(i_reg) = flv_alr(i)
-             mult(i_reg) = mult(i_reg) + 1
-             flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i), nlo_correction_type)
+             if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
+                nlo_correction_type_dyn (i_reg) = set_dynamic_correction_type (i)
+             end if
+             flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i), &
+                                     nlo_correction_type_dyn (i_reg))
              flst_emitter(i_reg) = emitter(i)
-             index = [index, region_to_real_index(ftuples, i)]
              equiv_index(i_reg) = region_to_ftuple(i)
-             i_reg  = i_reg + 1
+             if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
+                corr_type_valid = (nlo_correction_type_dyn (i_reg) == "EW" .and. &
+                                  query_coupling_powers (flv_uborn(i_reg)%flst, &
+                                  reg_data%alpha_power, reg_data%alphas_power)) &
+                                  .or. (nlo_correction_type_dyn (i_reg) == "QCD" .and. &
+                                  query_coupling_powers (flv_uborn(i_reg)%flst, &
+                                  reg_data%alpha_power + 1, reg_data%alphas_power - 1))
+                non_singular_reg = .not. corr_type_valid .and. &
+                                   qcd_ew_interferences (flv_alr_registered(i_reg)%flst) &
+                                   .and. .not. qcd_ew_interferences (flv_uborn(i_reg)%flst) &
+                                   .and. nlo_correction_type_dyn (i_reg) == "QCD"
+                if (non_singular_reg) nlo_correction_type_dyn (i_reg) = "none"
+             end if
+             if (corr_type_valid .or. non_singular_reg) then
+                mult(i_reg) = mult(i_reg) + 1
+                index = [index, region_to_real_index(ftuples, i)]
+                i_reg = i_reg + 1
+             end if
           else
              !!! Check for equivalent flavor structures
              do i_reg_prev = 1, i_reg - 1
@@ -3024,8 +3114,13 @@ of the present one is increased.
                    valid_fs_splitting = check_fs_splitting (flv_alr(i)%get_last_two(n_legs), &
                           flv_alr_registered(i_reg_prev)%get_last_two(n_legs), &
                           flv_alr(i)%tag(n_legs - 1), flv_alr_registered(i_reg_prev)%tag(n_legs - 1))
+                   if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
+                      nlo_correction_type_dyn (i_reg) = set_dynamic_correction_type (i)
+                   end if
+                   pure_corr_type = nlo_correction_type_dyn (i_reg) &
+                                     == nlo_correction_type_dyn (i_reg_prev)
                    if ((flv_alr(i) .equiv. flv_alr_registered(i_reg_prev)) &
-                        .and. valid_fs_splitting) then
+                        .and. valid_fs_splitting .and. pure_corr_type) then
                       mult(i_reg_prev) = mult(i_reg_prev) + 1
                       equiv = .true.
                       call ftuples(region_to_real_index(ftuples, i))%set_equiv &
@@ -3033,7 +3128,13 @@ of the present one is increased.
                       exit
                    end if
                 else if (emitter(i) == flst_emitter(i_reg_prev) .and. emitter(i) <= reg_data%n_in) then
-                   if (flv_alr(i) .equiv. flv_alr_registered(i_reg_prev)) then
+                   if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
+                      nlo_correction_type_dyn (i_reg) = set_dynamic_correction_type (i)
+                   end if
+                   pure_corr_type = nlo_correction_type_dyn (i_reg) &
+                                     == nlo_correction_type_dyn (i_reg_prev)
+                   if ((flv_alr(i) .equiv. flv_alr_registered(i_reg_prev)) &
+                        .and. pure_corr_type) then
                       mult(i_reg_prev) = mult(i_reg_prev) + 1
                       equiv = .true.
                       call ftuples(region_to_real_index(ftuples, i))%set_equiv &
@@ -3044,12 +3145,31 @@ of the present one is increased.
              end do
              if (.not. equiv) then
                 flv_alr_registered(i_reg) = flv_alr(i)
-                mult(i_reg) = mult(i_reg) + 1
-                flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i), nlo_correction_type)
+                if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
+                   nlo_correction_type_dyn (i_reg) = set_dynamic_correction_type (i)
+                end if
+                flv_uborn(i_reg) = flv_alr(i)%create_uborn (emitter(i), &
+                                       nlo_correction_type_dyn (i_reg))
                 flst_emitter(i_reg) = emitter(i)
-                index = [index, region_to_real_index(ftuples, i)]
                 equiv_index (i_reg) = region_to_ftuple(i)
-                i_reg = i_reg + 1
+                if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
+                   corr_type_valid = (nlo_correction_type_dyn (i_reg) == "EW" .and. &
+                                query_coupling_powers (flv_uborn(i_reg)%flst, &
+                                reg_data%alpha_power, reg_data%alphas_power)) &
+                                .or. (nlo_correction_type_dyn (i_reg) == "QCD" .and. &
+                                query_coupling_powers (flv_uborn(i_reg)%flst, &
+                                reg_data%alpha_power + 1, reg_data%alphas_power - 1))
+                   non_singular_reg = .not. corr_type_valid .and. &
+                                 qcd_ew_interferences (flv_alr_registered(i_reg)%flst) &
+                                 .and. .not. qcd_ew_interferences (flv_uborn(i_reg)%flst) &
+                                 .and. nlo_correction_type_dyn (i_reg) == "QCD"
+                   if (non_singular_reg) nlo_correction_type_dyn (i_reg) = "none"
+                end if
+                if (corr_type_valid .or. non_singular_reg) then
+                   mult(i_reg) = mult(i_reg) + 1
+                   index = [index, region_to_real_index(ftuples, i)]
+                   i_reg = i_reg + 1
+                end if
              end if
           end if
        end do SCAN_FTUPLES
@@ -3162,7 +3282,7 @@ of the present one is increased.
           end do
           call reg_data%regions(j)%init (j, mult(j), 0, flv_alr_registered(j), &
                flv_uborn(j), reg_data%flv_born, flst_emitter(j), ftuple_array, &
-               equivalences, nlo_correction_type)
+               equivalences, nlo_correction_type_dyn (j))
           if (allocated (ftuple_array)) deallocate (ftuple_array)
           if (allocated (equivalences)) deallocate (equivalences)
        end do
@@ -3213,6 +3333,19 @@ of the present one is increased.
          valid = flv1(1) == flv2(1) .and. flv1(2) == flv2(2) .and. tag1 == tag2
       end if
     end function check_fs_splitting
+
+    function set_dynamic_correction_type (i_flv_alr) result (nlo_corr_type_dyn)
+       type(string_t) :: nlo_corr_type_dyn
+       type(ftuple_t) :: ftuple_tmp
+       integer, intent(in) :: i_flv_alr
+       ftuple_tmp = ftuples (region_to_real_index(ftuples, i_flv_alr))%get_ftuple &
+                         (region_to_ftuple(i_flv_alr))
+       if (ftuple_tmp%qcd_split) then
+          nlo_corr_type_dyn = var_str ("QCD")
+       else
+          nlo_corr_type_dyn = var_str ("EW")
+       end if
+    end function set_dynamic_correction_type
   end subroutine region_data_init_singular_regions
 
 @ %def region_data_init_singular_regions
@@ -3796,7 +3929,9 @@ writes it to a file.
      flst_title = '(A' // flst_title_format(reg_data%n_legs_born) // ')'
      write (u, char (flst_title), advance = 'no') 'flst_born'
      call write_vline (u)
-     write (u, '(A7)') 'i_born'
+     write (u, '(A7)', advance = 'no') 'i_born'
+     call write_vline (u)
+     write (u, '(A4)') 'corr'
      do j = 1, reg_data%n_regions
         write (u, '(I4)', advance = 'no') j
         call reg_data%regions(j)%write (u, maxnregions)
@@ -4847,8 +4982,9 @@ reference.
 <<fks regions: public>>=
   public :: setup_region_data_for_test
 <<fks regions: procedures>>=
-  subroutine setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, nlo_corr_type)
-    integer, intent(in) :: n_in
+  subroutine setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, nlo_corr_type, &
+             alpha_pow, alphas_pow)
+    integer, intent(in) :: n_in, alpha_pow, alphas_pow
     integer, intent(in), dimension(:,:) :: flv_born, flv_real
     type(string_t), intent(in) :: nlo_corr_type
     type(region_data_t), intent(out) :: reg_data
@@ -4860,7 +4996,8 @@ reference.
     call test_model%set_real (var_str ("ms"), 0._default)
     call test_model%set_real (var_str ("mc"), 0._default)
     call test_model%set_real (var_str ("mb"), 0._default)
-    call reg_data%init (n_in, test_model, flv_born, flv_real, nlo_corr_type)
+    call reg_data%init (n_in, test_model, flv_born, flv_real, nlo_corr_type, alpha_pow, &
+         alphas_pow)
   end subroutine setup_region_data_for_test
 
 @ %def setup_region_data_for_test
@@ -5116,7 +5253,7 @@ end module fks_regions_uti
     allocate (flv_real (n_legs_real, n_flv_real))
     flv_born (:, 1) = [11, -11, 2, -2]
     flv_real (:, 1) = [11, -11, 2, -2, 21]
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5132,7 +5269,7 @@ end module fks_regions_uti
     flv_born (:, 1) = [11, -11, 2, -2]
     flv_real (:, 1) = [11, -11, 2, -2, 22]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"), 2, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5152,7 +5289,7 @@ end module fks_regions_uti
     allocate (flv_real (n_legs_real, n_flv_real))
     flv_born (:, 1) = [11, -11, 6, -6, 6, -6]
     flv_real (:, 1) = [11, -11, 6, -6, 6, -6, 21]
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 4, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5187,7 +5324,7 @@ end module fks_regions_uti
     flv_real (:, 1) = [11, -11, 2, -2, 21, 21]
     flv_real (:, 2) = [11, -11, 2, -2, 1, -1]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 1)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5207,7 +5344,7 @@ end module fks_regions_uti
     flv_real (:, 1) = [11, -11, 2, -2, 22, 22]
     flv_real (:, 2) = [11, -11, 2, -2, 11, -11]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"), 3, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5252,7 +5389,7 @@ end module fks_regions_uti
     flv_real (:, 21) = [11, -11, -1, -1, 1, 1]
     flv_real (:, 22) = [11, -11, -1, 1, 21, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 1)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5279,7 +5416,7 @@ end module fks_regions_uti
     flv_real (:, 5) = [11, -11, -13, -13, 13, 13]
     flv_real (:, 6) = [11, -11, -13, 13, 22, 22]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"), 3, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5356,7 +5493,7 @@ end module fks_regions_uti
     flv_real (:, 21)  = [11, -11, -1, -1, 1, 1, 21]
     flv_real (:, 22)  = [11, -11, -1, 1, 21, 21, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 2)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5375,7 +5512,7 @@ end module fks_regions_uti
     flv_born (:, 1)   = [11, -11, -5, 5, -13, 13]
     flv_real (:, 1)   = [11, -11, -5, 5, -13, 13, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 4, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5394,7 +5531,7 @@ end module fks_regions_uti
     flv_born (:, 1)   = [11, -11, -5, 5, -13, 13]
     flv_real (:, 1)   = [11, -11, -5, 5, -13, 13, 22]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 4, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5518,7 +5655,7 @@ end module fks_regions_uti
     flv_real (:,66) = [11,-11,-1,-1,1,1,21,21]
     flv_real (:,67) = [11,-11,-1,1,21,21,21,21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 3)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5580,7 +5717,7 @@ end module fks_regions_uti
        end if
     end do
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5600,7 +5737,7 @@ end module fks_regions_uti
     flv_born (:, 1) = [6, -5, 2, -1]
     flv_real (:, 1) = [6, -5, 2, -1, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 0, 2)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
 
@@ -5631,7 +5768,7 @@ end module fks_regions_uti
     flv_real (4, :) = [-1, -2, 21]
     flv_real (5, :) = [21, 21, 21]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 0, 2)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
     call reg_data%final ()
@@ -5662,7 +5799,7 @@ end module fks_regions_uti
     allocate (flv_real (n_legs_real, n_flv_real))
     flv_born (:, 1) = [11, -11, 2, -2]
     flv_real (:, 1) = [11, -11, 2, -2, 21]
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("QCD"), 2, 0)
     call reg_data%write_latex (u)
     call reg_data%final ()
 
@@ -5697,7 +5834,7 @@ end module fks_regions_uti
     flv_real (:, 2) = [11, 22, -11, 11, 11]
     flv_real (:, 3) = [22, -11, 11, -11, -11]
 
-    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"))
+    call setup_region_data_for_test (n_in, flv_born, flv_real, reg_data, var_str ("EW"), 2, 0)
     call reg_data%check_consistency (.false., u)
     call reg_data%write (u)
     call reg_data%final ()
@@ -5750,7 +5887,7 @@ end module virtual
 <<virtual: types>>=
   type :: virtual_t
      type(nlo_settings_t) :: settings
-     real(default), dimension(:,:), allocatable :: gamma_0, gamma_p, c_flv
+     real(default), dimension(:,:,:), allocatable :: gamma_0, gamma_p, c_flv
      real(default) :: ren_scale2, fac_scale, es_scale2
      integer, dimension(:), allocatable :: n_is_neutrinos
      integer :: n_in, n_legs, n_flv
@@ -5770,26 +5907,25 @@ end module virtual
 <<virtual: virtual: TBP>>=
   procedure :: init => virtual_init
 <<virtual: procedures>>=
-  subroutine virtual_init (virt, flv_born, n_in, settings, &
-      nlo_corr_type, model, has_pdfs)
+  subroutine virtual_init (virt, flv_born, n_in, settings, model, has_pdfs)
     class(virtual_t), intent(inout) :: virt
     integer, intent(in), dimension(:,:) :: flv_born
     integer, intent(in) :: n_in
     type(nlo_settings_t), intent(in) :: settings
-    type(string_t), intent(in) :: nlo_corr_type
     class(model_data_t), intent(in) :: model
     logical, intent(in) :: has_pdfs
-    integer :: i_flv
+    integer :: i_flv, n_corr
+    n_corr = 2
     virt%n_legs = size (flv_born, 1); virt%n_flv = size (flv_born, 2)
     virt%n_in = n_in
     allocate (virt%sqme_born (virt%n_flv))
     allocate (virt%sqme_virt_fin (virt%n_flv))
     allocate (virt%sqme_color_c (virt%n_legs, virt%n_legs, virt%n_flv))
     allocate (virt%sqme_charge_c (virt%n_legs, virt%n_legs, virt%n_flv))
-    allocate (virt%gamma_0 (virt%n_legs, virt%n_flv), &
-       virt%gamma_p (virt%n_legs, virt%n_flv), &
-       virt%c_flv (virt%n_legs, virt%n_flv))
-    call virt%init_constants (flv_born, settings%fks_template%n_f, nlo_corr_type, model)
+    allocate (virt%gamma_0 (virt%n_legs, virt%n_flv, n_corr), &
+       virt%gamma_p (virt%n_legs, virt%n_flv, n_corr), &
+       virt%c_flv (virt%n_legs, virt%n_flv, n_corr))
+    call virt%init_constants (flv_born, settings%fks_template%n_f, model)
     allocate (virt%n_is_neutrinos (virt%n_flv))
     virt%n_is_neutrinos = 0
     do i_flv = 1, virt%n_flv
@@ -5837,68 +5973,70 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
 <<virtual: virtual: TBP>>=
   procedure :: init_constants => virtual_init_constants
 <<virtual: procedures>>=
-  subroutine virtual_init_constants (virt, flv_born, nf_input, nlo_corr_type, model)
+  subroutine virtual_init_constants (virt, flv_born, nf_input, model)
     class(virtual_t), intent(inout) :: virt
     integer, intent(in), dimension(:,:) :: flv_born
     integer, intent(in) :: nf_input
-    type(string_t), intent(in) :: nlo_corr_type
+    type(string_t), dimension(2) :: corr_type
     class(model_data_t), intent(in) :: model
     type(field_data_t), pointer :: field
-    integer :: i_part, i_flv, pdg
+    integer :: i_part, i_flv, pdg, i_corr
     real(default) :: nf, CA_factor, TR_sum
     real(default), dimension(:,:), allocatable :: CF_factor, TR_factor
     type(flavor_t) :: flv
     allocate (CF_factor (size (flv_born, 1), size (flv_born, 2)), &
          TR_factor (size (flv_born, 1), size (flv_born, 2)))
     TR_sum = 0
-    select case (char (nlo_corr_type))
-    case ("QCD")
-       CA_factor = CA; CF_factor = CF; TR_factor = TR
-       nf = real(nf_input, default)
-       TR_sum = nf * TR
-    case ("EW")
-       CA_factor = zero
+    corr_type (1) = "QCD"; corr_type (2) = "EW"
+    do i_corr = 1, 2
+       if (i_corr == 1) then
+          CA_factor = CA; CF_factor = CF; TR_factor = TR
+          nf = real(nf_input, default)
+          TR_sum = nf * TR
+       else
+          CA_factor = zero
+          do i_flv = 1, size (flv_born, 2)
+             do i_part = 1, size (flv_born, 1)
+                call flv%init (flv_born(i_part, i_flv), model)
+                CF_factor(i_part, i_flv) = (flv%get_charge ())**2
+                TR_factor(i_part, i_flv) = (flv%get_charge ())**2
+                if (is_quark (flv_born (i_part, i_flv))) &
+                     TR_factor(i_part, i_flv) = NC * TR_factor(i_part, i_flv)
+             end do
+          end do
+          do pdg = 1, nf_input
+             field => model%get_field_ptr (pdg)
+             TR_sum = TR_sum + NC*field%get_charge()**2
+          end do
+          do pdg = 11, 15, 2
+             field => model%get_field_ptr (pdg)
+             if (field%get_mass() > 0) exit
+             TR_sum = TR_sum + field%get_charge()**2
+          end do
+       end if
        do i_flv = 1, size (flv_born, 2)
           do i_part = 1, size (flv_born, 1)
-             call flv%init (flv_born(i_part, i_flv), model)
-             CF_factor(i_part, i_flv) = (flv%get_charge ())**2
-             TR_factor(i_part, i_flv) = (flv%get_charge ())**2
-             if (is_quark (flv_born (i_part, i_flv))) &
-                  TR_factor(i_part, i_flv) = NC * TR_factor(i_part, i_flv)
+             if (is_massless_vectorboson (flv_born(i_part, i_flv), corr_type (i_corr))) then
+                virt%gamma_0(i_part, i_flv, i_corr) = 11._default / 6._default * CA_factor &
+                     - two / three * TR_sum
+                virt%gamma_p(i_part, i_flv, i_corr) = (67._default / 9._default &
+                     - two * pi**2 / three) * CA_factor &
+                     - 23._default / 9._default * TR_sum
+                virt%c_flv(i_part, i_flv, i_corr) = CA_factor
+             else if (is_corresponding_fermion (flv_born(i_part, i_flv), corr_type (i_corr))) then
+                virt%gamma_0(i_part, i_flv, i_corr) = 1.5_default * CF_factor(i_part, i_flv)
+                virt%gamma_p(i_part, i_flv, i_corr) = (6.5_default - two * pi**2 / three) * CF_factor(i_part, i_flv)
+                virt%c_flv(i_part, i_flv, i_corr) = CF_factor(i_part, i_flv)
+             else if (is_massive_vectorboson (flv_born(i_part, i_flv), corr_type (i_corr))) then
+                virt%gamma_0(i_part, i_flv, i_corr) = zero
+                virt%gamma_p(i_part, i_flv, i_corr) = zero
+                virt%c_flv(i_part, i_flv, i_corr) = CF_factor(i_part, i_flv)
+             else
+                virt%gamma_0(i_part, i_flv, i_corr) = zero
+                virt%gamma_p(i_part, i_flv, i_corr) = zero
+                virt%c_flv(i_part, i_flv, i_corr) = zero
+             end if
           end do
-       end do
-       do pdg = 1, nf_input
-          field => model%get_field_ptr (pdg)
-          TR_sum = TR_sum + NC*field%get_charge()**2
-       end do
-       do pdg = 11, 15, 2
-          field => model%get_field_ptr (pdg)
-          if (field%get_mass() > 0) exit
-          TR_sum = TR_sum + field%get_charge()**2
-       end do
-    end select
-    do i_flv = 1, size (flv_born, 2)
-       do i_part = 1, size (flv_born, 1)
-          if (is_massless_vectorboson (flv_born(i_part, i_flv), nlo_corr_type)) then
-             virt%gamma_0(i_part, i_flv) = 11._default / 6._default * CA_factor &
-                  - two / three * TR_sum
-             virt%gamma_p(i_part, i_flv) = (67._default / 9._default &
-                  - two * pi**2 / three) * CA_factor &
-                  - 23._default / 9._default * TR_sum
-             virt%c_flv(i_part, i_flv) = CA_factor
-          else if (is_corresponding_fermion (flv_born(i_part, i_flv), nlo_corr_type)) then
-             virt%gamma_0(i_part, i_flv) = 1.5_default * CF_factor(i_part, i_flv)
-             virt%gamma_p(i_part, i_flv) = (6.5_default - two * pi**2 / three) * CF_factor(i_part, i_flv)
-             virt%c_flv(i_part, i_flv) = CF_factor(i_part, i_flv)
-          else if (is_massive_vectorboson (flv_born(i_part, i_flv), nlo_corr_type)) then
-             virt%gamma_0(i_part, i_flv) = zero
-             virt%gamma_p(i_part, i_flv) = zero
-             virt%c_flv(i_part, i_flv) = CF_factor(i_part, i_flv)
-          else
-             virt%gamma_0(i_part, i_flv) = zero
-             virt%gamma_p(i_part, i_flv) = zero
-             virt%c_flv(i_part, i_flv) = zero
-          end if
        end do
     end do
   contains
@@ -6001,7 +6139,7 @@ is true).
          p_born, separate_uborns, sqme_virt)
     class(virtual_t), intent(inout) :: virt
     type(region_data_t), intent(in) :: reg_data
-    real(default), intent(in) :: alpha_coupling
+    real(default), dimension(2), intent(in) :: alpha_coupling
     type(vector4_t), intent(in), dimension(:)  :: p_born
     logical, intent(in) :: separate_uborns
     real(default), dimension(:), intent(inout) :: sqme_virt
@@ -6009,8 +6147,10 @@ is true).
     real(default), dimension(:), allocatable :: sqme_virt_arr
     real(default) :: s, s_o_Q2
     real(default), dimension(reg_data%n_flv_born) :: QB, BI
-    integer :: i_flv, ii_flv
+    integer :: i_flv, ii_flv, alr, i_corr
     logical, dimension(:), allocatable :: flv_evaluated
+    integer, dimension(:), allocatable :: corr_index
+    logical :: alr_qcd, alr_ew
     QB = zero; BI = zero
     allocate (flv_evaluated(reg_data%n_flv_born))
     allocate (sqme_virt_arr(reg_data%n_flv_born))
@@ -6028,32 +6168,64 @@ is true).
     s_o_Q2 = s / virt%es_scale2 * virt%settings%fks_template%xi_cut**2
     eqv_flv_index = reg_data%eqv_flv_index_born
     do i_flv = 1, reg_data%n_flv_born
-       if (.not. flv_evaluated(eqv_flv_index(i_flv))) then
+       alr_qcd = .false.; alr_ew = .false.
+       do alr = 1, reg_data%n_regions
+          if (i_flv == reg_data%regions(alr)%uborn_index) then
+             if (reg_data%regions(alr)%nlo_correction_type == "QCD") then
+                alr_qcd = .true.
+             else if (reg_data%regions(alr)%nlo_correction_type == "EW") then
+                alr_ew = .true.
+             end if
+          end if
+       end do
+       if (alr_qcd .and. alr_ew) then
+          allocate (corr_index (2))
+          corr_index (1) = 1; corr_index (2) = 2
+       else
+          allocate (corr_index (1))
+          corr_index (1) = 0
+          if (alr_qcd) then
+             corr_index (1) = 1
+          else if (alr_ew) then
+             corr_index (1) = 2
+          end if
+       end if
+       if (.not. flv_evaluated(eqv_flv_index(i_flv)) .and. corr_index(1) > 0) then
           if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("OLP")) then
              !!! A factor of alpha_coupling/twopi is assumed to be included in vfin
              sqme_virt_arr(i_flv) = sqme_virt_arr(i_flv) + virt%sqme_virt_fin(i_flv)
           end if
-          if (virt%selection == var_str ("Full") .or. &
-               virt%selection == var_str ("Subtraction")) then
-             call virt%evaluate_initial_state (i_flv, QB)
-             call virt%compute_collinear_contribution (i_flv, p_born, sqrt(s), reg_data, QB)
-             select case (virt%settings%factorization_mode)
-             case (FACTORIZATION_THRESHOLD)
-                call virt%compute_eikonals_threshold (i_flv, p_born, s_o_Q2, QB, BI)
-             case default
-                call virt%compute_massive_self_eikonals (i_flv, p_born, s_o_Q2, reg_data, QB)
-                call virt%compute_eikonals (i_flv, p_born, s_o_Q2, reg_data, BI)
-             end select
-             if (debug2_active (D_VIRTUAL)) then
-                print *, 'Evaluate i_flv: ', i_flv
-                print *, 'sqme_born: ', virt%sqme_born (i_flv)
-                print *, 'Q * sqme_born: ', alpha_coupling / twopi * QB(i_flv)
-                print *, 'BI: ', alpha_coupling / twopi * BI(i_flv)
-                print *, 'vfin: ', virt%sqme_virt_fin (i_flv)
+          do i_corr = 1, size (corr_index)
+             if (virt%selection == var_str ("Full") .or. &
+                  virt%selection == var_str ("Subtraction")) then
+                call virt%evaluate_initial_state (i_flv, corr_index (i_corr), reg_data, QB)
+                call virt%compute_collinear_contribution &
+                     (i_flv, corr_index (i_corr), p_born, sqrt(s), reg_data, QB)
+                select case (virt%settings%factorization_mode)
+                case (FACTORIZATION_THRESHOLD)
+                   call virt%compute_eikonals_threshold (i_flv, p_born, s_o_Q2, QB, BI)
+                case default
+                   call virt%compute_massive_self_eikonals &
+                   (i_flv, corr_index (i_corr), p_born, s_o_Q2, reg_data, QB)
+                   call virt%compute_eikonals &
+                        (i_flv, corr_index (i_corr), p_born, s_o_Q2, reg_data, BI)
+                end select
+                if (debug2_active (D_VIRTUAL)) then
+                   if (corr_index (i_corr) == 1) then
+                      print *, 'Correction type: QCD'
+                   else
+                      print *, 'Correction type: EW'
+                   end if
+                   print *, 'Evaluate i_flv: ', i_flv
+                   print *, 'sqme_born: ', virt%sqme_born (i_flv)
+                   print *, 'Q * sqme_born: ', alpha_coupling / twopi * QB(i_flv)
+                   print *, 'BI: ', alpha_coupling / twopi * BI(i_flv)
+                   print *, 'vfin: ', virt%sqme_virt_fin (i_flv)
+                end if
+                sqme_virt_arr(i_flv) = sqme_virt_arr(i_flv) &
+                      + alpha_coupling (corr_index (i_corr))/ twopi * (QB(i_flv) + BI(i_flv))
              end if
-             sqme_virt_arr(i_flv) = &
-                  sqme_virt_arr(i_flv) + alpha_coupling / twopi * (QB(i_flv) + BI(i_flv))
-          end if
+          end do
           if (.not. (debug_active (D_VIRTUAL) .or. &
                debug2_active (D_VIRTUAL))) flv_evaluated(eqv_flv_index(i_flv)) = .true.
        else
@@ -6064,6 +6236,7 @@ is true).
        else
           sqme_virt(1) = sqme_virt(1) + sqme_virt_arr(i_flv)
        end if
+       deallocate (corr_index)
     end do
     if (debug2_active (D_VIRTUAL)) then
        call msg_debug2 (D_VIRTUAL, "virtual-subtracted matrix element(s): ")
@@ -6088,10 +6261,10 @@ is true).
 <<virtual: virtual: TBP>>=
   procedure :: compute_eikonals => virtual_compute_eikonals
 <<virtual: procedures>>=
-  subroutine virtual_compute_eikonals (virtual, i_flv, &
+  subroutine virtual_compute_eikonals (virtual, i_flv, i_corr, &
            p_born, s_o_Q2, reg_data, BI)
     class(virtual_t), intent(inout) :: virtual
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_corr
     type(vector4_t), intent(in), dimension(:)  :: p_born
     real(default), intent(in) :: s_o_Q2
     type(region_data_t), intent(in) :: reg_data
@@ -6101,12 +6274,11 @@ is true).
     BI_tmp = zero
     ! TODO vincent_r: Split the procedure into one computing QCD eikonals and one computing QED eikonals.
     ! TODO vincent_r: In the best case, remove the dependency on reg_data completely.
-    associate (flst_born => reg_data%flv_born(i_flv), &
-            nlo_corr_type => reg_data%regions(1)%nlo_correction_type)
+    associate (flst_born => reg_data%flv_born(i_flv))
        do i = 1, virtual%n_legs
           do j = 1, virtual%n_legs
              if (i /= j) then
-                if (nlo_corr_type == "QCD") then
+                if (i_corr == 1) then
                    if (flst_born%colored(i) .and. flst_born%colored(j)) then
                       I_ij = compute_eikonal_factor (p_born, flst_born%massive, &
                            i, j, s_o_Q2)
@@ -6114,7 +6286,7 @@ is true).
                       if (debug2_active (D_VIRTUAL)) &
                            print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
                    end if
-                else if (nlo_corr_type == "EW") then
+                else if (i_corr == 2) then
                    I_ij = compute_eikonal_factor (p_born, flst_born%massive, &
                         i, j, s_o_Q2)
                    BI_tmp = BI_tmp + virtual%sqme_charge_c (i, j, i_flv) * I_ij
@@ -6122,15 +6294,15 @@ is true).
                         print *, 'b_ij: ', virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
                 end if
              else if (debug2_active (D_VIRTUAL)) then
-                if (nlo_corr_type == "QCD") then
+                if (i_corr == 1) then
                    print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
-                else if (nlo_corr_type == "EW") then
+                else if (i_corr == 2) then
                    print *, 'b_ij: ', i, j, virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
                 end if
              end if
           end do
        end do
-       if (virtual%settings%use_internal_color_correlations .or. nlo_corr_type == "EW") &
+       if (virtual%settings%use_internal_color_correlations .or. i_corr == 2) &
             BI_tmp = BI_tmp * virtual%sqme_born (i_flv)
     end associate
     BI(i_flv) = BI(i_flv) + BI_tmp
@@ -6227,16 +6399,31 @@ initial-initial interactions.
 <<virtual: virtual: TBP>>=
   procedure :: evaluate_initial_state => virtual_evaluate_initial_state
 <<virtual: procedures>>=
-  subroutine virtual_evaluate_initial_state (virt, i_flv, QB)
+  subroutine virtual_evaluate_initial_state (virt, i_flv, i_corr, reg_data, QB)
     class(virtual_t), intent(inout) :: virt
-    integer, intent(in) :: i_flv
+    type(region_data_t), intent(in) :: reg_data
+    integer, intent(in) :: i_flv, i_corr
     real(default), intent(inout), dimension(:) :: QB
+    real(default) :: sqme_born_virt
     integer :: i
+    sqme_born_virt = zero
+    if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 & 
+       .and. qcd_ew_interferences (reg_data%flv_born(i_flv)%flst)) then
+       do i = 1, size (reg_data%flv_born(i_flv)%flst)
+          if (is_quark (reg_data%flv_born(i_flv)%flst (i))) then
+             sqme_born_virt = -virt%sqme_color_c (i, i, i_flv)/CF
+             exit
+          end if
+       end do
+    else
+       sqme_born_virt = virt%sqme_born (i_flv)
+    end if
     if (virt%n_in == 2) then
        do i = 1, virt%n_in
-          QB(i_flv) = QB(i_flv) - (virt%gamma_0 (i, i_flv) + two * virt%c_flv(i, i_flv) &
+          QB(i_flv) = QB(i_flv) - (virt%gamma_0 (i, i_flv, i_corr) &
+               + two * virt%c_flv(i, i_flv, i_corr) &
                * log (virt%settings%fks_template%xi_cut)) &
-               * log(virt%fac_scale**2 / virt%es_scale2) * virt%sqme_born (i_flv)
+               * log(virt%fac_scale**2 / virt%es_scale2) * sqme_born_virt
        end do
     end if
   end subroutine virtual_evaluate_initial_state
@@ -6292,22 +6479,35 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
   procedure :: compute_collinear_contribution &
      => virtual_compute_collinear_contribution
 <<virtual: procedures>>=
-  subroutine virtual_compute_collinear_contribution (virt, i_flv, &
+  subroutine virtual_compute_collinear_contribution (virt, i_flv, i_corr, &
            p_born, sqrts, reg_data, QB)
     class(virtual_t), intent(inout) :: virt
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_corr
     type(vector4_t), dimension(:), intent(in) :: p_born
     real(default), intent(in) :: sqrts
     type(region_data_t), intent(in) :: reg_data
     real(default), intent(inout), dimension(:) :: QB
     real(default) :: s1, s2, s3, s4, s5
-    integer :: alr, em
+    real(default) :: sqme_born_virt
+    integer :: alr, em, i
     real(default) :: E_em, xi_max, log_xi_max, E_tot2
     logical, dimension(virt%n_flv, virt%n_legs) :: evaluated
     integer :: i_contr
     type(vector4_t) :: k_res
     type(lorentz_transformation_t) :: L_to_resonance
     evaluated = .false.
+    sqme_born_virt = zero
+    if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 &
+       .and. qcd_ew_interferences (reg_data%flv_born(i_flv)%flst)) then
+       do i = 1, size (reg_data%flv_born(i_flv)%flst)
+          if (is_quark (reg_data%flv_born(i_flv)%flst (i))) then
+             sqme_born_virt = -virt%sqme_color_c (i, i, i_flv)/CF
+             exit
+          end if
+       end do
+    else
+       sqme_born_virt = virt%sqme_born (i_flv)
+    end if
     do alr = 1, reg_data%n_regions
        if (i_flv /= reg_data%regions(alr)%uborn_index) cycle
        em = reg_data%regions(alr)%emitter
@@ -6331,26 +6531,28 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
          if (virt%settings%virtual_resonance_aware_collinear) then
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using resonance-aware collinear subtraction")
-            s1 = virt%gamma_p(em, i_flv)
+            s1 = virt%gamma_p(em, i_flv, i_corr)
             s2 = two * (log (sqrts / (two * E_em)) + log_xi_max) * &
                  (log (sqrts / (two * E_em)) + log_xi_max + log (virt%es_scale2 / sqrts**2)) &
-                 * virt%c_flv(em, i_flv)
+                 * virt%c_flv(em, i_flv, i_corr)
             s3 = two * log_xi_max * &
-                 (log_xi_max - log (virt%es_scale2 / E_tot2)) * virt%c_flv(em, i_flv)
-            s4 = (log (virt%es_scale2 / E_tot2) - two * log_xi_max) * virt%gamma_0(em, i_flv)
-            QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * virt%sqme_born(i_flv)
+                 (log_xi_max - log (virt%es_scale2 / E_tot2)) * virt%c_flv(em, i_flv, i_corr)
+            s4 = (log (virt%es_scale2 / E_tot2) - two * log_xi_max) &
+                 * virt%gamma_0(em, i_flv, i_corr)
+            QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * sqme_born_virt
          else
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
-            s1 = virt%gamma_p(em, i_flv)
-            s2 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * virt%gamma_0(em,i_flv)
-            s3 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * two * virt%c_flv(em,i_flv) * &
-                 log (two * E_em / (xi_cut * sqrts))
-            ! s4 = two * virt%c_flv(em,i_flv) * (log (two * E_em / sqrts)**2 - log (xi_cut)**2)
-            s4 = two * virt%c_flv(em,i_flv) * & ! a**2 - b**2 = (a - b) * (a + b), for better numerical performance
+            s1 = virt%gamma_p(em, i_flv, i_corr)
+            s2 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) &
+                 * virt%gamma_0(em,i_flv, i_corr)
+            s3 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * two &
+                 * virt%c_flv(em,i_flv, i_corr) * log (two * E_em / (xi_cut * sqrts))
+            ! s4 = two * virt%c_flv(em,i_flv, i_corr) * (log (two * E_em / sqrts)**2 - log (xi_cut)**2)
+            s4 = two * virt%c_flv(em,i_flv, i_corr) * & ! a**2 - b**2 = (a - b) * (a + b), for better numerical performance
                  (log (two * E_em / sqrts) + log (xi_cut)) * (log (two * E_em / sqrts) - log (xi_cut))
-            s5 = two * virt%gamma_0(em,i_flv) * log (two * E_em / sqrts)
-            QB(i_flv) = QB(i_flv) + (s1 - s2 + s3 + s4 - s5) * virt%sqme_born(i_flv)
+            s5 = two * virt%gamma_0(em,i_flv, i_corr) * log (two * E_em / sqrts)
+            QB(i_flv) = QB(i_flv) + (s1 - s2 + s3 + s4 - s5) * sqme_born_virt
          end if
        end associate
        evaluated(i_flv, em) = .true.
@@ -6365,22 +6567,35 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
 <<virtual: virtual: TBP>>=
   procedure :: compute_massive_self_eikonals => virtual_compute_massive_self_eikonals
 <<virtual: procedures>>=
-  subroutine virtual_compute_massive_self_eikonals (virt, i_flv, &
+  subroutine virtual_compute_massive_self_eikonals (virt, i_flv, i_corr, &
            p_born, s_over_Q2, reg_data,  QB)
     class(virtual_t), intent(inout) :: virt
-    integer, intent(in) :: i_flv
+    integer, intent(in) :: i_flv, i_corr
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: s_over_Q2
     type(region_data_t), intent(in) :: reg_data
     real(default), intent(inout), dimension(:) :: QB
+    real(default) :: sqme_born_virt
     integer :: i
     logical :: massive
+    sqme_born_virt = zero
+    if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 &
+       .and. qcd_ew_interferences (reg_data%flv_born(i_flv)%flst)) then
+       do i = 1, size (reg_data%flv_born(i_flv)%flst)
+          if (is_quark (reg_data%flv_born(i_flv)%flst (i))) then
+             sqme_born_virt = -virt%sqme_color_c (i, i, i_flv)/CF
+             exit
+          end if
+       end do
+    else
+       sqme_born_virt = virt%sqme_born (i_flv)
+    end if
     do i = 1, virt%n_legs
        massive = reg_data%flv_born(i_flv)%massive(i)
        if (massive) then
-          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv) &
+          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv, i_corr) &
                * (log (s_over_Q2) - 0.5_default * I_m_eps (p_born(i)))) &
-               * virt%sqme_born (i_flv)
+               * sqme_born_virt
        end if
     end do
   end subroutine virtual_compute_massive_self_eikonals
@@ -7864,7 +8079,8 @@ the corresponding Jacobians.
               rsub%real_kinematics, i_phs, .false., rsub%reg_data%has_pseudo_isr (), &
               emitter)
       end if
-      if (rsub%subtraction_event .and. .not. rsub%subtraction_deactivated) then
+      if (rsub%subtraction_event .and. .not. (rsub%subtraction_deactivated &
+            .or. region%nlo_correction_type == "none")) then
          if (debug2_active (D_SUBTRACTION)) then
             print *, "[real_subtraction_evaluate_region_fsr]"
             print *, "xi: ", rsub%real_kinematics%xi_max(i_phs) * rsub%real_kinematics%xi_tilde
@@ -8130,7 +8346,8 @@ However, it still remains to be motivated analytically.
          call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, rsub%real_kinematics, &
               i_phs, .true., .false.)
       end if
-      if (rsub%subtraction_event .and. .not. rsub%subtraction_deactivated) then
+      if (rsub%subtraction_event .and. .not. (rsub%subtraction_deactivated &
+            .or. region%nlo_correction_type == "none")) then
          call rsub%evaluate_subtraction_terms_isr (alr, emitter, i_phs, i_res, alpha_coupling, &
               sqme_soft, sqme_coll_plus, sqme_coll_minus, sqme_cs_plus, sqme_cs_minus)
          call apply_kinematic_factors_subtraction_isr (sqme_soft, sqme_coll_plus, &
@@ -8690,12 +8907,13 @@ equivalent to those used by POWHEG.
     integer, intent(in) :: alr, em, i_phs
     real(default), intent(in) :: alpha_coupling
     real(default) :: xi, xi_max
-    real(default) :: mom_times_sqme_spin_c
+    real(default) :: mom_times_sqme_spin_c, sqme_born_coll
     real(default) :: N_col
-    integer :: i_con
+    integer :: i_con, i
     real(default) :: pfr
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_coll = zero
+      sqme_born_coll = zero
       N_col = 1
       if (sregion%has_collinear_divergence ()) then
          xi = rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs)
@@ -8705,6 +8923,18 @@ equivalent to those used by POWHEG.
             i_con = 1
          end if
          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
+         if (rsub%reg_data%nlo_correction_type == "EW" .and. &
+             sregion%nlo_correction_type == "QCD" .and. &
+             qcd_ew_interferences (sregion%flst_uborn%flst)) then
+            do i = 1, size (sregion%flst_uborn%flst)
+               if (is_quark (sregion%flst_uborn%flst (i))) then
+                  sqme_born_coll = -rsub%sqme_born_color_c (i, i, sregion%uborn_index)/CF
+                  exit
+               end if
+            end do
+         else
+            sqme_born_coll = rsub%sqme_born(sregion%uborn_index)
+         end if
          if (em <= rsub%sub_coll%n_in) then
             select case (rsub%isr_kinematics%isr_mode)
             case (SQRTS_FIXED)
@@ -8723,8 +8953,8 @@ equivalent to those used by POWHEG.
             end if
             sqme_coll = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%get (), &
-                 rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em), &                 
-                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em), &                 
+                 sqme_born_coll * rsub%sf_factors(alr, em), &
+                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em), &
                  xi, alpha_coupling, rsub%isr_kinematics%isr_mode)
          else
             if (sregion%nlo_correction_type == "QCD") then
@@ -8738,7 +8968,7 @@ equivalent to those used by POWHEG.
             sqme_coll = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta (i_con), &
                  rsub%real_kinematics%p_born_lab%get_momenta(1), &
-                 rsub%sqme_born(sregion%uborn_index), &
+                 sqme_born_coll, &
                  mom_times_sqme_spin_c, &
                  xi, alpha_coupling, sregion%double_fsr)
             if (rsub%sub_coll%use_resonance_mappings) then
@@ -8758,7 +8988,7 @@ equivalent to those used by POWHEG.
 @ Computes the soft-collinear subtraction term. For alpha regions with emitter
 $0$, this routine is called with [[em == 1]] and [[em == 2]] separately.
 To still be able to use the unrescaled pdf factors stored in [[sf_factors(alr, 0)]]
-in this case, we need to differentiate between [[em]] and [[em_pdf]].
+in this case, we need to differentiate between [[em]] and [[em_pdf = 0]].
 <<real subtraction: real subtraction: TBP>>=
   procedure :: compute_sub_coll_soft => real_subtraction_compute_sub_coll_soft
 <<real subtraction: procedures>>=
@@ -8768,11 +8998,12 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, em, i_phs
     real(default), intent(in) :: alpha_coupling
-    real(default) :: mom_times_sqme_spin_c
+    real(default) :: mom_times_sqme_spin_c, sqme_born_coll
     real(default) :: N_col
-    integer :: i_con, em_pdf
+    integer :: i_con, em_pdf, i
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_cs = zero
+      sqme_born_coll = zero
       N_col = 1
       if (sregion%has_collinear_divergence ()) then
          if (rsub%sub_coll%use_resonance_mappings) then
@@ -8781,8 +9012,20 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             i_con = 1
          end if
          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
+         if (rsub%reg_data%nlo_correction_type == "EW" .and. &
+             sregion%nlo_correction_type == "QCD" .and. &
+             qcd_ew_interferences (sregion%flst_uborn%flst)) then
+            do i = 1, size (sregion%flst_uborn%flst)
+               if (is_quark (sregion%flst_uborn%flst (i))) then
+                  sqme_born_coll = -rsub%sqme_born_color_c (i, i, sregion%uborn_index)/CF
+                  exit
+               end if
+            end do
+         else
+            sqme_born_coll = rsub%sqme_born(sregion%uborn_index)
+         end if
          if (em <= rsub%sub_coll%n_in) then
-            em_pdf = sregion%emitter
+            em_pdf = 0
             if (sregion%nlo_correction_type == "QCD") then
                call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
             else if (sregion%nlo_correction_type == "EW") then
@@ -8793,8 +9036,8 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             end if
             sqme_cs = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%get (), &
-                 rsub%sqme_born(sregion%uborn_index) * rsub%sf_factors(alr, em_pdf), &
-                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em_pdf), &                      
+                 sqme_born_coll * rsub%sf_factors(alr, em_pdf), &
+                 mom_times_sqme_spin_c * rsub%sf_factors(alr, em_pdf), &
                  zero, alpha_coupling, rsub%isr_kinematics%isr_mode)
          else
             if (sregion%nlo_correction_type == "QCD") then
@@ -8808,7 +9051,7 @@ in this case, we need to differentiate between [[em]] and [[em_pdf]].
             sqme_cs = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
                  rsub%real_kinematics%xi_ref_momenta(i_con), &
                  rsub%real_kinematics%p_born_lab%phs_point(1)%get (), &
-                 rsub%sqme_born(sregion%uborn_index), &
+                 sqme_born_coll, &
                  mom_times_sqme_spin_c, &
                  zero, alpha_coupling, sregion%double_fsr)
          end if
@@ -9634,6 +9877,7 @@ end module dglap_remnant
      real(default) :: CA = 0, CF = 0, TR = 0
      real(default), dimension(:), allocatable :: sqme_born
      real(default), dimension(:,:), allocatable :: sf_factors
+     real(default), dimension(:,:,:), allocatable :: sqme_color_c_extra
    contains
    <<dglap remnant: dglap remnant: TBP>>
   end type dglap_remnant_t
@@ -9656,6 +9900,9 @@ end module dglap_remnant
     dglap%settings => settings
     allocate (dglap%sqme_born(n_flv_born))
     dglap%sqme_born = zero
+    allocate (dglap%sqme_color_c_extra (reg_data%n_legs_born, reg_data%n_legs_born, &
+         reg_data%n_flv_born))
+    dglap%sqme_color_c_extra = zero
     dglap%isr_kinematics => isr_kinematics
   end subroutine dglap_remnant_init
 
@@ -9690,10 +9937,10 @@ event generation to generate counter events with a specific Born flavor structur
 <<dglap remnant: procedures>>=
   subroutine dglap_remnant_evaluate (dglap, alpha_coupling, separate_uborns, sqme_dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
-    real(default), intent(in) :: alpha_coupling
+    real(default), dimension(2), intent(in) :: alpha_coupling
     logical, intent(in) :: separate_uborns
     real(default), intent(inout), dimension(:) :: sqme_dglap
-    integer :: alr, emitter
+    integer :: alr, emitter, i_corr
     real(default) :: sqme_alr
     logical, dimension(:,:,:), allocatable :: evaluated
     real(default) :: sb, fac_scale2
@@ -9703,12 +9950,18 @@ event generation to generate counter events with a specific Born flavor structur
          dglap%reg_data%n_in))
     evaluated = .false.
     do alr = 1, dglap%reg_data%n_regions
+       i_corr = 0
+       if (dglap%reg_data%regions(alr)%nlo_correction_type == "QCD") then
+          i_corr = 1
+       else if (dglap%reg_data%regions(alr)%nlo_correction_type == "EW") then
+          i_corr = 2
+       end if
        if (allocated (dglap%settings%selected_alr)) then
           if (.not. any (dglap%settings%selected_alr == alr)) cycle
        end if
        sqme_alr = zero
        emitter = dglap%reg_data%regions(alr)%emitter
-       if (emitter > dglap%reg_data%n_in) cycle
+       if (emitter > dglap%reg_data%n_in .or. i_corr == 0) cycle
        associate (i_flv_born => dglap%reg_data%regions(alr)%uborn_index, &
                i_flv_real => dglap%reg_data%regions(alr)%real_index)
           if (emitter == 0) then
@@ -9721,9 +9974,10 @@ event generation to generate counter events with a specific Born flavor structur
              call evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluated)
           end if
           if (separate_uborns) then
-             sqme_dglap(i_flv_born) = sqme_dglap(i_flv_born) + alpha_coupling / twopi * sqme_alr
+             sqme_dglap(i_flv_born) = sqme_dglap(i_flv_born) &
+                                      + alpha_coupling (i_corr)/ twopi * sqme_alr
           else
-             sqme_dglap(1) = sqme_dglap(1) + alpha_coupling / twopi * sqme_alr
+             sqme_dglap(1) = sqme_dglap(1) + alpha_coupling (i_corr)/ twopi * sqme_alr
           end if
        end associate
     end do
@@ -9809,10 +10063,11 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
   real(default) :: z, jac
   real(default) :: factor, factor_soft, plus_dist_remnant
   real(default) :: xb, onemz
-  real(default) :: sqme_scaled
+  real(default) :: sqme_scaled, sqme_born_dglap
   real(default) :: charge_rad2, charge_em2
-  integer :: flv_em, flv_rad, N_col
+  integer :: flv_em, flv_rad, N_col, i
   N_col = 1
+  sqme_born_dglap = zero
   associate (template => dglap%settings%fks_template)
      z = dglap%isr_kinematics%z(emitter)
      flv_rad = dglap%reg_data%regions(alr)%flst_real%flst(dglap%reg_data%n_legs_real)
@@ -9835,16 +10090,28 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
      plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
           two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)
   end associate
-  sqme_scaled = dglap%sqme_born(i_flv_born) * dglap%sf_factors(alr, emitter)
+  if (dglap%reg_data%nlo_correction_type == "EW" .and. &
+     dglap%reg_data%regions(alr)%nlo_correction_type == "QCD" .and. &
+     qcd_ew_interferences (dglap%reg_data%regions(alr)%flst_uborn%flst)) then
+     do i = 1, size (dglap%reg_data%regions(alr)%flst_uborn%flst)
+        if (is_quark (dglap%reg_data%regions(alr)%flst_uborn%flst (i))) then
+           sqme_born_dglap = -dglap%sqme_color_c_extra (i, i, i_flv_born)/CF
+           exit
+        end if
+     end do
+  else
+     sqme_born_dglap = dglap%sqme_born(i_flv_born)
+  end if
+  sqme_scaled = sqme_born_dglap * dglap%sf_factors(alr, emitter)
   if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
      sqme_alr = sqme_alr + p_hat_gtogg(z) * factor / z * sqme_scaled * jac &
-          - p_hat_gtogg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
-          + p_hat_gtogg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+          - p_hat_gtogg(one) * factor_soft * sqme_born_dglap * jac &
+          + p_hat_gtogg(one) * plus_dist_remnant * sqme_born_dglap
   else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
      sqme_alr = sqme_alr + p_hat_qtoqg(z) * factor / z * sqme_scaled * jac &
           - p_derived_qtoqg(z) / z * sqme_scaled * jac &
-          - p_hat_qtoqg(one) * factor_soft * dglap%sqme_born(i_flv_born) * jac &
-          + p_hat_qtoqg(one) * plus_dist_remnant * dglap%sqme_born(i_flv_born)
+          - p_hat_qtoqg(one) * factor_soft * sqme_born_dglap * jac &
+          + p_hat_qtoqg(one) * plus_dist_remnant * sqme_born_dglap
   else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
      sqme_alr = sqme_alr + (p_hat_gtoqq(z) * factor - p_derived_gtoqq(z)) / z * jac * &
           sqme_scaled

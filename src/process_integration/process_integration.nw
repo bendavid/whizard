@@ -8490,7 +8490,7 @@ subtractions.
            use_color = use_internal_color
       can_have_sub = nlo_t == NLO_VIRTUAL .or. &
            (nlo_t == NLO_REAL .and. term%i_term_global == term%i_sub) .or. &
-           nlo_t == NLO_MISMATCH
+           nlo_t == NLO_MISMATCH .or. nlo_t == NLO_DGLAP
       n_sub_color = 0; n_sub_spin = 0
       if (can_have_sub) then
          if (.not. use_color) n_sub_color = n_tot * (n_tot - 1) / 2
@@ -10301,10 +10301,11 @@ information, required for the region data.
     type(core_entry_t), dimension(:), intent(in) :: core_entry
     type(process_component_t), dimension(:), intent(inout) :: component
     type(model_t), intent(in), target :: model
-    integer :: i
+    integer :: alpha_power, alphas_power
     call pcm%handle_threshold_core (core_entry)
+    call component(1)%config%get_coupling_powers (alpha_power, alphas_power)
     call pcm%setup_region_data &
-         (core_entry, component(pcm%i_real)%phs_config, model)
+         (core_entry, component(pcm%i_real)%phs_config, model, alpha_power, alphas_power)
     call pcm%setup_real_partition ()
   end subroutine pcm_nlo_complete_setup
 
@@ -10485,7 +10486,8 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
 <<Pcm: pcm nlo: TBP>>=
   procedure :: setup_region_data => pcm_nlo_setup_region_data
 <<Pcm: procedures>>=
-  subroutine pcm_nlo_setup_region_data (pcm, core_entry, phs_config, model)
+  subroutine pcm_nlo_setup_region_data &
+       (pcm, core_entry, phs_config, model, alpha_power, alphas_power)
     class(pcm_nlo_t), intent(inout) :: pcm
     type(core_entry_t), dimension(:), intent(in) :: core_entry
     class(phs_config_t), intent(inout) :: phs_config
@@ -10494,6 +10496,7 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
     integer, dimension (:,:), allocatable :: flavor_born, flavor_real
     type(resonance_history_t), dimension(:), allocatable :: resonance_histories
     type(var_list_t), pointer :: var_list
+    integer, intent(in) :: alpha_power, alphas_power
     logical :: success
     data_born = core_entry(pcm%i_core(pcm%i_born))%core%data
     data_real = core_entry(pcm%i_core(pcm%i_real))%core%data
@@ -10501,7 +10504,7 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
     call data_real%get_flv_state (flavor_real)
     call pcm%region_data%init &
          (data_born%n_in, model, flavor_born, flavor_real, &
-         pcm%settings%nlo_correction_type)
+         pcm%settings%nlo_correction_type, alpha_power, alphas_power)
     associate (template => pcm%settings%fks_template)
       if (template%mapping_type == FKS_RESONANCES) then
          select type (phs_config)
@@ -11179,8 +11182,7 @@ object and the squared matrix-element collector.
     type is (pcm_nlo_t)
        associate (region_data => pcm%region_data)
          call pcm_work%virtual%init (region_data%get_flv_states_born (), &
-              region_data%n_in, pcm%settings, &
-              region_data%regions(1)%nlo_correction_type, model, pcm%has_pdfs)
+              region_data%n_in, pcm%settings, model, pcm%has_pdfs)
        end associate
     end select
   end subroutine pcm_nlo_workspace_init_virtual
@@ -11204,7 +11206,7 @@ object and the squared matrix-element collector.
     class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
     class(pcm_t), intent(in) :: pcm
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: alpha_coupling
+    real(default), dimension(2), intent(in) :: alpha_coupling
     logical, intent(in) :: separate_uborns
     real(default), dimension(:), allocatable, intent(inout) :: sqme_virt
     type(vector4_t), dimension(:), allocatable :: pp
@@ -11262,7 +11264,7 @@ object and the squared matrix-element collector.
             alpha_coupling, separate_uborns, sqme_dglap)
     class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
     class(pcm_t), intent(in) :: pcm
-    real(default), intent(in) :: alpha_coupling
+    real(default), dimension(2), intent(in) :: alpha_coupling
     logical, intent(in) :: separate_uborns
     real(default), dimension(:), allocatable, intent(inout) :: sqme_dglap
     select type (pcm)
@@ -12473,7 +12475,7 @@ relevant for a NLO algorithm.
          term%nlo_type == NLO_MISMATCH) then
        n_sub = term%get_n_sub ()
     else if (term%nlo_type == NLO_DGLAP) then
-       n_sub = n_beams_rescaled
+       n_sub = n_beams_rescaled + term%get_n_sub ()
     else
        !!! No integration of real subtraction in interactions yet
        n_sub = 0
@@ -13173,6 +13175,10 @@ the threshold computation where the process is well-defined and fixed.
                 !!! This is just a copy of the above with a different offset and can for sure be unified
                 call transfer_me_array_to_bij (pcm, i_flv_born, &
                      -one, pcm_work%virtual%sqme_color_c (:, :, i_flv_born))
+              case (NLO_DGLAP)
+                call transfer_me_array_to_bij (pcm, i_flv_born, &
+                     pcm_work%dglap_remnant%sqme_born (i_flv_born), &
+                     pcm_work%dglap_remnant%sqme_color_c_extra (:, :, i_flv_born))
              end select
           end do
        end select
@@ -13229,6 +13235,7 @@ the threshold computation where the process is well-defined and fixed.
       integer, intent(in) :: i_flv
       real(default), intent(in) :: sqme_born
       real(default), dimension(:,:), intent(inout) :: sqme_color_c
+      logical :: special_case_interferences
       integer :: i_color_c, i_sub, n_offset
       real(default), dimension(:), allocatable :: sqme
       if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
@@ -13246,10 +13253,12 @@ the threshold computation where the process is well-defined and fixed.
             sqme_color_c = zero
          end if
       else
+         special_case_interferences = pcm%region_data%nlo_correction_type == "EW"
          n_offset = 0
          if (term%nlo_type == NLO_VIRTUAL) then
             n_offset = 1
-         else if (pcm%has_pdfs .and. term%is_subtraction ()) then
+         else if (pcm%has_pdfs .and. (term%is_subtraction () &
+                .or. term%nlo_type == NLO_DGLAP)) then
             n_offset = n_beams_rescaled
          end if
          allocate (sqme (term%get_n_sub_color ()), source = zero)
@@ -13263,7 +13272,7 @@ the threshold computation where the process is well-defined and fixed.
          call blha_color_c_fill_diag (real(term%connected%trace%get_matrix_element ( &
               term%connected%trace%get_qn_index (i_flv, i_sub = 0)), default), &
               pcm%region_data%get_flv_states_born (i_flv), &
-              sqme_color_c)
+              sqme_color_c, special_case_interferences)
       end if
     end subroutine transfer_me_array_to_bij
   end subroutine term_instance_evaluate_color_correlations
@@ -13464,7 +13473,7 @@ it is only available after the [[fks_regions]] have been created.
   subroutine term_instance_evaluate_sqme_virt (term, alpha_s, alpha_qed)
      class(term_instance_t), intent(inout) :: term
      real(default), intent(in) :: alpha_s, alpha_qed
-     real(default) :: alpha_coupling
+     real(default), dimension(2) :: alpha_coupling
      type(vector4_t), dimension(:), allocatable :: p_born
      real(default), dimension(:), allocatable :: sqme_virt
      integer :: i_flv
@@ -13480,15 +13489,11 @@ it is only available after the [[fks_regions]] have been created.
      type is (pcm_nlo_t)
         select type (pcm_work => term%pcm_work)
         type is (pcm_nlo_workspace_t)
-           associate (nlo_corr_type => pcm%region_data%regions(1)%nlo_correction_type)
-              if (nlo_corr_type == "QCD") then
-                 alpha_coupling = alpha_s
-                 if (debug2_active (D_VIRTUAL)) print *, 'alpha_s: ', alpha_coupling
-              else if (nlo_corr_type == "EW") then
-                 alpha_coupling = alpha_qed
-                 if (debug2_active (D_VIRTUAL)) print *, 'alpha_qed: ', alpha_coupling
-              end if
-           end associate
+           alpha_coupling = [alpha_s, alpha_qed] 
+           if (debug2_active (D_VIRTUAL)) then
+              print *, 'alpha_s: ', alpha_coupling (1)
+              print *, 'alpha_qed: ', alpha_coupling (2)
+           end if
            allocate (p_born (pcm%region_data%n_legs_born))
            if (pcm%settings%factorization_mode == FACTORIZATION_THRESHOLD) then
               p_born = pcm_work%real_kinematics%p_born_onshell%get_momenta(1)
@@ -13575,7 +13580,7 @@ it is only available after the [[fks_regions]] have been created.
   subroutine term_instance_evaluate_sqme_dglap (term, alpha_s, alpha_qed)
     class(term_instance_t), intent(inout) :: term
     real(default), intent(in) :: alpha_s, alpha_qed
-    real(default) :: alpha_coupling
+    real(default), dimension(2) :: alpha_coupling
     real(default), dimension(:), allocatable :: sqme_dglap
     integer :: i_flv
     if (term%nlo_type /= NLO_DGLAP) call msg_fatal &
@@ -13585,19 +13590,14 @@ it is only available after the [[fks_regions]] have been created.
     type is (pcm_nlo_t)       
        select type (pcm_work => term%pcm_work)
        type is (pcm_nlo_workspace_t)
-          select case (char (pcm%region_data%regions(1)%nlo_correction_type))
-          case ("QCD")
-             alpha_coupling = alpha_s
-          case ("EW")
-             alpha_coupling = alpha_qed
-          end select
+          alpha_coupling = [alpha_s,alpha_qed]
           if (debug2_active (D_PROCESS_INTEGRATION)) then
              associate (n_flv => pcm_work%dglap_remnant%reg_data%n_flv_born)
                print *, "size(sqme_born) = ", size (pcm_work%dglap_remnant%sqme_born)
                call term%connected%trace%write ()
              end associate
           end if
-          call pcm_work%compute_sqme_dglap_remnant (term%pcm, alpha_coupling, &
+          call pcm_work%compute_sqme_dglap_remnant (pcm, alpha_coupling, &
                term%connected%has_matrix, sqme_dglap)
        end select
     end select
@@ -13926,6 +13926,30 @@ to improve performance.
                         term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub = 0))
                 end do
              end if
+             if (term%pcm%has_pdfs .and. term%nlo_type == NLO_DGLAP) then
+                sqme_color_c = zero
+                select type (pcm => term%pcm)
+                type is (pcm_nlo_t)
+                   if (pcm%settings%nlo_correction_type == "EW" .and. &
+                      pcm%region_data%alphas_power > 0) then
+                      select type (core)
+                      class is (prc_blha_t)
+                         call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                              term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                         call term%pcm_work%set_bad_point (bad_point)
+                      class is (prc_recola_t)
+                         call core%compute_sqme_color_c_raw (i_flv, i_hel, &
+                              term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                         call term%pcm_work%set_bad_point (bad_point)
+                      end select
+                   end if
+                end select
+                do i_sub = 1, n_sub_color
+                   i_color_c = term%int_hard%get_qn_index &
+                        (i_flv, i_hel, i_sub + n_pdf_off)
+                   term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
+                end do
+             end if
              if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
                   term%nlo_type == NLO_MISMATCH) then
                 sqme_color_c = zero
@@ -13992,6 +14016,15 @@ to improve performance.
                 do i_sub = 1, n_pdf_off
                    term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub)) = &
                         term%amp(term%int_hard%get_qn_index (i_flv, i_hel, i_sub = 0))
+                end do
+             end if
+             if (term%pcm%has_pdfs .and. term%nlo_type == NLO_DGLAP) then
+                do i_sub = 1, n_sub_color
+                   i_color_c = term%int_hard%get_qn_index &
+                        (i_flv, i_hel, i_sub + n_pdf_off)
+                   i_color_c_eqv = term%int_hard%get_qn_index &
+                        (i_flv_eqv, i_hel_eqv, i_sub + n_pdf_off)
+                   term%amp(i_color_c) = term%amp(i_color_c_eqv)
                 end do
              end if
              if ((term%nlo_type == NLO_REAL .and. term%is_subtraction ()) .or. &
@@ -15613,8 +15646,16 @@ terms, iterating over all active process components.
                                 char (pcm%settings%nlo_correction_type) == "Full") &
                                 call term%evaluate_color_correlations (core_sub)
                            if (char (pcm%settings%nlo_correction_type) == "EW" .or. &
-                                char (pcm%settings%nlo_correction_type) == "Full") &
-                                call term%evaluate_charge_correlations (core_sub)
+                                char (pcm%settings%nlo_correction_type) == "Full") then
+                              call term%evaluate_charge_correlations (core_sub)
+                              select type (pcm => term%pcm)
+                              type is (pcm_nlo_t)
+                                 associate (reg_data => pcm%region_data)
+                                   if (reg_data%alphas_power > 0) &
+                                        call term%evaluate_color_correlations (core_sub)
+                                 end associate
+                              end select
+                           end if
                         end select
                      end if
                      if (term%is_subtraction ()) then
@@ -15698,6 +15739,10 @@ structure function chain of each ISR alpha region over the value of the
 corresponding underlying born flavor structure.
 In the case of emitter 0 we also need the rescaled ratio for emitter 1 and 2
 in that region for the (soft-)collinear limits.
+If the emitter is 1 or 2 in some cases, e. g. for EW corrections where a photon in the
+proton is required, there can be the possibility of soft radiation off the initial state.
+For that purpose the unrescaled ratio is needed and as a default we always save these
+numbers in [[sf_factors(:, 0)]].
 Altough this procedure is implying functionality for general structure functions,
 it should be reviewed for anything else besides PDFs, as there might be complications
 in the details. The general idea of getting the ratio in this way should hold up in
@@ -15740,6 +15785,10 @@ these cases as well, however.
                               (sf_chain_int%get_sf_qn_index_real (i_real, i_sub = em))
                          call set_factor (pcm_work, alr, em, factor_born, factor_real)
                       end do
+                   else
+                      factor_real = sf_chain_int%get_matrix_element &
+                           (sf_chain_int%get_sf_qn_index_real (i_real, i_sub = 0))
+                      call set_factor (pcm_work, alr, 0, factor_born, factor_real)
                    end if
                 end if
              end do

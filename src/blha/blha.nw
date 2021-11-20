@@ -49,7 +49,7 @@ module blha_olp_interfaces
   use interactions
   use flavors
   use model_data
-  use pdg_arrays, only: is_gluon, is_quark
+  use pdg_arrays, only: is_gluon, is_quark, qcd_ew_interferences
 
   use prclib_interfaces
   use process_libraries
@@ -888,7 +888,8 @@ Obviously, this process-core type uses the BLHA interface.
                call msg_fatal ("AmplitudeType present but AmpType not known!")
             end if
             read_flavor = .true.
-         else if (read_flavor) then
+         else if (read_flavor .and. .not. (rd_line(1:13) == 'CouplingPower' &
+              .or. rd_line(1:14) == 'CorrectionType')) then
             i_array = create_flavor_string (rd_line, n_entries)
             if (driver%include_polarizations) then
                hel_array = create_helicity_string (rd_line, n_entries)
@@ -1361,8 +1362,18 @@ Obviously, this process-core type uses the BLHA interface.
        object%i_tree = -1
        object%i_color_c = -1
        object%i_spin_c = -1
-    else if (blha_template%compute_real_trees () .or. blha_template%compute_born () &
-         .or. blha_template%compute_dglap ()) then
+    else if (blha_template%compute_dglap ()) then
+       if (blha_template%include_polarizations) then
+          allocate (object%i_tree (n_flv, n_hel), &
+               object%i_color_c (n_flv, n_hel), &
+               object%i_hel (3 * (n_flv * n_hel * n_in), n_in))
+          object%i_hel = 0
+       else
+          allocate (object%i_tree (n_flv, 1), object%i_color_c (n_flv, 1))
+       end if
+       object%i_tree = -1
+       object%i_color_c = -1
+    else if (blha_template%compute_real_trees () .or. blha_template%compute_born ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_tree (n_flv, n_hel))
           allocate (object%i_hel (n_flv * n_hel * n_in, n_in))
@@ -1577,19 +1588,48 @@ are requested (GoSam does not support polarized matrix elements).
 
 @ %def prc_blha_compute_sqme
 @
+For the color correlated matrix the standard is to compute the diagonal entries
+from the born amplitudes and corresponding casimirs. However, if EW
+corrections are activated, the thus derived entries can be computed with born
+amplitudes of wrong coupling powers if the flavor structure potentially induces
+QCD-EW interference amplitudes. For this purpose a second possibility, to
+compute the diagonal from the off-diagonal elements is implemented as a special
+case.
 <<BLHA OLP interfaces: public>>=
   public :: blha_color_c_fill_diag
 <<BLHA OLP interfaces: procedures>>=
-  subroutine blha_color_c_fill_diag (sqme_born, flavors, sqme_color_c)
+  subroutine blha_color_c_fill_diag (sqme_born, flavors, sqme_color_c, special_case)
      real(default), intent(in) :: sqme_born
      integer, intent(in), dimension(:) :: flavors
+     logical, intent(in), optional :: special_case
      real(default), intent(inout), dimension(:,:) :: sqme_color_c
-     integer :: i
+     real(default) :: sqme_line_off
+     integer :: i, j
+     logical :: special_c
+     special_c = .false.
+     if (present (special_case)) &
+            special_c = special_case .and. qcd_ew_interferences (flavors)
      do i = 1, size (flavors)
         if (is_quark (flavors(i))) then
-           sqme_color_c (i, i) = -cf * sqme_born
+           sqme_line_off = zero
+           do j = 1, size (flavors)
+              if (j /= i) sqme_line_off = sqme_line_off + sqme_color_c (i, j)
+           end do
+           if (special_c) then
+              sqme_color_c (i, i) = - sqme_line_off
+           else
+              sqme_color_c (i, i) = -cf * sqme_born
+           end if
         else if (is_gluon (flavors(i))) then
-           sqme_color_c (i, i) = -ca * sqme_born
+           sqme_line_off = zero
+           do j = 1, size (flavors)
+              if (j /= i) sqme_line_off = sqme_line_off + sqme_color_c (i, j)
+           end do
+           if (special_c) then
+              sqme_color_c (i, i) = - sqme_line_off
+           else
+              sqme_color_c (i, i) = -ca * sqme_born
+           end if
         else
            sqme_color_c (i, i) = zero
         end if
@@ -1777,11 +1817,14 @@ element. The index mapping is according to the order of flavor structures known 
     class(prc_blha_t), intent(inout) :: object
     integer :: n_flv, n_hel
     integer :: i_flv1, i_flv2, i_hel1, i_hel2
-    integer, dimension(:,:), allocatable :: amp_id
+    integer, dimension(:,:), allocatable :: amp_id, amp_id_color
     if (allocated (object%i_virt)) then
        amp_id = object%i_virt
     else
        amp_id = object%i_tree
+    end if
+    if (allocated (object%i_color_c)) then
+       amp_id_color = object%i_color_c
     end if
     n_flv = size (amp_id, dim=1)
     n_hel = size (amp_id, dim=2)
@@ -1797,11 +1840,17 @@ element. The index mapping is according to the order of flavor structures known 
        do i_hel1 = 1, n_hel
           FLV_LOOP: do i_flv2 = 1, i_flv1
              do i_hel2 = 1, i_hel1
-                if (amp_id(i_flv2, i_hel2) == &
-                     amp_id(i_flv1, i_hel1)) then
-                   object%data%eqv_flv_index(i_flv1) = i_flv2
-                   object%data%eqv_hel_index(i_hel1) = i_hel2
-                   exit FLV_LOOP
+                if (amp_id(i_flv2, i_hel2) == amp_id(i_flv1, i_hel1)) then
+                   if (.not. allocated (amp_id_color)) then
+                      object%data%eqv_flv_index(i_flv1) = i_flv2
+                      object%data%eqv_hel_index(i_hel1) = i_hel2
+                      exit FLV_LOOP
+                   else if (amp_id_color (i_flv2, i_hel2) == &
+                        amp_id_color(i_flv1, i_hel1)) then
+                      object%data%eqv_flv_index(i_flv1) = i_flv2
+                      object%data%eqv_hel_index(i_hel1) = i_hel2
+                      exit FLV_LOOP
+                   end if
                 end if
              end do
           end do FLV_LOOP
@@ -2537,10 +2586,10 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
           do i_flv = 1, size (flv_born, 2)
              allocate (blha_flavor(i_flv)%flavors (size (flv_born(:,i_flv))))
              blha_flavor(i_flv)%flavors = flv_born(:,i_flv)
-             blha_flavor(i_flv)%flv_mult = 1
+             blha_flavor(i_flv)%flv_mult = 2
           end do
           master%suffix(i_file) = blha_get_additional_suffix (var_str ("_DGLAP"))
-          call blha_init_born (master%blha_cfg(i_file), blha_flavor, &
+          call blha_init_dglap (master%blha_cfg(i_file), blha_flavor, &
                n_in, alpha_power, alphas_power, master%ew_scheme, &
                basename, model, master%blha_mode(5), master%suffix(i_file))
           i_file = i_file + 1
@@ -2711,6 +2760,37 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
          debug = blha_mode == BLHA_MODE_GOSAM)
   end subroutine blha_init_virtual
 
+  subroutine blha_init_dglap (blha_cfg, blha_flavor, n_in, &
+         ap, asp, ew_scheme, basename, model, blha_mode, suffix)
+    type(blha_configuration_t), intent(inout) :: blha_cfg
+    type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
+    integer, intent(in) :: n_in
+    integer, intent(in) :: ap, asp
+    integer, intent(in) :: ew_scheme
+    type(string_t), intent(in) :: basename
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: blha_mode
+    type(string_t), intent(in) :: suffix
+    integer, dimension(:), allocatable :: amp_type
+    integer :: i
+
+    allocate (amp_type (size (blha_flavor) * 2))
+    do i = 1, size (blha_flavor)
+       amp_type(2 * i - 1) = BLHA_AMP_TREE
+       amp_type(2 * i) = BLHA_AMP_COLOR_C
+    end do
+    call blha_configuration_init (blha_cfg, basename // suffix , &
+         model, blha_mode)
+    call blha_configuration_append_processes (blha_cfg, n_in, &
+         blha_flavor, amp_type)
+    call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
+         irreg = BLHA_IRREG_CDR, &
+         alphas_power = asp, &
+         alpha_power = ap, &
+         ew_scheme = ew_scheme, &
+         debug = blha_mode == BLHA_MODE_GOSAM)
+  end subroutine blha_init_dglap
+
   subroutine blha_init_subtraction (blha_cfg, blha_flavor, n_in, &
          ap, asp, ew_scheme, basename, model, blha_mode, suffix)
     type(blha_configuration_t), intent(inout) :: blha_cfg
@@ -2821,7 +2901,7 @@ subroutine blha_master_generate_dglap (master, basename, model, n_in, &
        filename = basename // master%suffix(i_file) // ".olp"
        unit = free_unit ()
        open (unit, file = char (filename), status = 'replace', action = 'write')
-       call blha_configuration_write (master%blha_cfg(i_file), unit)
+       call blha_configuration_write (master%blha_cfg(i_file), master%suffix(i_file), unit)
        close (unit)
     end do
   end subroutine blha_master_write_olp
@@ -3136,10 +3216,12 @@ corrections are activated and photons are present at LO.
 <<BLHA config: public>>=
   public :: blha_configuration_write
 <<BLHA config: procedures>>=
-  subroutine blha_configuration_write (cfg, unit, internal, no_version)
+  subroutine blha_configuration_write (cfg, suffix, unit, internal, no_version)
     type(blha_configuration_t), intent(in) :: cfg
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: internal, no_version
+    type(string_t), intent(in) :: suffix
+    integer, dimension(:), allocatable :: pdg_flv
     integer :: u
     logical :: full
     type(string_t) :: buf
@@ -3148,6 +3230,7 @@ corrections are activated and photons are present at LO.
     character(3) :: pdg_char
     character(5) :: pdg_char_extra
     character(4) :: hel_char
+    character(6) :: suffix_char
     character(len=25), parameter :: pad = ""
     logical :: write_process, no_v
     no_v = .false. ; if (present (no_version))  no_v = no_version
@@ -3275,6 +3358,27 @@ corrections are activated and photons are present at LO.
     node => cfg%processes
     do while (associated (node))
        write_process = .true.
+       allocate (pdg_flv (size (node%pdg_in) + size (node%pdg_out)))
+       do i = 1, size (node%pdg_in)
+          pdg_flv (i) = node%pdg_in(i)%pdg
+       end do
+       do i = 1, size (node%pdg_out)
+          pdg_flv (i + size (node%pdg_in)) = node%pdg_out(i)%pdg
+       end do
+       suffix_char = char (suffix)
+       if (cfg%correction_type == BLHA_CT_EW .and. cfg%alphas_power > 0) then
+          if ((suffix_char (1:5) == "_BORN" .and. .not. query_coupling_powers &
+             (pdg_flv, cfg%alpha_power, cfg%alphas_power)) .or. &
+             ((suffix_char (1:4) == "_SUB" .or. suffix_char (1:5) == "_LOOP" .or. &
+             suffix_char (1:6) == "_DGLAP") .and. (.not. (query_coupling_powers &
+             (pdg_flv, cfg%alpha_power, cfg%alphas_power) .or. query_coupling_powers &
+             (pdg_flv, cfg%alpha_power + 1, cfg%alphas_power - 1)) .or. &
+             all (is_gluon (pdg_flv))))) then
+             deallocate (pdg_flv)
+             node => node%next
+             cycle
+          end if
+       end if
        select case (node%amplitude_type)
          case (BLHA_AMP_LOOP); buf = "Loop"
          case (BLHA_AMP_COLOR_C); buf = "ccTree"
@@ -3290,6 +3394,40 @@ corrections are activated and photons are present at LO.
        if (write_process) then
           write (u, '(A25, A)') "AmplitudeType " // pad, char (buf)
           buf = ""
+          if (cfg%correction_type == BLHA_CT_EW .and. cfg%alphas_power > 0 .and. &
+             (suffix_char (1:4) == "_SUB" .or. suffix_char (1:5) == "_LOOP" &
+             .or. suffix_char (1:6) == "_DGLAP")) then
+             if (query_coupling_powers (pdg_flv, cfg%alpha_power, cfg%alphas_power)) then
+                write (u,'(A25,A)') "CorrectionType" // pad, "EW"
+                select case (cfg%version)
+                   case (1)
+                      if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
+                           "AlphasPower" // pad, int2char (cfg%alphas_power)
+                      if (cfg%alpha_power >= 0) write (u,'(A25,A)') &
+                           "AlphaPower " // pad, int2char (cfg%alpha_power)
+                   case (2)
+                      if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
+                           "CouplingPower QCD " // pad, int2char (cfg%alphas_power)
+                      if (cfg%alpha_power >= 0) write (u, '(A25,A)') &
+                           "CouplingPower QED " // pad, int2char (cfg%alpha_power)
+                end select
+             else if (query_coupling_powers &
+                  (pdg_flv, cfg%alpha_power + 1, cfg%alphas_power - 1)) then
+                write (u,'(A25,A)') "CorrectionType" // pad, "QCD"
+                select case (cfg%version)
+                   case (1)
+                      if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
+                           "AlphasPower" // pad, int2char (cfg%alphas_power - 1)
+                      if (cfg%alpha_power >= 0) write (u,'(A25,A)') &
+                           "AlphaPower " // pad, int2char (cfg%alpha_power + 1)
+                   case (2)
+                      if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
+                           "CouplingPower QCD " // pad, int2char (cfg%alphas_power - 1)
+                      if (cfg%alpha_power >= 0) write (u, '(A25,A)') &
+                           "CouplingPower QED " // pad, int2char (cfg%alpha_power + 1)
+                end select
+             end if
+          end if
           do i = 1, size (node%pdg_in)
              if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_in(i)%pdg == PHOTON &
                 .and. cfg%n_off_photons_is > 0) then
@@ -3329,9 +3467,9 @@ corrections are activated and photons are present at LO.
           write (u, "(A)") char (trim (buf))
           write (u, *)
        end if
+       deallocate (pdg_flv)
        node => node%next
     end do
-
   end subroutine blha_configuration_write
 
 @ %def blha_configuration_write
@@ -3505,7 +3643,7 @@ end module blha_uti
          call write_component_type (i, u)
          call write_separator (u)
          call blha_configuration_write &
-              (blha_master%blha_cfg(i), u, no_version = .true.)
+              (blha_master%blha_cfg(i), blha_master%suffix(i), u, no_version = .true.)
       end do
     end subroutine test_output
 
