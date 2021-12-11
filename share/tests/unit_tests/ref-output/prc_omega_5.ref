@@ -45,12 +45,12 @@
 
 * Compute matrix element
 
- factorization scale = 100.
+ renormalization scale = 100.
  |amp (1, 6, 1)| =  0.2435E+00
 
-* Modify factorization scale and compute matrix element again
+* Modify renormalization scale and compute matrix element again
 
- factorization scale = 200.
+ renormalization scale = 200.
  |amp (1, 6, 1)| =  0.2217E+00
 
 * Set alpha(QCD) directly and compute matrix element again

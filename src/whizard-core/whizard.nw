@@ -16414,7 +16414,8 @@ end subroutine subevt_expr_test
     type(vector4_t), dimension(6) :: p
     integer :: i, pdg
     logical :: passed
-    real(default) :: scale, fac_scale, ren_scale, weight
+    real(default) :: scale, weight
+    real(default), allocatable :: fac_scale, ren_scale
 
     write (u, "(A)")  "* Test output: subevt_expr_1"
     write (u, "(A)")  "*   Purpose: Set up a subevt and associated &

@@ -3702,7 +3702,7 @@ If the [[core_state]] status flag is present, we can make sure that we call
 unset the [[new_kinematics]] flag.
 
 The core objects computes the appropriate $\alpha_s$ value via the [[qcd]]
-subobject, taking into account the provided [[fac_scale]] value.  However, if
+subobject, taking into account the provided [[ren_scale]] value.  However, if
 the extra parameter [[alpha_qcd_forced]] is allocated, it overrides this
 setting.
 
@@ -3744,7 +3744,7 @@ the run if helicities are switched off.
              if (allocated (alpha_qcd_forced)) then
                 alpha_qcd = alpha_qcd_forced
              else
-                alpha_qcd = object%qcd%alpha%get (fac_scale)
+                alpha_qcd = object%qcd%alpha%get (ren_scale)
              end if
              call driver%update_alpha_s (alpha_qcd)
              if (present (core_state)) then
@@ -4675,7 +4675,7 @@ method [[compute_amplitude]].
     class(prc_core_state_t), allocatable :: core_state
     type(vector4_t), dimension(4) :: p
     complex(default) :: amp
-    real(default) :: fac_scale
+    real(default) :: ren_scale
     real(default), allocatable :: alpha_qcd_forced
     integer :: i
 
@@ -4763,24 +4763,24 @@ method [[compute_amplitude]].
        write (u, "(A)")  "* Compute matrix element"
        write (u, "(A)")
 
-       fac_scale = 100
-       write (u, "(1x,A,F4.0)")  "factorization scale = ", fac_scale
+       ren_scale = 100
+       write (u, "(1x,A,F4.0)")  "renormalization scale = ", ren_scale
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
+            (1, p, 1, 6, 1, 100._default, ren_scale, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
        write (u, "(A)")
-       write (u, "(A)")  "* Modify factorization scale and &
+       write (u, "(A)")  "* Modify renormalization scale and &
             &compute matrix element again"
        write (u, "(A)")
 
-       fac_scale = 200
-       write (u, "(1x,A,F4.0)")  "factorization scale = ", fac_scale
+       ren_scale = 200
+       write (u, "(1x,A,F4.0)")  "renormalization scale = ", ren_scale
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
+            (1, p, 1, 6, 1, 100._default, ren_scale, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
@@ -4793,7 +4793,7 @@ method [[compute_amplitude]].
        write (u, "(1x,A,F6.4)")  "alpha_qcd = ", alpha_qcd_forced
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
+            (1, p, 1, 6, 1, 100._default, ren_scale, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
@@ -5521,13 +5521,13 @@ Used for testing.
 <<Prc external: prc external: TBP>>=
   procedure :: update_alpha_s => prc_external_update_alpha_s
 <<Prc external: procedures>>=
-  subroutine prc_external_update_alpha_s (object, core_state, fac_scale)
+  subroutine prc_external_update_alpha_s (object, core_state, scale)
     class(prc_external_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
-    real(default), intent(in) :: fac_scale
+    real(default), intent(in) :: scale
     real(default) :: alpha_qcd
     if (allocated (object%qcd%alpha)) then
-       alpha_qcd = object%qcd%alpha%get (fac_scale)
+       alpha_qcd = object%qcd%alpha%get (scale)
        select type (driver => object%driver)
        class is (prc_external_driver_t)
           call driver%update_alpha_s (alpha_qcd)
@@ -6225,7 +6225,7 @@ result of the integration is the n-particle-phase-space volume.
     complex(default) :: amp
     select type (core_state)
     class is (prc_external_test_state_t)
-       core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+       core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
     end select
     amp = 0.0
   end function prc_external_test_compute_amplitude
@@ -6765,7 +6765,7 @@ This core type has the beam polarization as an extra parameter.
     complex(default) :: amp
     select type (core_state)
     class is (prc_external_test_state_t)
-       core_state%alpha_qcd = object%qcd%alpha%get (fac_scale)
+       core_state%alpha_qcd = object%qcd%alpha%get (ren_scale)
     end select
     amp = 0
   end function prc_threshold_compute_amplitude

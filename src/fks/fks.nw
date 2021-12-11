@@ -5888,7 +5888,9 @@ end module virtual
   type :: virtual_t
      type(nlo_settings_t) :: settings
      real(default), dimension(:,:,:), allocatable :: gamma_0, gamma_p, c_flv
-     real(default) :: ren_scale2, fac_scale, es_scale2
+     real(default) :: fac_scale
+     real(default), allocatable :: ren_scale
+     real(default), allocatable :: es_scale2
      integer, dimension(:), allocatable :: n_is_neutrinos
      integer :: n_in, n_legs, n_flv
      logical :: bad_point = .false.
@@ -6079,14 +6081,15 @@ center-of-mass energy.
 <<virtual: virtual: TBP>>=
   procedure :: set_ren_scale => virtual_set_ren_scale
 <<virtual: procedures>>=
-  subroutine virtual_set_ren_scale (virt, p, ren_scale)
+  subroutine virtual_set_ren_scale (virt, ren_scale)
     class(virtual_t), intent(inout) :: virt
-    type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale
-    if (ren_scale > 0) then
-      virt%ren_scale2 = ren_scale**2
-    else
-      virt%ren_scale2 = (p(1) + p(2))**2
+    real(default), allocatable, intent(in) :: ren_scale
+    if (allocated (ren_scale)) then
+       if (allocated (virt%ren_scale)) then
+          virt%ren_scale = ren_scale
+       else
+          allocate (virt%ren_scale, source=ren_scale)
+       end if
     end if
   end subroutine virtual_set_ren_scale
 
@@ -6112,8 +6115,14 @@ center-of-mass energy.
 <<virtual: procedures>>=
   subroutine virtual_set_ellis_sexton_scale (virt, Q)
     class(virtual_t), intent(inout) :: virt
-    real(default), intent(in) :: Q
-    virt%es_scale2 = Q * Q
+    real(default), allocatable, intent(in) :: Q
+    if (allocated (Q)) then
+       if (allocated (virt%es_scale2)) then
+          virt%es_scale2 = Q * Q
+       else
+          allocate (virt%es_scale2, source=Q*Q)
+       end if
+    end if
   end subroutine virtual_set_ellis_sexton_scale
 
 @ %def virtual_set_ellis_sexton_scale
@@ -6123,15 +6132,20 @@ center-of-mass energy.
   \mathcal{V} = \frac{\alpha_s}{2\pi}\left(\mathcal{Q}\mathcal{B} +
   \sum \mathcal{I}_{ij}\mathcal{B}_{ij} + \mathcal{V}_{fin}\right),
 \end{equation}
-The expressions for $\mathcal{Q}$ can be found in equations \ref{eqn:virt_Q_isr}
-and \ref{eqn:virt_Q_fsr}.
+The expressions for $\mathcal{Q}$ can be found in equations
+\ref{eqn:virt_Q_isr} and \ref{eqn:virt_Q_fsr}.
 The expressions for $\mathcal{I}_{ij}$ can be found in equations
 (\ref{I_00}), (\ref{I_mm}), (\ref{I_0m}), depending on whether the
 particles involved in the radiation process are massive or massless.
 
-If two or more flavor structures would produce the same amplitude we only compute
-one and use the [[eqv_index]] to copy the result to the others (if [[reuse_amplitudes_fks]]
-is true).
+If two or more flavor structures would produce the same amplitude we
+only compute one and use the [[eqv_index]] to copy the result to the
+others (if [[reuse_amplitudes_fks]] is true).
+
+The Ellis-Sexton scale is set when explicitly allocated; if not it
+first is set to the renormalization scale; if that it is not set it
+will be set to the factorization scale which is the scale used for the
+virtual corrections.
 <<virtual: virtual: TBP>>=
   procedure :: evaluate => virtual_evaluate
 <<virtual: procedures>>=
@@ -6145,7 +6159,7 @@ is true).
     real(default), dimension(:), intent(inout) :: sqme_virt
     integer, dimension(:), allocatable :: eqv_flv_index
     real(default), dimension(:), allocatable :: sqme_virt_arr
-    real(default) :: s, s_o_Q2
+    real(default) :: s, s_o_Q2, es_scale2
     real(default), dimension(reg_data%n_flv_born) :: QB, BI
     integer :: i_flv, ii_flv, alr, i_corr
     logical, dimension(:), allocatable :: flv_evaluated
@@ -6157,15 +6171,24 @@ is true).
     sqme_virt_arr = zero
     flv_evaluated = .false.
     if (virt%bad_point) return
+    if (allocated (virt%es_scale2)) then
+       es_scale2 = virt%es_scale2
+    else
+       if (allocated (virt%ren_scale)) then
+          es_scale2 = virt%ren_scale**2
+       else
+          es_scale2 = virt%fac_scale**2
+       end if
+    end if
     if (debug2_active (D_VIRTUAL)) then
        print *, 'Compute virtual component using alpha = ', alpha_coupling
        print *, 'Virtual selection: ', char (virt%selection)
-       print *, 'virt%es_scale2 =    ', virt%es_scale2 !!! Debugging
+       print *, 'virt%es_scale2 =    ', es_scale2 !!! Debugging
     end if
     s = sum (p_born(1 : virt%n_in))**2
     if (virt%settings%factorization_mode == FACTORIZATION_THRESHOLD) &
          call set_s_for_threshold ()
-    s_o_Q2 = s / virt%es_scale2 * virt%settings%fks_template%xi_cut**2
+    s_o_Q2 = s / es_scale2 * virt%settings%fks_template%xi_cut**2
     eqv_flv_index = reg_data%eqv_flv_index_born
     do i_flv = 1, reg_data%n_flv_born
        alr_qcd = .false.; alr_ew = .false.
@@ -6388,7 +6411,9 @@ general structure is $\mathcal{Q} \cdot \mathcal{B}$. The initial-state contribu
 to $\mathcal{Q}$ is simply given by
 \begin{equation}
   \label{eqn:virt_Q_isr}
-  \mathcal{Q} = -\log\frac{\mu_F^2}{Q^2} \left(\gamma(\mathcal{I}_1) + 2 C (\mathcal{I}_1) \log(\xi_{\text{cut}}) + \gamma(\mathcal{I}_2) + 2 C (\mathcal{I}_2) \log(\xi_{\text{cut}}) \right),
+  \mathcal{Q} = -\log\frac{\mu_F^2}{Q^2} \left(\gamma(\mathcal{I}_1) + 2 C 
+  (\mathcal{I}_1) \log(\xi_{\text{cut}}) + \gamma(\mathcal{I}_2) + 2 C (\mathcal{I}_2) 
+  \log(\xi_{\text{cut}}) \right),
 \end{equation}
 where $Q^2$ is the Ellis-Sexton scale and $\gamma$ is as in eqns. \ref{eqn:gamma(q)}
 and \ref{eqn:gamma(g)}.\\
@@ -6404,8 +6429,17 @@ initial-initial interactions.
     type(region_data_t), intent(in) :: reg_data
     integer, intent(in) :: i_flv, i_corr
     real(default), intent(inout), dimension(:) :: QB
-    real(default) :: sqme_born_virt
+    real(default) :: sqme_born_virt, es_scale2
     integer :: i
+    if (allocated (virt%es_scale2)) then
+       es_scale2 = virt%es_scale2
+    else
+       if (allocated (virt%ren_scale)) then
+          es_scale2 = virt%ren_scale**2
+       else
+          es_scale2 = virt%fac_scale**2
+       end if
+    end if
     sqme_born_virt = zero
     if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 & 
        .and. qcd_ew_interferences (reg_data%flv_born(i_flv)%flst)) then
@@ -6423,7 +6457,7 @@ initial-initial interactions.
           QB(i_flv) = QB(i_flv) - (virt%gamma_0 (i, i_flv, i_corr) &
                + two * virt%c_flv(i, i_flv, i_corr) &
                * log (virt%settings%fks_template%xi_cut)) &
-               * log(virt%fac_scale**2 / virt%es_scale2) * sqme_born_virt
+               * log(virt%fac_scale**2 / es_scale2) * sqme_born_virt
        end do
     end if
   end subroutine virtual_evaluate_initial_state
@@ -6467,14 +6501,16 @@ Here, $\xi_{max}$ is implicitly present in the ratios in the logarithms. Using t
   \label{eqn:virt_Q_fsr}
   \begin{split}
     \mathcal{Q} = \sum_{k=n_{in}}^{n_L^{(B)}} \left[\gamma'(\mathcal{I}_k)
-         + 2\left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max}\right)
-           \left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max} + \log\frac{Q^2}{s}\right) C(\mathcal{I}_k) \right.\\
-         + \left. 2 \log\xi_{max} \left(\log\xi_{max} - \log\frac{Q^2}{k_{res}^2}\right) C(\mathcal{I}_k)
-         + \left(\log\frac{Q^2}{k_{res}^2} - 2 \log\xi_{max}\right) \gamma(\mathcal{I}_k)\right].
+      + 2\left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max}\right)
+      \left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max} + \log\frac{Q^2}{s}\right) C(\mathcal{I}_k) \right.\\
+      + \left. 2 \log\xi_{max} \left(\log\xi_{max} - \log\frac{Q^2}{k_{res}^2}\right) C(\mathcal{I}_k)
+      + \left(\log\frac{Q^2}{k_{res}^2} - 2 \log\xi_{max}\right) \gamma(\mathcal{I}_k)\right].
   \end{split}
 \end{equation}
-Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substitutions $\xi_{max} \rightarrow \frac{2E_{em}}{\sqrt{s}}$ and $k_{res}^2 \rightarrow s$.
-[[virtual_compute_collinear_contribution]] only implements the second one.
+Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with
+the substitutions $\xi_{max} \rightarrow \frac{2E_{em}}{\sqrt{s}}$ and
+$k_{res}^2 \rightarrow s$. [[virtual_compute_collinear_contribution]]
+only implements the second one.
 <<virtual: virtual: TBP>>=
   procedure :: compute_collinear_contribution &
      => virtual_compute_collinear_contribution
@@ -6490,12 +6526,21 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
     real(default) :: s1, s2, s3, s4, s5
     real(default) :: sqme_born_virt
     integer :: alr, em, i
-    real(default) :: E_em, xi_max, log_xi_max, E_tot2
+    real(default) :: E_em, xi_max, log_xi_max, E_tot2, es_scale2
     logical, dimension(virt%n_flv, virt%n_legs) :: evaluated
     integer :: i_contr
     type(vector4_t) :: k_res
     type(lorentz_transformation_t) :: L_to_resonance
     evaluated = .false.
+    if (allocated (virt%es_scale2)) then
+       es_scale2 = virt%es_scale2
+    else
+       if (allocated (virt%ren_scale)) then
+          es_scale2 = virt%ren_scale**2
+       else
+          es_scale2 = virt%fac_scale**2
+       end if
+    end if
     sqme_born_virt = zero
     if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 &
        .and. qcd_ew_interferences (reg_data%flv_born(i_flv)%flst)) then
@@ -6533,20 +6578,20 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
                  call msg_debug (D_VIRTUAL, "Using resonance-aware collinear subtraction")
             s1 = virt%gamma_p(em, i_flv, i_corr)
             s2 = two * (log (sqrts / (two * E_em)) + log_xi_max) * &
-                 (log (sqrts / (two * E_em)) + log_xi_max + log (virt%es_scale2 / sqrts**2)) &
+                 (log (sqrts / (two * E_em)) + log_xi_max + log (es_scale2 / sqrts**2)) &
                  * virt%c_flv(em, i_flv, i_corr)
             s3 = two * log_xi_max * &
-                 (log_xi_max - log (virt%es_scale2 / E_tot2)) * virt%c_flv(em, i_flv, i_corr)
-            s4 = (log (virt%es_scale2 / E_tot2) - two * log_xi_max) &
+                 (log_xi_max - log (es_scale2 / E_tot2)) * virt%c_flv(em, i_flv, i_corr)
+            s4 = (log (es_scale2 / E_tot2) - two * log_xi_max) &
                  * virt%gamma_0(em, i_flv, i_corr)
             QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * sqme_born_virt
          else
             if (debug_active (D_VIRTUAL)) &
                  call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
             s1 = virt%gamma_p(em, i_flv, i_corr)
-            s2 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) &
+            s2 = log (delta_o * sqrts**2 / (two * es_scale2)) &
                  * virt%gamma_0(em,i_flv, i_corr)
-            s3 = log (delta_o * sqrts**2 / (two * virt%es_scale2)) * two &
+            s3 = log (delta_o * sqrts**2 / (two * es_scale2)) * two &
                  * virt%c_flv(em,i_flv, i_corr) * log (two * E_em / (xi_cut * sqrts))
             ! s4 = two * virt%c_flv(em,i_flv, i_corr) * (log (two * E_em / sqrts)**2 - log (xi_cut)**2)
             s4 = two * virt%c_flv(em,i_flv, i_corr) * & ! a**2 - b**2 = (a - b) * (a + b), for better numerical performance
@@ -7736,7 +7781,6 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
      type(region_data_t), pointer :: reg_data => null ()
      type(real_kinematics_t), pointer :: real_kinematics => null ()
      type(isr_kinematics_t), pointer :: isr_kinematics => null ()
-     type(real_scales_t) :: scales
      real(default), dimension(:,:), allocatable :: sqme_real_non_sub
      real(default), dimension(:), allocatable :: sqme_born
      real(default), dimension(:,:), allocatable :: sf_factors
@@ -9552,20 +9596,6 @@ end module nlo_data
 @ %def fks_template_set_counter
 @
 <<nlo data: public>>=
-  public :: real_scales_t
-<<nlo data: types>>=
-  type :: real_scales_t
-     real(default) :: scale
-     real(default) :: ren_scale
-     real(default) :: fac_scale
-     real(default) :: scale_born
-     real(default) :: fac_scale_born
-     real(default) :: ren_scale_born
-  end type real_scales_t
-
-@ %def real_scales_t
-@
-<<nlo data: public>>=
   public :: get_threshold_momenta
 <<nlo data: procedures>>=
   function get_threshold_momenta (p) result (p_thr)
@@ -9924,10 +9954,15 @@ real subtraction, we have to take into account an additional term, occuring beca
 integral the plus distribution is evaluated over is not constrained on the interval $[0,1]$.
 Explicitly, this means (see JHEP 06(2010)043, (4.11)-(4.12))
 \begin{align}
-  \int_{\bar{x}_\oplus}^1 dz \left( \frac{1}{1-z} \right)_{\xi_{\text{cut}}} & = \log \frac{1-\bar{x}_\oplus}{\xi_{\text{cut}}} f(1) + \int_{\bar{x}_\oplus}^1 \frac{f(z) - f(1)}{1-z}, \\
-  \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & = \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - \log^2 (\xi_{\text{cut}}) \right)f(1) + \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
+  \int_{\bar{x}_\oplus}^1 dz \left( \frac{1}{1-z} \right)_{\xi_{\text{cut}}} & =
+  \log \frac{1-\bar{x}_\oplus}{\xi_{\text{cut}}} f(1) + \int_{\bar{x}_\oplus}^1
+  \frac{f(z) - f(1)}{1-z}, \\
+  \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & =
+  \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - \log^2 (\xi_{\text{cut}}) \right)f(1) +
+  \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
 \end{align}
-and the same of course for $\bar{x}_\ominus$. These two terms are stored in the [[plus_dist_remnant]] variable below.
+and the same of course for $\bar{x}_\ominus$. These two terms are stored in the
+[[plus_dist_remnant]] variable below.
 
 The option [[separate_uborns]] allows to compute the contribution of the DGLAP remnant
 separately for each underlying Born flavor structure. We need this option during

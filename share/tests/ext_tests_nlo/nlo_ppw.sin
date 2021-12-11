@@ -1,4 +1,7 @@
+# This test is pacified because the numerics depend on the LHAPDF version (6.2 vs. 6.3+)
+
 include("nlo_settings.sin")
+?pacify = true
 
 alias pr = u:U:d:D:s:S:c:C:b:B:gl
 alias Wpm = Wp:Wm

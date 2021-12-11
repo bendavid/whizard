@@ -633,8 +633,8 @@ default values.
     class(parton_expr_t), intent(inout) :: expr
     logical, intent(out) :: passed
     real(default), intent(out) :: scale
-    real(default), intent(out) :: fac_scale
-    real(default), intent(out) :: ren_scale
+    real(default), allocatable, intent(out) :: fac_scale
+    real(default), allocatable, intent(out) :: ren_scale
     real(default), intent(out) :: weight
     real(default), intent(in), allocatable, optional :: scale_forced
     logical, intent(in), optional :: force_evaluation
@@ -657,33 +657,31 @@ default values.
        else
           scale = expr%sqrts_hat
        end if
-       if (force_scale) then
-          fac_scale = scale_forced
-       else if (expr%has_fac_scale) then
+       if (expr%has_fac_scale) then
           call expr%fac_scale%evaluate ()
           if (expr%fac_scale%is_known ()) then
-             fac_scale = expr%fac_scale%get_real ()
+             if (.not. allocated (fac_scale)) then
+                allocate (fac_scale, source = expr%fac_scale%get_real ())
+             else
+                fac_scale = expr%fac_scale%get_real ()
+             end if
           else
              call msg_error ("Evaluate factorization scale expression: &
                   &result undefined")
-             fac_scale = zero
           end if
-       else
-          fac_scale = scale
        end if
-       if (force_scale) then
-          ren_scale = scale_forced
-       else if (expr%has_ren_scale) then
+       if (expr%has_ren_scale) then
           call expr%ren_scale%evaluate ()
           if (expr%ren_scale%is_known ()) then
-             ren_scale = expr%ren_scale%get_real ()
+             if (.not. allocated (ren_scale)) then
+                allocate (ren_scale, source = expr%ren_scale%get_real ())
+             else
+                ren_scale = expr%ren_scale%get_real ()
+             end if
           else
              call msg_error ("Evaluate renormalization scale expression: &
                   &result undefined")
-             ren_scale = zero
           end if
-       else
-          ren_scale = scale
        end if
        if (expr%has_weight) then
           call expr%weight%evaluate ()
@@ -1900,7 +1898,8 @@ are defined, default values are inserted.
        scale, fac_scale, ren_scale, weight, scale_forced, force_evaluation)
     class(connected_state_t), intent(inout) :: state
     logical, intent(out) :: passed
-    real(default), intent(out) :: scale, fac_scale, ren_scale, weight
+    real(default), intent(out) :: scale, weight
+    real(default), intent(out), allocatable :: fac_scale, ren_scale
     real(default), intent(in), allocatable, optional :: scale_forced
     logical, intent(in), optional :: force_evaluation
     if (state%has_expr) then
@@ -11055,9 +11054,11 @@ object and the squared matrix-element collector.
      ren_scale, fac_scale, es_scale)
     class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: ren_scale, fac_scale, es_scale
+    real(default), allocatable, intent(in) :: ren_scale
+    real(default), intent(in) :: fac_scale
+    real(default), allocatable, intent(in) :: es_scale
     associate (virtual => pcm_work%virtual)
-      call virtual%set_ren_scale (p, ren_scale)
+      call virtual%set_ren_scale (ren_scale)
       call virtual%set_fac_scale (p, fac_scale)
       call virtual%set_ellis_sexton_scale (es_scale)
     end associate
@@ -12199,9 +12200,9 @@ to fulfill their signature.
      logical :: checked = .false.
      logical :: passed = .false.
      real(default) :: scale = 0
-     real(default) :: fac_scale = 0
-     real(default) :: ren_scale = 0
-     real(default) :: es_scale = 0
+     real(default), allocatable :: fac_scale
+     real(default), allocatable :: ren_scale
+     real(default), allocatable :: es_scale
      real(default), allocatable :: alpha_qcd_forced
      real(default) :: weight = 1
      type(vector4_t), dimension(:), allocatable :: p_seed
@@ -12224,6 +12225,7 @@ to fulfill their signature.
     type(kinematics_t), intent(in), optional :: kin
     logical, intent(in), optional :: show_eff_state
     logical, intent(in), optional :: testflag
+    real(default) :: fac_scale, ren_scale
     integer :: u
     logical :: state
     u = given_output_unit (unit)
@@ -12244,8 +12246,8 @@ to fulfill their signature.
     end if
     if (term%passed) then
        write (u, "(3x,A,ES19.12)")  "overall scale         = ", term%scale
-       write (u, "(3x,A,ES19.12)")  "factorization scale   = ", term%fac_scale
-       write (u, "(3x,A,ES19.12)")  "renormalization scale = ", term%ren_scale
+       write (u, "(3x,A,ES19.12)")  "factorization scale   = ", term%get_fac_scale ()
+       write (u, "(3x,A,ES19.12)")  "renormalization scale = ", term%get_ren_scale ()
        if (allocated (term%alpha_qcd_forced)) then
           write (u, "(3x,A,ES19.12)")  "alpha(QCD) forced     = ", &
                term%alpha_qcd_forced
@@ -12282,6 +12284,9 @@ to fulfill their signature.
     class(term_instance_t), intent(inout) :: term
     if (allocated (term%amp)) deallocate (term%amp)
     if (allocated (term%core_state)) deallocate (term%core_state)
+    if (allocated (term%ren_scale))  deallocate (term%ren_scale)
+    if (allocated (term%fac_scale))  deallocate (term%fac_scale)
+    if (allocated (term%es_scale))  deallocate (term%es_scale)
     if (allocated (term%alpha_qcd_forced)) &
        deallocate (term%alpha_qcd_forced)
     if (allocated (term%p_seed)) deallocate(term%p_seed)
@@ -13160,7 +13165,7 @@ the threshold computation where the process is well-defined and fixed.
                "term_instance_evaluate_color_correlations: " // &
                "use_internal_color_correlations:", &
                pcm%settings%use_internal_color_correlations)
-          if (debug_on) call msg_debug2 (D_SUBTRACTION, "fac_scale", term%fac_scale)
+          if (debug_on) call msg_debug2 (D_SUBTRACTION, "fac_scale", term%get_fac_scale ())
           do i_flv_born = 1, pcm%region_data%n_flv_born
              select case (term%nlo_type)
              case (NLO_REAL)
@@ -13481,9 +13486,13 @@ it is only available after the [[fks_regions]] have been created.
         ("Trying to evaluate virtual matrix element with unsuited term_instance.")
      if (debug2_active (D_VIRTUAL)) then
         call msg_debug2 (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
-        print *, 'ren_scale: ', term%ren_scale
-        print *, 'fac_scale: ', term%fac_scale
-        print *, 'ES  scale: ', term%es_scale
+        print *, 'ren_scale: ', term%get_ren_scale ()
+        print *, 'fac_scale: ', term%get_fac_scale ()
+        if (allocated (term%es_scale)) then
+           print *, 'ES  scale: ', term%es_scale
+        else
+           print *, 'ES  scale: ', term%get_ren_scale ()
+        end if
      end if
      select type (pcm => term%pcm)
      type is (pcm_nlo_t)
@@ -13501,7 +13510,8 @@ it is only available after the [[fks_regions]] have been created.
               p_born = term%int_hard%get_momenta ()
            end if
            call pcm_work%set_momenta_and_scales_virtual &
-                (p_born, term%ren_scale, term%fac_scale, term%es_scale)
+                (p_born, term%ren_scale, term%get_fac_scale (), &
+                term%es_scale)
            select type (pcm_work => term%pcm_work)
            type is (pcm_nlo_workspace_t)
               associate (virtual => pcm_work%virtual)
@@ -13758,16 +13768,27 @@ method may modify the [[core_state]] workspace object.
   subroutine term_instance_evaluate_interaction_default (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in) :: core
+    real(default) :: fac_scale, ren_scale    
     integer :: i
+    if (allocated (term%fac_scale)) then
+       fac_scale = term%fac_scale
+    else
+       fac_scale = term%scale
+    end if
+    if (allocated (term%ren_scale)) then
+       ren_scale = term%ren_scale
+    else
+       ren_scale = term%scale
+    end if
     do i = 1, term%config%n_allowed
        term%amp(i) = core%compute_amplitude (term%config%i_term, term%p_hard, &
             term%config%flv(i), term%config%hel(i), term%config%col(i), &
-            term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
+            fac_scale, ren_scale, term%alpha_qcd_forced, &
             term%core_state)
     end do
     select type (pcm_work => term%pcm_work)
     type is (pcm_nlo_workspace_t)
-       call pcm_work%set_fac_scale (term%fac_scale)
+       call pcm_work%set_fac_scale (fac_scale)
     end select
   end subroutine term_instance_evaluate_interaction_default
 
@@ -13787,14 +13808,14 @@ method may modify the [[core_state]] workspace object.
     type is (openloops_state_t)
        select type (core)
        type is (prc_openloops_t)
-          call core%compute_alpha_s (core_state, term%ren_scale)
+          call core%compute_alpha_s (core_state, term%get_ren_scale ())
           if (allocated (core_state%threshold_data)) &
                call evaluate_threshold_parameters (core_state, core, kin%phs%get_sqrts ())
        end select
     class is (prc_external_state_t)
        select type (core)
        class is (prc_external_t)
-          call core%compute_alpha_s (core_state, term%ren_scale)
+          call core%compute_alpha_s (core_state, term%get_ren_scale ())
        end select
     end select
     call evaluate_threshold_interaction ()
@@ -13805,7 +13826,7 @@ method may modify the [[core_state]] workspace object.
     end if
     select type (pcm_work => term%pcm_work)
     type is (pcm_nlo_workspace_t)
-       call pcm_work%set_fac_scale (term%fac_scale)
+       call pcm_work%set_fac_scale (term%get_fac_scale ())
     end select
 
   contains
@@ -13908,9 +13929,9 @@ to improve performance.
           if (.not. eqv_me_evaluated(i_flv_eqv, i_hel_eqv)) then
              select type (core)
              class is (prc_external_t)
-                call core%update_alpha_s (term%core_state, term%ren_scale)
-                call core%compute_sqme (i_flv, i_hel, term%p_hard, term%ren_scale, &
-                     sqme, bad_point)
+                call core%update_alpha_s (term%core_state, term%get_ren_scale ())
+                call core%compute_sqme (i_flv, i_hel, term%p_hard, &
+                     term%get_ren_scale (), sqme, bad_point)
                 call term%pcm_work%set_bad_point (bad_point)
                 associate (i_int => term%int_hard%get_qn_index &
                      (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
@@ -13935,11 +13956,13 @@ to improve performance.
                       select type (core)
                       class is (prc_blha_t)
                          call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                              term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                              term%p_hard, term%get_ren_scale (), sqme_color_c, &
+                              bad_point)
                          call term%pcm_work%set_bad_point (bad_point)
                       class is (prc_recola_t)
                          call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                              term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                              term%p_hard, term%get_ren_scale (), sqme_color_c, &
+                              bad_point)
                          call term%pcm_work%set_bad_point (bad_point)
                       end select
                    end if
@@ -13956,11 +13979,11 @@ to improve performance.
                 select type (core)
                 class is (prc_blha_t)
                    call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                        term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                        term%p_hard, term%get_ren_scale (), sqme_color_c, bad_point)
                    call term%pcm_work%set_bad_point (bad_point)
                 class is (prc_recola_t)
                    call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                        term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                        term%p_hard, term%get_ren_scale (), sqme_color_c, bad_point)
                    call term%pcm_work%set_bad_point (bad_point)
                 end select
                 do i_sub = 1, n_sub_color
@@ -13983,7 +14006,7 @@ to improve performance.
                                     i_hel, &
                                     emitter, &
                                     term%p_hard, &
-                                    term%ren_scale, &
+                                    term%get_ren_scale (), &
                                     sqme_spin_c_tmp, &
                                     bp)
                                sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
@@ -14072,6 +14095,7 @@ to improve performance.
     integer :: i_flv_eqv, i_hel_eqv
     real(default), dimension(4) :: sqme_virt
     real(default), dimension(:), allocatable :: sqme_color_c
+    real(default) :: es_scale
     logical :: bad_point
     logical, dimension(:,:), allocatable :: eqv_me_evaluated
     if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
@@ -14091,8 +14115,13 @@ to improve performance.
           if (.not. eqv_me_evaluated(i_flv_eqv, i_hel_eqv)) then
              select type (core)
              class is (prc_external_t)
+                if (allocated (term%es_scale)) then
+                   es_scale = term%es_scale
+                else
+                   es_scale = term%get_ren_scale ()
+                end if
                 call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
-                     term%ren_scale, term%es_scale, &
+                     term%get_ren_scale (), es_scale, &
                      term%pcm%blha_defaults%loop_method, &
                      sqme_virt, bad_point)
                 call term%pcm_work%set_bad_point (bad_point)
@@ -14107,7 +14136,7 @@ to improve performance.
                 select type (core)
                 class is (prc_blha_t)
                    call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                        term%p_hard, term%ren_scale, &
+                        term%p_hard, term%get_ren_scale (), &
                         sqme_color_c, bad_point)
                    call term%pcm_work%set_bad_point (bad_point)
                    do i_sub = 1 + i_virt, n_sub
@@ -14119,7 +14148,7 @@ to improve performance.
                    end do
                 type is (prc_recola_t)
                    call core%compute_sqme_color_c_raw (i_flv, i_hel, &
-                        term%p_hard, term%ren_scale, sqme_color_c, bad_point)
+                        term%p_hard, term%get_ren_scale (), sqme_color_c, bad_point)
                    call term%pcm_work%set_bad_point (bad_point)
                    do i_sub = 1 + i_virt, n_sub
                       i_color_c = term%int_hard%get_qn_index &
@@ -14166,9 +14195,15 @@ interaction, then compute the convolution with the initial state.
   subroutine term_instance_evaluate_trace (term, kin)
     class(term_instance_t), intent(inout) :: term
     type(kinematics_t), intent(inout) :: kin
-    call kin%evaluate_sf_chain (term%fac_scale, term%negative_sf)
+    real(default) :: fac_scale
+    if (allocated (term%fac_scale)) then
+       fac_scale = term%fac_scale
+    else
+       fac_scale = term%scale
+    end if
+    call kin%evaluate_sf_chain (fac_scale, term%negative_sf)
     call term%evaluate_scaled_sf_chains (kin)
-    call term%isolated%evaluate_sf_chain (term%fac_scale)
+    call term%isolated%evaluate_sf_chain (fac_scale)
     call term%isolated%evaluate_trace ()
     call term%connected%evaluate_trace ()
   end subroutine term_instance_evaluate_trace
@@ -14199,7 +14234,8 @@ It becomes problematic when handling [[e, p]]-beams.
                 call sf_rescale%set (pcm_work%real_kinematics%xi_tilde)
              end select
           end select
-          call kin%sf_chain%evaluate (term%fac_scale, term%negative_sf, sf_rescale)
+          call kin%sf_chain%evaluate (term%get_fac_scale (), &
+               term%negative_sf, sf_rescale)
           deallocate (sf_rescale)
        else if (kin%emitter >= 0 .and. kin%emitter <= kin%n_in) then
           allocate (sf_rescale_real_t :: sf_rescale)
@@ -14212,10 +14248,11 @@ It becomes problematic when handling [[e, p]]-beams.
                      pcm_work%real_kinematics%y (kin%i_phs))
              end select
           end select
-          call kin%sf_chain%evaluate (term%fac_scale, term%negative_sf, sf_rescale)
+          call kin%sf_chain%evaluate (term%get_fac_scale (), &
+               term%negative_sf, sf_rescale)
           deallocate (sf_rescale)
        else
-          call kin%sf_chain%evaluate (term%fac_scale, term%negative_sf)
+          call kin%sf_chain%evaluate (term%get_fac_scale (), term%negative_sf)
        end if
     else if (term%nlo_type == NLO_DGLAP) then
        allocate (sf_rescale_dglap_t :: sf_rescale)
@@ -14226,7 +14263,8 @@ It becomes problematic when handling [[e, p]]-beams.
              call sf_rescale%set (pcm_work%isr_kinematics%z)
           end select
        end select
-       call kin%sf_chain%evaluate (term%fac_scale, term%negative_sf, sf_rescale)
+       call kin%sf_chain%evaluate (term%get_fac_scale (), &
+            term%negative_sf, sf_rescale)
        deallocate (sf_rescale)
     end if
   end subroutine term_instance_evaluate_scaled_sf_chains
@@ -14258,17 +14296,33 @@ physical event.
 
 @ %def term_instance_set_fac_scale
 @ Return data that might be useful for external processing.  The
-factorization scale:
+factorization scale and renormalization scale are identical to the 
+general scale if not explicitly set:
 <<Instances: term instance: TBP>>=
   procedure :: get_fac_scale => term_instance_get_fac_scale
+  procedure :: get_ren_scale => term_instance_get_ren_scale
 <<Instances: procedures>>=
   function term_instance_get_fac_scale (term) result (fac_scale)
     class(term_instance_t), intent(in) :: term
     real(default) :: fac_scale
-    fac_scale = term%fac_scale
+    if (allocated (term%fac_scale)) then
+       fac_scale = term%fac_scale
+    else
+       fac_scale = term%scale
+    end if
   end function term_instance_get_fac_scale
 
-@ %def term_instance_get_fac_scale
+  function term_instance_get_ren_scale (term) result (ren_scale)
+    class(term_instance_t), intent(in) :: term
+    real(default) :: ren_scale
+    if (allocated (term%ren_scale)) then
+       ren_scale = term%ren_scale
+    else
+       ren_scale = term%scale
+    end if
+  end function term_instance_get_ren_scale
+
+@ %def term_instance_get_fac_scale term_instance_get_ren_scale
 @ We take the strong coupling from the process core.  The value is calculated
 when a new event is requested, so we should call it only after the event has
 been evaluated.  If it is not available there (a negative number is returned),
@@ -15519,10 +15573,12 @@ in the term expressions.
       es_scale = var_list%get_rval (var_str ("ellis_sexton_scale"))
       do i = 1, size (instance%term)
          if (instance%term(i)%active .and. instance%term(i)%nlo_type == NLO_VIRTUAL) then
-            if (es_scale < zero) then
-               instance%term(i)%es_scale = instance%term(i)%ren_scale
-            else
-               instance%term(i)%es_scale = es_scale
+            if (es_scale > zero) then
+               if (allocated (instance%term(i)%es_scale)) then
+                  instance%term(i)%es_scale = es_scale
+               else
+                  allocate (instance%term(i)%es_scale, source=es_scale)
+               end if
             end if
          end if
       end do
