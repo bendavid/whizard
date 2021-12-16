@@ -12,6 +12,7 @@
    Scale from file   = F
    File extension    = 'hepmc'
    HepMC3 mode       = 2
+   HepMC3 flows      = F
    Numerical process IDs:
      1: 42
 
@@ -41,6 +42,7 @@ HepMC::Asciiv3-END_EVENT_LISTING
    Scale from file   = F
    File extension    = 'hepmc'
    HepMC3 mode       = 2
+   HepMC3 flows      = F
 
 * Cleanup
 

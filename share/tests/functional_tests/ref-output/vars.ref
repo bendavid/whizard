@@ -200,6 +200,7 @@ seed = 2
 ?lhef_write_sqme_ref = false
 ?lhef_write_sqme_alt = true
 ?hepmc_output_cross_section = false
+?hepmc3_write_flows = false
 ?allow_shower = true
 ?ps_fsr_active = false
 ?ps_isr_active = false

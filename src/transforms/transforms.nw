@@ -11994,7 +11994,7 @@ and squared matrix element.
 
   function event_get_polarization (event) result (pol)
     class(event_t), intent(in) :: event
-    real(default), dimension(2) :: pol
+    real(default), dimension(:), allocatable :: pol
     pol = event%instance%get_polarization ()
   end function event_get_polarization
 
@@ -13897,7 +13897,7 @@ which is defined here.
     integer :: lcio_run_id, hepmc3_mode
     logical :: show_process, show_transforms, show_decay, verbose, pacified
     logical :: dump_weights, dump_compressed, dump_summary, dump_screen
-    logical :: proc_as_run_id
+    logical :: proc_as_run_id, hepmc3_write_flows
     keep_beams = &
          var_list%get_lval (var_str ("?keep_beams"))
     keep_remnants = &
@@ -13977,6 +13977,8 @@ which is defined here.
                var_list%get_lval (var_str ("?hepmc_output_cross_section"))
           extension_hepmc = &
                var_list%get_sval (var_str ("$extension_hepmc"))
+          hepmc3_write_flows = &
+               var_list%get_lval (var_str ("?hepmc3_write_flows"))
           select case (char (var_list%get_sval (var_str ("$hepmc3_mode"))))
           case ("HepMC2")
              hepmc3_mode = HEPMC3_MODE_HEPMC2
@@ -13984,8 +13986,18 @@ which is defined here.
              hepmc3_mode = HEPMC3_MODE_HEPMC3
           case ("Root")
              hepmc3_mode = HEPMC3_MODE_ROOT
+             if (extension_hepmc /= "root") then
+                call msg_message ("Events: HepMC3 Root mode, using " // &
+                     "event sample extension 'root'")
+                extension_hepmc = "root"
+             end if
           case ("RootTree")
              hepmc3_mode = HEPMC3_MODE_ROOTTREE
+             if (extension_hepmc /= "root") then
+                call msg_message ("Events: HepMC3 RootTree mode, using " // &
+                     "event sample extension 'root'")
+                extension_hepmc = "root"
+             end if
           case ("HepEVT")
              hepmc3_mode = HEPMC3_MODE_HEPEVT
           case default
@@ -13996,7 +14008,8 @@ which is defined here.
                use_alphas_from_file, use_scale_from_file, &
                extension = extension_hepmc, &
                output_cross_section = output_cross_section, &
-               hepmc3_mode = hepmc3_mode)
+               hepmc3_mode = hepmc3_mode, &
+               hepmc3_write_flows = hepmc3_write_flows)
        end select
     case ("lcio")
        allocate (eio_lcio_t :: eio)

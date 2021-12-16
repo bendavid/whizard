@@ -5974,7 +5974,7 @@ one that is stored in the process object.
 <<Process: procedures>>=
   function process_get_polarization (process) result (pol)
     class(process_t), intent(in) :: process
-    real(default), dimension(2) :: pol
+    real(default), dimension(process%beam_config%data%n) :: pol
     pol = process%beam_config%data%get_polarization ()
   end function process_get_polarization
 
@@ -16752,7 +16752,7 @@ term instance.
 <<Instances: procedures>>=
   function process_instance_get_polarization (instance) result (pol)
     class(process_instance_t), intent(in) :: instance
-    real(default), dimension(2) :: pol
+    real(default), dimension(:), allocatable :: pol
     pol = instance%process%get_polarization ()
   end function process_instance_get_polarization
 

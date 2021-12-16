@@ -685,7 +685,7 @@ Select internal parameters
      function generic_event_get_polarization (event) result (pol)
        import
        class(generic_event_t), intent(in) :: event
-       real(default), dimension(2) :: pol
+       real(default), dimension(:), allocatable :: pol
      end function generic_event_get_polarization
   end interface
 
@@ -4502,11 +4502,11 @@ that are not covered by the HEPRUP definition.
     type(string_t), intent(in), optional :: extension
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
+    logical :: is_width
     integer :: i
     if (.not. present (data)) &
          call msg_bug ("ASCII initialization: missing data")
-    if (data%n_beam /= 2) &
-         call msg_fatal ("ASCII: defined for scattering processes only")
+    is_width = data%n_beam == 1
     eio%sample = sample
     call eio%check_normalization (data)
     call eio%set_splitting (data)
@@ -4530,7 +4530,8 @@ that are not covered by the HEPRUP definition.
           call heprup_set_process_parameters (i = i, &
                process_id = data%proc_num_id(i), &
                cross_section = data%cross_section(i), &
-               error = data%error(i))
+               error = data%error(i), &
+               is_width = is_width)
        end do
        call heprup_write_ascii (eio%unit)
     type is (eio_ascii_lha_verb_t)
@@ -4544,7 +4545,8 @@ that are not covered by the HEPRUP definition.
           call heprup_set_process_parameters (i = i, &
                process_id = data%proc_num_id(i), &
                cross_section = data%cross_section(i), &
-               error = data%error(i))
+               error = data%error(i), &
+               is_width = is_width)
        end do
        call heprup_write_verbose (eio%unit)
     end select
@@ -6426,17 +6428,29 @@ unweighted events.
   public :: heprup_set_process_parameters
 <<HEP common: procedures>>=
   subroutine heprup_set_process_parameters &
-       (i, process_id, cross_section, error, max_weight)
+       (i, process_id, cross_section, error, max_weight, is_width)
     integer, intent(in) :: i, process_id
     real(default), intent(in), optional :: cross_section, error, max_weight
+    logical, intent(in), optional :: is_width
+    logical :: is_w
+    is_w = .false.
+    if (present (is_width))  is_w = is_width
     LPRUP(i) = process_id
     if (present (cross_section)) then
-       XSECUP(i) = cross_section * pb_per_fb
+       if (is_w) then
+          XSECUP(i) = cross_section
+       else
+          XSECUP(i) = cross_section * pb_per_fb
+       end if
     else
        XSECUP(i) = 0
     end if
     if (present (error)) then
-       XERRUP(i) = error * pb_per_fb
+       if (is_w) then
+          XERRUP(i) = error
+       else
+          XERRUP(i) = error * pb_per_fb
+       end if
     else
        XERRUP(i) = 0
     end if
@@ -6444,7 +6458,11 @@ unweighted events.
     case (3);  XMAXUP(i) = 1
     case (4)
        if (present (max_weight)) then
-          XMAXUP(i) = max_weight * pb_per_fb
+          if (is_w) then
+             XMAXUP(i) = max_weight
+          else
+             XMAXUP(i) = max_weight * pb_per_fb
+          end if
        else
           XMAXUP(i) = 0
        end if
@@ -6457,16 +6475,28 @@ unweighted events.
   public :: heprup_get_process_parameters
 <<HEP common: procedures>>=
   subroutine heprup_get_process_parameters  &
-       (i, process_id, cross_section, error, max_weight)
+       (i, process_id, cross_section, error, max_weight, is_width)
     integer, intent(in) :: i
     integer, intent(out), optional :: process_id
     real(default), intent(out), optional :: cross_section, error, max_weight
+    logical, intent(in), optional :: is_width
+    logical :: is_w
+    is_w = .false.
+    if (present (is_width))  is_w = is_width
     if (present (process_id))  process_id = LPRUP(i)
     if (present (cross_section)) then
-       cross_section = XSECUP(i) / pb_per_fb
+       if (is_w) then
+          cross_section = XSECUP(i)
+       else
+          cross_section = XSECUP(i) / pb_per_fb
+       end if
     end if
     if (present (error)) then
-       error = XERRUP(i) / pb_per_fb
+       if (is_w) then
+          error = XERRUP(i)
+       else
+          error = XERRUP(i) / pb_per_fb
+       end if
     end if
     if (present (max_weight)) then
        select case (IDWTUP)
@@ -10325,10 +10355,11 @@ interface only.
      end subroutine lcio_set_beam
   end interface
   interface
-     subroutine lcio_set_pol (evt_obj, pol1, pol2) bind(C)
+     subroutine lcio_set_pol (evt_obj, pol, beam) bind(C)
        import
        type(c_ptr), value :: evt_obj
-       real(c_double), value :: pol1, pol2
+       real(c_double), value :: pol
+       integer(c_int), value :: beam
      end subroutine lcio_set_pol
   end interface
   interface
@@ -10444,11 +10475,12 @@ interface only.
 <<LCIO interface: public>>=
   public :: lcio_event_set_polarization
 <<LCIO interface: procedures>>=
-  subroutine lcio_event_set_polarization (evt, pol)
+  subroutine lcio_event_set_polarization (evt, pol, beam)
     type(lcio_event_t), intent(inout) :: evt
-    real(default), intent(in), dimension(2) :: pol
-    call lcio_set_pol (evt%obj, &
-         real (pol(1), c_double), real (pol(2), c_double))
+    real(default), intent(in) :: pol
+    integer, intent(in) :: beam
+    call lcio_set_pol (evt%obj, real (pol, c_double), &
+         int (beam, c_int))
   end subroutine lcio_event_set_polarization
 
 @ %def lcio_event_set_polarization
@@ -11814,10 +11846,11 @@ helicity) could be set.
   public :: hepmc_event_from_particle_set
 <<HEP events: procedures>>=
   subroutine hepmc_event_from_particle_set &
-         (evt, particle_set, cross_section, error)
+         (evt, particle_set, cross_section, error, color)
     type(hepmc_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
     real(default), intent(in), optional :: cross_section, error
+    logical, intent(in), optional :: color
     type(hepmc_vertex_t), dimension(:), allocatable :: v
     type(hepmc_particle_t), dimension(:), allocatable :: hprt
     type(hepmc_particle_t), dimension(2) :: hbeam
@@ -11825,6 +11858,9 @@ helicity) could be set.
     logical, dimension(:), allocatable :: is_beam
     integer, dimension(:), allocatable :: v_from, v_to
     integer :: n_vertices, n_tot, i
+    logical :: write_color
+    write_color = .false.
+    if (present (color))  write_color = color
     n_tot = particle_set%get_n_tot ()
     allocate (v_from (n_tot), v_to (n_tot))
     call particle_set%assign_vertices (v_from, v_to, n_vertices)
@@ -11873,8 +11909,10 @@ helicity) could be set.
     end do FIND_SIGNAL_PROCESS
     if (HEPMC3_AVAILABLE) then
        do i = 1, n_tot
-          call hepmc_particle_set_color (hprt(i), &
-               particle_set%prt(i)%get_color ())
+          if (write_color) then
+             call hepmc_particle_set_color (hprt(i), &
+                  particle_set%prt(i)%get_color ())
+          end if
           select case (particle_set%prt(i)%get_polarization_status ())
           case (PRT_DEFINITE_HELICITY)
              call hepmc_particle_set_polarization (hprt(i), &
@@ -12609,7 +12647,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     weight = 1.0_default
     call hepmc_event_init (hepmc_event, 11, 127)
     call hepmc_event_from_particle_set (hepmc_event, particle_set2, &
-         cross_section, error)
+         cross_section, error, .true.)
     call hepmc_event_add_weight (hepmc_event, weight, .true.)
     call hepmc_event_print (hepmc_event)
     call hepmc_iostream_open_out &
@@ -12714,6 +12752,7 @@ can store the version string with a default value.
      integer, dimension(:), allocatable :: proc_num_id
      integer :: i_weight_sqme = 0
      type(xml_tag_t) :: tag_lhef, tag_head, tag_init, tag_event
+     type(xml_tag_t), allocatable :: tag_whiz_info
      type(xml_tag_t), allocatable :: tag_gen_n, tag_gen_v
      type(xml_tag_t), allocatable :: tag_generator, tag_xsecinfo
      type(xml_tag_t), allocatable :: tag_sqme_ref, tag_sqme_prc
@@ -12849,8 +12888,6 @@ of the current object status.
     if (.not. present (data)) &
          call msg_bug ("LHEF initialization: missing data")
     eio%data = data
-    if (data%n_beam /= 2) &
-         call msg_fatal ("LHEF: defined for scattering processes only")
     eio%unweighted = data%unweighted
     if (eio%unweighted) then
        select case (data%norm_mode)
@@ -12890,6 +12927,7 @@ are specific for \whizard.
     class(eio_lhef_t), intent(inout) :: eio
     type(event_sample_data_t), intent(in) :: data
     real(default), parameter :: pb_per_fb = 1.e-3_default
+    real(default) :: xsec_width
     integer :: i
     call eio%tag_lhef%init ( &
          var_str ("LesHouchesEvents"), &
@@ -12903,6 +12941,8 @@ are specific for \whizard.
          .true.)
     call eio%tag_event%init (var_str ("event"), &
          .true.)
+    allocate (eio%tag_whiz_info)
+    call eio%tag_whiz_info%init (var_str ("WhizardInfo"), .true.)
     select case (eio%version)
     case ("1.0")
        allocate (eio%tag_gen_n)
@@ -12922,11 +12962,16 @@ are specific for \whizard.
             [xml_attribute (var_str ("version"), var_str ("<<Version>>"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
+       if (data%n_beam == 2) then
+          xsec_width = data%total_cross_section * pb_per_fb
+       else
+          xsec_width = data%total_cross_section
+       end if
        call eio%tag_xsecinfo%init ( &
             var_str ("xsecinfo"), &
             [xml_attribute (var_str ("neve"), str (data%n_evt)), &
              xml_attribute (var_str ("totxsec"), &
-                            str (data%total_cross_section * pb_per_fb))])
+                            str (xsec_width))])
     end select
     select case (eio%version)
     case ("2.0")
@@ -13004,6 +13049,8 @@ are specific for \whizard.
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
     integer :: u, i
+    logical :: is_width
+    is_width = data%n_beam == 1
     call eio%set_splitting (data)
     call eio%common_init (sample, data, extension)
     write (msg_buffer, "(A,A,A)")  "Events: writing to LHEF file '", &
@@ -13013,7 +13060,7 @@ are specific for \whizard.
     u = eio%unit
     open (u, file = char (eio%filename), &
          action = "write", status = "replace")
-    call eio%write_header ()
+    call eio%write_header (is_width)
     call heprup_init &
          (data%pdg_beam, &
           data%energy_beam, &
@@ -13024,7 +13071,8 @@ are specific for \whizard.
        call heprup_set_process_parameters (i = i, &
             process_id = data%proc_num_id(i), &
             cross_section = data%cross_section(i), &
-            error = data%error(i))
+            error = data%error(i), &
+            is_width = is_width)
     end do
     call eio%tag_init%write (u);  write (u, *)
     call heprup_write_lhef (u)
@@ -13359,10 +13407,14 @@ name and version (v.1.0 only).
   procedure :: write_header => eio_lhef_write_header
   procedure :: write_footer => eio_lhef_write_footer
 <<EIO LHEF: procedures>>=
-  subroutine eio_lhef_write_header (eio)
+  subroutine eio_lhef_write_header (eio, is_width)
     class(eio_lhef_t), intent(in) :: eio
+    logical, intent(in), optional :: is_width
+    logical :: is_w
     integer :: u
     u = given_output_unit (eio%unit);  if (u < 0)  return
+    is_w = .false.
+    if (present (is_width))  is_w = is_width
     call eio%tag_lhef%write (u);  write (u, *)
     call eio%tag_head%write (u);  write (u, *)
     select case (eio%version)
@@ -13374,6 +13426,12 @@ name and version (v.1.0 only).
        call eio%tag_gen_v%write (var_str ("<<Version>>"), u)
        write (u, *)
     end select
+    if (is_w) then
+       call eio%tag_whiz_info%write (u); write (u, *)
+       write (u, "(A)") &
+            "#  Special LHE event setup for decays, units in GeV"
+       call eio%tag_whiz_info%close (u); write (u, *)
+    end if
     call eio%tag_head%close (u);  write (u, *)
   end subroutine eio_lhef_write_header
 
@@ -13435,10 +13493,17 @@ This routine does not read the closing tag of the init block.
     class(eio_lhef_t), intent(in) :: eio
     type(event_sample_data_t), intent(out) :: data
     integer :: n_proc, i
+    logical :: is_width
     call heprup_read_lhef (eio%unit)
     call heprup_get_run_parameters (n_processes = n_proc)
     call data%init (n_proc)
-    data%n_beam = 2
+    if (IDBMUP(2) == 0) then
+       data%n_beam = 1
+       is_width = .true.
+    else
+       data%n_beam = 2
+       is_width = .false.
+    end if
     call heprup_get_run_parameters ( &
          unweighted = data%unweighted, &
          negative_weights = data%negative_weights, &
@@ -13453,7 +13518,8 @@ This routine does not read the closing tag of the init block.
        call heprup_get_process_parameters (i, &
             process_id = data%proc_num_id(i), &
             cross_section = data%cross_section(i), &
-            error = data%error(i))
+            error = data%error(i), &
+            is_width = is_width)
     end do
   end subroutine eio_lhef_read_init_10
 
@@ -13529,8 +13595,13 @@ skip everything else except for the closing tag.
     end do SCAN_INIT_TAGS
     data%n_evt = &
          read_ival (eio%tag_xsecinfo%get_attribute (1))
-    data%total_cross_section = &
-         read_rval (eio%tag_xsecinfo%get_attribute (2)) / pb_per_fb
+    if (data%n_beam == 1) then
+       data%total_cross_section = &
+            read_rval (eio%tag_xsecinfo%get_attribute (2))
+    else
+       data%total_cross_section = &
+            read_rval (eio%tag_xsecinfo%get_attribute (2)) / pb_per_fb
+    end if
   contains
     subroutine err_generator
       call msg_fatal ("LHEF: invalid generator tag")
@@ -13719,8 +13790,13 @@ skip everything else except for the closing tag.
     end do SCAN_INIT_TAGS
     data%n_evt = &
          read_ival (eio%tag_xsecinfo%get_attribute (1))
-    data%total_cross_section = &
-         read_rval (eio%tag_xsecinfo%get_attribute (2)) / pb_per_fb
+    if (data%n_beam == 1) then
+       data%total_cross_section = &
+            read_rval (eio%tag_xsecinfo%get_attribute (2))
+    else
+       data%total_cross_section = &
+            read_rval (eio%tag_xsecinfo%get_attribute (2)) / pb_per_fb
+    end if
   contains
     subroutine err_generator
       call msg_fatal ("LHEF: invalid generator tag")
@@ -14777,8 +14853,6 @@ of the current object status.
     type(event_sample_data_t), intent(in), optional :: data
     if (.not. present (data)) &
          call msg_bug ("STDHEP initialization: missing data")
-    if (data%n_beam /= 2) &
-         call msg_fatal ("STDHEP: defined for scattering processes only")
     if (present (extension)) then
        eio%extension = extension
     end if
@@ -14834,9 +14908,11 @@ the common block contents are still intact.)
     type(string_t), intent(in), optional :: extension
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
+    logical :: is_width
     integer :: i
     if (.not. present (data)) &
          call msg_bug ("STDHEP initialization: missing data")
+    is_width = data%n_beam == 1
     call eio%set_splitting (data)
     call eio%common_init (sample, data, extension)
     eio%n_events_expected = data%n_evt
@@ -14856,7 +14932,8 @@ the common block contents are still intact.)
           call heprup_set_process_parameters (i = i, &
                process_id = data%proc_num_id(i), &
                cross_section = data%cross_section(i), &
-               error = data%error(i))
+               error = data%error(i), &
+               is_width = is_width)
        end do
        call stdhep_init_out (char (eio%filename), &
             "WHIZARD <<Version>>", eio%n_events_expected)
@@ -15722,6 +15799,7 @@ HepMC and this is written for every event, we make it optional with
      logical :: use_scale_from_file = .false.
      logical :: output_cross_section = .false.
      integer :: hepmc3_mode = HEPMC3_MODE_HEPMC3
+     logical :: hepmc3_flows = .false.
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
@@ -15737,9 +15815,9 @@ Set parameters that are specifically used with HepMC.
   procedure :: set_parameters => eio_hepmc_set_parameters
 <<EIO HepMC: procedures>>=
   subroutine eio_hepmc_set_parameters &
-       (eio, &
-       recover_beams, use_alphas_from_file, use_scale_from_file, &
-       extension, output_cross_section, hepmc3_mode)
+       (eio, recover_beams, use_alphas_from_file, &
+       use_scale_from_file, extension, output_cross_section, &
+       hepmc3_mode, hepmc3_write_flows)
     class(eio_hepmc_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alphas_from_file
@@ -15747,6 +15825,7 @@ Set parameters that are specifically used with HepMC.
     logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension
     integer, intent(in), optional :: hepmc3_mode
+    logical ,intent(in), optional :: hepmc3_write_flows
     if (present (recover_beams)) &
          eio%recover_beams = recover_beams
     if (present (use_alphas_from_file)) &
@@ -15762,6 +15841,8 @@ Set parameters that are specifically used with HepMC.
          eio%output_cross_section = output_cross_section
     if (present (hepmc3_mode)) &
          eio%hepmc3_mode = hepmc3_mode
+    if (present (hepmc3_write_flows)) &
+         eio%hepmc3_flows = hepmc3_write_flows
   end subroutine eio_hepmc_set_parameters
 
 @ %def eio_hepmc_set_parameters
@@ -15793,6 +15874,7 @@ of the current object status.
     write (u, "(3x,A,A,A)")     "File extension    = '", &
          char (object%extension), "'"
     write (u, "(3x,A,I0)")    "HepMC3 mode       = ", object%hepmc3_mode
+    write (u, "(3x,A,L1)")    "HepMC3 flows      = ", object%hepmc3_flows
     if (allocated (object%proc_num_id)) then
        write (u, "(3x,A)")  "Numerical process IDs:"
        do i = 1, size (object%proc_num_id)
@@ -15857,8 +15939,6 @@ one.  If the file needs a header, repeat it for the new file.
     if (.not. present (data)) &
          call msg_bug ("HepMC initialization: missing data")
     eio%data = data
-    if (data%n_beam /= 2) &
-         call msg_fatal ("HepMC: defined for scattering processes only")
     ! We could relax this condition now with weighted hepmc events
     if (data%unweighted) then
        select case (data%norm_mode)
@@ -15963,11 +16043,13 @@ pointer).
        call hepmc_event_init (eio%hepmc_event, &
             proc_id = eio%proc_num_id(i_prc), &
             event_id = event%get_index ())
-       if (eio%output_cross_section) then
+       if (eio%output_cross_section .and. eio%data%n_beam == 2) then
           call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr, &
-               eio%data%cross_section(i_prc), eio%data%error(i_prc))
+               eio%data%cross_section(i_prc), eio%data%error(i_prc), &
+               color = eio%hepmc3_flows)
        else
-          call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr)
+          call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr, &
+               color = eio%hepmc3_flows)
        end if
        call hepmc_event_set_scale (eio%hepmc_event, event%get_fac_scale ())
        call hepmc_event_set_alpha_qcd (eio%hepmc_event, event%get_alpha_s ())
@@ -16776,8 +16858,6 @@ one.  If the file needs a header, repeat it for the new file.
     if (.not. present (data)) &
          call msg_bug ("LCIO initialization: missing data")
     eio%data = data
-    if (data%n_beam /= 2) &
-         call msg_fatal ("LCIO: defined for scattering processes only")
     if (data%unweighted) then
        select case (data%norm_mode)
        case (NORM_UNIT)
@@ -16858,10 +16938,6 @@ event files.
 
 @ %def eio_lcio_switch_inout
 @ Output an event to the allocated LCIO writer.
-
-[WK 21-03-10]: Disable all output of sqme and alt-weight event parameters.
-Due to the fact that LCIO can only store single-precision values, we 
-not just lose precision, but also can run into overflows (events with ISR).
 <<EIO LCIO: eio lcio: TBP>>=
   procedure :: output => eio_lcio_output
 <<EIO LCIO: procedures>>=
@@ -16874,6 +16950,7 @@ not just lose precision, but also can run into overflows (events with ISR).
     class(event_handle_t), intent(inout), optional :: event_handle
     type(particle_set_t), pointer :: pset_ptr
     real(default) :: sqme_prc, weight
+    real(default), dimension(:), allocatable :: pol
     integer :: i
     if (present (passed)) then
        if (.not. passed)  return
@@ -16897,10 +16974,14 @@ not just lose precision, but also can run into overflows (events with ISR).
        call lcio_event_set_sqme (eio%lcio_event, event%get_sqme_prc ())
        call lcio_event_set_scale (eio%lcio_event, event%get_fac_scale ())
        call lcio_event_set_alpha_qcd (eio%lcio_event, event%get_alpha_s ())
+       if (eio%data%n_beam == 2) then
        call lcio_event_set_xsec (eio%lcio_event, eio%data%cross_section(i_prc), &
             eio%data%error(i_prc))
-       call lcio_event_set_polarization (eio%lcio_event, &
-            event%get_polarization ())
+       end if
+       pol = event%get_polarization ()
+       do i = 1, eio%data%n_beam
+          call lcio_event_set_polarization (eio%lcio_event, pol(i), i)
+       end do
        call lcio_event_set_beam_file (eio%lcio_event, &
             event%get_beam_file ())
        call lcio_event_set_process_name (eio%lcio_event, &

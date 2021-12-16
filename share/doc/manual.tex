@@ -11668,6 +11668,14 @@ by setting \ttt{\$sample\_normalization = "sigma"}. Options 3 and 4 can
 be set by \ttt{"1/n"} and \ttt{"sigma/n"}, respectively. \whizard\
 accepts small and capital letters for these expressions.
 
+There are several event formats (based upon the old common block
+definition HEPRUP) like some of the ASCII formats, LHA, LHE and HepMC
+that demand cross sections (and corresponding MCintegration errors) to
+be given in picobarn. So they are converted from the \whizard\ default
+of femtobarn to picobarn. The only exception is if a (pseudo-)event
+file for a decay is generated where the unit in those entries is
+downscaled by a factor of 1000, but remains in GeV as default unit.
+
 In the following section we show some examples when discussing the
 different event formats available in \whizard.
 

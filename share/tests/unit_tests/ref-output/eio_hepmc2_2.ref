@@ -28,6 +28,7 @@
    Scale from file   = F
    File extension    = 'hepmc'
    HepMC3 mode       = 2
+   HepMC3 flows      = F
    Numerical process IDs:
      1: 42
 

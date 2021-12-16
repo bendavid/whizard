@@ -1418,9 +1418,7 @@ parameters.
 <<Beams: procedures>>=
   function beam_data_get_polarization (beam_data) result (pol)
     class(beam_data_t), intent(in) :: beam_data
-    real(default), dimension(2) :: pol
-    if (beam_data%n /= 2) &
-         call msg_fatal ("Beam data: can only treat scattering processes.")
+    real(default), dimension(beam_data%n) :: pol
     pol = beam_data%pmatrix%get_simple_pol ()
   end function beam_data_get_polarization
 

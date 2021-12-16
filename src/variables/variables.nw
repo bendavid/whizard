@@ -5435,6 +5435,11 @@ procedure with type [[V_NONE]].
          'together with each HepMC event. This can be used by programs ' // &
          'like Rivet to scale histograms according to the cross section. ' // &
          '(cf.  also \ttt{hepmc})'))
+    call var_list%append_log (var_str ("?hepmc3_write_flows"), .false., &
+         intrinsic = .true., &
+         description=var_str ('Flag for the HepMC3 event format that decides' // &
+         'whether to write out color flows. The default is \ttt{false}. ' // &
+         '(cf.  also \ttt{hepmc})'))
     call var_list%append_string (var_str ("$hepmc3_mode"), var_str ("HepMC3"), &
          intrinsic = .true., &
          description=var_str ('This specifies the writer mode for HepMC3. ' // &
