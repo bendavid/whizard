@@ -12,8 +12,7 @@
      3  1.5000000000E+00
      4  1.8750000000E+02
    QCD parameters (coupling undefined)
-   QED parameters (fixed coupling):
-     alpha_qed = -1.00000E+00
+   QED parameters (coupling undefined)
 
 * Update core with modified model and helicity selection
 
@@ -27,8 +26,7 @@
      threshold = 2.0000000000E+10
      cutoff    = 5
    QCD parameters (coupling undefined)
-   QED parameters (fixed coupling):
-     alpha_qed = -1.00000E+00
+   QED parameters (coupling undefined)
 
 * Restore core from save
 
@@ -39,7 +37,6 @@
      3  1.5000000000E+00
      4  1.8750000000E+02
    QCD parameters (coupling undefined)
-   QED parameters (fixed coupling):
-     alpha_qed = -1.00000E+00
+   QED parameters (coupling undefined)
 
 * Test output end: dispatch_10

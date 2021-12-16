@@ -283,8 +283,9 @@ process-specific workspace.
 <<Prc core: process core: TBP>>=
   procedure :: get_alpha_qed => prc_core_get_alpha_qed
 <<Prc core: procedures>>=
-  function prc_core_get_alpha_qed (object) result (alpha_qed)
+  function prc_core_get_alpha_qed (object, core_state) result (alpha_qed)
     class(prc_core_t), intent(in) :: object
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha_qed
     alpha_qed = -1
   end function prc_core_get_alpha_qed
@@ -1695,6 +1696,7 @@ value in this context.
   type, extends (prc_core_state_t) :: template_me_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
+     real(default) :: alpha_qed = -1
    contains
      procedure :: write => template_me_state_write
      procedure :: reset_new_kinematics => template_me_state_reset_new_kinematics
@@ -3440,6 +3442,7 @@ value in this context.
   type, extends (prc_core_state_t) :: omega_state_t
      logical :: new_kinematics = .true.
      real(default) :: alpha_qcd = -1
+     real(default) :: alpha_qed = -1
    contains
   <<Omega interface: omega state: TBP>>
   end type omega_state_t
@@ -3545,7 +3548,11 @@ store threshold and cutoff for helicity selection.
        call model%real_parameters_to_array (prc_omega%par)
        prc_omega%scheme = model%get_scheme_num ()
        if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) then
-          call qed%set_alpha_qed (one / model%get_real (var_str ('alpha_em_i')))
+          allocate (alpha_qed_fixed_t :: qed%alpha)
+          select type (alpha => qed%alpha)
+          type is (alpha_qed_fixed_t)
+             alpha%val = one / model%get_real (var_str ('alpha_em_i'))
+          end select
        end if
        prc_omega%qed = qed
     end if
@@ -3794,16 +3801,23 @@ $\alpha_s$.  This works only if $\alpha_s$ varies, and if the workspace
   end function prc_omega_get_alpha_s
 
 @ %def prc_omega_get_alpha_s
-@ $\alpha_\text{em}$ is not updated after computing the amplitude
-because we currently only support a fixed $\alpha_\text{em}$ but
-we still need a routine to get the value of [[alpha_qed]].
+@ After the amplitude has been computed, we may read off the current value of
+$\alpha$.  This works only if $\alpha$ varies, and if the workspace
+[[core_state]] is present which stores this value.
 <<Omega interface: prc omega: TBP>>=
   procedure :: get_alpha_qed => prc_omega_get_alpha_qed
 <<Omega interface: procedures>>=
-  function prc_omega_get_alpha_qed (object) result (alpha_qed)
+  function prc_omega_get_alpha_qed (object, core_state) result (alpha_qed)
     class(prc_omega_t), intent(in) :: object
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha_qed
-    alpha_qed = object%qed%get_alpha_qed ()
+    alpha_qed = -1
+    if (allocated (object%qed%alpha) .and. allocated (core_state)) then
+       select type (core_state)
+       type is (omega_state_t)
+          alpha_qed = core_state%alpha_qed
+       end select
+    end if
   end function prc_omega_get_alpha_qed
 
 @ %def prc_omega_get_alpha_qed
@@ -5206,6 +5220,7 @@ This is the workspace that is available for external matrix elements.
   type, abstract, extends (prc_core_state_t) :: prc_external_state_t
     logical :: new_kinematics = .true.
     real(default) :: alpha_qcd = -1
+    real(default) :: alpha_qed = -1
   contains
   <<Prc external: external state: TBP>>
   end type prc_external_state_t
@@ -5221,17 +5236,6 @@ This is the workspace that is available for external matrix elements.
   end subroutine prc_external_state_reset_new_kinematics
 
 @ %def prc_external_state_reset_new_kinematics
-@
-<<Prc external: external state: TBP>>=
-  procedure :: get_alpha_qcd => prc_external_state_get_alpha_qcd
-<<Prc external: procedures>>=
-  function prc_external_state_get_alpha_qcd (object) result (alpha_qcd)
-    real(default) :: alpha_qcd
-    class(prc_external_state_t), intent(in) :: object
-    alpha_qcd = object%alpha_qcd
-  end function prc_external_state_get_alpha_qcd
-
-@ %def prc_external_state_get_alpha_qcd
 @
 \subsubsection{Driver}
 We have to add two O'Mega-routines to the external matrix-element driver to
@@ -5421,10 +5425,22 @@ Used for testing.
 <<Prc external: prc external: TBP>>=
   procedure :: get_alpha_qed => prc_external_get_alpha_qed
 <<Prc external: procedures>>=
-  function prc_external_get_alpha_qed (object) result (alpha_qed)
+  function prc_external_get_alpha_qed (object, core_state) result (alpha_qed)
     class(prc_external_t), intent(in) :: object
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(default) :: alpha_qed
-    alpha_qed = object%qed%get_alpha_qed ()
+    if (allocated (core_state)) then
+       select type (core_state)
+       class is (prc_external_state_t)
+          alpha_qed = core_state%alpha_qed
+       type is (omega_state_t)
+          alpha_qed = core_state%alpha_qed
+       class default
+          alpha_qed = zero
+       end select
+    else
+       alpha_qed = zero
+    end if
   end function prc_external_get_alpha_qed
 
 @ %def prc_external_get_alpha_qed
@@ -5510,7 +5526,11 @@ Used for testing.
        call model%real_parameters_to_array (object%par)
        object%scheme = model%get_scheme_num ()
        if (associated (model%get_par_data_ptr (var_str ('alpha_em_i')))) then
-          call qed%set_alpha_qed (one / model%get_real (var_str ('alpha_em_i')))
+          allocate (alpha_qed_fixed_t :: qed%alpha)
+          select type (alpha => qed%alpha)
+          type is (alpha_qed_fixed_t)
+             alpha%val = one / model%get_real (var_str ('alpha_em_i'))
+          end select
        end if
        object%qed = qed
     end if

@@ -731,8 +731,9 @@ are requested.
 <<prc openloops: prc openloops: TBP>>=
   procedure :: get_alpha_qed => prc_openloops_get_alpha_qed
 <<prc openloops: procedures>>=
-  function prc_openloops_get_alpha_qed (object) result (alpha_qed)
+  function prc_openloops_get_alpha_qed (object, core_state) result (alpha_qed)
     class(prc_openloops_t), intent(in) :: object
+    class(prc_core_state_t), intent(in), allocatable :: core_state
     real(double) :: value
     real(default) :: alpha_qed
     select type (driver => object%driver)

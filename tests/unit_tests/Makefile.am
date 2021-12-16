@@ -59,6 +59,7 @@ UNIT_TESTS = \
     xml.run \
     phs_points.run \
     sm_qcd.run \
+    sm_qed.run \
     sm_physics.run \
     models.run \
     auto_components.run \

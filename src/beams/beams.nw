@@ -24757,7 +24757,7 @@ module dispatch_beams
   use diagnostics
   use os_interface, only: os_data_t
   use variables, only: var_list_t
-  use constants, only: PI
+  use constants, only: PI, one
   use numeric_utils, only: vanishes
   use physics_defs, only: PHOTON
   use rng_base, only: rng_factory_t
@@ -24768,7 +24768,8 @@ module dispatch_beams
   use flavors, only: flavor_t
   use sm_qcd, only: qcd_t, alpha_qcd_fixed_t, alpha_qcd_from_scale_t
   use sm_qcd, only: alpha_qcd_from_lambda_t
-  use physics_defs, only: MZ_REF, ALPHA_QCD_MZ_REF
+  use sm_qed, only: qed_t, alpha_qed_fixed_t, alpha_qed_from_scale_t
+  use physics_defs, only: MZ_REF, ME_REF, ALPHA_QCD_MZ_REF, ALPHA_QED_ME_REF
 
   use beam_structures
   use sf_base
@@ -25278,7 +25279,7 @@ phase space for the elementary process.
 
 @ %def dispatch_sf_config
 @
-\subsection{QCD coupling}
+\subsection{QCD and QED coupling}
 Allocate the [[alpha]] (running coupling) component of the [[qcd]] block with
 a concrete implementation, depending on the variable settings in the
 [[global]] record.
@@ -25390,6 +25391,90 @@ the QCD record thus becomes a messenger for this user parameter.
             os_data%pdf_builtin_datapath)
     type is (alpha_qcd_lhapdf_t)
        call alpha%init (lhapdf_file, lhapdf_member, lhapdf_dir)
+    end select
+  end subroutine init_alpha
+
+@
+@ Same for QED.
+<<Dispatch beams: public>>=
+  public :: dispatch_qed
+<<Dispatch beams: procedures>>=
+  subroutine dispatch_qed (qed, var_list)
+    type(qed_t), intent(inout) :: qed
+    type(var_list_t), intent(in) :: var_list
+    logical :: fixed, from_me, analytic
+    real(default) :: me, alpha_val
+    integer :: nf, nlep, order
+    call unpack_variables ()
+    if (allocated (qed%alpha))  deallocate (qed%alpha)
+    select case (count ([from_me]))
+    case (0)
+       if (fixed) then
+          allocate (alpha_qed_fixed_t :: qed%alpha)
+       else
+          call msg_fatal ("QED alpha: no calculation mode set")
+       end if
+    case (2:)
+       call msg_fatal ("QED alpha: calculation mode is ambiguous")
+    case (1)
+       if (fixed) then
+          call msg_fatal ("QED alpha: use '?alphas_is_fixed = false' for " // &
+               "running alpha")
+       else if (from_me) then
+          allocate (alpha_qed_from_scale_t :: qed%alpha)
+       end if
+       call msg_message ("QED alpha: using a running electromagnetic coupling")
+    end select
+    call init_alpha ()
+    if (var_list%get_ival (var_str ("alpha_nf")) == -1) then
+       qed%n_f = var_list%get_ival (var_str ("alphas_nf"))
+    else
+       qed%n_f = var_list%get_ival (var_str ("alpha_nf"))
+    end if
+    qed%n_lep = var_list%get_ival (var_str ("alpha_nlep"))
+  contains
+  <<Dispatch qed: dispatch qed: procedures>>
+  end subroutine dispatch_qed
+
+@ %def dispatch_qed
+@
+<<Dispatch qed: dispatch qed: procedures>>=
+  subroutine unpack_variables ()
+    fixed = var_list%get_lval (var_str ("?alpha_is_fixed"))
+    from_me = var_list%get_lval (var_str ("?alpha_from_me"))
+    if (var_list%get_ival (var_str ("alpha_nf")) == -1) then
+       nf = var_list%get_ival (var_str ("alphas_nf"))
+    else
+       nf = var_list%get_ival (var_str ("alpha_nf"))
+    end if
+    analytic = var_list%get_lval (var_str ("?alpha_evolve_analytic"))
+    nlep = var_list%get_ival (var_str ("alpha_nlep"))
+    order = var_list%get_ival (var_str ("alpha_order"))
+    if (var_list%contains (var_str ("me"))) then
+       me = var_list%get_rval (var_str ("me"))
+    else
+       me = ME_REF
+    end if
+    if (var_list%contains (var_str ("alpha_em_i"))) then
+       alpha_val = one / var_list%get_rval (var_str ("alpha_em_i"))
+    else
+       alpha_val = ALPHA_QED_ME_REF
+    end if
+  end subroutine unpack_variables
+
+@
+<<Dispatch qed: dispatch qed: procedures>>=
+  subroutine init_alpha ()
+    select type (alpha => qed%alpha)
+    type is (alpha_qed_fixed_t)
+       alpha%val = alpha_val
+    type is (alpha_qed_from_scale_t)
+       alpha%mu_ref = me
+       alpha%ref = alpha_val
+       alpha%order = order
+       alpha%nf = nf
+       alpha%nlep = nlep
+       alpha%analytic = analytic
     end select
   end subroutine init_alpha
 

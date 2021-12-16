@@ -1234,6 +1234,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call sm_qcd_test (u, results)
 @
+\subsubsection{SM QED}
+<<Main: use tests>>=
+  use sm_qed_ut, only: sm_qed_test
+<<Main: test cases>>=
+  case ("sm_qed")
+     call sm_qed_test (u, results)
+<<Main: all tests>>=
+  call sm_qed_test (u, results)
+@
 \subsubsection{SM physics}
 <<Main: use tests>>=
   use sm_physics_ut, only: sm_physics_test

@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.2+
 
+2021-12-16
+	Implementation of running QED coupling alpha
+
 2021-12-10
 	Independent variations of renormalization/factorization scale
 

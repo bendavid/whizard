@@ -3721,11 +3721,18 @@ procedure with type [[V_NONE]].
     call var_list%append_log (var_str ("?alphas_is_fixed"), .true., &
           intrinsic=.true., &
           description=var_str ('Flag that tells \whizard\ to use a non-running ' // &
-          '$\alpha_s$. Note that this has to be set explicitly to $\ttt{false}$ ' // &
+          'QCD $\alpha_s$. Note that this has to be set explicitly to $\ttt{false}$ ' // &
           'if the user wants to use one of the running $\alpha_s$ options. ' // &
           '(cf. also \ttt{alphas\_order}, \ttt{?alphas\_from\_lhapdf}, ' // &
           '\ttt{?alphas\_from\_pdf\_builtin}, \ttt{alphas\_nf}, \ttt{?alphas\_from\_mz}, ' // &
           '\newline \ttt{?alphas\_from\_lambda\_qcd}, \ttt{lambda\_qcd})'))
+    call var_list%append_log (var_str ("?alpha_is_fixed"), .true., &
+          intrinsic=.true., &
+          description=var_str ('Flag that tells \whizard\ to use a non-running ' // &
+          'QED $\alpha$. Note that this has to be set explicitly to $\ttt{false}$ ' // &
+          'if the user wants to use one of the running $\alpha$ options. ' // &
+          '(cf. also \ttt{alpha\_order}, \ttt{alpha\_nf}, \ttt{alpha\_lep}, ' // &
+          '\ttt{?alphas\_from\_me}'))
     call var_list%append_log (var_str ("?alphas_from_lhapdf"), .false., &
           intrinsic=.true., &
           description=var_str ('Flag that tells \whizard\ to use a running ' // &
@@ -3743,6 +3750,12 @@ procedure with type [[V_NONE]].
           '\ttt{alphas\_order}, \ttt{?alphas\_is\_fixed}, \ttt{?alphas\_from\_lhapdf}, ' // &
           '\ttt{alphas\_nf}, \ttt{?alphas\_from\_mz}, \newline \ttt{?alphas\_from\_lambda\_qcd}, ' // &
           '\ttt{lambda\_qcd})'))
+    call var_list%append_log (var_str ("?alpha_evolve_analytic"), .true., &
+          intrinsic=.true., &
+          description=var_str ('Flag that tells \whizard\ to use analytic running ' // &
+          'formulae for $\alpha$ instead of a numeric Runge-Kutta. ' // &
+          '(cf. also \ttt{alpha\_order}, \ttt{?alpha\_is\_fixed}, ' // &
+          '\ttt{alpha\_nf}, \ttt{alpha\_nlep}, \ttt{?alpha\_from\_me}) '))
     call var_list%append_int (var_str ("alphas_order"), 0, &
           intrinsic=.true., &
           description=var_str ('Integer parameter that sets the order ' // &
@@ -3751,6 +3764,13 @@ procedure with type [[V_NONE]].
           'is NNLO. (cf. also \ttt{alphas\_is\_fixed}, \ttt{?alphas\_from\_lhapdf}, ' // &
           '\ttt{?alphas\_from\_pdf\_builtin}, \ttt{alphas\_nf}, \ttt{?alphas\_from\_mz}, ' // &
           '\newline \ttt{?alphas\_from\_lambda\_qcd}, \ttt{lambda\_qcd})'))
+    call var_list%append_int (var_str ("alpha_order"), 0, &
+          intrinsic=.true., &
+          description=var_str ('Integer parameter that sets the order ' // &
+          'of the internal evolution for running $\alpha$ in \whizard: ' // &
+          'the default, \ttt{0}, is LO running, \ttt{1} is NLO. ' // &
+          '(cf. also \ttt{alpha\_is\_fixed}, \ttt{alpha\_nf}, \ttt{alphas\_lep}, ' // &
+          '\ttt{?alpha\_from\_me})'))
     call var_list%append_int (var_str ("alphas_nf"), 5, &
           intrinsic=.true., &
           description=var_str ('Integer parameter that sets the number ' // &
@@ -3759,6 +3779,20 @@ procedure with type [[V_NONE]].
           '\ttt{alphas\_is\_fixed}, \ttt{?alphas\_from\_lhapdf}, \ttt{?alphas\_from\_pdf\_builtin}, ' // &
           '\ttt{alphas\_order}, \ttt{?alphas\_from\_mz}, \newline ' // &
           '\ttt{?alphas\_from\_lambda\_qcd}, \ttt{lambda\_qcd})'))
+    call var_list%append_int (var_str ("alpha_nf"), -1, &
+          intrinsic=.true., &
+          description=var_str ('Integer parameter that sets the number ' // &
+          'of active quark flavors for the internal evolution for running ' // &
+          '$\alpha$ in \whizard. The default, \ttt{-1}, keeps it equal to \ttt{alphas\_nf} ' // &
+          '\ttt{alpha\_is\_fixed}, \ttt{alphas\_order}, \ttt{?alpha\_from\_me}, ' // &
+          '\ttt{?alpha\_evolve\_analytic}'))
+    call var_list%append_int (var_str ("alpha_nlep"), 1, &
+          intrinsic=.true., &
+          description=var_str ('Integer parameter that sets the number ' // &
+          'of active leptons in the running of $\alpha$ in \whizard. The deffault is' // &
+          'one, with only the electron considered massless (cf. also ' // &
+          '\ttt{alpha\_is\_fixed}, \ttt{alpha\_nf}, ' // &
+          '\ttt{alpha\_order}, \ttt{?alpha\_from\_me}, \ttt{?alpha\_evolve\_analytic})'))
     call var_list%append_log (var_str ("?alphas_from_mz"), .false., &
           intrinsic=.true., &
           description=var_str ('Flag that tells \whizard\ to use its internal ' // &

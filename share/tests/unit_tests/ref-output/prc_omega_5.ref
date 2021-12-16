@@ -40,8 +40,7 @@
      alpha(mu) =  1.17800E-01
      LL order  = 0
      N(flv)    = 5
-   QED parameters (fixed coupling):
-     alpha_qed = -1.00000E+00
+   QED parameters (coupling undefined)
 
 * Compute matrix element
 

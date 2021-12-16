@@ -93,7 +93,9 @@ parameter set as provided by the model definition, modifiable by the
 user.
 <<Physics defs: public parameters>>=
   real(default), public, parameter :: MZ_REF = 91.188_default
+  real(default), public, parameter :: ME_REF = 0.000510998928_default
   real(default), public, parameter :: ALPHA_QCD_MZ_REF = 0.1178_default
+  real(default), public, parameter :: ALPHA_QED_ME_REF = 0.0072973525693_default
   real(default), public, parameter :: LAMBDA_QCD_REF = 200.e-3_default
 @ %def alpha_s_mz_ref mz_ref lambda_qcd_ref
 @
@@ -3352,8 +3354,12 @@ active flavors in two different schemes:
   \frac{1415}{54} * C_A^2 n_f - \frac{205}{18} C_A C_F n_f + C_F^2 n_f
   + \frac{79}{54} C_A n_f**2 + \frac{11}{9} C_F n_f**2 \biggr)
 \end{align}
+The functions [[sumQ2q]] and [[sumQ4q]] provide the sum of the squared
+and quartic electric charges of a number [[nf]] of active quark flavors.
 <<SM physics: public>>=
-  public :: beta0, beta1, beta2, coeff_b0, coeff_b1, coeff_b2
+  public :: beta0, beta1, beta2
+  public :: coeff_b0, coeff_b1, coeff_b2, coeffqed_b0, coeffqed_b1
+  public :: sumQ2q, sumQ4q
 <<SM physics: procedures>>=
   pure function beta0 (nf)
     real(default), intent(in) :: nf
@@ -3397,14 +3403,71 @@ active flavors in two different schemes:
                     11.0_default/9.0_default * CF * nf**2) / (four*pi)**3
   end function coeff_b2
 
+  pure function coeffqed_b0 (nf, nlep)
+    integer, intent(in) :: nf, nlep
+    real(default) :: n_lep, coeffqed_b0
+    n_lep = real(nlep, kind=default)
+    coeffqed_b0 = - (three * sumQ2q (nf) + n_lep) / (three*pi)
+  end function coeffqed_b0
+
+  pure function coeffqed_b1 (nf, nlep)
+    integer, intent(in) :: nf, nlep
+    real(default) :: n_lep, coeffqed_b1
+    n_lep = real(nlep, kind=default)
+    coeffqed_b1 = - (three * sumQ4q (nf) + n_lep) / (four*pi**2)
+  end function coeffqed_b1
+
+  pure function sumQ2q (nf)
+    integer, intent(in) :: nf
+    real(default) :: sumQ2q
+    select case (nf)
+    case (0)
+       sumQ2q = zero
+    case (1)
+       sumQ2q = 1.0_default/9.0_default
+    case (2)
+       sumQ2q = 5.0_default/9.0_default
+    case (3)
+       sumQ2q = 2.0_default/3.0_default
+    case (4)
+       sumQ2q = 10.0_default/9.0_default
+    case (5)
+       sumQ2q = 11.0_default/9.0_default
+    case (6:)
+       sumQ2q = 5.0_default/3.0_default
+    end select
+  end function sumQ2q
+
+  pure function sumQ4q (nf)
+    integer, intent(in) :: nf
+    real(default) :: sumQ4q
+    select case (nf)
+    case (0)
+       sumQ4q = zero
+    case (1)
+       sumQ4q = 1.0_default/81.0_default
+    case (2)
+       sumQ4q = 17.0_default/81.0_default
+    case (3)
+       sumQ4q = 2.0_default/9.0_default
+    case (4)
+       sumQ4q = 34.0_default/81.0_default
+    case (5)
+       sumQ4q = 35.0_default/81.0_default
+    case (6:)
+       sumQ4q = 17.0_default/27.0_default
+    end select
+  end function sumQ4q
+
 @ %def beta0 beta1 beta2
-@ %def coeff_b0 coeff_b1 coeff_b2
+@ %def coeff_b0 coeff_b1 coeff_b2 coeffqed_b0 coeffqed_b1
+@ %def sumQ2q sumQ4q
 @ There should be two versions of running $\alpha_s$, one which takes
 the scale and $\Lambda_{\text{QCD}}$ as input, and one which takes the
 scale and e.g. $\alpha_s(m_Z)$ as input. Here, we take the one which
 takes the QCD scale and scale as inputs from the PDG book.
 <<SM physics: public>>=
-  public :: running_as, running_as_lam
+  public :: running_as, running_as_lam, running_alpha, running_alpha_num
 <<SM physics: procedures>>=
   pure function running_as (scale, al_mz, mz, order, nf) result (ascale)
     real(default), intent(in) :: scale
@@ -3491,8 +3554,121 @@ takes the QCD scale and scale as inputs from the PDG book.
     end select
   end function running_as_lam
 
+  pure function running_alpha &
+       (scale, al_me, me, order, nf, nlep) result (ascale)
+    real(default), intent(in) :: scale
+    real(default), intent(in), optional :: al_me, me
+    integer, intent(in), optional :: order, nf, nlep
+    integer :: ord, n_f, n_lep
+    real(default) :: ae, m_e, a_log, b0, b1, ascale
+    real(default) :: a0, a1
+    if (present (me)) then
+       m_e = me
+    else
+       m_e = ME_REF
+    end if
+    if (present (order)) then
+       ord = order
+    else
+       ord = 0
+    end if
+    if (present (al_me)) then
+       ae = al_me
+    else
+       ae = ALPHA_QED_ME_REF
+    end if
+    if (present (nf)) then
+       n_f = nf
+    else
+       n_f = 5
+    end if
+    if (present (nlep)) then
+       n_lep = nlep
+    else
+       n_lep = 1
+    end if
+    b0 = coeffqed_b0 (n_f, n_lep)
+    b1 = coeffqed_b1 (n_f, n_lep)
+    a_log = one + b0 * ae * log(scale**2/m_e**2)
+    a0 = ae / a_log
+    a1 = ae / (a_log + ae * b1/b0 * &
+         log((a_log + ae * b1/b0)/(one + ae * b1/b0)))
+    select case (ord)
+    case (0)
+       ascale = a0
+    case (1)
+       ascale = a1
+    case default
+       ascale = a0
+    end select
+  end function running_alpha
+
+  pure function running_alpha_num &
+       (scale, al_me, me, order, nf, nlep) result (ascale)
+    real(default), intent(in) :: scale
+    real(default), intent(in), optional :: al_me, me
+    integer, intent(in), optional :: order, nf, nlep
+    integer, parameter :: n_steps = 20
+    integer :: ord, n_f, n_lep, k1
+    real(default), parameter :: sxth = 1._default/6._default
+    real(default) :: ae, ascale, m_e, log_q, dlr, &
+         b0, b1, xk0, xk1, xk2, xk3
+    if (present (order)) then
+       ord = order
+    else
+       ord = 0
+    end if
+    if (present (al_me)) then
+       ae = al_me
+    else
+       ae = ALPHA_QED_ME_REF
+    end if
+    if (present (me)) then
+       m_e = me
+    else
+       m_e = ME_REF
+    end if
+    if (present (nf)) then
+       n_f = nf
+    else
+       n_f = 5
+    end if
+    if (present (nlep)) then
+       n_lep = nlep
+    else
+       n_lep = 1
+    end if
+    ascale = ae
+    log_q = log (scale**2/m_e**2)
+    dlr = log_q / n_steps
+    b0 = coeffqed_b0 (n_f, n_lep)
+    b1 = coeffqed_b1 (n_f, n_lep)
+    ! ..Solution of the evolution equation depending on ORD
+    !   (fourth-order Runge-Kutta beyond the leading order)
+    select case (ord)
+    case (0)
+       ascale = ae / (one + b0 * ae * log_q)
+    case (1:)
+       do k1 = 1, n_steps
+          xk0 = dlr * beta_qed (ascale)
+          xk1 = dlr * beta_qed (ascale + 0.5 * xk0)
+          xk2 = dlr * beta_qed (ascale + 0.5 * xk1)
+          xk3 = dlr * beta_qed (ascale + xk2)
+          ascale = ascale + sxth * (xk0 + 2._default * xk1 + &
+               2._default * xk2 + xk3)
+       end do
+    end select
+  contains
+    pure function beta_qed (alpha)
+      real(default), intent(in) :: alpha
+      real(default) :: beta_qed
+      beta_qed = - alpha**2 * (b0 + alpha * b1)
+    end function beta_qed
+  end function running_alpha_num
+
 @ %def running_as
 @ %def running_as_lam
+@ %def running_alpha running_alpha_num
 @
 \subsection{Catani-Seymour Parameters}
 These are fundamental constants of the Catani-Seymour dipole formalism.
@@ -5409,12 +5585,17 @@ module sm_qed
 <<Use kinds>>
   use io_units
   use format_defs, only: FMT_12
+  use md5
+  use physics_defs
+  use sm_physics
 
 <<Standard module head>>
 
 <<SM qed: public>>
 
 <<SM qed: types>>
+
+<<SM qed: interfaces>>
 
 contains
 
@@ -5423,55 +5604,371 @@ contains
 end module sm_qed
 @ %def sm_qed
 @
-\subsection{QED type}
-Slightly similar to [[qcd_t]] but way simpler. It just needs to store [[alpha_em]].
+\subsection{Coupling: Abstract Data Type}
+This is the abstract version of the QCD coupling implementation.
 <<SM qed: public>>=
-  public :: qed_t
+  public :: alpha_qed_t
 <<SM qed: types>>=
-  type :: qed_t
-     private
-     real(default) :: alpha_qed = -1
+  type, abstract :: alpha_qed_t
    contains
-   <<SM qed: TBP>>
-  end type qed_t
+   <<SM qed: alpha qed: TBP>>
+  end type alpha_qed_t
 
-@ %def qed_t
-@ Output routine
-<<SM qed: TBP>>=
-  procedure :: write => qed_write
+@ %def alpha_qed_t
+@ There must be an output routine.
+<<SM qed: alpha qed: TBP>>=
+  procedure (alpha_qed_write), deferred :: write
+<<SM qed: interfaces>>=
+  abstract interface
+     subroutine alpha_qed_write (object, unit)
+       import
+       class(alpha_qed_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+     end subroutine alpha_qed_write
+  end interface
+
+@ %def alpha_qed_write
+@ This method computes the running coupling, given a certain scale.  All
+parameters (reference value, order of the approximation, etc.) must be
+set before calling this.
+<<SM qed: alpha qed: TBP>>=
+  procedure (alpha_qed_get), deferred :: get
+<<SM qed: interfaces>>=
+  abstract interface
+     function alpha_qed_get (alpha_qed, scale) result (alpha)
+       import
+       class(alpha_qed_t), intent(in) :: alpha_qed
+       real(default), intent(in) :: scale
+       real(default) :: alpha
+     end function alpha_qed_get
+  end interface
+
+@ %def alpha_qed_get
+@
+\subsection{Fixed Coupling}
+In this version, the $\alpha$ value is fixed, the [[scale]] argument
+of the [[get]] method is ignored.  There is only one parameter, the
+value. The default depends on the electroweak scheme chosen in the
+model.
+<<SM qed: public>>=
+  public :: alpha_qed_fixed_t
+<<SM qed: types>>=
+  type, extends (alpha_qed_t) :: alpha_qed_fixed_t
+     real(default) :: val = ALPHA_QED_ME_REF
+   contains
+   <<SM qed: alpha qed fixed: TBP>>
+  end type alpha_qed_fixed_t
+
+@ %def alpha_qed_fixed_t
+@ Output.
+<<SM qed: alpha qed fixed: TBP>>=
+  procedure :: write => alpha_qed_fixed_write
 <<SM qed: procedures>>=
-  subroutine qed_write (qed, unit)
-    class(qed_t), intent(in) :: qed
+  subroutine alpha_qed_fixed_write (object, unit)
+    class(alpha_qed_fixed_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(3x,A)")  "QED parameters (fixed coupling):"
-    write (u, "(5x,A," // FMT_12 // ")")  "alpha_qed = ", qed%alpha_qed
+    write (u, "(5x,A," // FMT_12 // ")")  "alpha = ", object%val
+  end subroutine alpha_qed_fixed_write
+
+@ %def alpha_qed_fixed_write
+@ Calculation: the scale is ignored in this case.
+<<SM qed: alpha qed fixed: TBP>>=
+  procedure :: get => alpha_qed_fixed_get
+<<SM qed: procedures>>=
+  function alpha_qed_fixed_get (alpha_qed, scale) result (alpha)
+    class(alpha_qed_fixed_t), intent(in) :: alpha_qed
+    real(default), intent(in) :: scale
+    real(default) :: alpha
+    alpha = alpha_qed%val
+  end function alpha_qed_fixed_get
+
+@ %def alpha_qed_fixed_get
+@
+\subsection{Running Coupling}
+In this version, the $\alpha$ value runs relative to the value at a
+given reference scale.  There are two parameters: the value of this
+scale (default: $M_Z$), the value of $\alpha$ at this scale, and the
+number of effective flavors.  Furthermore, we have the order of the
+approximation.
+<<SM qed: public>>=
+  public :: alpha_qed_from_scale_t
+<<SM qed: types>>=
+  type, extends (alpha_qed_t) :: alpha_qed_from_scale_t
+     real(default) :: mu_ref = ME_REF
+     real(default) :: ref = ALPHA_QED_ME_REF
+     integer :: order = 0
+     integer :: nf = 5
+     integer :: nlep = 1
+     logical :: analytic = .true.
+   contains
+   <<SM qed: alpha qed from scale: TBP>>
+  end type alpha_qed_from_scale_t
+
+@ %def alpha_qed_from_scale_t
+@ Output.
+<<SM qed: alpha qed from scale: TBP>>=
+  procedure :: write => alpha_qed_from_scale_write
+<<SM qed: procedures>>=
+  subroutine alpha_qed_from_scale_write (object, unit)
+    class(alpha_qed_from_scale_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(3x,A)")  "QED parameters (running coupling):"
+    write (u, "(5x,A," // FMT_12 // ")")  "Scale mu  = ", object%mu_ref
+    write (u, "(5x,A," // FMT_12 // ")")  "alpha(mu) = ", object%ref
+    write (u, "(5x,A,I0)")      "LL order  = ", object%order
+    write (u, "(5x,A,I0)")      "N(flv)    = ", object%nf
+    write (u, "(5x,A,I0)")      "N(lep)    = ", object%nlep
+    write (u, "(5x,A,L1)")      "analytic  = ", object%analytic
+  end subroutine alpha_qed_from_scale_write
+
+@ %def alpha_qed_from_scale_write
+@ Calculation: here, we call the function for running $\alpha_s$ that
+was defined in [[sm_physics]] above.  The function does not take into
+account thresholds, so the number of flavors should be the correct one
+for the chosen scale.  Normally, this should be the $Z$ boson mass.
+<<SM qed: alpha qed from scale: TBP>>=
+  procedure :: get => alpha_qed_from_scale_get
+<<SM qed: procedures>>=
+  function alpha_qed_from_scale_get (alpha_qed, scale) result (alpha)
+    class(alpha_qed_from_scale_t), intent(in) :: alpha_qed
+    real(default), intent(in) :: scale
+    real(default) :: alpha
+    if (alpha_qed%analytic) then
+       alpha = running_alpha (scale, alpha_qed%ref, alpha_qed%mu_ref, &
+            alpha_qed%order, alpha_qed%nf, alpha_qed%nlep)
+    else
+       alpha = running_alpha_num (scale, alpha_qed%ref, alpha_qed%mu_ref, &
+            alpha_qed%order, alpha_qed%nf, alpha_qed%nlep)
+    end if
+  end function alpha_qed_from_scale_get
+
+@ %def alpha_qed_from_scale_get
+@
+\subsection{QED type}
+This module is similar to [[qcd_t]], defining the type [[qed_t]]. 
+It stores the [[alpha_qed_t]] type which is either constant or a running $\alpha$ 
+with different options.
+<<SM qed: public>>=
+  public :: qed_t
+<<SM qed: types>>=
+  type :: qed_t
+     class(alpha_qed_t), allocatable :: alpha
+     character(32) :: md5sum = ""
+     integer :: n_f = -1
+     integer :: n_lep = -1
+   contains
+   <<SM qed: qed: TBP>>
+  end type qed_t
+
+@ %def qed_t
+Output.  We first print the polymorphic [[alpha]] which contains a headline,
+then any extra components.
+<<SM qed: qed: TBP>>=
+  procedure :: write => qed_write
+<<SM qed: procedures>>=
+  subroutine qed_write (qed, unit, show_md5sum)
+    class(qed_t), intent(in) :: qed
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_md5sum
+    logical :: show_md5
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    show_md5 = .true.;  if (present (show_md5sum))  show_md5 = show_md5sum
+    if (allocated (qed%alpha)) then
+       call qed%alpha%write (u)
+    else
+       write (u, "(3x,A)")  "QED parameters (coupling undefined)"
+    end if
+    if (show_md5 .and. qed%md5sum /= "") &
+         write (u, "(5x,A,A,A)") "md5sum = '", qed%md5sum, "'"
   end subroutine qed_write
 
 @ % def qed_write
-@ Setter for [[alpha_qed]]
-<<SM qed: TBP>>=
-  procedure :: set_alpha_qed => qed_set_alpha_qed
+@ Compute an MD5 sum for the [[alpha]] setup.  This is
+done by writing them to a temporary file, using a standard format.
+<<SM qed: qed: TBP>>=
+  procedure :: compute_alpha_md5sum => qed_compute_alpha_md5sum
 <<SM qed: procedures>>=
-  subroutine qed_set_alpha_qed (qed, alpha_qed_in)
+  subroutine qed_compute_alpha_md5sum (qed)
     class(qed_t), intent(inout) :: qed
-    real(default), intent(in) :: alpha_qed_in
-    qed%alpha_qed = alpha_qed_in
-  end subroutine qed_set_alpha_qed
+    integer :: unit
+    if (allocated (qed%alpha)) then
+       unit = free_unit ()
+       open (unit, status="scratch", action="readwrite")
+       call qed%alpha%write (unit)
+       rewind (unit)
+       qed%md5sum = md5sum (unit)
+       close (unit)
+    end if
+  end subroutine qed_compute_alpha_md5sum
 
-@ % def set_alpha_qed
-@ Getter for [[alpha_qed]]
-<<SM qed: TBP>>=
-  procedure :: get_alpha_qed => qed_get_alpha_qed
+@ %def qed_compute_alphas_md5sum
+@
+@ Retrieve the MD5 sum of the qed setup.
+<<SM qed: qed: TBP>>=
+  procedure :: get_md5sum => qed_get_md5sum
 <<SM qed: procedures>>=
-  function qed_get_alpha_qed (qed) result (alpha_qed_out)
-    class(qed_t), intent(in) :: qed
-    real(default) :: alpha_qed_out
-    alpha_qed_out = qed%alpha_qed
-  end function qed_get_alpha_qed
+  function qed_get_md5sum (qed) result (md5sum)
+    character(32) :: md5sum
+    class(qed_t), intent(inout) :: qed
+    md5sum = qed%md5sum
+  end function qed_get_md5sum
 
-@ % def get_alpha_qed
+@ %def qed_get_md5sum
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[sm_qed_ut.f90]]>>=
+<<File header>>
+
+module sm_qed_ut
+  use unit_tests
+  use sm_qed_uti
+
+<<Standard module head>>
+
+<<SM qed: public test>>
+
+contains
+
+<<SM qed: test driver>>
+
+end module sm_qed_ut
+@ %def sm_qed_ut
+@
+<<[[sm_qed_uti.f90]]>>=
+<<File header>>
+
+module sm_qed_uti
+
+<<Use kinds>>
+  use physics_defs, only: ME_REF
+
+  use sm_qed
+
+<<Standard module head>>
+
+<<SM qed: test declarations>>
+
+contains
+
+<<SM qed: tests>>
+
+end module sm_qed_uti
+@ %def sm_qed_ut
+@ API: driver for the unit tests below.
+<<SM qed: public test>>=
+  public :: sm_qed_test
+<<SM qed: test driver>>=
+  subroutine sm_qed_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<SM qed: execute tests>>
+  end subroutine sm_qed_test
+
+@ %def sm_qed_test
+@
+\subsubsection{QED Coupling}
+We check two different implementations of the abstract QED coupling.
+<<SM qed: execute tests>>=
+  call test (sm_qed_1, "sm_qed_1", &
+       "running alpha_s", &
+       u, results)
+<<SM qed: test declarations>>=
+  public :: sm_qed_1
+<<SM qed: tests>>=
+  subroutine sm_qed_1 (u)
+    integer, intent(in) :: u
+    type(qed_t) :: qed
+
+    write (u, "(A)")  "* Test output: sm_qed_1"
+    write (u, "(A)")  "*   Purpose: compute running alpha"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Fixed:"
+    write (u, "(A)")
+
+    allocate (alpha_qed_fixed_t :: qed%alpha)
+    call qed%compute_alpha_md5sum ()
+
+    call qed%write (u)
+    write (u, *)
+    write (u, "(1x,A,F10.7)")  "alpha (me)     =", &
+         qed%alpha%get (ME_REF)
+    write (u, "(1x,A,F10.7)")  "alpha (10 GeV) =", &
+         qed%alpha%get (10._default)
+    write (u, "(1x,A,F10.7)")  "alpha (1 TeV)  =", &
+         qed%alpha%get (1000._default)
+    write (u, *)
+    deallocate (qed%alpha)
+
+    write (u, "(A)")  "* Running from me (LO):"
+    write (u, "(A)")
+
+    allocate (alpha_qed_from_scale_t :: qed%alpha)
+    call qed%compute_alpha_md5sum ()
+
+    call qed%write (u)
+    write (u, *)
+    write (u, "(1x,A,F10.7)")  "alpha (me)     =", &
+         qed%alpha%get (ME_REF)
+    write (u, "(1x,A,F10.7)")  "alpha (10 GeV) =", &
+         qed%alpha%get (10._default)
+    write (u, "(1x,A,F10.7)")  "alpha (1 TeV)  =", &
+         qed%alpha%get (1000._default)
+    write (u, *)
+
+    write (u, "(A)")  "* Running from me (NLO, analytic):"
+    write (u, "(A)")
+
+    select type (alpha => qed%alpha)
+    type is (alpha_qed_from_scale_t)
+       alpha%order = 1
+    end select
+    call qed%compute_alpha_md5sum ()
+
+    call qed%write (u)
+    write (u, *)
+    write (u, "(1x,A,F10.7)")  "alpha (me)     =", &
+         qed%alpha%get (ME_REF)
+    write (u, "(1x,A,F10.7)")  "alpha (10 GeV) =", &
+         qed%alpha%get (10._default)
+    write (u, "(1x,A,F10.7)")  "alpha (1 TeV)  =", &
+         qed%alpha%get (1000._default)
+    write (u, *)
+
+    write (u, "(A)")  "* Running from me (NLO, numeric):"
+    write (u, "(A)")
+
+    select type (alpha => qed%alpha)
+    type is (alpha_qed_from_scale_t)
+       alpha%order = 1
+       alpha%analytic = .false.
+    end select
+    call qed%compute_alpha_md5sum ()
+
+    call qed%write (u)
+    write (u, *)
+    write (u, "(1x,A,F10.7)")  "alpha (me)     =", &
+         qed%alpha%get (ME_REF)
+    write (u, "(1x,A,F10.7)")  "alpha (10 GeV) =", &
+         qed%alpha%get (10._default)
+    write (u, "(1x,A,F10.7)")  "alpha (1 TeV)  =", &
+         qed%alpha%get (1000._default)
+    write (u, *)
+    deallocate (qed%alpha)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sm_qed_1"
+
+  end subroutine sm_qed_1
+
+@ %def sm_qed_1
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

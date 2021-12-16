@@ -8336,7 +8336,7 @@ finalizer that we must call.
 object and set up the [[int]] hard interaction accordingly.
 
 The [[alpha_s]] value is useful for writing external event records.  This is
-the constant value which may be overridden by a event-specific running value.
+the constant value which may be overridden by an event-specific running value.
 If the model does not contain the strong coupling, the value is zero.
 
 The [[rearrange]] part is commented out; this or something equivalent
@@ -13546,7 +13546,7 @@ it is only available after the [[fks_regions]] have been created.
   end subroutine term_instance_evaluate_sqme_virt
 
 @ %def term_instance_evaluate_sqme_virt
-@
+@ Needs generalization to electroweak corrections.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_sqme_mismatch => term_instance_evaluate_sqme_mismatch
 <<Instances: procedures>>=
@@ -15719,7 +15719,7 @@ terms, iterating over all active process components.
                      end if
                   end if
                   alpha_s = core%get_alpha_s (term%core_state)
-                  alpha_qed = core%get_alpha_qed ()
+                  alpha_qed = core%get_alpha_qed (term%core_state)
                   if (term%nlo_type > BORN) then
                      select type (pcm => term%pcm)
                      type is (pcm_nlo_t)
@@ -16043,7 +16043,7 @@ to supply an external $\alpha_s$.
           i_real_fin = instance%process%get_associated_real_fin (1)
           if (term%config%i_component /= i_real_fin) &
                call term%apply_fks (kin, core%get_alpha_s (term%core_state), &
-                                    core%get_alpha_qed ())
+                                    core%get_alpha_qed (term%core_state))
           if (instance%process%uses_real_partition ()) &
                call instance%apply_real_partition ()
        end associate

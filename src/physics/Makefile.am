@@ -45,6 +45,7 @@ libphysics_la_SOURCES = \
 libphysics_ut_la_SOURCES = \
   sm_physics_uti.f90 sm_physics_ut.f90 \
   sm_qcd_uti.f90 sm_qcd_ut.f90 \
+  sm_qed_uti.f90 sm_qed_ut.f90 \
   phs_points_uti.f90 phs_points_ut.f90
 
 ## Omitting this would exclude it from the distribution
