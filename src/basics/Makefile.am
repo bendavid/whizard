@@ -97,7 +97,7 @@ endif
 clean-local: clean-noweb
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 DISTCLEANFILES = kinds.f90

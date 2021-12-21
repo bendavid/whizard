@@ -31,7 +31,13 @@
 noinst_LTLIBRARIES = libqed_pdf.la
 
 libqed_pdf_la_SOURCES = \
+  $(QED_MODULES) \
+  $(QED_SUBMODULES)
+
+QED_MODULES = \
   electron_pdfs.f90
+QED_SUBMODULES = \
+  electron_pdfs_sub.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = qed_pdf.nw
@@ -39,10 +45,12 @@ dist_noinst_DATA = qed_pdf.nw
 # Modules and installation
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
+# For the moment this only installs module .mod files, not submodule files
 nodist_execmod_HEADERS = \
-  ${libqed_pdf_la_SOURCES:.f90=.$(FCMOD)}
+  ${QED_MODULES:.f90=.$(FCMOD)}
 
-libqed_pdf_Modules = ${libqed_pdf_la_SOURCES:.f90=}
+# Submodules must not be included here
+libqed_pdf_Modules = ${QED_MODULES:.f90=}
 Modules: Makefile
 	@for module in $(libqed_pdf_Modules); do \
           echo $$module >> $@.new; \
@@ -103,8 +111,11 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../system -I../physics
+AM_FCFLAGS = -I../basics -I../utilities -I../system -I../combinatorics -I../physics
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+electron_pdfs_sub.lo: electron_pdfs.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -172,7 +183,7 @@ clean-local: clean-noweb
 	-rm -f qed_pdf.stamp qed_pdf.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

@@ -220,7 +220,7 @@ clean-local: clean-noweb
 	-rm -f events.stamp events.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

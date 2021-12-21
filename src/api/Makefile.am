@@ -325,7 +325,7 @@ clean-local: clean-noweb
 	-rm -f api.stamp api.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

@@ -576,6 +576,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/slha_2.ref \
     unit_tests/ref-output/sm_physics_1.ref \
     unit_tests/ref-output/sm_physics_2.ref \
+    unit_tests/ref-output/sm_physics_3.ref \
     unit_tests/ref-output/sm_qcd_1.ref \
     unit_tests/ref-output/sm_qed_1.ref \
     unit_tests/ref-output/solver_1.ref \

@@ -221,7 +221,7 @@ clean-local: clean-noweb
 	-rm -f combinatorics.stamp combinatorics.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

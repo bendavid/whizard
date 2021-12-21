@@ -1850,7 +1850,7 @@ permutations that will be generated:
 <<Permutations: public>>=
   public :: factorial
 <<Permutations: procedures>>=
-  function factorial (n) result (f)
+  elemental function factorial (n) result (f)
     integer, intent(in) :: n
     integer :: f
     integer :: i

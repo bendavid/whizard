@@ -38,18 +38,30 @@ external files.  Currently only:
 
 module file_utils
 
-  use io_units
-
 <<Standard module head>>
 
 <<File utils: public>>
+
+  interface
+<<File utils: sub interfaces>>
+  end interface
+
+end module file_utils
+@ %def file_utils
+<<[[file_utils_sub.f90]]>>=
+<<File header>>
+
+submodule (file_utils) file_utils_s
+ 
+  use io_units
 
 contains
 
 <<File utils: procedures>>
 
-end module file_utils
-@ %def file_utils
+end submodule file_utils_s
+
+@ %def file_utils_s
 @
 \subsection{Deleting a file}
 Fortran does not contain a command for deleting a file.  Here, we
@@ -57,8 +69,12 @@ provide a subroutine that deletes a file if it exists.  We do not
 handle the subtleties, so we assume that it is writable if it exists.
 <<File utils: public>>=
   public :: delete_file
+<<File utils: sub interfaces>>=
+    module subroutine delete_file (name)
+      character(*), intent(in) :: name
+    end subroutine delete_file
 <<File utils: procedures>>=
-  subroutine delete_file (name)
+  module subroutine delete_file (name)
     character(*), intent(in) :: name
     logical :: exist
     integer :: u
@@ -90,7 +106,6 @@ opened at different positions simultaneously.
 module file_registries
 
 <<Use strings>>
-  use io_units
 
 <<Standard module head>>
 
@@ -98,12 +113,26 @@ module file_registries
 
 <<File registries: types>>
 
+  interface
+<<File registries: sub interfaces>>
+  end interface
+
+end module file_registries
+@ %def file_registries
+@
+<<[[file_registries_sub.f90]]>>=
+<<File header>>
+
+submodule (file_registries) file_registries_s
+
+<<Use strings>>
+  use io_units
+
 contains
 
 <<File registries: procedures>>
 
-end module file_registries
-@ %def file_registries
+end submodule file_registries_s
 @
 \subsection{File handle}
 This object holds a filename (fully qualified), the associated
@@ -122,8 +151,14 @@ deleted when the reference count drops to zero.
 @ Debugging output:
 <<File registries: file handle: TBP>>=
   procedure :: write => file_handle_write
+<<File registries: sub interfaces>>=
+    module subroutine file_handle_write (handle, u, show_unit)
+      class(file_handle_t), intent(in) :: handle
+      integer, intent(in) :: u
+      logical, intent(in), optional :: show_unit
+    end subroutine file_handle_write
 <<File registries: procedures>>=
-  subroutine file_handle_write (handle, u, show_unit)
+  module subroutine file_handle_write (handle, u, show_unit)
     class(file_handle_t), intent(in) :: handle
     integer, intent(in) :: u
     logical, intent(in), optional :: show_unit
@@ -142,8 +177,13 @@ deleted when the reference count drops to zero.
 @ Initialize with a file name, don't open the file yet:
 <<File registries: file handle: TBP>>=
   procedure :: init => file_handle_init
+<<File registries: sub interfaces>>=
+    module subroutine file_handle_init (handle, file)
+      class(file_handle_t), intent(out) :: handle
+      type(string_t), intent(in) :: file
+    end subroutine file_handle_init
 <<File registries: procedures>>=
-  subroutine file_handle_init (handle, file)
+  module subroutine file_handle_init (handle, file)
     class(file_handle_t), intent(out) :: handle
     type(string_t), intent(in) :: file
     handle%file = file
@@ -153,8 +193,12 @@ deleted when the reference count drops to zero.
 @ We check the [[refcount]] before actually opening the file.
 <<File registries: file handle: TBP>>=
   procedure :: open => file_handle_open
+<<File registries: sub interfaces>>=
+    module subroutine file_handle_open (handle)
+      class(file_handle_t), intent(inout) :: handle
+    end subroutine file_handle_open
 <<File registries: procedures>>=
-  subroutine file_handle_open (handle)
+  module subroutine file_handle_open (handle)
     class(file_handle_t), intent(inout) :: handle
     if (handle%refcount == 0) then
        handle%unit = free_unit ()
@@ -169,8 +213,12 @@ deleted when the reference count drops to zero.
 then delete the object.
 <<File registries: file handle: TBP>>=
   procedure :: close => file_handle_close
+<<File registries: sub interfaces>>=
+    module subroutine file_handle_close (handle)
+      class(file_handle_t), intent(inout) :: handle
+    end subroutine file_handle_close
 <<File registries: procedures>>=
-  subroutine file_handle_close (handle)
+  module subroutine file_handle_close (handle)
     class(file_handle_t), intent(inout) :: handle
     handle%refcount = handle%refcount - 1
     if (handle%refcount == 0) then
@@ -183,8 +231,13 @@ then delete the object.
 @ The I/O unit will be nonzero when the file is open.
 <<File registries: file handle: TBP>>=
   procedure :: is_open => file_handle_is_open
+<<File registries: sub interfaces>>=
+    module function file_handle_is_open (handle) result (flag)
+      class(file_handle_t), intent(in) :: handle
+      logical :: flag
+    end function file_handle_is_open
 <<File registries: procedures>>=
-  function file_handle_is_open (handle) result (flag)
+  module function file_handle_is_open (handle) result (flag)
     class(file_handle_t), intent(in) :: handle
     logical :: flag
     flag = handle%unit /= 0
@@ -194,8 +247,13 @@ then delete the object.
 @ Return the filename, so we can identify the entry.
 <<File registries: file handle: TBP>>=
   procedure :: get_file => file_handle_get_file
+<<File registries: sub interfaces>>=
+    module function file_handle_get_file (handle) result (file)
+      class(file_handle_t), intent(in) :: handle
+      type(string_t) :: file
+    end function file_handle_get_file
 <<File registries: procedures>>=
-  function file_handle_get_file (handle) result (file)
+  module function file_handle_get_file (handle) result (file)
     class(file_handle_t), intent(in) :: handle
     type(string_t) :: file
     file = handle%file
@@ -205,8 +263,13 @@ then delete the object.
 @ For debugging, return the I/O unit number.
 <<File registries: file handle: TBP>>=
   procedure :: get_unit => file_handle_get_unit
+<<File registries: sub interfaces>>=
+    module function file_handle_get_unit (handle) result (unit)
+      class(file_handle_t), intent(in) :: handle
+      integer :: unit
+    end function file_handle_get_unit
 <<File registries: procedures>>=
-  function file_handle_get_unit (handle) result (unit)
+  module function file_handle_get_unit (handle) result (unit)
     class(file_handle_t), intent(in) :: handle
     integer :: unit
     unit = handle%unit
@@ -240,8 +303,14 @@ Extend the handle type to become a list entry:
 @ Debugging output.
 <<File registries: file registry: TBP>>=
   procedure :: write => file_registry_write
+<<File registries: sub interfaces>>=
+    module subroutine file_registry_write (registry, unit, show_unit)
+      class(file_registry_t), intent(in) :: registry
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: show_unit
+    end subroutine file_registry_write
 <<File registries: procedures>>=
-  subroutine file_registry_write (registry, unit, show_unit)
+  module subroutine file_registry_write (registry, unit, show_unit)
     class(file_registry_t), intent(in) :: registry
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_unit
@@ -266,8 +335,14 @@ to the list if necessary.  The list is extended at the beginning.
 Return the I/O unit number for the records.
 <<File registries: file registry: TBP>>=
   procedure :: open => file_registry_open
+<<File registries: sub interfaces>>=
+    module subroutine file_registry_open (registry, file, unit)
+      class(file_registry_t), intent(inout) :: registry
+      type(string_t), intent(in) :: file
+      integer, intent(out), optional :: unit
+    end subroutine file_registry_open
 <<File registries: procedures>>=
-  subroutine file_registry_open (registry, file, unit)
+  module subroutine file_registry_open (registry, file, unit)
     class(file_registry_t), intent(inout) :: registry
     type(string_t), intent(in) :: file
     integer, intent(out), optional :: unit
@@ -295,8 +370,13 @@ Return the I/O unit number for the records.
 is no file connected to it anymore.
 <<File registries: file registry: TBP>>=
   procedure :: close => file_registry_close
+<<File registries: sub interfaces>>=
+  module subroutine file_registry_close (registry, file)
+    class(file_registry_t), intent(inout) :: registry
+    type(string_t), intent(in) :: file
+  end subroutine file_registry_close
 <<File registries: procedures>>=
-  subroutine file_registry_close (registry, file)
+  module subroutine file_registry_close (registry, file)
     class(file_registry_t), intent(inout) :: registry
     type(string_t), intent(in) :: file
     type(file_entry_t), pointer :: entry
@@ -350,12 +430,25 @@ module string_utils
 
 <<String utils: interfaces>>
 
+  interface
+<<String utils: sub interfaces>>
+  end interface
+
+end module string_utils
+@ %def string_utils
+@
+<<[[string_utils_sub.f90]]>>=
+<<File header>>
+
+submodule (string_utils) string_utils_s
+
 contains
 
 <<String utils: procedures>>
 
-end module string_utils
-@ %def string_utils
+end submodule string_utils_s
+
+@ %def string_utils_s
 @
 \subsection{Upper and Lower Case}
 These are, unfortunately, not part of Fortran.
@@ -369,8 +462,25 @@ These are, unfortunately, not part of Fortran.
   interface lower_case
      module procedure lower_case_char, lower_case_string
   end interface
+<<String utils: sub interfaces>>=
+    module function upper_case_char (string) result (new_string)
+      character(*), intent(in) :: string
+      character(len(string)) :: new_string
+    end function upper_case_char
+    module function lower_case_char (string) result (new_string)
+      character(*), intent(in) :: string
+      character(len(string)) :: new_string
+    end function lower_case_char
+    module function upper_case_string (string) result (new_string)
+      type(string_t), intent(in) :: string
+      type(string_t) :: new_string
+    end function upper_case_string
+    module function lower_case_string (string) result (new_string)
+      type(string_t), intent(in) :: string
+      type(string_t) :: new_string
+    end function lower_case_string
 <<String utils: procedures>>=
-  function upper_case_char (string) result (new_string)
+  module function upper_case_char (string) result (new_string)
     character(*), intent(in) :: string
     character(len(string)) :: new_string
     integer :: pos, code
@@ -386,7 +496,7 @@ These are, unfortunately, not part of Fortran.
     end do
   end function upper_case_char
 
-  function lower_case_char (string) result (new_string)
+  module function lower_case_char (string) result (new_string)
     character(*), intent(in) :: string
     character(len(string)) :: new_string
     integer :: pos, code
@@ -402,13 +512,13 @@ These are, unfortunately, not part of Fortran.
     end do
   end function lower_case_char
 
-  function upper_case_string (string) result (new_string)
+  module function upper_case_string (string) result (new_string)
     type(string_t), intent(in) :: string
     type(string_t) :: new_string
     new_string = upper_case_char (char (string))
   end function upper_case_string
 
-  function lower_case_string (string) result (new_string)
+  module function lower_case_string (string) result (new_string)
     type(string_t), intent(in) :: string
     type(string_t) :: new_string
     new_string = lower_case_char (char (string))
@@ -424,14 +534,23 @@ Convert a FORTRAN string to a null-terminated C string.
   interface string_f2c
      module procedure string_f2c_char, string_f2c_var_str
   end interface string_f2c
+<<String utils: sub interfaces>>=
+    pure module function string_f2c_char (i) result (o)
+      character(*), intent(in) :: i
+      character(kind=c_char, len=len (i) + 1) :: o
+    end function string_f2c_char
+    pure module function string_f2c_var_str (i) result (o)
+      type(string_t), intent(in) :: i
+      character(kind=c_char, len=len (i) + 1) :: o
+    end function string_f2c_var_str
 <<String utils: procedures>>=
-  pure function string_f2c_char (i) result (o)
+  pure module function string_f2c_char (i) result (o)
     character(*), intent(in) :: i
     character(kind=c_char, len=len (i) + 1) :: o
     o = i // c_null_char
   end function string_f2c_char
 
-  pure function string_f2c_var_str (i) result (o)
+  pure module function string_f2c_var_str (i) result (o)
     type(string_t), intent(in) :: i
     character(kind=c_char, len=len (i) + 1) :: o
     o = char (i) // c_null_char
@@ -446,8 +565,13 @@ of sequence association.
 Note: Just like with the [[strcpy]] function, there is no bounds check.
 <<String utils: public>>=
   public :: strcpy_f2c
+<<String utils: sub interfaces>>=
+    module subroutine strcpy_f2c (fstring, cstring)
+      character(*), intent(in) :: fstring
+      character(c_char), dimension(*), intent(inout) :: cstring
+    end subroutine strcpy_f2c
 <<String utils: procedures>>=
-  subroutine strcpy_f2c (fstring, cstring)
+  module subroutine strcpy_f2c (fstring, cstring)
     character(*), intent(in) :: fstring
     character(c_char), dimension(*), intent(inout) :: cstring
     
@@ -469,8 +593,13 @@ To convert this to a [[string_t]] object, we need to assign it or to wrap it
 by another [[var_str]] conversion.
 <<String utils: public>>=
   public :: string_c2f
+<<String utils: sub interfaces>>=
+    module function string_c2f (cstring) result (fstring)
+      character(c_char), dimension(*), intent(in) :: cstring
+      character(:), allocatable :: fstring
+    end function string_c2f
 <<String utils: procedures>>=
-  function string_c2f (cstring) result (fstring)
+  module function string_c2f (cstring) result (fstring)
     character(c_char), dimension(*), intent(in) :: cstring
     character(:), allocatable :: fstring
     
@@ -500,8 +629,41 @@ and variable format for integers.
      module procedure str_log, str_logs, str_int, str_ints, &
             str_real, str_reals, str_complex, str_complexs
   end interface
+<<String utils: sub interfaces>>=
+    module function str_log (l) result (s)
+      logical, intent(in) :: l
+      type(string_t) :: s
+    end function str_log
+    module function str_logs (x) result (s)
+      logical, dimension(:), intent(in) :: x
+      type(string_t) :: s
+    end function str_logs
+    module function str_int (i) result (s)
+      integer, intent(in) :: i
+      type(string_t) :: s
+    end function str_int
+    module function str_ints (x) result (s)
+      integer, dimension(:), intent(in) :: x
+      type(string_t) :: s
+    end function str_ints
+    module function str_real (x) result (s)
+      real(default), intent(in) :: x
+      type(string_t) :: s
+    end function str_real
+    module function str_reals (x) result (s)
+      real(default), dimension(:), intent(in) :: x
+      type(string_t) :: s
+    end function str_reals
+    module function str_complex (x) result (s)
+      complex(default), intent(in) :: x
+      type(string_t) :: s
+    end function str_complex
+    module function str_complexs (x) result (s)
+      complex(default), dimension(:), intent(in) :: x
+      type(string_t) :: s
+    end function str_complexs
 <<String utils: procedures>>=
-  function str_log (l) result (s)
+  module function str_log (l) result (s)
     logical, intent(in) :: l
     type(string_t) :: s
     if (l) then
@@ -511,12 +673,12 @@ and variable format for integers.
     end if
   end function str_log
 
-  function str_logs (x) result (s)
+  module function str_logs (x) result (s)
     logical, dimension(:), intent(in) :: x
     <<concatenate strings>>
   end function str_logs
 
-  function str_int (i) result (s)
+  module function str_int (i) result (s)
     integer, intent(in) :: i
     type(string_t) :: s
     character(32) :: buffer
@@ -524,12 +686,12 @@ and variable format for integers.
     s = var_str (trim (adjustl (buffer)))
   end function str_int
 
-  function str_ints (x) result (s)
+  module function str_ints (x) result (s)
     integer, dimension(:), intent(in) :: x
     <<concatenate strings>>
   end function str_ints
 
-  function str_real (x) result (s)
+  module function str_real (x) result (s)
     real(default), intent(in) :: x
     type(string_t) :: s
     character(32) :: buffer
@@ -537,18 +699,18 @@ and variable format for integers.
     s = var_str (trim (adjustl (buffer)))
   end function str_real
 
-  function str_reals (x) result (s)
+  module function str_reals (x) result (s)
     real(default), dimension(:), intent(in) :: x
     <<concatenate strings>>
   end function str_reals
 
-  function str_complex (x) result (s)
+  module function str_complex (x) result (s)
     complex(default), intent(in) :: x
     type(string_t) :: s
     s = str_real (real (x)) // " + i " // str_real (aimag (x))
   end function str_complex
 
-  function str_complexs (x) result (s)
+  module function str_complexs (x) result (s)
     complex(default), dimension(:), intent(in) :: x
     <<concatenate strings>>
   end function str_complexs
@@ -567,8 +729,17 @@ s = s // str(x(size(x))) // ']'
 <<String utils: public>>=
   public :: read_rval
   public :: read_ival
+<<String utils: sub interfaces>>=
+    module function read_rval (s) result (rval)
+      real(default) :: rval
+      type(string_t), intent(in) :: s
+    end function read_rval
+    module function read_ival (s) result (ival)
+      integer :: ival
+      type(string_t), intent(in) :: s
+    end function read_ival
 <<String utils: procedures>>=
-  function read_rval (s) result (rval)
+  module function read_rval (s) result (rval)
     real(default) :: rval
     type(string_t), intent(in) :: s
     character(80) :: buffer
@@ -576,7 +747,7 @@ s = s // str(x(size(x))) // ']'
     read (buffer, *)  rval
   end function read_rval
 
-  function read_ival (s) result (ival)
+  module function read_ival (s) result (ival)
     integer :: ival
     type(string_t), intent(in) :: s
     character(80) :: buffer
@@ -589,8 +760,16 @@ s = s // str(x(size(x))) // ']'
 \subsection{String splitting}
 <<String utils: public>>=
   public :: string_contains_word
+<<String utils: sub interfaces>>=
+    pure module function string_contains_word &
+         (str, word, include_identical) result (val)
+      logical :: val
+      type(string_t), intent(in) :: str, word
+      logical, intent(in), optional :: include_identical
+    end function string_contains_word
 <<String utils: procedures>>=
-  pure function string_contains_word (str, word, include_identical) result (val)
+  pure module function string_contains_word &
+       (str, word, include_identical) result (val)
     logical :: val
     type(string_t), intent(in) :: str, word
     type(string_t) :: str_tmp, str_out
@@ -608,8 +787,13 @@ s = s // str(x(size(x))) // ']'
 @ Create an array of strings using a separator.
 <<String utils: public>>=
   public :: split_string
+<<String utils: sub interfaces>>=
+    pure module subroutine split_string (str, separator, str_array)
+      type(string_t), dimension(:), allocatable, intent(out) :: str_array
+      type(string_t), intent(in) :: str, separator
+    end subroutine split_string
 <<String utils: procedures>>=
-  pure subroutine split_string (str, separator, str_array)
+  pure module subroutine split_string (str, separator, str_array)
     type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(string_t), intent(in) :: str, separator
     type(string_t) :: str_tmp, str_out
@@ -653,26 +837,45 @@ module format_utils
 
 <<Use kinds>>
 <<Use strings>>
-  use string_utils, only: lower_case
-  use io_units, only: given_output_unit
 
 <<Standard module head>>
 
 <<Format utils: public>>
 
+  interface
+<<Format utils: sub interfaces>>
+  end interface
+
+end module format_utils
+@ %def format_utils
+@
+<<[[format_utils_sub.f90]]>>=
+<<File header>>
+
+submodule (format_utils) format_utils_s
+
+  use string_utils, only: lower_case
+  use io_units, only: given_output_unit
+  
 contains
 
 <<Format utils: procedures>>
 
-end module format_utils
-@ %def format_utils
+end submodule format_utils_s
+
+@ %def format_utils_s
 @
 \subsection{Line Output}
 Write a separator line.
 <<Format utils: public>>=
   public :: write_separator
+<<Format utils: sub interfaces>>=
+    module subroutine write_separator (u, mode)
+      integer, intent(in) :: u
+      integer, intent(in), optional :: mode
+    end subroutine write_separator
 <<Format utils: procedures>>=
-  subroutine write_separator (u, mode)
+  module subroutine write_separator (u, mode)
     integer, intent(in) :: u
     integer, intent(in), optional :: mode
     integer :: m
@@ -692,8 +895,13 @@ Write a separator line.
 Indent the line with given number of blanks.
 <<Format utils: public>>=
   public :: write_indent
+<<Format utils: sub interfaces>>=
+    module subroutine write_indent (unit, indent)
+      integer, intent(in) :: unit
+      integer, intent(in), optional :: indent
+    end subroutine write_indent
 <<Format utils: procedures>>=
-  subroutine write_indent (unit, indent)
+  module subroutine write_indent (unit, indent)
     integer, intent(in) :: unit
     integer, intent(in), optional :: indent
     if (present (indent)) then
@@ -707,8 +915,15 @@ Indent the line with given number of blanks.
 Write an array of integers.
 <<Format utils: public>>=
   public :: write_integer_array
+<<Format utils: sub interfaces>>=
+    module subroutine write_integer_array (array, unit, n_max, no_skip)
+      integer, intent(in), dimension(:) :: array
+      integer, intent(in), optional :: unit
+      integer, intent(in), optional :: n_max
+      logical, intent(in), optional :: no_skip
+    end subroutine write_integer_array
 <<Format utils: procedures>>=
-  subroutine write_integer_array (array, unit, n_max, no_skip)
+  module subroutine write_integer_array (array, unit, n_max, no_skip)
     integer, intent(in), dimension(:) :: array
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: n_max
@@ -737,8 +952,13 @@ Write an array of integers.
 Quote underscore characters for use in \TeX\ output.
 <<Format utils: public>>=
   public :: quote_underscore
+<<Format utils: sub interfaces>>=
+    module function quote_underscore (string) result (quoted)
+      type(string_t) :: quoted
+      type(string_t), intent(in) :: string
+    end function quote_underscore
 <<Format utils: procedures>>=
-  function quote_underscore (string) result (quoted)
+  module function quote_underscore (string) result (quoted)
     type(string_t) :: quoted
     type(string_t), intent(in) :: string
     type(string_t) :: part
@@ -757,8 +977,14 @@ Quote underscore characters for use in \TeX\ output.
 @ Format a number with $n$ significant digits for use in \TeX\ documents.
 <<Format utils: public>>=
   public :: tex_format
+<<Format utils: sub interfaces>>=
+    module function tex_format (rval, n_digits) result (string)
+      type(string_t) :: string
+      real(default), intent(in) :: rval
+      integer, intent(in) :: n_digits
+    end function tex_format
 <<Format utils: procedures>>=
-  function tex_format (rval, n_digits) result (string)
+  module function tex_format (rval, n_digits) result (string)
     type(string_t) :: string
     real(default), intent(in) :: rval
     integer, intent(in) :: n_digits
@@ -813,8 +1039,13 @@ Quote underscore characters for use in \TeX\ output.
 Write a number for use in Metapost code:
 <<Format utils: public>>=
   public :: mp_format
+<<Format utils: sub interfaces>>=
+    module function mp_format (rval) result (string)
+      type(string_t) :: string
+      real(default), intent(in) :: rval
+    end function mp_format
 <<Format utils: procedures>>=
-  function mp_format (rval) result (string)
+  module function mp_format (rval) result (string)
     type(string_t) :: string
     real(default), intent(in) :: rval
     character(16) :: tmp
@@ -828,8 +1059,14 @@ Write a number for use in Metapost code:
 Conditional format string, intended for switchable numeric precision.
 <<Format utils: public>>=
   public :: pac_fmt
+<<Format utils: sub interfaces>>=
+    module subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify)
+      character(*), intent(in) :: fmt_orig, fmt_pac
+      character(*), intent(out) :: fmt
+      logical, intent(in), optional :: pacify
+    end subroutine pac_fmt
 <<Format utils: procedures>>=
-  subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify)
+  module subroutine pac_fmt (fmt, fmt_orig, fmt_pac, pacify)
     character(*), intent(in) :: fmt_orig, fmt_pac
     character(*), intent(out) :: fmt
     logical, intent(in), optional :: pacify
@@ -854,8 +1091,13 @@ Fortran list-directed input, which would fail.  We reset such values to $\pm
 non-zero.
 <<Format utils: public>>=
   public :: refmt_tiny
+<<Format utils: sub interfaces>>=
+    elemental module function refmt_tiny (val) result (trunc_val)
+      real(default), intent(in) :: val
+      real(default) :: trunc_val
+    end function refmt_tiny
 <<Format utils: procedures>>=
-  elemental function refmt_tiny (val) result (trunc_val)
+  elemental module function refmt_tiny (val) result (trunc_val)
     real(default), intent(in) :: val
     real(default) :: trunc_val
     real(default), parameter :: tiny_val = 1.e-99_default
@@ -877,8 +1119,13 @@ non-zero.
 \subsection{Compressed output of integer arrays}
 <<Format utils: public>>=
   public :: write_compressed_integer_array
+<<Format utils: sub interfaces>>=
+    module subroutine write_compressed_integer_array (chars, array)
+      character(len=*), intent(out) :: chars
+      integer, intent(in), allocatable, dimension(:) :: array
+    end subroutine write_compressed_integer_array
 <<Format utils: procedures>>=
-  subroutine write_compressed_integer_array (chars, array)
+  module subroutine write_compressed_integer_array (chars, array)
     character(len=*), intent(out) :: chars
     integer, intent(in), allocatable, dimension(:) :: array
     logical, dimension(:), allocatable :: used
@@ -975,9 +1222,6 @@ module numeric_utils
 
 <<Use kinds>>
 <<Use strings>>
-  use string_utils
-  use constants
-  use format_defs
 
 <<Standard module head>>
 
@@ -989,17 +1233,41 @@ module numeric_utils
 
 <<Numeric utils: interfaces>>
 
-contains
-
-<<Numeric utils: procedures>>
+  interface
+<<Numeric utils: sub interfaces>>
+  end interface
 
 end module numeric_utils
 @ %def numeric_utils
 @
+<<[[numeric_utils_sub.f90]]>>=
+<<File header>>
+
+submodule (numeric_utils) numeric_utils_s
+
+  use string_utils
+  use constants
+  use format_defs
+
+contains
+
+<<Numeric utils: procedures>>
+
+end submodule numeric_utils_s
+
+@ %def numeric_utils_s
+@
 <<Numeric utils: public>>=
   public :: assert
+<<Numeric utils: sub interfaces>>=
+    module subroutine assert (unit, ok, description, exit_on_fail)
+      integer, intent(in) :: unit
+      logical, intent(in) :: ok
+      character(*), intent(in), optional :: description
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert
 <<Numeric utils: procedures>>=
-  subroutine assert (unit, ok, description, exit_on_fail)
+  module subroutine assert (unit, ok, description, exit_on_fail)
     integer, intent(in) :: unit
     logical, intent(in) :: ok
     character(*), intent(in), optional :: description
@@ -1027,8 +1295,15 @@ end module numeric_utils
   end interface
 
 @
+<<Numeric utils: sub interfaces>>=
+    module subroutine assert_equal_integer (unit, lhs, rhs, description, exit_on_fail)
+      integer, intent(in) :: unit
+      integer, intent(in) :: lhs, rhs
+      character(*), intent(in), optional :: description
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert_equal_integer
 <<Numeric utils: procedures>>=
-  subroutine assert_equal_integer (unit, lhs, rhs, description, exit_on_fail)
+  module subroutine assert_equal_integer (unit, lhs, rhs, description, exit_on_fail)
     integer, intent(in) :: unit
     integer, intent(in) :: lhs, rhs
     character(*), intent(in), optional :: description
@@ -1042,8 +1317,15 @@ end module numeric_utils
 
 @ %def assert_equal_integer
 @
+<<Numeric utils: sub interfaces>>= 
+    module subroutine assert_equal_integers (unit, lhs, rhs, description, exit_on_fail)
+      integer, intent(in) :: unit
+      integer, dimension(:), intent(in) :: lhs, rhs
+      character(*), intent(in), optional :: description
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert_equal_integers
 <<Numeric utils: procedures>>=
-  subroutine assert_equal_integers (unit, lhs, rhs, description, exit_on_fail)
+  module subroutine assert_equal_integers (unit, lhs, rhs, description, exit_on_fail)
     integer, intent(in) :: unit
     integer, dimension(:), intent(in) :: lhs, rhs
     character(*), intent(in), optional :: description
@@ -1057,8 +1339,17 @@ end module numeric_utils
 
 @ %def assert_equal_integers
 @
+<<Numeric utils: sub interfaces>>=
+    module subroutine assert_equal_real (unit, lhs, rhs, description, &
+                                  abs_smallness, rel_smallness, exit_on_fail)
+      integer, intent(in) :: unit
+      real(default), intent(in) :: lhs, rhs
+      character(*), intent(in), optional :: description
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert_equal_real
 <<Numeric utils: procedures>>=
-  subroutine assert_equal_real (unit, lhs, rhs, description, &
+  module subroutine assert_equal_real (unit, lhs, rhs, description, &
                                 abs_smallness, rel_smallness, exit_on_fail)
     integer, intent(in) :: unit
     real(default), intent(in) :: lhs, rhs
@@ -1074,8 +1365,17 @@ end module numeric_utils
 
 @ %def assert_equal_real
 @
+<<Numeric utils: sub interfaces>>=
+    module subroutine assert_equal_reals (unit, lhs, rhs, description, &
+                                  abs_smallness, rel_smallness, exit_on_fail)
+      integer, intent(in) :: unit
+      real(default), dimension(:), intent(in) :: lhs, rhs
+      character(*), intent(in), optional :: description
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert_equal_reals
 <<Numeric utils: procedures>>=
-  subroutine assert_equal_reals (unit, lhs, rhs, description, &
+  module subroutine assert_equal_reals (unit, lhs, rhs, description, &
                                 abs_smallness, rel_smallness, exit_on_fail)
     integer, intent(in) :: unit
     real(default), dimension(:), intent(in) :: lhs, rhs
@@ -1091,8 +1391,17 @@ end module numeric_utils
 
 @ %def assert_equal_reals
 @
+<<Numeric utils: sub interfaces>>=
+    module subroutine assert_equal_complex (unit, lhs, rhs, description, &
+                                  abs_smallness, rel_smallness, exit_on_fail)
+      integer, intent(in) :: unit
+      complex(default), intent(in) :: lhs, rhs
+      character(*), intent(in), optional :: description
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert_equal_complex
 <<Numeric utils: procedures>>=
-  subroutine assert_equal_complex (unit, lhs, rhs, description, &
+  module subroutine assert_equal_complex (unit, lhs, rhs, description, &
                                 abs_smallness, rel_smallness, exit_on_fail)
     integer, intent(in) :: unit
     complex(default), intent(in) :: lhs, rhs
@@ -1109,8 +1418,17 @@ end module numeric_utils
 
 @ %def assert_equal_complex
 @
+<<Numeric utils: sub interfaces>>=
+    module subroutine assert_equal_complexs (unit, lhs, rhs, description, &
+                                  abs_smallness, rel_smallness, exit_on_fail)
+      integer, intent(in) :: unit
+      complex(default), dimension(:), intent(in) :: lhs, rhs
+      character(*), intent(in), optional :: description
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+      logical, intent(in), optional :: exit_on_fail
+    end subroutine assert_equal_complexs
 <<Numeric utils: procedures>>=
-  subroutine assert_equal_complexs (unit, lhs, rhs, description, &
+  module subroutine assert_equal_complexs (unit, lhs, rhs, description, &
                                 abs_smallness, rel_smallness, exit_on_fail)
     integer, intent(in) :: unit
     complex(default), dimension(:), intent(in) :: lhs, rhs
@@ -1148,8 +1466,16 @@ adaption to specific use cases but have reasonable defaults.
      module procedure nearly_equal_complex
   end interface nearly_equal
 
+<<Numeric utils: sub interfaces>>=
+    elemental module function nearly_equal_real &
+         (a, b, abs_smallness, rel_smallness) result (r)
+      logical :: r
+      real(default), intent(in) :: a, b
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+    end function nearly_equal_real
 <<Numeric utils: procedures>>=
-  elemental function nearly_equal_real (a, b, abs_smallness, rel_smallness) result (r)
+  elemental module function nearly_equal_real &
+       (a, b, abs_smallness, rel_smallness) result (r)
     logical :: r
     real(default), intent(in) :: a, b
     real(default), intent(in), optional :: abs_smallness, rel_smallness
@@ -1175,8 +1501,16 @@ adaption to specific use cases but have reasonable defaults.
   end function nearly_equal_real
 
 @ %def nearly_equal_real
+<<Numeric utils: sub interfaces>>=
+    elemental module function nearly_equal_complex &
+         (a, b, abs_smallness, rel_smallness) result (r)
+      logical :: r
+      complex(default), intent(in) :: a, b
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+    end function nearly_equal_complex
 <<Numeric utils: procedures>>=
-  elemental function nearly_equal_complex (a, b, abs_smallness, rel_smallness) result (r)
+  elemental module function nearly_equal_complex &
+       (a, b, abs_smallness, rel_smallness) result (r)
     logical :: r
     complex(default), intent(in) :: a, b
     real(default), intent(in), optional :: abs_smallness, rel_smallness
@@ -1192,15 +1526,30 @@ adaption to specific use cases but have reasonable defaults.
      module procedure vanishes_real, vanishes_complex
   end interface
 @
+<<Numeric utils: sub interfaces>>=
+    elemental module function vanishes_real &
+         (x, abs_smallness, rel_smallness) result (r)
+      logical :: r
+      real(default), intent(in) :: x
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+    end function vanishes_real
+    elemental module function vanishes_complex &
+         (x, abs_smallness, rel_smallness) result (r)
+      logical :: r
+      complex(default), intent(in) :: x
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+    end function vanishes_complex
 <<Numeric utils: procedures>>=
-  elemental function vanishes_real (x, abs_smallness, rel_smallness) result (r)
+  elemental module function vanishes_real &
+       (x, abs_smallness, rel_smallness) result (r)
     logical :: r
     real(default), intent(in) :: x
     real(default), intent(in), optional :: abs_smallness, rel_smallness
     r = nearly_equal (x, zero, abs_smallness, rel_smallness)
   end function vanishes_real
 
-  elemental function vanishes_complex (x, abs_smallness, rel_smallness) result (r)
+  elemental module function vanishes_complex &
+       (x, abs_smallness, rel_smallness) result (r)
     logical :: r
     complex(default), intent(in) :: x
     real(default), intent(in), optional :: abs_smallness, rel_smallness
@@ -1211,8 +1560,13 @@ adaption to specific use cases but have reasonable defaults.
 @
 <<Numeric utils: public>>=
   public :: expanded_amp2
+<<Numeric utils: sub interfaces>>=
+    pure module function expanded_amp2 (amp_tree, amp_blob) result (amp2)
+      real(default) :: amp2
+      complex(default), dimension(:), intent(in) :: amp_tree, amp_blob
+    end function expanded_amp2
 <<Numeric utils: procedures>>=
-  pure function expanded_amp2 (amp_tree, amp_blob) result (amp2)
+  pure module function expanded_amp2 (amp_tree, amp_blob) result (amp2)
     real(default) :: amp2
     complex(default), dimension(:), intent(in) :: amp_tree, amp_blob
     amp2 = sum (amp_tree * conjg (amp_tree) + &
@@ -1224,8 +1578,13 @@ adaption to specific use cases but have reasonable defaults.
 @
 <<Numeric utils: public>>=
   public :: abs2
+<<Numeric utils: sub interfaces>>=
+    elemental module function abs2 (c) result (c2)
+      real(default) :: c2
+      complex(default), intent(in) :: c
+    end function abs2
 <<Numeric utils: procedures>>=
-  elemental function abs2 (c) result (c2)
+  elemental module function abs2 (c) result (c2)
     real(default) :: c2
     complex(default), intent(in) :: c
     c2 = real (c * conjg(c))
@@ -1239,8 +1598,16 @@ adaption to specific use cases but have reasonable defaults.
      module procedure remove_array_element_logical
   end interface
 @
+<<Numeric utils: sub interfaces>>=
+    module function remove_array_element_logical &
+         (array, index) result (array_reduced)
+      logical, intent(in), dimension(:) :: array
+      integer, intent(in) :: index
+      logical, dimension(:), allocatable :: array_reduced
+    end function remove_array_element_logical
 <<Numeric utils: procedures>>=
-  function remove_array_element_logical (array, index) result (array_reduced)
+  module function remove_array_element_logical &
+       (array, index) result (array_reduced)
     logical, intent(in), dimension(:) :: array
     integer, intent(in) :: index
     logical, dimension(:), allocatable :: array_reduced
@@ -1260,8 +1627,15 @@ This method does not really fit into this module. It could be part of a
 larger module which deals with array manipulations.
 <<Numeric utils: public>>=
   public :: remove_duplicates_from_int_array
+<<Numeric utils: sub interfaces>>=
+    module function remove_duplicates_from_int_array &
+         (array) result (array_unique)
+      integer, intent(in), dimension(:) :: array
+      integer, dimension(:), allocatable :: array_unique
+    end function remove_duplicates_from_int_array
 <<Numeric utils: procedures>>=
-  function remove_duplicates_from_int_array (array) result (array_unique)
+  module function remove_duplicates_from_int_array &
+       (array) result (array_unique)
     integer, intent(in), dimension(:) :: array
     integer, dimension(:), allocatable :: array_unique
     integer :: i
@@ -1276,8 +1650,14 @@ larger module which deals with array manipulations.
 @
 <<Numeric utils: public>>=
   public :: extend_integer_array
+<<Numeric utils: sub interfaces>>=
+    module subroutine extend_integer_array (list, incr, initial_value)
+      integer, intent(inout), dimension(:), allocatable :: list
+      integer, intent(in) :: incr
+      integer, intent(in), optional :: initial_value
+    end subroutine extend_integer_array
 <<Numeric utils: procedures>>=
-  subroutine extend_integer_array (list, incr, initial_value)
+  module subroutine extend_integer_array (list, incr, initial_value)
     integer, intent(inout), dimension(:), allocatable :: list
     integer, intent(in) :: incr
     integer, intent(in), optional :: initial_value
@@ -1298,8 +1678,13 @@ larger module which deals with array manipulations.
 @
 <<Numeric utils: public>>=
   public :: crop_integer_array
+<<Numeric utils: sub interfaces>>=
+    module subroutine crop_integer_array (list, i_crop)
+      integer, intent(inout), dimension(:), allocatable :: list
+      integer, intent(in) :: i_crop
+    end subroutine crop_integer_array
 <<Numeric utils: procedures>>=
-  subroutine crop_integer_array (list, i_crop)
+  module subroutine crop_integer_array (list, i_crop)
     integer, intent(inout), dimension(:), allocatable :: list
     integer, intent(in) :: i_crop
     integer, dimension(:), allocatable :: list_store
@@ -1315,8 +1700,13 @@ larger module which deals with array manipulations.
 @ We also need an evaluation of $\log x$ which is stable near $x=1$.
 <<Numeric utils: public>>=
   public :: log_prec
+<<Numeric utils: sub interfaces>>=
+    module function log_prec (x, xb) result (lx)
+      real(default), intent(in) :: x, xb
+      real(default) :: lx
+    end function log_prec
 <<Numeric utils: procedures>>=
-  function log_prec (x, xb) result (lx)
+  module function log_prec (x, xb) result (lx)
     real(default), intent(in) :: x, xb
     real(default) :: a1, a2, a3, lx
     a1 = xb
@@ -1338,8 +1728,17 @@ larger module which deals with array manipulations.
      module procedure split_integer_array
      module procedure split_real_array
   end interface
+<<Numeric utils: sub interfaces>>=
+    module subroutine split_integer_array (list1, list2)
+      integer, intent(inout), dimension(:), allocatable :: list1, list2
+      integer, dimension(:), allocatable :: list_store
+    end subroutine split_integer_array
+    module subroutine split_real_array (list1, list2)
+      real(default), intent(inout), dimension(:), allocatable :: list1, list2
+      real(default), dimension(:), allocatable :: list_store
+    end subroutine split_real_array
 <<Numeric utils: procedures>>=
-  subroutine split_integer_array (list1, list2)
+  module subroutine split_integer_array (list1, list2)
     integer, intent(inout), dimension(:), allocatable :: list1, list2
     integer, dimension(:), allocatable :: list_store
     allocate (list_store (size (list1) - size (list2)))
@@ -1351,7 +1750,7 @@ larger module which deals with array manipulations.
     deallocate (list_store)
   end subroutine split_integer_array
 
-  subroutine split_real_array (list1, list2)
+  module subroutine split_real_array (list1, list2)
     real(default), intent(inout), dimension(:), allocatable :: list1, list2
     real(default), dimension(:), allocatable :: list_store
     allocate (list_store (size (list1) - size (list2)))
@@ -1371,22 +1770,55 @@ larger module which deals with array manipulations.
 <<[[binary_tree.f90]]>>=
 <<File header>>
 module binary_tree
-  use io_units
 
   implicit none
 
   private
 
+<<Binary trees: public>>
+  
+<<Binary trees: types>>
+
+  interface
+<<Binary trees: sub interfaces>>
+  end interface
+
+contains
+
+<<Binary trees: module procedures>>
+  
+end module binary_tree
+@ %def binary_tree
+@
+<<[[binary_tree_sub.f90]]>>=
+<<File header>>
+
+submodule (binary_tree) binary_tree_s
+
+  use io_units
+
+contains
+
+<<Binary trees: procedures>>
+
+end submodule binary_tree_s
+
+@ %def binary_tree_s
+@
+<<Binary trees: public>>=
+  public :: binary_tree_iterator_t 
+<<Binary trees: types>>=
   type :: binary_tree_iterator_t
      integer, dimension(:), allocatable :: key
      integer :: current
      !! current \in {1, N}.
    contains
-     procedure :: init => binary_tree_iterator_init
-     procedure :: is_iterable => binary_tree_iterator_is_iterable
-     procedure :: next => binary_tree_iterator_next
+   <<Binary trees: iterator: TBP>>
   end type binary_tree_iterator_t
 
+@ %def binary_tree_iterator_t
+@ 
+<<Binary trees: types>>=
   type :: binary_tree_node_t
      integer :: height = 0
      type(binary_tree_node_t), pointer :: left => null ()
@@ -1395,36 +1827,35 @@ module binary_tree
      integer :: key = 0
      class(*), pointer :: obj => null ()
    contains
-     procedure :: init => binary_tree_node_init
-     procedure :: write => binary_tree_node_write
-     procedure :: get_balance => binary_tree_node_get_balance
-     procedure :: increment_height => binary_tree_node_increment_height
-     final :: binary_tree_node_final
+   <<Binary trees: node: TBP>>
   end type binary_tree_node_t
 
+@ %def binary_tree_node_t
+@
+<<Binary trees: public>>=
+  public :: binary_tree_t
+<<Binary trees: types>>=
   type :: binary_tree_t
      integer :: n_elements = 0
      type(binary_tree_node_t), pointer :: root => null ()
    contains
-     procedure :: write => binary_tree_write
-     procedure :: get_n_elements => binary_tree_get_n_elements
-     procedure :: insert => binary_tree_insert
-     procedure, private :: insert_node => binary_tree_insert_node
-     procedure, private :: balance => binary_tree_balance
-     procedure :: search => binary_tree_search
-     procedure :: has_key => binary_tree_has_key
-     procedure, private :: rotate_left => binary_tree_rotate_left
-     procedure, private :: rotate_right => binary_tree_rotate_right
-     procedure :: clear => binary_tree_clear
-     final :: binary_tree_final
+   <<Binary trees: tree: TBP>>
   end type binary_tree_t
 
-  public :: binary_tree_t, binary_tree_iterator_t
-contains
+@ %def binary_tree_t
+@
+<<Binary trees: iterator: TBP>>=
+  procedure :: init => binary_tree_iterator_init
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_iterator_init (iterator, btree)
+      class(binary_tree_iterator_t), intent(inout) :: iterator
+      type(binary_tree_t), target :: btree
+    end subroutine binary_tree_iterator_init
+<<Binary trees: procedures>>=
   !! We store all keys of the binary tree in an index array.
   !! Flatten the tree O(log n), each access is then O(1).
   !! However, accessing the corresponding object costs one O(log n).
-  subroutine binary_tree_iterator_init (iterator, btree)
+  module subroutine binary_tree_iterator_init (iterator, btree)
     class(binary_tree_iterator_t), intent(inout) :: iterator
     type(binary_tree_t), target :: btree
     type(binary_tree_node_t), pointer :: node
@@ -1447,13 +1878,33 @@ contains
     end subroutine fill_key
   end subroutine binary_tree_iterator_init
 
-  function binary_tree_iterator_is_iterable (iterator) result (flag)
+@ %def binary_tree_iterator_init
+@
+<<Binary trees: iterator: TBP>>=
+  procedure :: is_iterable => binary_tree_iterator_is_iterable
+<<Binary trees: sub interfaces>>=
+    module function binary_tree_iterator_is_iterable (iterator) result (flag)
+      class(binary_tree_iterator_t), intent(in) :: iterator
+      logical :: flag
+    end function binary_tree_iterator_is_iterable
+<<Binary trees: procedures>>=
+  module function binary_tree_iterator_is_iterable (iterator) result (flag)
     class(binary_tree_iterator_t), intent(in) :: iterator
     logical :: flag
     flag = iterator%current <= size (iterator%key)
   end function binary_tree_iterator_is_iterable
 
-  subroutine binary_tree_iterator_next (iterator, key)
+@ %def binary_tree_iterator_is_handle
+@
+<<Binary trees: iterator: TBP>>=
+  procedure :: next => binary_tree_iterator_next
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_iterator_next (iterator, key)
+      class(binary_tree_iterator_t), intent(inout) :: iterator
+      integer, intent(out) :: key
+    end subroutine binary_tree_iterator_next
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_iterator_next (iterator, key)
     class(binary_tree_iterator_t), intent(inout) :: iterator
     integer, intent(out) :: key
     if (.not. iterator%is_iterable ()) then
@@ -1464,7 +1915,18 @@ contains
     end if
   end subroutine binary_tree_iterator_next
 
-  subroutine binary_tree_node_init (btree_node, key, obj)
+@ %def binary_tree_iterator_next
+@
+<<Binary trees: node: TBP>>=
+  procedure :: init => binary_tree_node_init
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_node_init (btree_node, key, obj)
+      class(binary_tree_node_t), intent(inout) :: btree_node
+      integer, intent(in) :: key
+      class(*), pointer :: obj
+    end subroutine binary_tree_node_init
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_node_init (btree_node, key, obj)
     class(binary_tree_node_t), intent(inout) :: btree_node
     integer, intent(in) :: key
     class(*), pointer :: obj
@@ -1475,7 +1937,21 @@ contains
     btree_node%obj => obj
   end subroutine binary_tree_node_init
 
-  recursive subroutine binary_tree_node_write (btree_node, unit, level, mode)
+@ %def binary_tree_node_init
+@
+<<Binary trees: node: TBP>>=
+  procedure :: write => binary_tree_node_write
+<<Binary trees: sub interfaces>>=
+    recursive module subroutine binary_tree_node_write &
+         (btree_node, unit, level, mode)
+      class(binary_tree_node_t), intent(in) :: btree_node
+      integer, intent(in) :: unit
+      integer, intent(in) :: level
+      character(len=*), intent(in) :: mode
+    end subroutine binary_tree_node_write
+<<Binary trees: procedures>>=
+  recursive module subroutine binary_tree_node_write &
+       (btree_node, unit, level, mode)
     class(binary_tree_node_t), intent(in) :: btree_node
     integer, intent(in) :: unit
     integer, intent(in) :: level
@@ -1494,8 +1970,19 @@ contains
          call btree_node%left%write (unit, level = level + 1, mode = "<")
   end subroutine binary_tree_node_write
 
-  integer function binary_tree_node_get_balance (btree_node) result (balance)
+@  %def binary_tree_node_write
+@
+<<Binary trees: node: TBP>>=
+  procedure :: get_balance => binary_tree_node_get_balance
+<<Binary trees: sub interfaces>>=
+    module function binary_tree_node_get_balance (btree_node) result (balance)
+      class(binary_tree_node_t), intent(in) :: btree_node
+      integer :: balance
+    end function binary_tree_node_get_balance
+<<Binary trees: procedures>>=
+  module function binary_tree_node_get_balance (btree_node) result (balance)
     class(binary_tree_node_t), intent(in) :: btree_node
+    integer :: balance
     integer :: leftHeight, rightHeight
     leftHeight = 0
     rightHeight = 0
@@ -1504,7 +1991,16 @@ contains
     balance = leftHeight - rightHeight
   end function binary_tree_node_get_balance
 
-  subroutine binary_tree_node_increment_height (btree_node)
+@ %def binary_tree_node_get_balance
+@
+<<Binary trees: node: TBP>>=
+  procedure :: increment_height => binary_tree_node_increment_height
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_node_increment_height (btree_node)
+      class(binary_tree_node_t), intent(inout) :: btree_node
+    end subroutine binary_tree_node_increment_height
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_node_increment_height (btree_node)
     class(binary_tree_node_t), intent(inout) :: btree_node
     integer :: leftHeight, rightHeight
     leftHeight = 0
@@ -1514,6 +2010,16 @@ contains
     btree_node%height = max (leftHeight, rightHeight) + 1
   end subroutine binary_tree_node_increment_height
 
+@ %def binary_tree_node_increment_height
+@ 
+<<Binary trees: node: TBP>>=
+  final :: binary_tree_node_final
+<<Binary trees: sub interfaces>>=
+    !!! !!! NAG 7 compiler bug with finalizers and unlimited polymorphism
+    !!! module subroutine binary_tree_node_final (btree_node)
+    !!!   type(binary_tree_node_t), intent(inout) :: btree_node
+    !!! end subroutine binary_tree_node_final
+<<Binary trees: module procedures>>=
   recursive subroutine binary_tree_node_final (btree_node)
     type(binary_tree_node_t), intent(inout) :: btree_node
     if (associated (btree_node%left)) deallocate (btree_node%left)
@@ -1521,7 +2027,17 @@ contains
     deallocate (btree_node%obj)
   end subroutine binary_tree_node_final
 
-  subroutine binary_tree_write (btree, unit)
+@ %def binary_tree_node_final
+@
+<<Binary trees: tree: TBP>>=
+  procedure :: write => binary_tree_write
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_write (btree, unit)
+      class(binary_tree_t), intent(in) :: btree
+      integer, intent(in), optional :: unit
+    end subroutine binary_tree_write
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_write (btree, unit)
     class(binary_tree_t), intent(in) :: btree
     integer, intent(in), optional :: unit
     integer :: u
@@ -1534,6 +2050,16 @@ contains
     end if
   end subroutine binary_tree_write
 
+@ %def binary_tree_write
+@
+<<Binary trees: tree: TBP>>=
+  final :: binary_tree_final
+<<Binary trees: sub interfaces>>=
+    !!! !!! NAG 7 compiler bug with finalizers and unlimited polymorphism
+    !!! module subroutine binary_tree_final (btree)
+    !!!   type(binary_tree_t), intent(inout) :: btree
+    !!! end subroutine binary_tree_final
+<<Binary trees: module procedures>>=
   subroutine binary_tree_final (btree)
     type(binary_tree_t), intent(inout) :: btree
     btree%n_elements = 0
@@ -1542,17 +2068,48 @@ contains
     end if
   end subroutine binary_tree_final
 
-  subroutine binary_tree_clear (btree)
+@ %def binary_tree_final
+@
+<<Binary trees: tree: TBP>>=
+  procedure :: clear => binary_tree_clear
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_clear (btree)
+      class(binary_tree_t), intent(inout) :: btree
+    end subroutine binary_tree_clear
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_clear (btree)
     class(binary_tree_t), intent(inout) :: btree
     call binary_tree_final (btree)
   end subroutine binary_tree_clear
 
-  integer function binary_tree_get_n_elements (btree) result (n)
+@ %def binary_tree_clear
+@
+<<Binary trees: tree: TBP>>=
+  procedure :: get_n_elements => binary_tree_get_n_elements
+<<Binary trees: sub interfaces>>=
+    module function binary_tree_get_n_elements (btree) result (n)
+      class(binary_tree_t), intent(in) :: btree
+      integer :: n
+    end function binary_tree_get_n_elements
+<<Binary trees: procedures>>=
+  module function binary_tree_get_n_elements (btree) result (n)
     class(binary_tree_t), intent(in) :: btree
+    integer :: n
     n = btree%n_elements
   end function binary_tree_get_n_elements
 
-  subroutine binary_tree_insert (btree, key, obj)
+@ %def binary_tree_get_n_elements
+@
+<<Binary trees: tree: TBP>>=
+  procedure :: insert => binary_tree_insert
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_insert (btree, key, obj)
+      class(binary_tree_t), intent(inout) :: btree
+      integer, intent(in) :: key
+      class(*), pointer, intent(in) :: obj
+    end subroutine binary_tree_insert
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_insert (btree, key, obj)
     class(binary_tree_t), intent(inout) :: btree
     integer, intent(in) :: key
     class(*), pointer, intent(in) :: obj
@@ -1567,7 +2124,18 @@ contains
     end if
   end subroutine binary_tree_insert
 
-  recursive subroutine binary_tree_insert_node (btree, parent, node)
+@ %def binary_tree_import
+@
+<<Binary trees: tree: TBP>>=
+  procedure, private :: insert_node => binary_tree_insert_node
+<<Binary trees: sub interfaces>>=
+    recursive module subroutine binary_tree_insert_node (btree, parent, node)
+      class(binary_tree_t), intent(in) :: btree
+      type(binary_tree_node_t), intent(inout), pointer :: parent
+      type(binary_tree_node_t), intent(in), pointer :: node
+    end subroutine binary_tree_insert_node
+<<Binary trees: procedures>>=
+  recursive module subroutine binary_tree_insert_node (btree, parent, node)
     class(binary_tree_t), intent(in) :: btree
     type(binary_tree_node_t), intent(inout), pointer :: parent
     type(binary_tree_node_t), intent(in), pointer :: node
@@ -1593,8 +2161,19 @@ contains
     call btree%balance (parent, node%key)
   end subroutine binary_tree_insert_node
 
+@ %def binary_tree_insert_node
+@
+<<Binary trees: tree: TBP>>=
+  procedure, private :: balance => binary_tree_balance
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_balance (btree, subtree, key)
+      class(binary_tree_t), intent(in) :: btree
+      type(binary_tree_node_t), intent(inout), pointer :: subtree
+      integer, intent(in) :: key
+    end subroutine binary_tree_balance
+<<Binary trees: procedures>>=
   !! Subtree: root of subtree (which is unbalance, refer to A in diagrams.)
-  subroutine binary_tree_balance (btree, subtree, key)
+  module subroutine binary_tree_balance (btree, subtree, key)
     class(binary_tree_t), intent(in) :: btree
     type(binary_tree_node_t), intent(inout), pointer :: subtree
     integer, intent(in) :: key
@@ -1650,7 +2229,18 @@ contains
     if (associated (newNode)) subtree => newNode
   end subroutine binary_tree_balance
 
-  subroutine binary_tree_search (btree, key, obj)
+@ %def binary_tree_balance
+@
+<<Binary trees: tree: TBP>>=
+  procedure :: search => binary_tree_search
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_search (btree, key, obj)
+      class(binary_tree_t), intent(in) :: btree
+      integer, intent(in) :: key
+      class(*), pointer, intent(out) :: obj
+    end subroutine binary_tree_search
+<<Binary trees: procedures>>=
+  module subroutine binary_tree_search (btree, key, obj)
     class(binary_tree_t), intent(in) :: btree
     integer, intent(in) :: key
     class(*), pointer, intent(out) :: obj
@@ -1672,7 +2262,18 @@ contains
     if (associated (current)) obj => current%obj
   end subroutine binary_tree_search
 
-  function binary_tree_has_key (btree, key) result (flag)
+@ %def binary_tree_search
+@
+<<Binary trees: tree: TBP>>=
+  procedure :: has_key => binary_tree_has_key
+<<Binary trees: sub interfaces>>=
+    module function binary_tree_has_key (btree, key) result (flag)
+      class(binary_tree_t), intent(in) :: btree
+      integer, intent(in) :: key
+      logical :: flag
+    end function binary_tree_has_key
+<<Binary trees: procedures>>=
+  module function binary_tree_has_key (btree, key) result (flag)
     class(binary_tree_t), intent(in) :: btree
     integer, intent(in) :: key
     logical :: flag
@@ -1694,6 +2295,17 @@ contains
     flag = .true.
   end function binary_tree_has_key
 
+@ %def binary_tree_has_key
+@
+<<Binary trees: tree: TBP>>=
+  procedure, private :: rotate_right => binary_tree_rotate_right
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_rotate_right (btree, root, new_root)
+      class(binary_tree_t), intent(in) :: btree
+      type(binary_tree_node_t), pointer, intent(inout) :: root
+      type(binary_tree_node_t), pointer, intent(out) :: new_root
+    end subroutine binary_tree_rotate_right
+<<Binary trees: procedures>>=
   !!      A     Move B to A.
   !!     / \
   !!    B   E   1. Split B from A%left.
@@ -1719,7 +2331,7 @@ contains
   !!
   !! \param[inout] root Root/parent root (A).
   !! \param[out] new_root New root/parent root (B).
-  subroutine binary_tree_rotate_right (btree, root, new_root)
+  module subroutine binary_tree_rotate_right (btree, root, new_root)
     class(binary_tree_t), intent(in) :: btree
     type(binary_tree_node_t), pointer, intent(inout) :: root
     type(binary_tree_node_t), pointer, intent(out) :: new_root
@@ -1732,6 +2344,17 @@ contains
     call new_root%increment_height ()
   end subroutine binary_tree_rotate_right
 
+@ %def binary_tree_rotate_right
+@
+<<Binary trees: tree: TBP>>=
+  procedure, private :: rotate_left => binary_tree_rotate_left
+<<Binary trees: sub interfaces>>=
+    module subroutine binary_tree_rotate_left (btree, root, new_root)
+      class(binary_tree_t), intent(in) :: btree
+      type(binary_tree_node_t), pointer, intent(inout) :: root
+      type(binary_tree_node_t), pointer, intent(out) :: new_root
+    end subroutine binary_tree_rotate_left
+<<Binary trees: procedures>>=
   !!      A      Move B to A.
   !!     / \
   !!    E   B    1. Split B from A%left.
@@ -1754,7 +2377,7 @@ contains
   !!     A   D
   !!    / \
   !!   E   C
-  subroutine binary_tree_rotate_left (btree, root, new_root)
+  module subroutine binary_tree_rotate_left (btree, root, new_root)
     class(binary_tree_t), intent(in) :: btree
     type(binary_tree_node_t), pointer, intent(inout) :: root
     type(binary_tree_node_t), pointer, intent(out) :: new_root
@@ -1766,8 +2389,8 @@ contains
     call root%increment_height ()
     call new_root%increment_height ()
   end subroutine binary_tree_rotate_left
-end module binary_tree
-@ %def binary_tree
+
+@ %def binary_tree_rotate_left
 @
 \subsection{Unit tests}
 \label{sec:unit-tests}
@@ -1786,6 +2409,7 @@ module binary_tree_ut
  contains
 
 <<Binary tree: test driver>>
+
 end module binary_tree_ut
 @ %def binary_tree_ut
 @
@@ -1910,16 +2534,51 @@ end subroutine binary_tree_1
 
 module array_list
 <<Use kinds>>
-  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
 
   implicit none
 
   private
 
+<<Array list: public>>
+
+<<Array list: parameters>>
+
+<<Array list: types>>
+
+  interface
+<<Array list: sub interfaces>>
+  end interface
+
+end module array_list
+@ %def array_list
+@
+<<[[array_list_sub.f90]]>>=
+<<File header>>
+
+submodule (array_list) array_list_s
+
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+  use io_units
+
+contains
+
+<<Array list: procedures>>
+
+end submodule array_list_s
+
+@ %def array_list_s
+@
+<<Array list: parameters>>=
   integer, parameter :: ARRAY_LIST_START_SIZE = 10
   real(default), parameter :: ARRAY_LIST_GROW_FACTOR = 1.5_default, &
        ARRAY_LIST_SHRINK_THRESHOLD = 0.3_default
 
+@ %def array_list_start_size array_list_grow_factor
+@ %def array_list_shrink_threshold
+@
+<<Array list: public>>=
+  public :: array_list_t
+<<Array list: types>>=
   type :: array_list_t
      private
      integer, dimension(:), allocatable :: array
@@ -1929,30 +2588,20 @@ module array_list
      !! size \in N.
      integer :: size = 0
    contains
-     procedure :: write => array_list_write
-     procedure :: init => array_list_init
-     procedure :: add => array_list_add
-     procedure :: add_at => array_list_add_at
-     procedure :: remove => array_list_remove
-     procedure :: remove_at => array_list_remove_at
-     procedure :: get => array_list_get
-     procedure :: get_size => array_list_get_size
-     procedure :: get_count => array_list_get_count
-     procedure :: grow_size => array_list_grow_size
-     procedure :: shrink_size => array_list_shrink_size
-     procedure :: reverse_order => array_list_reverse_order
-     procedure :: sort => array_list_sort
-     procedure :: is_element => array_list_is_element
-     procedure :: find => array_list_find
-     procedure :: clear => array_list_clear
-     procedure :: is_full => array_list_is_full
-     procedure :: is_empty => array_list_is_empty
-     procedure :: is_index => array_list_is_index
+   <<Array list: array list: TBP>>
   end type array_list_t
 
-  public :: array_list_t
-contains
-  subroutine array_list_write (list, unit)
+@ %def array_list_t
+@
+<<Array list: array list: TBP>>=
+  procedure :: write => array_list_write
+<<Array list: sub interfaces>>=
+    module subroutine array_list_write (list, unit)
+      class(array_list_t), intent(in) :: list
+      integer, intent(in), optional :: unit
+    end subroutine array_list_write
+<<Array list: procedures>>=
+  module subroutine array_list_write (list, unit)
     class(array_list_t), intent(in) :: list
     integer, intent(in), optional :: unit
     integer :: u
@@ -1961,14 +2610,34 @@ contains
     write (u, "(999(1X,I4))") list%array
   end subroutine array_list_write
 
-  subroutine array_list_init (list)
+@ %def array_list_write 
+@
+<<Array list: array list: TBP>>=
+  procedure :: init => array_list_init
+<<Array list: sub interfaces>>=
+    module subroutine array_list_init (list)
+      class(array_list_t), intent(out) :: list
+    end subroutine array_list_init
+<<Array list: procedures>>=
+  module subroutine array_list_init (list)
     class(array_list_t), intent(out) :: list
     allocate (list%array(ARRAY_LIST_START_SIZE), source = 0)
     list%count = 0
     list%size = ARRAY_LIST_START_SIZE
   end subroutine array_list_init
 
-  elemental function array_list_get (list, index) result (data)
+@ %def array_list_init
+@
+<<Array list: array list: TBP>>=
+  procedure :: get => array_list_get
+<<Array list: sub interfaces>>=
+    elemental module function array_list_get (list, index) result (data)
+      class(array_list_t), intent(in) :: list
+      integer, intent(in) :: index
+      integer :: data
+    end function array_list_get
+<<Array list: procedures>>=
+  elemental module function array_list_get (list, index) result (data)
     class(array_list_t), intent(in) :: list
     integer, intent(in) :: index
     integer :: data
@@ -1979,45 +2648,115 @@ contains
     end if
   end function array_list_get
 
-  pure function array_list_get_count (list) result (count)
+@ %def array_list_get
+@
+<<Array list: array list: TBP>>=
+  procedure :: get_count => array_list_get_count
+<<Array list: sub interfaces>>=
+    pure module function array_list_get_count (list) result (count)
+      class(array_list_t), intent(in) :: list
+      integer :: count
+    end function array_list_get_count
+<<Array list: procedures>>=
+  pure module function array_list_get_count (list) result (count)
     class(array_list_t), intent(in) :: list
     integer :: count
     count = list%count
   end function array_list_get_count
 
-  pure function array_list_get_size (list) result (size)
+@ %def array_list_get_count
+@
+<<Array list: array list: TBP>>=
+  procedure :: get_size => array_list_get_size
+<<Array list: sub interfaces>>=
+    pure module function array_list_get_size (list) result (size)
+      class(array_list_t), intent(in) :: list
+      integer :: size
+    end function array_list_get_size
+<<Array list: procedures>>=
+  pure module function array_list_get_size (list) result (size)
     class(array_list_t), intent(in) :: list
     integer :: size
     size = list%size
   end function array_list_get_size
 
-  pure function array_list_is_full (list) result (flag)
+@ %def array_list_get_size
+@
+<<Array list: array list: TBP>>=
+  procedure :: is_full => array_list_is_full
+<<Array list: sub interfaces>>=
+    pure module function array_list_is_full (list) result (flag)
+      class(array_list_t), intent(in) :: list
+      logical :: flag
+    end function array_list_is_full
+<<Array list: procedures>>=
+  pure module function array_list_is_full (list) result (flag)
     class(array_list_t), intent(in) :: list
     logical :: flag
     flag = list%count >= list%size
   end function array_list_is_full
 
-  pure function array_list_is_empty (list) result (flag)
+@ %def array_list_is_full
+@
+<<Array list: array list: TBP>>=
+  procedure :: is_empty => array_list_is_empty
+<<Array list: sub interfaces>>=
+    pure module function array_list_is_empty (list) result (flag)
+      class(array_list_t), intent(in) :: list
+      logical :: flag
+    end function array_list_is_empty
+<<Array list: procedures>>=
+  pure module function array_list_is_empty (list) result (flag)
     class(array_list_t), intent(in) :: list
     logical :: flag
     flag = .not. list%count > 0
   end function array_list_is_empty
 
-  pure function array_list_is_index (list, index) result (flag)
+@ %def array_list_is_empty
+@
+<<Array list: array list: TBP>>=
+  procedure :: is_index => array_list_is_index
+<<Array list: sub interfaces>>=
+    pure module function array_list_is_index (list, index) result (flag)
+      class(array_list_t), intent(in) :: list
+      integer, intent(in) :: index
+      logical :: flag
+    end function array_list_is_index
+<<Array list: procedures>>=
+  pure module function array_list_is_index (list, index) result (flag)
     class(array_list_t), intent(in) :: list
     integer, intent(in) :: index
     logical :: flag
     flag = 0 < index .and. index <= list%count
   end function array_list_is_index
 
-  subroutine array_list_clear (list)
+@ %def array_list_is_index
+@
+<<Array list: array list: TBP>>=
+  procedure :: clear => array_list_clear
+<<Array list: sub interfaces>>=
+    module subroutine array_list_clear (list)
+      class(array_list_t), intent(inout) :: list
+    end subroutine array_list_clear
+<<Array list: procedures>>=
+  module subroutine array_list_clear (list)
     class(array_list_t), intent(inout) :: list
     list%array = 0
     list%count = 0
     call list%shrink_size ()
   end subroutine array_list_clear
 
-  subroutine array_list_add (list, data)
+@ %def array_list_clear
+@
+<<Array list: array list: TBP>>=
+  procedure :: add => array_list_add
+<<Array list: sub interfaces>>=
+    module subroutine array_list_add (list, data)
+      class(array_list_t), intent(inout) :: list
+      integer, intent(in) :: data
+    end subroutine array_list_add
+<<Array list: procedures>>=
+  module subroutine array_list_add (list, data)
     class(array_list_t), intent(inout) :: list
     integer, intent(in) :: data
     list%count = list%count + 1
@@ -2027,7 +2766,16 @@ contains
     list%array(list%count) = data
   end subroutine array_list_add
 
-  subroutine array_list_grow_size (list)
+@ %def array_list_add 
+@
+<<Array list: array list: TBP>>=
+  procedure :: grow_size => array_list_grow_size
+<<Array list: sub interfaces>>=
+    module subroutine array_list_grow_size (list)
+      class(array_list_t), intent(inout) :: list
+    end subroutine array_list_grow_size
+<<Array list: procedures>>=
+  module subroutine array_list_grow_size (list)
     class(array_list_t), intent(inout) :: list
     integer, dimension(:), allocatable :: array
     integer :: new_size
@@ -2039,7 +2787,17 @@ contains
     list%size = size (list%array)
   end subroutine array_list_grow_size
 
-  subroutine array_list_shrink_size (list)
+@ %def array_list_grow_size 
+@
+<<Array list: array list: TBP>>=
+  procedure :: shrink_size => array_list_shrink_size
+<<Array list: sub interfaces>>=
+    module subroutine array_list_shrink_size (list)
+      class(array_list_t), intent(inout) :: list
+      integer, dimension(:), allocatable :: array
+    end subroutine array_list_shrink_size
+<<Array list: procedures>>=
+  module subroutine array_list_shrink_size (list)
     class(array_list_t), intent(inout) :: list
     integer, dimension(:), allocatable :: array
     integer :: new_size
@@ -2054,12 +2812,30 @@ contains
     list%size = new_size
   end subroutine array_list_shrink_size
 
-  subroutine array_list_reverse_order (list)
+@ %def array_list_shrink_size
+@
+<<Array list: array list: TBP>>=
+  procedure :: reverse_order => array_list_reverse_order
+<<Array list: sub interfaces>>=
+    module subroutine array_list_reverse_order (list)
+      class(array_list_t), intent(inout) :: list
+    end subroutine array_list_reverse_order
+<<Array list: procedures>>=
+  module subroutine array_list_reverse_order (list)
     class(array_list_t), intent(inout) :: list
     list%array(:list%count) = list%array(list%count:1:-1)
   end subroutine array_list_reverse_order
 
-  pure subroutine array_list_sort (list)
+@ %def array_list_reverse_order
+@
+<<Array list: array list: TBP>>=
+  procedure :: sort => array_list_sort
+<<Array list: sub interfaces>>=
+    pure module subroutine array_list_sort (list)
+      class(array_list_t), intent(inout) :: list
+    end subroutine array_list_sort
+<<Array list: procedures>>=
+  pure module subroutine array_list_sort (list)
     class(array_list_t), intent(inout) :: list
     if (list%is_empty ()) return
     call quick_sort (list%array(:list%count))
@@ -2093,7 +2869,18 @@ contains
     end subroutine quick_sort
   end subroutine array_list_sort
 
-  pure function array_list_is_element (list, data) result (flag)
+@ %def array_list_sort
+@
+<<Array list: array list: TBP>>=
+  procedure :: is_element => array_list_is_element
+<<Array list: sub interfaces>>=
+    pure module function array_list_is_element (list, data) result (flag)
+      class(array_list_t), intent(in) :: list
+      integer, intent(in) :: data
+      logical :: flag
+    end function array_list_is_element
+<<Array list: procedures>>=
+  pure module function array_list_is_element (list, data) result (flag)
     class(array_list_t), intent(in) :: list
     integer, intent(in) :: data
     logical :: flag
@@ -2104,7 +2891,18 @@ contains
     end if
   end function array_list_is_element
 
-  function array_list_find (list, data) result (index)
+@ %def array_list_is_element
+@
+<<Array list: array list: TBP>>=
+  procedure :: find => array_list_find
+<<Array list: sub interfaces>>=
+    module function array_list_find (list, data) result (index)
+      class(array_list_t), intent(inout) :: list
+      integer, intent(in) :: data
+      integer :: index
+    end function array_list_find
+<<Array list: procedures>>=
+  module function array_list_find (list, data) result (index)
     class(array_list_t), intent(inout) :: list
     integer, intent(in) :: data
     integer :: index
@@ -2135,7 +2933,18 @@ contains
     end function binary_search_leftmost
   end function array_list_find
 
-  subroutine array_list_add_at (list, index, data)
+@ %def array_list_find
+@
+<<Array list: array list: TBP>>=
+  procedure :: add_at => array_list_add_at
+<<Array list: sub interfaces>>=
+    module subroutine array_list_add_at (list, index, data)
+      class(array_list_t), intent(inout) :: list
+      integer, intent(in) :: index
+      integer, intent(in) :: data
+    end subroutine array_list_add_at
+<<Array list: procedures>>=
+  module subroutine array_list_add_at (list, index, data)
     class(array_list_t), intent(inout) :: list
     integer, intent(in) :: index
     integer, intent(in) :: data
@@ -2148,8 +2957,19 @@ contains
     list%count = list%count + 1
   end subroutine array_list_add_at
 
-  integer function array_list_remove (list) result (data)
+@ %def array_list_add_at
+@
+<<Array list: array list: TBP>>=
+  procedure :: remove => array_list_remove
+<<Array list: sub interfaces>>=
+    module function array_list_remove (list) result (data)
+      class(array_list_t), intent(inout) :: list
+      integer :: data
+    end function array_list_remove
+<<Array list: procedures>>=
+  module function array_list_remove (list) result (data)
     class(array_list_t), intent(inout) :: list
+    integer :: data
     if (list%is_empty ()) then
        data = 0
        return
@@ -2159,9 +2979,21 @@ contains
     list%count = list%count -1
   end function array_list_remove
 
-  integer function array_list_remove_at (list, index) result (data)
+@ %def array_list_remove
+@
+<<Array list: array list: TBP>>=
+  procedure :: remove_at => array_list_remove_at
+<<Array list: sub interfaces>>=
+    module function array_list_remove_at (list, index) result (data)
+      class(array_list_t), intent(inout) :: list
+      integer, intent(in) :: index
+      integer :: data
+    end function array_list_remove_at
+<<Array list: procedures>>=
+  module function array_list_remove_at (list, index) result (data)
     class(array_list_t), intent(inout) :: list
     integer, intent(in) :: index
+    integer :: data
     if (list%is_empty ()) then
        data = 0
        return
@@ -2171,8 +3003,8 @@ contains
     list%array(list%count) = 0
     list%count = list%count - 1
   end function array_list_remove_at
-end module array_list
-@ %def array_list
+
+@ %def array_list_remove_at
 @
 \subsection{Unit tests}
 \label{sec:unit-tests}
@@ -2333,43 +3165,101 @@ end subroutine array_list_1
 <<File header>>
 
 module queue
-  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
 
   implicit none
 
   private
 
+<<Queue: public>>
+
+<<Queue: parameters>>
+
+<<Queue: types>>
+
+  interface
+<<Queue: sub interfaces>>
+  end interface
+
+end module queue
+@ %def queue
+@
+<<[[queue_sub.f90]]>>=
+<<File header>>
+
+submodule (queue) queue_s
+
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+contains
+
+<<Queue: procedures>>
+
+end submodule queue_s
+
+@ %def queue_s
+@
+<<Queue: parameters>>=
   integer, parameter :: QUEUE_SIZE = 10, &
        QUEUE_START = 0, &
        QUEUE_END = QUEUE_SIZE
 
+@  %def queue_size queue_start queue_end
+@ 
+<<Queue: public>>=
+  public :: queue_t
+<<Queue: types>>=
   type :: queue_t
      private
      integer, dimension(QUEUE_SIZE) :: item
      integer :: front = 0
      integer :: rear = 0
    contains
-     procedure :: enqueue => queue_enqueue
-     procedure :: dequeue => queue_dequeue
-     procedure :: is_full => queue_is_full
-     procedure :: is_empty => queue_is_empty
-     procedure :: peek => queue_peek
-     procedure :: write => queue_write
+   <<Queue: queue: TBP>>
   end type queue_t
 
-  public :: queue_t
-contains
-  elemental logical function queue_is_full (queue) result (flag)
+@ %def queue_t
+@
+<<Queue: queue: TBP>>=
+  procedure :: is_full => queue_is_full
+<<Queue: sub interfaces>>=
+    elemental module function queue_is_full (queue) result (flag)
+      class(queue_t), intent(in) :: queue
+      logical :: flag
+    end function queue_is_full
+<<Queue: procedures>>=
+  elemental module function queue_is_full (queue) result (flag)
     class(queue_t), intent(in) :: queue
+    logical :: flag
     flag = queue%front == 1 .and. queue%rear == QUEUE_END
   end function queue_is_full
 
-  elemental logical function queue_is_empty (queue) result (flag)
+@ %def queue_is_full
+@
+<<Queue: queue: TBP>>=
+  procedure :: is_empty => queue_is_empty
+<<Queue: sub interfaces>>=
+    elemental module function queue_is_empty (queue) result (flag)
+      class(queue_t), intent(in) :: queue
+      logical :: flag
+    end function queue_is_empty
+<<Queue: procedures>>=
+  elemental module function queue_is_empty (queue) result (flag)
     class(queue_t), intent(in) :: queue
+    logical :: flag
     flag = queue%front == QUEUE_START
   end function queue_is_empty
 
-  subroutine queue_enqueue (queue, item)
+@ %def queue_is_empty
+@
+<<Queue: queue: TBP>>=
+  procedure :: enqueue => queue_enqueue
+<<Queue: sub interfaces>>=
+    module subroutine queue_enqueue (queue, item)
+      class(queue_t), intent(inout) :: queue
+      integer, intent(in) :: item
+    end subroutine queue_enqueue
+<<Queue: procedures>>=
+  module subroutine queue_enqueue (queue, item)
     class(queue_t), intent(inout) :: queue
     integer, intent(in) :: item
     if (queue%is_full ()) then
@@ -2381,8 +3271,19 @@ contains
     end if
   end subroutine queue_enqueue
 
-  integer function queue_dequeue (queue) result (item)
+@ %def queue_enqueue
+@
+<<Queue: queue: TBP>>=
+  procedure :: dequeue => queue_dequeue
+<<Queue: sub interfaces>>=
+    module function queue_dequeue (queue) result (item)
+      class(queue_t), intent(inout) :: queue
+      integer :: item
+    end function queue_dequeue
+<<Queue: procedures>>=
+  module function queue_dequeue (queue) result (item)
     class(queue_t), intent(inout) :: queue
+    integer :: item
     if (queue%is_empty ()) then
        item = 0
     else
@@ -2398,8 +3299,19 @@ contains
     end if
   end function queue_dequeue
 
-  integer function queue_peek (queue) result (item)
+@ %def queue_dequeue
+@
+<<Queue: queue: TBP>>=
+  procedure :: peek => queue_peek
+<<Queue: sub interfaces>>=
+    module function queue_peek (queue) result (item)
+      class(queue_t), intent(in) :: queue
+      integer :: item
+    end function queue_peek
+<<Queue: procedures>>=
+  module function queue_peek (queue) result (item)
     class(queue_t), intent(in) :: queue
+    integer :: item
     if (queue%is_empty ()) then
        item = 0
     else
@@ -2407,7 +3319,17 @@ contains
     end if
   end function queue_peek
 
-  subroutine queue_write (queue, unit)
+@ %def queue_peek
+@
+<<Queue: queue: TBP>>=
+  procedure :: write => queue_write
+<<Queue: sub interfaces>>=
+    module subroutine queue_write (queue, unit)
+      class(queue_t), intent(in) :: queue
+      integer, intent(in), optional :: unit
+    end subroutine queue_write
+<<Queue: procedures>>=
+  module subroutine queue_write (queue, unit)
     class(queue_t), intent(in) :: queue
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -2423,8 +3345,8 @@ contains
        write (u, *) "Rear ->", queue%rear
     end if
   end subroutine queue_write
-end module queue
-@ %def queue
+
+@ %def queue_write
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Iterator}
@@ -2432,12 +3354,41 @@ end module queue
 <<[[iterator.f90]]>>=
 <<File header>>
 module iterator
-  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
 
   implicit none
 
   private
 
+<<Iterator: public>>
+
+<<Iterator: types>>
+
+  interface
+<<Iterator: sub interfaces>>
+  end interface
+
+end module iterator
+
+@ %def iterator
+@
+<<[[iterator_sub.f90]]>>=
+<<File header>>
+
+submodule (iterator) iterator_s
+
+  use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+contains
+
+<<Iterator: procedures>>
+
+end submodule iterator_s
+
+@ %def iterator_s
+@
+<<Iterator: public>>=
+  public :: iterator_t
+<<Iterator: types>>=
   !! Forward
   type :: iterator_t
      integer :: current = 0
@@ -2445,19 +3396,20 @@ module iterator
      integer :: end = 0
      integer :: step = 1
    contains
-     procedure :: write => iterator_write
-     procedure :: init => iterator_init
-     procedure :: at_begin => iterator_at_begin
-     procedure :: at_end => iterator_at_end
-     procedure :: is_iterable => iterator_is_iterable
-     procedure :: next => iterator_next
-     procedure :: next_step => iterator_next_step
-     procedure :: get_current => iterator_get_current
+   <<Iterator: iterator: TBP>>
   end type iterator_t
 
-  public :: iterator_t
-contains
-  subroutine iterator_write (iter, unit)
+@ %def iterator_t
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: write => iterator_write
+<<Iterator: sub interfaces>>=
+    module subroutine iterator_write (iter, unit)
+      class(iterator_t), intent(in) :: iter
+      integer, intent(in), optional :: unit
+    end subroutine iterator_write
+<<Iterator: procedures>>=
+  module subroutine iterator_write (iter, unit)
     class(iterator_t), intent(in) :: iter
     integer, intent(in), optional :: unit
     integer :: u
@@ -2467,10 +3419,22 @@ contains
     flush (u)
   end subroutine iterator_write
 
+@ %def iterator_write
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: init => iterator_init
+<<Iterator: sub interfaces>>=
+   module subroutine iterator_init (iter, begin, end, step)
+     class(iterator_t), intent(inout) :: iter
+     integer, intent(in) :: begin
+     integer, intent(in) :: end
+     integer, intent(in), optional :: step
+   end subroutine iterator_init
+<<Iterator: procedures>>=
   !! Proof: step > 0, begin < end.
   !! Proof: step < 0, begin > end.
   !! Proof: step /= 0.
-  subroutine iterator_init (iter, begin, end, step)
+  module subroutine iterator_init (iter, begin, end, step)
     class(iterator_t), intent(inout) :: iter
     integer, intent(in) :: begin
     integer, intent(in) :: end
@@ -2486,20 +3450,50 @@ contains
     end if
   end subroutine iterator_init
 
-  pure function iterator_at_begin (iter) result (flag)
+@ %def iterator_init
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: at_begin => iterator_at_begin
+<<Iterator: sub interfaces>>=
+    pure module function iterator_at_begin (iter) result (flag)
+      class(iterator_t), intent(in) :: iter
+      logical :: flag
+    end function iterator_at_begin
+<<Iterator: procedures>>=
+  pure module function iterator_at_begin (iter) result (flag)
     class(iterator_t), intent(in) :: iter
     logical :: flag
     flag = iter%current == iter%begin
   end function iterator_at_begin
 
-  pure function iterator_at_end (iter) result (flag)
+@ %def iterator_at_begin
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: at_end => iterator_at_end
+<<Iterator: sub interfaces>>=
+    pure module function iterator_at_end (iter) result (flag)
+      class(iterator_t), intent(in) :: iter
+      logical :: flag
+    end function iterator_at_end
+<<Iterator: procedures>>=
+  pure module function iterator_at_end (iter) result (flag)
     class(iterator_t), intent(in) :: iter
     logical :: flag
     flag = iter%current == iter%end
   end function iterator_at_end
 
+@ %def iterator_at_end
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: is_iterable => iterator_is_iterable
+<<Iterator: sub interfaces>>=
+    pure module function iterator_is_iterable (iter) result (flag)
+      class(iterator_t), intent(in) :: iter
+      logical :: flag
+    end function iterator_is_iterable
+<<Iterator: procedures>>=
   !! Proof: begin < current < end
-  pure function iterator_is_iterable (iter) result (flag)
+  pure module function iterator_is_iterable (iter) result (flag)
     class(iterator_t), intent(in) :: iter
     logical :: flag
     if (iter%step > 0) then
@@ -2511,15 +3505,34 @@ contains
     end if
   end function iterator_is_iterable
 
-  subroutine iterator_next_step (iter)
+@ %def iterator_is_iterable
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: next_step => iterator_next_step
+<<Iterator: sub interfaces>>=
+    module subroutine iterator_next_step (iter)
+      class(iterator_t), intent(inout) :: iter
+    end subroutine iterator_next_step
+<<Iterator: procedures>>=
+  module subroutine iterator_next_step (iter)
     class(iterator_t), intent(inout) :: iter
     if (.not. iter%is_iterable ()) return
     iter%current = iter%current + iter%step
   end subroutine iterator_next_step
 
+@ %def iterator_next_step
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: next => iterator_next
+<<Iterator: sub interfaces>>=
+    module function iterator_next (iter) result (ndx)
+      class(iterator_t), intent(inout) :: iter
+      integer :: ndx
+    end function iterator_next
+<<Iterator: procedures>>=
   !! Proof: begin <= current <= end.
   !! However, after applying the step, this does not need to be true..
-  function iterator_next (iter) result (ndx)
+  module function iterator_next (iter) result (ndx)
     class(iterator_t), intent(inout) :: iter
     integer :: ndx
     if (.not. iter%is_iterable ()) then
@@ -2530,7 +3543,17 @@ contains
     iter%current = iter%current + iter%step
   end function iterator_next
 
-  pure function iterator_get_current (iter) result (ndx)
+@ %def iterator_next
+@
+<<Iterator: iterator: TBP>>=
+  procedure :: get_current => iterator_get_current
+<<Iterator: sub interfaces>>=
+    pure module function iterator_get_current (iter) result (ndx)
+      class(iterator_t), intent(in) :: iter
+      integer :: ndx
+    end function iterator_get_current
+<<Iterator: procedures>>=
+  pure module function iterator_get_current (iter) result (ndx)
     class(iterator_t), intent(in) :: iter
     integer :: ndx
     if (.not. iter%is_iterable ()) then
@@ -2539,9 +3562,8 @@ contains
     end if
     ndx = iter%current
   end function iterator_get_current
-end module iterator
 
-@ %def iterator
+@ %def iterator_get_current
 @
 \subsection{Unit tests}
 \label{sec:unit-tests}

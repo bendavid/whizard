@@ -3322,6 +3322,7 @@ module sm_physics
   use constants
   use numeric_utils
   use diagnostics
+  use permutations, only: factorial
   use physics_defs
   use lorentz
 
@@ -3338,8 +3339,41 @@ contains
 end module sm_physics
 @ %def sm_physics
 @
+\subsection{Constants for Quantum Field Theory calculations}
+
+For loop calculations in quantum field theories, one needs the
+numerical values of the Riemann zeta function:
+\begin{align*}
+  \zeta(2) &=\; 1.64493406684822643647241516665\ldots \; \\
+  \zeta(3) &=\; 1.20205690315959428539973816151\ldots \; \\
+  \zeta(4) &=\; 1.08232323371113819151600369654\ldots \; \\
+  \zeta(5) &=\; 1.03692775514336992633136548646\ldots \;
+\end{align*}
+<<SM physics: public>>=
+  public :: zeta2, zeta3, zeta4, zeta5
+<<SM physics: parameters>>=
+  real(default), parameter :: &
+       zeta2 = 1.64493406684822643647241516665_default, &
+       zeta3 = 1.20205690315959428539973816151_default, &
+       zeta4 = 1.08232323371113819151600369654_default, &
+       zeta5 = 1.03692775514336992633136548646_default
+
+@  %def zeta2 zeta3 zeta4
+@ The Euler-Mascheroni constant is
+\begin{equation*}
+  \gamma_E = 
+\end{equation*}
+<<SM physics: public>>=
+  public :: eulerc
+<<SM physics: parameters>>=
+  real(default), parameter :: &
+       eulerc =0.5772156649015328606065120900824024310422_default
+
+@ %def eulerc
+@
 \subsection{Running $\alpha_s$}
-@ Then we define the coefficients of the beta function of QCD (as a
+
+Then we define the coefficients of the beta function of QCD (as a
 reference cf. the Particle Data Group), where $n_f$ is the number of
 active flavors in two different schemes:
 \begin{align}
@@ -3774,6 +3808,540 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
   end function Li2_double
 
 @ %def Li2_double
+@ Complex digamma function. For this we use the asymptotic formula in
+Abramoqicz/Stegun, Eq. (6.3.18), and the recurrence formula
+Eq. (6.3.6):
+\begin{equation}
+  \psi^{(0})(z) := \psi(z) = \frac{\Gamma'(z)}{\Gamma(z)}
+\end{equation}
+<<SM physics: public>>=
+  public :: psic
+<<SM physics: procedures>>=
+  elemental function psic (z) result (psi)
+    complex(default), intent(in) :: z
+    complex(default) :: psi
+    complex(default) :: shift, zz, zi, zi2
+    shift = 0
+    zz = z
+    if (abs (aimag(zz)) < 10._default) then
+       do while (abs (zz) < 10._default)
+          shift = shift - 1 / zz
+          zz = zz + 1
+       end do
+    end if
+    zi  = 1/zz
+    zi2 = zi*zi
+    psi = shift + log(zz) - zi/2 - zi2 / 5040._default * ( 420._default + &
+         zi2 * ( -42._default + zi2 * (20._default - 21._default * zi2)))
+  end function psic
+
+@ %def psic
+@ Complex polygamma function. For this we use the asymptotic formula in
+Abramoqicz/Stegun, Eq. (6.4.11), and the recurrence formula
+Eq. (6.4.11):
+\begin{equation}
+  \psi^{(m})(z) := \frac{d^m}{dz^m} \psi(z) = \frac{d^{m+1}}{dz^{m+1}}
+  \ln \Gamma(z)
+\end{equation}
+<<SM physics: public>>=
+  public :: psim
+<<SM physics: procedures>>=
+  elemental function psim (z, m) result (psi)
+    complex(default), intent(in) :: z
+    integer, intent(in) :: m
+    complex(default) :: psi
+    complex(default) :: shift, rec, zz, zi, zi2
+    real(default) :: c1, c2, c3, c4, c5, c6, c7
+    integer :: i
+    if (m < 1) then
+       psi = psic(z)
+    else
+       shift = 0
+       zz = z
+       if (abs (aimag (zz)) < 10._default) then
+          CHECK_ABS: do i = 1, m
+             rec = (-1)**m * factorial (m) / zz**(m+1)
+             shift = shift - rec
+             zz = zz + 1
+             if (abs (zz) > 10._default) exit CHECK_ABS
+          end do CHECK_ABS
+       end if
+       c1 =   1._default
+       c2 =   1._default / 2._default
+       c3 =   1._default / 6._default
+       c4 = - 1._default / 30._default
+       c5 =   1._default / 42._default
+       c6 = - 1._default / 30._default
+       c7 =   5._default / 66._default
+       do i = 2, m
+          c1 = c1 * (i-1)
+          c2 = c2 * i
+          c3 = c3 * (i+1)
+          c4 = c4 * (i+3)
+          c5 = c5 * (i+5)
+          c6 = c6 * (i+7)
+          c7 = c7 * (i+9)
+       end do
+       zi  = 1/zz
+       zi2 = zi*zi
+       psi = shift + (-1)**(m-1) * zi**m * ( c1 + zi * ( c2 + zi * ( &
+            c3 + zi2 * ( c4 + zi2 * ( c5 + zi2 * ( c6 + zi2 * ( c7 * zi2)))))))
+    end if
+  end function psim
+
+@ %def psim
+@ Nielsen's generalized polylogarithms, 
+\begin{equation*}
+  S_{n,m}(x) = \frac{(-1)^{n+m-1}}{(n-1)!m!} \int_0^1 t^{-1}
+  \; \ln^{n-1} t \; \ln^m (1-xt) \; dt \; ,
+\end{equation*}
+adapted from the CERNLIB function [[wgplg]] for real arguments [[x]]
+and integer $n$ and $m$ satisfying $1 \leq n \leq 4$, $1 \leq m \leq 4$,
+$n+m \leq 5$, i.e. one of the functions $S_{1,1}$, $S_{1,2}$,
+$S_{2,1}$, $S_{1,3}$, $S_{2,2}$, $S_{3,1}$, $S_{1,4}$, $S_{2,3}$,
+$S_{3,2}$, $S_{4,1}$. If $x\leq1$, $S_{n,m}(x)$ is real, and the
+imaginary part is set to zero.
+<<SM physics: public>>=
+  public :: cnielsen
+  public :: nielsen
+<<SM physics: procedures>>=
+  function cnielsen (n, m, x) result (nplog)
+    integer, intent(in) :: n, m
+    real(default), intent(in) :: x
+    complex(default) :: nplog
+    real(default), parameter :: c1 = 4._default/3._default, & 
+         c2 = 1._default/3._default
+    real(default), dimension(0:4), parameter :: &
+         fct = [1.0_default,1.0_default,2.0_default,6.0_default,24.0_default]
+    real(default), dimension(4,4) :: s1, cc
+    real(default), dimension(0:30,10) :: aa
+    complex(default), dimension(0:5) :: vv
+    real(default), dimension(0:5) :: uu
+    real(default) :: x1, h, alfa, b0, b1, b2, qq, rr
+    complex(default) :: sj, sk
+    integer, dimension(10), parameter :: &
+         nc = [24,26,28,30,22,24,26,19,22,17]
+    integer, dimension(31), parameter :: &
+         index = [1,2,3,4,0,0,0,0,0,0,5,6,7,0,0,0,0,0,0,0, &
+                  8,9,0,0,0,0,0,0,0,0,10]
+    real(default), dimension(0:4), parameter :: &
+         sgn = [1._default, -1._default, 1._default, -1._default, 1._default]
+    integer :: it, j, k, l, m1, n1
+    if ((n<1) .or. (n>4) .or. (m<1) .or. (m>4) .or. (n+m > 5)) then
+       call msg_fatal &
+            ("The Nielsen dilogarithms cannot be applied for these values.")
+    end if
+    s1 = 0._default
+    s1(1,1) = 1.6449340668482_default
+    s1(1,2) = 1.2020569031596_default
+    s1(1,3) = 1.0823232337111_default
+    s1(1,4) = 1.0369277551434_default
+    s1(2,1) = 1.2020569031596_default
+    s1(2,2) = 2.7058080842778e-1_default
+    s1(2,3) = 9.6551159989444e-2_default
+    s1(3,1) = 1.0823232337111_default
+    s1(3,2) = 9.6551159989444e-2_default
+    s1(4,1) = 1.0369277551434_default
+    cc = 0._default
+    cc(1,1) = 1.6449340668482_default
+    cc(1,2) = 1.2020569031596_default
+    cc(1,3) = 1.0823232337111_default
+    cc(1,4) = 1.0369277551434_default
+    cc(2,2) =-1.8940656589945_default
+    cc(2,3) =-3.0142321054407_default
+    cc(3,1) = 1.8940656589945_default
+    cc(3,2) = 3.0142321054407_default
+    aa = 0._default
+    aa( 0,1) = 0.96753215043498_default
+    aa( 1,1) = 0.16607303292785_default
+    aa( 2,1) = 0.02487932292423_default
+    aa( 3,1) = 0.00468636195945_default
+    aa( 4,1) = 0.00100162749616_default
+    aa( 5,1) = 0.00023200219609_default
+    aa( 6,1) = 0.00005681782272_default
+    aa( 7,1) = 0.00001449630056_default
+    aa( 8,1) = 0.00000381632946_default
+    aa( 9,1) = 0.00000102990426_default
+    aa(10,1) = 0.00000028357538_default
+    aa(11,1) = 0.00000007938705_default
+    aa(12,1) = 0.00000002253670_default
+    aa(13,1) = 0.00000000647434_default
+    aa(14,1) = 0.00000000187912_default
+    aa(15,1) = 0.00000000055029_default
+    aa(16,1) = 0.00000000016242_default
+    aa(17,1) = 0.00000000004827_default
+    aa(18,1) = 0.00000000001444_default
+    aa(19,1) = 0.00000000000434_default
+    aa(20,1) = 0.00000000000131_default
+    aa(21,1) = 0.00000000000040_default
+    aa(22,1) = 0.00000000000012_default
+    aa(23,1) = 0.00000000000004_default
+    aa(24,1) = 0.00000000000001_default
+
+    aa( 0,2) = 0.95180889127832_default
+    aa( 1,2) = 0.43131131846532_default
+    aa( 2,2) = 0.10002250714905_default
+    aa( 3,2) = 0.02442415595220_default
+    aa( 4,2) = 0.00622512463724_default
+    aa( 5,2) = 0.00164078831235_default
+    aa( 6,2) = 0.00044407920265_default
+    aa( 7,2) = 0.00012277494168_default
+    aa( 8,2) = 0.00003453981284_default
+    aa( 9,2) = 0.00000985869565_default
+    aa(10,2) = 0.00000284856995_default
+    aa(11,2) = 0.00000083170847_default
+    aa(12,2) = 0.00000024503950_default
+    aa(13,2) = 0.00000007276496_default
+    aa(14,2) = 0.00000002175802_default
+    aa(15,2) = 0.00000000654616_default
+    aa(16,2) = 0.00000000198033_default
+    aa(17,2) = 0.00000000060204_default
+    aa(18,2) = 0.00000000018385_default
+    aa(19,2) = 0.00000000005637_default
+    aa(20,2) = 0.00000000001735_default
+    aa(21,2) = 0.00000000000536_default
+    aa(22,2) = 0.00000000000166_default
+    aa(23,2) = 0.00000000000052_default
+    aa(24,2) = 0.00000000000016_default
+    aa(25,2) = 0.00000000000005_default
+    aa(26,2) = 0.00000000000002_default
+
+    aa( 0,3) = 0.98161027991365_default
+    aa( 1,3) = 0.72926806320726_default
+    aa( 2,3) = 0.22774714909321_default
+    aa( 3,3) = 0.06809083296197_default
+    aa( 4,3) = 0.02013701183064_default
+    aa( 5,3) = 0.00595478480197_default
+    aa( 6,3) = 0.00176769013959_default
+    aa( 7,3) = 0.00052748218502_default
+    aa( 8,3) = 0.00015827461460_default
+    aa( 9,3) = 0.00004774922076_default
+    aa(10,3) = 0.00001447920408_default
+    aa(11,3) = 0.00000441154886_default
+    aa(12,3) = 0.00000135003870_default
+    aa(13,3) = 0.00000041481779_default
+    aa(14,3) = 0.00000012793307_default
+    aa(15,3) = 0.00000003959070_default
+    aa(16,3) = 0.00000001229055_default
+    aa(17,3) = 0.00000000382658_default
+    aa(18,3) = 0.00000000119459_default
+    aa(19,3) = 0.00000000037386_default
+    aa(20,3) = 0.00000000011727_default
+    aa(21,3) = 0.00000000003687_default
+    aa(22,3) = 0.00000000001161_default
+    aa(23,3) = 0.00000000000366_default
+    aa(24,3) = 0.00000000000116_default
+    aa(25,3) = 0.00000000000037_default
+    aa(26,3) = 0.00000000000012_default
+    aa(27,3) = 0.00000000000004_default
+    aa(28,3) = 0.00000000000001_default
+
+    aa( 0,4) = 1.0640521184614_default
+    aa( 1,4) = 1.0691720744981_default
+    aa( 2,4) = 0.41527193251768_default
+    aa( 3,4) = 0.14610332936222_default
+    aa( 4,4) = 0.04904732648784_default
+    aa( 5,4) = 0.01606340860396_default
+    aa( 6,4) = 0.00518889350790_default
+    aa( 7,4) = 0.00166298717324_default
+    aa( 8,4) = 0.00053058279969_default
+    aa( 9,4) = 0.00016887029251_default
+    aa(10,4) = 0.00005368328059_default
+    aa(11,4) = 0.00001705923313_default
+    aa(12,4) = 0.00000542174374_default
+    aa(13,4) = 0.00000172394082_default
+    aa(14,4) = 0.00000054853275_default
+    aa(15,4) = 0.00000017467795_default
+    aa(16,4) = 0.00000005567550_default
+    aa(17,4) = 0.00000001776234_default
+    aa(18,4) = 0.00000000567224_default
+    aa(19,4) = 0.00000000181313_default
+    aa(20,4) = 0.00000000058012_default
+    aa(21,4) = 0.00000000018579_default
+    aa(22,4) = 0.00000000005955_default
+    aa(23,4) = 0.00000000001911_default
+    aa(24,4) = 0.00000000000614_default
+    aa(25,4) = 0.00000000000197_default
+    aa(26,4) = 0.00000000000063_default
+    aa(27,4) = 0.00000000000020_default
+    aa(28,4) = 0.00000000000007_default
+    aa(29,4) = 0.00000000000002_default
+    aa(30,4) = 0.00000000000001_default
+
+    aa( 0,5) = 0.97920860669175_default
+    aa( 1,5) = 0.08518813148683_default
+    aa( 2,5) = 0.00855985222013_default
+    aa( 3,5) = 0.00121177214413_default
+    aa( 4,5) = 0.00020722768531_default
+    aa( 5,5) = 0.00003996958691_default
+    aa( 6,5) = 0.00000838064065_default
+    aa( 7,5) = 0.00000186848945_default
+    aa( 8,5) = 0.00000043666087_default
+    aa( 9,5) = 0.00000010591733_default
+    aa(10,5) = 0.00000002647892_default
+    aa(11,5) = 0.00000000678700_default
+    aa(12,5) = 0.00000000177654_default
+    aa(13,5) = 0.00000000047342_default
+    aa(14,5) = 0.00000000012812_default
+    aa(15,5) = 0.00000000003514_default
+    aa(16,5) = 0.00000000000975_default
+    aa(17,5) = 0.00000000000274_default
+    aa(18,5) = 0.00000000000077_default
+    aa(19,5) = 0.00000000000022_default
+    aa(20,5) = 0.00000000000006_default
+    aa(21,5) = 0.00000000000002_default
+    aa(22,5) = 0.00000000000001_default
+
+    aa( 0,6) = 0.95021851963952_default
+    aa( 1,6) = 0.29052529161433_default
+    aa( 2,6) = 0.05081774061716_default
+    aa( 3,6) = 0.00995543767280_default
+    aa( 4,6) = 0.00211733895031_default
+    aa( 5,6) = 0.00047859470550_default
+    aa( 6,6) = 0.00011334321308_default
+    aa( 7,6) = 0.00002784733104_default
+    aa( 8,6) = 0.00000704788108_default
+    aa( 9,6) = 0.00000182788740_default
+    aa(10,6) = 0.00000048387492_default
+    aa(11,6) = 0.00000013033842_default
+    aa(12,6) = 0.00000003563769_default
+    aa(13,6) = 0.00000000987174_default
+    aa(14,6) = 0.00000000276586_default
+    aa(15,6) = 0.00000000078279_default
+    aa(16,6) = 0.00000000022354_default
+    aa(17,6) = 0.00000000006435_default
+    aa(18,6) = 0.00000000001866_default
+    aa(19,6) = 0.00000000000545_default
+    aa(20,6) = 0.00000000000160_default
+    aa(21,6) = 0.00000000000047_default
+    aa(22,6) = 0.00000000000014_default
+    aa(23,6) = 0.00000000000004_default
+    aa(24,6) = 0.00000000000001_default
+
+    aa( 0,7) = 0.95064032186777_default
+    aa( 1,7) = 0.54138285465171_default
+    aa( 2,7) = 0.13649979590321_default
+    aa( 3,7) = 0.03417942328207_default
+    aa( 4,7) = 0.00869027883583_default
+    aa( 5,7) = 0.00225284084155_default
+    aa( 6,7) = 0.00059516089806_default
+    aa( 7,7) = 0.00015995617766_default
+    aa( 8,7) = 0.00004365213096_default
+    aa( 9,7) = 0.00001207474688_default
+    aa(10,7) = 0.00000338018176_default
+    aa(11,7) = 0.00000095632476_default
+    aa(12,7) = 0.00000027313129_default
+    aa(13,7) = 0.00000007866968_default
+    aa(14,7) = 0.00000002283195_default
+    aa(15,7) = 0.00000000667205_default
+    aa(16,7) = 0.00000000196191_default
+    aa(17,7) = 0.00000000058018_default
+    aa(18,7) = 0.00000000017246_default
+    aa(19,7) = 0.00000000005151_default
+    aa(20,7) = 0.00000000001545_default
+    aa(21,7) = 0.00000000000465_default
+    aa(22,7) = 0.00000000000141_default
+    aa(23,7) = 0.00000000000043_default
+    aa(24,7) = 0.00000000000013_default
+    aa(25,7) = 0.00000000000004_default
+    aa(26,7) = 0.00000000000001_default
+
+    aa( 0,8) = 0.98800011672229_default
+    aa( 1,8) = 0.04364067609601_default
+    aa( 2,8) = 0.00295091178278_default
+    aa( 3,8) = 0.00031477809720_default
+    aa( 4,8) = 0.00004314846029_default
+    aa( 5,8) = 0.00000693818230_default
+    aa( 6,8) = 0.00000124640350_default
+    aa( 7,8) = 0.00000024293628_default
+    aa( 8,8) = 0.00000005040827_default
+    aa( 9,8) = 0.00000001099075_default
+    aa(10,8) = 0.00000000249467_default
+    aa(11,8) = 0.00000000058540_default
+    aa(12,8) = 0.00000000014127_default
+    aa(13,8) = 0.00000000003492_default
+    aa(14,8) = 0.00000000000881_default
+    aa(15,8) = 0.00000000000226_default
+    aa(16,8) = 0.00000000000059_default
+    aa(17,8) = 0.00000000000016_default
+    aa(18,8) = 0.00000000000004_default
+    aa(19,8) = 0.00000000000001_default
+
+    aa( 0,9) = 0.95768506546350_default
+    aa( 1,9) = 0.19725249679534_default
+    aa( 2,9) = 0.02603370313918_default
+    aa( 3,9) = 0.00409382168261_default
+    aa( 4,9) = 0.00072681707110_default
+    aa( 5,9) = 0.00014091879261_default
+    aa( 6,9) = 0.00002920458914_default
+    aa( 7,9) = 0.00000637631144_default
+    aa( 8,9) = 0.00000145167850_default
+    aa( 9,9) = 0.00000034205281_default
+    aa(10,9) = 0.00000008294302_default
+    aa(11,9) = 0.00000002060784_default
+    aa(12,9) = 0.00000000522823_default
+    aa(13,9) = 0.00000000135066_default
+    aa(14,9) = 0.00000000035451_default
+    aa(15,9) = 0.00000000009436_default
+    aa(16,9) = 0.00000000002543_default
+    aa(17,9) = 0.00000000000693_default
+    aa(18,9) = 0.00000000000191_default
+    aa(19,9) = 0.00000000000053_default
+    aa(20,9) = 0.00000000000015_default
+    aa(21,9) = 0.00000000000004_default
+    aa(22,9) = 0.00000000000001_default
+
+    aa( 0,10) = 0.99343651671347_default
+    aa( 1,10) = 0.02225770126826_default
+    aa( 2,10) = 0.00101475574703_default
+    aa( 3,10) = 0.00008175156250_default
+    aa( 4,10) = 0.00000899973547_default
+    aa( 5,10) = 0.00000120823987_default
+    aa( 6,10) = 0.00000018616913_default
+    aa( 7,10) = 0.00000003174723_default
+    aa( 8,10) = 0.00000000585215_default
+    aa( 9,10) = 0.00000000114739_default
+    aa(10,10) = 0.00000000023652_default
+    aa(11,10) = 0.00000000005082_default
+    aa(12,10) = 0.00000000001131_default
+    aa(13,10) = 0.00000000000259_default
+    aa(14,10) = 0.00000000000061_default
+    aa(15,10) = 0.00000000000015_default
+    aa(16,10) = 0.00000000000004_default
+    aa(17,10) = 0.00000000000001_default
+
+    if (x == 1._default) then
+       nplog = s1(n,m)
+    else if (x > 2._default .or. x < -1.0_default) then
+       x1 = 1._default / x
+       h = c1 * x1 + c2
+       alfa = h + h
+       vv(0) = 1._default
+       if (x < -1.0_default) then
+          vv(1) = log(-x)
+       else if (x > 2._default) then
+          vv(1) = log(cmplx(-x,0._default,kind=default))
+       end if
+       do l = 2, n+m
+          vv(l) = vv(1) * vv(l-1)/l
+       end do
+       sk = 0._default
+       do k = 0, m-1
+          m1 = m-k
+          rr = x1**m1 / (fct(m1) * fct(n-1))
+          sj = 0._default
+          do j = 0, k
+             n1 = n+k-j
+             l = index(10*n1+m1-10)
+             b1 = 0._default
+             b2 = 0._default
+             do it = nc(l), 0, -1
+                b0 = aa(it,l) + alfa*b1 - b2
+                b2 = b1
+                b1 = b0
+             end do
+             qq = (fct(n1-1) / fct(k-j)) * (b0 - h*b2) * rr / m1**n1
+             sj = sj + vv(j) * qq
+          end do
+          sk = sk + sgn(k) * sj
+       end do
+       sj = 0._default
+       do j = 0, n-1
+          sj = sj + vv(j) * cc(n-j,m)
+       end do
+       nplog = sgn(n) * sk + sgn(m) * (sj + vv(n+m))
+    else if (x > 0.5_default) then
+       x1 = 1._default - x
+       h = c1 * x1 + c2
+       alfa = h + h
+       vv(0) = 1._default
+       uu(0) = 1._default
+       vv(1) = log(cmplx(x1,0._default,kind=default))
+       uu(1) = log(x)
+       do l = 2, m
+          vv(l) = vv(1) * vv(l-1) / l
+       end do
+       do l = 2, n
+          uu(l) = uu(1) * uu(l-1) / l
+       end do
+       sk = 0._default
+       do k = 0, n-1
+          m1 = n-k
+          rr = x1**m1 / fct(m1)
+          sj = 0._default
+          do j = 0, m-1
+             n1 = m-j
+             l = index(10*n1 + m1 - 10)
+             b1 = 0._default
+             b2 = 0._default
+             do it = nc(l), 0, -1
+                b0 = aa(it,l) + alfa*b1 - b2
+                b2 = b1
+                b1 = b0
+             end do
+             qq = sgn(j) * (b0 - h*b2) * rr / m1**n1
+             sj = sj + vv(j) * qq
+          end do
+          sk = sk + uu(k) * (s1(m1,m) - sj)
+       end do
+       nplog = sk + sgn(m) * uu(n) * vv(m)
+    else
+       l = index(10*n + m - 10)
+       h = c1 * x + c2
+       alfa = h + h
+       b1 = 0._default
+       b2 = 0._default
+       do it = nc(l), 0, -1
+          b0 = aa(it,l) + alfa*b1 - b2
+          b2 = b1
+          b1 = b0
+       end do
+       nplog = (b0 - h*b2) * x**m / (fct(m) * m**n)
+    end if
+  end function cnielsen
+
+  function nielsen (n, m, x) result (nplog)
+    integer, intent(in) :: n, m
+    real(default), intent(in) :: x
+    real(default) :: nplog
+    nplog = real (cnielsen (n, m, x))
+  end function nielsen
+
+@ %def cnielsen nielsen
+@ $\text{Li}_{n}(x) = S_{n-1,1}(x)$.
+<<SM physics: public>>=
+  public :: polylog
+<<SM physics: procedures>>=
+  function polylog (n, x) result (plog)
+    integer, intent(in) :: n
+    real(default), intent(in) :: x
+    real(default) :: plog
+    plog = nielsen (n-1,1,x)
+  end function polylog
+
+@ %def polylog
+@ $\text{Li}_2(x)$.
+<<SM physics: public>>=
+  public :: dilog
+<<SM physics: procedures>>=
+  function dilog (x) result (dlog)
+    real(default), intent(in) :: x
+    real(default) :: dlog
+    dlog = polylog (2,x)
+  end function dilog
+
+@ %def dilog
+@ $\text{Li}_3(x)$.
+<<SM physics: public>>=
+  public :: trilog
+<<SM physics: procedures>>=
+  function trilog (x) result (tlog)
+    real(default), intent(in) :: x
+    real(default) :: tlog
+    tlog = polylog (3,x)
+  end function trilog
+
+@ %def trilog
 @
 \subsection{Loop Integrals}
 These functions appear in the calculation of the effective one-loop coupling of
@@ -5089,6 +5657,201 @@ end module sm_physics_uti
   end subroutine sm_physics_2
 
 @ %def sm_physics_2
+@
+\subsubsection{Special functions}
+<<SM physics: execute tests>>=
+  call test (sm_physics_3, "sm_physics_3", &
+       "Special functions", &
+       u, results)
+<<SM physics: test declarations>>=
+  public :: sm_physics_3
+<<SM physics: tests>>=
+  subroutine sm_physics_3 (u)
+    integer, intent(in) :: u
+    complex(default) :: z1 = (0.75_default, 1.25_default)
+    complex(default) :: z2 = (1.33_default, 11.25_default)
+    complex(default) :: psiz
+
+    write (u, "(A)")  "* Test output: sm_physics_3"
+    write (u, "(A)")  "*   Purpose: check special functions"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Complex digamma function:"
+    write (u, "(A)")
+
+    psiz = psic (z1)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1      = ", &
+         real(z1), aimag(z1)
+    write (u, "(1x,A,'(',F7.5,',',F7.5,')')")  " psi(z1) = ", &
+         real(psiz), aimag(psiz)
+    psiz = psic (z2)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z2      = ", &
+         real(z2), aimag(z2)
+    write (u, "(1x,A,'(',F7.5,',',F7.5,')')")  " psi(z2) = ", &
+         real(psiz), aimag(psiz)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Complex polygamma function:"
+    write (u, "(A)")
+
+    psiz = psim (z1,1)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1        = ", &
+         real(z1), aimag(z1)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z1,1) = ", &
+         real(psiz), aimag(psiz)
+    psiz = psim (z2,1)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z2        = ", &
+         real(z2), aimag(z2)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,1) = ", &
+         real(psiz), aimag(psiz)
+
+    write (u, "(A)")
+
+    psiz = psim (z1,2)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1        = ", &
+         real(z1), aimag(z1)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z1,2) = ", &
+         real(psiz), aimag(psiz)
+    psiz = psim (z2,2)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z2        = ", &
+         real(z2), aimag(z2)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,2) = ", &
+         real(psiz), aimag(psiz)
+
+    write (u, "(A)")    
+
+    psiz = psim (z1,3)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1        = ", &
+         real(z1), aimag(z1)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z1,3) = ", &
+         real(psiz), aimag(psiz)
+    psiz = psim (z2,3)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z2        = ", &
+         real(z2), aimag(z2)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,3) = ", &
+         real(psiz), aimag(psiz)
+
+    write (u, "(A)")
+
+    psiz = psim (z1,4)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1        = ", &
+         real(z1), aimag(z1)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z1,4) = ", &
+         real(psiz), aimag(psiz)
+    psiz = psim (z2,4)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z2        = ", &
+         real(z2), aimag(z2)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,4) = ", &
+         real(psiz), aimag(psiz)
+
+    write (u, "(A)")
+
+    psiz = psim (z1,5)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1        = ", &
+         real(z1), aimag(z1)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z1,5) = ", &
+         real(psiz), aimag(psiz)
+    psiz = psim (z2,5)
+    write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z2        = ", &
+         real(z2), aimag(z2)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,5) = ", &
+         real(psiz), aimag(psiz)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generalized Nielsen polylogarithm:"
+    write (u, "(A)")
+
+    write (u, "(1x,A,F8.5)")  " S(1,1,0) = ", &
+         nielsen(1,1,0._default)
+    write (u, "(1x,A,F8.5)")  " S(1,1,-1) = ", &
+         nielsen(1,1,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,2,-1) = ", &
+         nielsen(1,2,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(2,1,-1) = ", &
+         nielsen(2,1,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,3,-1) = ", &
+         nielsen(1,3,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(2,2,-1) = ", &
+         nielsen(2,2,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(3,1,-1) = ", &
+         nielsen(3,1,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,4,-1) = ", &
+         nielsen(1,4,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(2,3,-1) = ", &
+         nielsen(2,3,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(3,2,-1) = ", &
+         nielsen(3,2,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(4,1,-1) = ", &
+         nielsen(4,1,-1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,1,0.2) = ", &
+         nielsen(1,1,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(1,2,0.2) = ", &
+         nielsen(1,2,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(2,1,0.2) = ", &
+         nielsen(2,1,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(1,3,0.2) = ", &
+         nielsen(1,3,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(2,2,0.2) = ", &
+         nielsen(2,2,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(3,1,0.2) = ", &
+         nielsen(3,1,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(1,4,0.2) = ", &
+         nielsen(1,4,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(2,3,0.2) = ", &
+         nielsen(2,3,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(3,2,0.2) = ", &
+         nielsen(3,2,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(4,1,0.2) = ", &
+         nielsen(4,1,0.2_default)
+    write (u, "(1x,A,F8.5)")  " S(1,1,1) = ", &
+         nielsen(1,1,1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,2,1) = ", &
+         nielsen(1,2,1._default)
+    write (u, "(1x,A,F8.5)")  " S(2,1,1) = ", &
+         nielsen(2,1,1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,3,1) = ", &
+         nielsen(1,3,1._default)
+    write (u, "(1x,A,F8.5)")  " S(2,2,1) = ", &
+         nielsen(2,2,1._default)
+    write (u, "(1x,A,F8.5)")  " S(3,1,1) = ", &
+         nielsen(3,1,1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,4,1) = ", &
+         nielsen(1,4,1._default)
+    write (u, "(1x,A,F8.5)")  " S(2,3,1) = ", &
+         nielsen(2,3,1._default)
+    write (u, "(1x,A,F8.5)")  " S(3,2,1) = ", &
+         nielsen(3,2,1._default)
+    write (u, "(1x,A,F8.5)")  " S(4,1,1) = ", &
+         nielsen(4,1,1._default)
+    write (u, "(1x,A,F8.5)")  " S(1,1,0.75) = ", &
+         nielsen(1,1,0.75_default)
+    write (u, "(1x,A,F8.5)")  " S(1,3,0.75) = ", &
+         nielsen(1,3,0.75_default)
+    write (u, "(1x,A,F8.5)")  " S(1,4,0.75) = ", &
+         nielsen(1,4,0.75_default)
+    write (u, "(1x,A,F8.5)")  " S(2,2,0.75) = ", &
+         nielsen(2,2,0.75_default)
+    write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " S(1,1,2) = ", &
+         real(cnielsen(1,1,3._default)), &
+         aimag(cnielsen(1,1,3._default))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Dilog, trilog, polylog:"
+    write (u, "(A)")
+
+    write (u, "(1x,A,F8.5)")  " Li2(0.66)    = ", &
+         dilog(0.66_default)
+    write (u, "(1x,A,F8.5)")  " Li3(0.66)    = ", &
+         trilog(0.66_default)
+    write (u, "(1x,A,F8.5)")  " Poly(4,0.66) = ", &
+         polylog(4,0.66_default)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sm_physics_3"
+
+  end subroutine sm_physics_3
+
+@ %def sm_physics_3
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

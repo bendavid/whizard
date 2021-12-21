@@ -6757,11 +6757,11 @@ C     on shell width of top quark including QCD corrections, c.f.
 C     M.Jezabek and J.H. Kuhn, Nucl. Phys. B314(1989)1
 C
       IMPLICIT REAL*8(A-C,D-H,O-Z)
-      EXTERNAL DILOG
+      EXTERNAL DILOGG
       COMMON/PHCONS/TMASS,TGAMMA,ZMASS,ALPHAS,ALAMB5,
      $ WMASS,WGAMMA,BMASS,GFERMI,hmass
       DATA PI/3.14159265/
-      F(X)= PI**2+2*DILOG(X)-2*DILOG(1-X)+( 4*X*(1-X-2*X**2)*LOG(X)+
+      F(X)= PI**2+2*DILOGG(X)-2*DILOGG(1-X)+( 4*X*(1-X-2*X**2)*LOG(X)+
      $2*(1-X)**2*(5+4*X)*LOG(1-X) - (1-X)*(5+9*X-6*X**2) ) /
      $(2*(1-X)**2*(1+2*X))
       Y= (WMASS/TMASS)**2
@@ -7849,7 +7849,7 @@ C
 C     *******    SPECIAL FUNCTIONS
 C
 C
-      DOUBLE PRECISION FUNCTION DILOG(X)
+      DOUBLE PRECISION FUNCTION DILOGG(X)
 C
 C     SPENCE'S DILOGARITHM IN DOUBLE PRECISION
 C
@@ -7868,7 +7868,7 @@ C
       S=0.5
       Z=0.
       GO TO 5
-    3 DILOG=1.644934066848226
+    3 DILOGG=1.644934066848226
       RETURN
     4 T=1.0-X
       S=-0.5
@@ -7901,7 +7901,7 @@ C
       B=Y*A-B+0.02487 93229 24228
       A=Y*B-A+0.16607 30329 27855
       A=Y*A-B+1.93506 43008 69969
-      DILOG=S*T*(A-B)+Z
+      DILOGG=S*T*(A-B)+Z
       RETURN
       END
 c

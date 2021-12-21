@@ -32,16 +32,30 @@ noinst_LTLIBRARIES = libutilities.la
 check_LTLIBRARIES = libutilities_ut.la
 
 libutilities_la_SOURCES = \
-	file_utils.f90 \
-	file_registries.f90 \
-	string_utils.f90 \
-	format_utils.f90 \
-	format_defs.f90 \
-	numeric_utils.f90 \
-	binary_tree.f90 \
-	array_list.f90 \
-	queue.f90 \
-	iterator.f90
+  $(UTILITIES_MODULES) \
+  $(UTILITIES_SUBMODULES)
+
+UTILITIES_MODULES = \
+  file_utils.f90 \
+  file_registries.f90 \
+  string_utils.f90 \
+  format_utils.f90 \
+  format_defs.f90 \
+  numeric_utils.f90 \
+  binary_tree.f90 \
+  array_list.f90 \
+  queue.f90 \
+  iterator.f90
+UTILITIES_SUBMODULES = \
+  file_utils_sub.f90 \
+  file_registries_sub.f90 \
+  string_utils_sub.f90 \
+  format_utils_sub.f90 \
+  numeric_utils_sub.f90 \
+  binary_tree_sub.f90 \
+  array_list_sub.f90 \
+  queue_sub.f90 \
+  iterator_sub.f90
 
 libutilities_ut_la_SOURCES = \
 	binary_tree_ut.f90 binary_tree_uti.f90 \
@@ -55,10 +69,11 @@ dist_noinst_DATA = utilities.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libutilities_la_SOURCES:.f90=.$(FCMOD)}
+  ${UTILITIES_MODULES:.f90=.$(FCMOD)}
 
+#Submodules must not be included here
 # Dump module names into file Modules
-libutilities_Modules = ${libutilities_la_SOURCES:.f90=} ${libutilities_ut_la_SOURCES:.f90=}
+libutilities_Modules = ${UTILITIES_MODULES:.f90=} ${libutilities_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libutilities_Modules); do \
 					echo $$module >> $@.new; \
@@ -121,6 +136,17 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../testing
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+file_utils_sub.lo: file_utils.lo
+file_registries_sub.lo: file_registries.lo
+string_utils_sub.lo: string_utils.lo
+format_utils_sub.lo: format_utils.lo
+numeric_utils_sub.lo: numeric_utils.lo
+binary_tree_sub.lo: binary_tree.lo
+array_list_sub.lo: array_list.lo
+queue_sub.lo: queue.lo
+iterator_sub.lo: iterator.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -188,7 +214,7 @@ clean-local: clean-noweb
 	-rm -f utilities.stamp utilities.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
