@@ -125,7 +125,6 @@ end module file_registries
 
 submodule (file_registries) file_registries_s
 
-<<Use strings>>
   use io_units
 
 contains

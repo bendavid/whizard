@@ -5211,6 +5211,24 @@ emission and the gluon is preferably polarized in the branching plane
   end function p_qqg_pol
 
 @
+\subsubsection{Mellin transforms of splitting functions}
+
+As Mellin transforms necessarily live in the complex plane, all
+functions are defined as complex functions:
+@ Splitting function $P_{qq}(N)$:
+<<SM physics: public>>=
+  public :: pqqm
+<<SM physics: procedures>>=
+  function pqqm (n, c_f) result (pqq_m)
+    integer, intent(in) :: n
+    real(default), intent(in) :: c_f
+    complex(default) :: pqq_m
+    pqq_m = three - four * (eulerc + &
+         psic(cmplx(N+1,zero,kind=default))) + two/N/(N+1)
+  end function pqqm
+
+@ %def pqqm 
+@
 \subsection{Top width}
 In order to produce sensible results, the widths have to be recomputed
 for each parameter and order.

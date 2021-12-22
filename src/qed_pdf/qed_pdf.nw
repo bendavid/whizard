@@ -23,7 +23,6 @@ structure functions (a.k.a. electron PDFs).
 module electron_pdfs
 
 <<Use kinds>>
-<<Use strings>>
 <<electron pdfs use>>
   
 <<Standard module head>>
@@ -48,7 +47,6 @@ end module electron_pdfs
 
 submodule (electron_pdfs) electron_pdfs_s
 
-<<Use kinds>>
 <<Use strings>>
 <<electron pdfs use>>
   use constants, only: pi
