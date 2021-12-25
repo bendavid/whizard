@@ -36,31 +36,41 @@ COMMON_F90 = \
   signal_interface.c \
   sprintf_interface.c \
   diagnostics.f90 \
+  os_interface.f90 \
   formats.f90 \
-  cputime.f90 
+  cputime.f90
 MPI_F90 = \
-  os_interface.f90_mpi
+  os_interface_sub.f90_mpi
 SERIAL_F90 = \
-  os_interface.f90_serial
+  os_interface_sub.f90_serial
+SYSTEM_SUBMODULES = \
+  diagnostics_sub.f90 \
+  formats_sub.f90 \
+  cputime_sub.f90
+
+SYSTEM_MODULES = \
+  system_dependencies.f90 \
+  debug_master.f90 \
+  $(COMMON_F90)
 
 EXTRA_DIST = \
   $(COMMON_F90) \
+  $(SYSTEM_SUBMODULES) \
   $(SERIAL_F90) \
   $(MPI_F90)
 
 nodist_libsystem_la_SOURCES = \
-  system_dependencies.f90 \
-  debug_master.f90 \
-  os_interface.f90 \
-  $(COMMON_F90)
+  $(SYSTEM_MODULES) \
+  $(SYSTEM_SUBMODULES) \
+  os_interface_sub.f90
 
-DISTCLEANFILES = os_interface.f90
+DISTCLEANFILES = os_interface_sub.f90
 
 if FC_USE_MPI
-os_interface.f90: os_interface.f90_mpi
+os_interface_sub.f90: os_interface_sub.f90_mpi
 	-cp -f $< $@
 else
-os_interface.f90: os_interface.f90_serial
+os_interface_sub.f90: os_interface_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -85,7 +95,7 @@ nodist_execmod_HEADERS = \
   os_interface.$(FCMOD)
 
 libsystem_Modules = \
-  $(nodist_libsystem_la_SOURCES:.f90=) \
+  $(SYSTEM_MODULES:.f90=) \
   $(libsystem_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libsystem_Modules); do \
@@ -151,6 +161,12 @@ SUFFIXES = .lo .$(FCMOD)
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+diagnostics_sub.lo: diagnostics.lo
+os_interface_sub.lo: os_interface.lo
+formats_sub.lo: formats.lo
+cputime_sub.lo: cputime.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -187,6 +203,9 @@ system.stamp: $(PRELUDE) $(srcdir)/system.nw $(POSTLUDE)
 	for src in $(COMMON_F90) $(libsystem_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
+	for src in $(SYSTEM_SUBMODULES) $(libsystem_ut_la_SOURCES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
@@ -195,7 +214,7 @@ system.stamp: $(PRELUDE) $(srcdir)/system.nw $(POSTLUDE)
         done
 	@mv -f system.tmp system.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libsystem_ut_la_SOURCES): system.stamp
+$(COMMON_F90) $(SYSTEM_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libsystem_ut_la_SOURCES): system.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f system.stamp; \
@@ -226,7 +245,7 @@ clean-local: clean-noweb
 	-rm -f system.stamp system.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
