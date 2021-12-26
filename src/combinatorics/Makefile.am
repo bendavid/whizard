@@ -42,15 +42,25 @@ MPI_F90 = \
   grids.f90_mpi
 SERIAL_F90 = \
   grids.f90_serial
+COMBINATORICS_SUBMODULES = \
+  bytes_sub.f90 \
+  hashes_sub.f90 \
+  md5_sub.f90 \
+  permutations_sub.f90
+
+COMBINATORICS_MODULES = \
+  $(COMMON_F90) \
+  grids.f90
 
 EXTRA_DIST = \
   $(COMMON_F90) \
+  $(COMBINATORICS_SUBMODULES) \
   $(SERIAL_F90) \
   $(MPI_F90)
 
 nodist_libcombinatorics_la_SOURCES = \
-  $(COMMON_F90) \
-  grids.f90
+  $(COMBINATORICS_MODULES) \
+  $(COMBINATORICS_SUBMODULES)
 
 DISTCLEANFILES = grids.f90
 
@@ -75,10 +85,11 @@ dist_noinst_DATA = combinatorics.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${nodist_libcombinatorics_la_SOURCES:.f90=.$(FCMOD)}
+  ${COMBINAROTICS_MODULES:.f90=.$(FCMOD)}
 
+#Submodules must not be included here
 libcombinatorics_Modules = \
-  ${nodist_libcombinatorics_la_SOURCES:.f90=} \
+  ${COMBINATORICS_MODULES:.f90=} \
   ${libcombinatorics_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in \
@@ -146,6 +157,12 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../testing -I../system -I../utilities
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+bytes_sub.lo: bytes.lo
+hashes_sub.lo: hashes.lo
+md5_sub.lo: md5.lo
+permutations_sub.lo: permutations.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -182,6 +199,9 @@ combinatorics.stamp: $(PRELUDE) $(srcdir)/combinatorics.nw $(POSTLUDE)
 	for src in $(COMMON_F90) $(libcombinatorics_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
+	for src in $(COMBINATORICS_SUBMODULES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+	done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
@@ -190,7 +210,7 @@ combinatorics.stamp: $(PRELUDE) $(srcdir)/combinatorics.nw $(POSTLUDE)
         done
 	@mv -f combinatorics.tmp combinatorics.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
+$(COMMON_F90) $(COMBINATORICS_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f combinatorics.stamp; \
@@ -198,7 +218,6 @@ $(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libcombinatorics_ut_la_SOURCES): combin
 	fi
 
 endif
-
 
 ########################################################################
 ## Non-standard cleanup tasks

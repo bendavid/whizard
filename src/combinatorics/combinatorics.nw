@@ -40,7 +40,6 @@ unsigned integers.
 module bytes
 
   use kinds, only: i8, i32, i64
-  use io_units
 
 <<Standard module head>>
 
@@ -52,12 +51,27 @@ module bytes
 
 <<Bytes: interfaces>>
 
+  interface
+<<Bytes: sub interfaces>>
+  end interface
+
+end module bytes
+@ %def bytes
+@
+<<[[bytes_sub.f90]]>>=
+<<File header>>
+
+submodule (bytes) bytes_s
+
+  use io_units
+
 contains
 
 <<Bytes: procedures>>
 
-end module bytes
-@ %def bytes
+end submodule bytes_s
+
+@ %def bytes_s
 @
 \subsection{8-bit words: bytes}
 This is essentially a wrapper around 8-bit integers.  The wrapper
@@ -86,8 +100,13 @@ However, we interpret bytes as unsigned integers.
      module procedure set_byte_from_i8
   end interface
 @ %def =
+<<Bytes: sub interfaces>>=
+    module subroutine set_byte_from_i8 (b, i)
+      type(byte_t), intent(out) :: b
+      integer(i8), intent(in) :: i
+    end subroutine set_byte_from_i8
 <<Bytes: procedures>>=
-  subroutine set_byte_from_i8 (b, i)
+  module subroutine set_byte_from_i8 (b, i)
     type(byte_t), intent(out) :: b
     integer(i8), intent(in) :: i
     b%i = i
@@ -104,8 +123,14 @@ Optionally append a newline.
   interface byte_write
      module procedure byte_write_unit, byte_write_string
   end interface
+<<Bytes: sub interfaces>>=
+    module subroutine byte_write_unit (b, unit, decimal, newline)
+      type(byte_t), intent(in), optional :: b
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: decimal, newline
+    end subroutine byte_write_unit
 <<Bytes: procedures>>=
-  subroutine byte_write_unit (b, unit, decimal, newline)
+  module subroutine byte_write_unit (b, unit, decimal, newline)
     type(byte_t), intent(in), optional :: b
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: decimal, newline
@@ -126,8 +151,13 @@ Optionally append a newline.
 
 @ %def byte_write_unit
 @ The string version is hex-only
+<<Bytes: sub interfaces>>=
+    module subroutine byte_write_string (b, s)
+      type(byte_t), intent(in) :: b
+      character(len=2), intent(inout) :: s
+    end subroutine byte_write_string
 <<Bytes: procedures>>=
-  subroutine byte_write_string (b, s)
+  module subroutine byte_write_string (b, s)
     type(byte_t), intent(in) :: b
     character(len=2), intent(inout) :: s
     write (s, '(z2.2)')  b%i
@@ -159,8 +189,13 @@ distinguish between printing zeros and printing blanks.
      module procedure word32_set_from_byte
   end interface
 @ %def =
+<<Bytes: sub interfaces>>=
+    module subroutine word32_set_from_i32 (w, i)
+      type(word32_t), intent(out) :: w
+      integer(i32), intent(in) :: i
+    end subroutine word32_set_from_i32
 <<Bytes: procedures>>=
-  subroutine word32_set_from_i32 (w, i)
+  module subroutine word32_set_from_i32 (w, i)
     type(word32_t), intent(out) :: w
     integer(i32), intent(in) :: i
     w%i = i
@@ -175,8 +210,13 @@ status.
      module procedure i32_from_word32
   end interface
 @ %def =
+<<Bytes: sub interfaces>>=
+    module subroutine i32_from_word32 (i, w)
+      integer(i32), intent(out) :: i
+      type(word32_t), intent(in) :: w
+    end subroutine i32_from_word32
 <<Bytes: procedures>>=
-  subroutine i32_from_word32 (i, w)
+  module subroutine i32_from_word32 (i, w)
     integer(i32), intent(out) :: i
     type(word32_t), intent(in) :: w
     i = w%i
@@ -185,8 +225,13 @@ status.
 @ %def i32_from_word32
 @ Filling with a 8-bit integer is slightly tricky, because in this
 interpretation integers are unsigned.
+<<Bytes: sub interfaces>>=
+    module subroutine word32_set_from_byte (w, b)
+      type(word32_t), intent(out) :: w
+      type(byte_t), intent(in) :: b
+    end subroutine word32_set_from_byte
 <<Bytes: procedures>>=
-  subroutine word32_set_from_byte (w, b)
+  module subroutine word32_set_from_byte (w, b)
     type(word32_t), intent(out) :: w
     type(byte_t), intent(in) :: b
     if (b%i >= 0_i8) then
@@ -201,20 +246,33 @@ interpretation integers are unsigned.
 @ Check the fill status
 <<Bytes: public>>=
   public :: word32_empty, word32_filled, word32_fill
+<<Bytes: sub interfaces>>=
+    module function word32_empty (w)
+      type(word32_t), intent(in) :: w
+      logical :: word32_empty
+    end function word32_empty
+    module function word32_filled (w)
+      type(word32_t), intent(in) :: w
+      logical :: word32_filled
+    end function word32_filled
+    module function word32_fill (w)
+      type(word32_t), intent(in) :: w
+      integer :: word32_fill
+    end function word32_fill
 <<Bytes: procedures>>=
-  function word32_empty (w)
+  module function word32_empty (w)
     type(word32_t), intent(in) :: w
     logical :: word32_empty
     word32_empty = (w%fill == 0)
   end function word32_empty
 
-  function word32_filled (w)
+  module function word32_filled (w)
     type(word32_t), intent(in) :: w
     logical :: word32_filled
     word32_filled = (w%fill == 32)
   end function word32_filled
 
-  function word32_fill (w)
+  module function word32_fill (w)
     type(word32_t), intent(in) :: w
     integer :: word32_fill
     word32_fill = w%fill
@@ -226,8 +284,13 @@ interpretation integers are unsigned.
 necessary.)
 <<Bytes: public>>=
   public :: word32_append_byte
+<<Bytes: sub interfaces>>=
+    module subroutine word32_append_byte (w, b)
+      type(word32_t), intent(inout) :: w
+      type(byte_t), intent(in) :: b
+    end subroutine word32_append_byte
 <<Bytes: procedures>>=
-  subroutine word32_append_byte (w, b)
+  module subroutine word32_append_byte (w, b)
     type(word32_t), intent(inout) :: w
     type(byte_t), intent(in) :: b
     type(word32_t) :: w1
@@ -247,8 +310,14 @@ Otherwise, we might trigger an overflow condition for a compiler with
 strict checking turned on.
 <<Bytes: public>>=
   public :: byte_from_word32
+<<Bytes: sub interfaces>>=
+    module function byte_from_word32 (w, i) result (b)
+      type(word32_t), intent(in) :: w
+      integer, intent(in) :: i
+      type(byte_t) :: b
+    end function byte_from_word32
 <<Bytes: procedures>>=
-  function byte_from_word32 (w, i) result (b)
+  module function byte_from_word32 (w, i) result (b)
     type(word32_t), intent(in) :: w
     integer, intent(in) :: i
     type(byte_t) :: b
@@ -278,8 +347,14 @@ bytes are printed as whitespace.
   interface word32_write
      module procedure word32_write_unit
   end interface
+<<Bytes: sub interfaces>>=
+    module subroutine word32_write_unit (w, unit, bytes, decimal, newline)
+      type(word32_t), intent(in) :: w
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: bytes, decimal, newline
+    end subroutine word32_write_unit
 <<Bytes: procedures>>=
-  subroutine word32_write_unit (w, unit, bytes, decimal, newline)
+  module subroutine word32_write_unit (w, unit, bytes, decimal, newline)
     type(word32_t), intent(in) :: w
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: bytes, decimal, newline
@@ -343,39 +418,66 @@ $2^{32}$).  We assume that all operands are completely filled.
      module procedure word_shftc
   end interface
 @ %def not, ior, ieor, iand, ishftc
+<<Bytes: sub interfaces>>=
+    module function word_not (w1) result (w2)
+      type(word32_t), intent(in) :: w1
+      type(word32_t) :: w2
+    end function word_not
+    module function word_or (w1, w2) result (w3)
+      type(word32_t), intent(in) :: w1, w2
+      type(word32_t) :: w3
+    end function word_or
+    module function word_eor (w1, w2) result (w3)
+      type(word32_t), intent(in) :: w1, w2
+      type(word32_t) :: w3
+    end function word_eor
+    module function word_and (w1, w2) result (w3)
+      type(word32_t), intent(in) :: w1, w2
+      type(word32_t) :: w3
+    end function word_and
+    module function word_shft (w1, s) result (w2)
+      type(word32_t), intent(in) :: w1
+      integer, intent(in) :: s
+      type(word32_t) :: w2
+    end function word_shft
+    module function word_shftc (w1, s) result (w2)
+      type(word32_t), intent(in) :: w1
+      integer, intent(in) :: s
+      type(word32_t) :: w2
+    end function word_shftc
 <<Bytes: procedures>>=
-  function word_not (w1) result (w2)
+  module function word_not (w1) result (w2)
     type(word32_t), intent(in) :: w1
     type(word32_t) :: w2
     w2 = not (w1%i)
   end function word_not
 
-  function word_or (w1, w2) result (w3)
+  module function word_or (w1, w2) result (w3)
     type(word32_t), intent(in) :: w1, w2
     type(word32_t) :: w3
     w3 = ior (w1%i, w2%i)
   end function word_or
 
-  function word_eor (w1, w2) result (w3)
+  module function word_eor (w1, w2) result (w3)
     type(word32_t), intent(in) :: w1, w2
     type(word32_t) :: w3
     w3 = ieor (w1%i, w2%i)
   end function word_eor
 
-  function word_and (w1, w2) result (w3)
+  module function word_and (w1, w2) result (w3)
     type(word32_t), intent(in) :: w1, w2
     type(word32_t) :: w3
     w3 = iand (w1%i, w2%i)
   end function word_and
 
-  function word_shft (w1, s) result (w2)
+  module function word_shft (w1, s) result (w2)
     type(word32_t), intent(in) :: w1
     integer, intent(in) :: s
     type(word32_t) :: w2
     w2 = ishft (w1%i, s)
   end function word_shft
 
-  function word_shftc (w1, s) result (w2)
+  module function word_shftc (w1, s) result (w2)
     type(word32_t), intent(in) :: w1
     integer, intent(in) :: s
     type(word32_t) :: w2
@@ -396,8 +498,23 @@ the compiler.
   end interface
 @ %def +
 @
+<<Bytes: sub interfaces>>=
+  module function word_add (w1, w2) result (w3)
+    type(word32_t), intent(in) :: w1, w2
+    type(word32_t) :: w3
+  end function word_add
+  module function word_add_i8 (w1, i) result (w3)
+    type(word32_t), intent(in) :: w1
+    integer(i8), intent(in) :: i
+    type(word32_t) :: w3
+  end function word_add_i8
+  module function word_add_i32 (w1, i) result (w3)
+    type(word32_t), intent(in) :: w1
+    integer(i32), intent(in) :: i
+    type(word32_t) :: w3
+  end function word_add_i32
 <<Bytes: procedures>>=
-  function word_add (w1, w2) result (w3)
+  module function word_add (w1, w2) result (w3)
     type(word32_t), intent(in) :: w1, w2
     type(word32_t) :: w3
     integer(i64) :: j
@@ -410,7 +527,7 @@ the compiler.
     end if
   end function word_add
 
-  function word_add_i8 (w1, i) result (w3)
+  module function word_add_i8 (w1, i) result (w3)
     type(word32_t), intent(in) :: w1
     integer(i8), intent(in) :: i
     type(word32_t) :: w3
@@ -421,7 +538,7 @@ the compiler.
     if (btest (j, 31) .neqv. btest (w1%i, 31))  w3 = ibset (w3%i, 31)
   end function word_add_i8
 
-  function word_add_i32 (w1, i) result (w3)
+  module function word_add_i32 (w1, i) result (w3)
     type(word32_t), intent(in) :: w1
     integer(i32), intent(in) :: i
     type(word32_t) :: w3
@@ -457,8 +574,13 @@ integers are signed).  The order is low-word, high-word.
      module procedure word64_set_from_word32
   end interface
 @ %def =
+<<Bytes: sub interfaces>>=
+    module subroutine word64_set_from_i64 (ww, i)
+      type(word64_t), intent(out) :: ww
+      integer(i64), intent(in) :: i
+    end subroutine word64_set_from_i64
 <<Bytes: procedures>>=
-  subroutine word64_set_from_i64 (ww, i)
+  module subroutine word64_set_from_i64 (ww, i)
     type(word64_t), intent(out) :: ww
     integer(i64), intent(in) :: i
     ww%i = i
@@ -466,8 +588,13 @@ integers are signed).  The order is low-word, high-word.
 
 @ %def word64_set_from_i64
 @ Filling with a 32-bit word:
+<<Bytes: sub interfaces>>=
+    module subroutine word64_set_from_word32 (ww, w)
+      type(word64_t), intent(out) :: ww
+      type(word32_t), intent(in) :: w
+    end subroutine word64_set_from_word32
 <<Bytes: procedures>>=
-  subroutine word64_set_from_word32 (ww, w)
+  module subroutine word64_set_from_word32 (ww, w)
     type(word64_t), intent(out) :: ww
     type(word32_t), intent(in) :: w
     if (w%i >= 0_i32) then
@@ -486,8 +613,14 @@ Otherwise, we might trigger an overflow condition for a compiler with
 strict checking turned on.
 <<Bytes: public>>=
   public :: byte_from_word64, word32_from_word64
+<<Bytes: sub interfaces>>=
+    module function byte_from_word64 (ww, i) result (b)
+      type(word64_t), intent(in) :: ww
+      integer, intent(in) :: i
+      type(byte_t) :: b
+    end function byte_from_word64
 <<Bytes: procedures>>=
-  function byte_from_word64 (ww, i) result (b)
+  module function byte_from_word64 (ww, i) result (b)
     type(word64_t), intent(in) :: ww
     integer, intent(in) :: i
     type(byte_t) :: b
@@ -503,8 +636,14 @@ strict checking turned on.
 @ %def byte_from_word64
 @ Extract a 32-bit word from a 64-bit word.  The position is either 0
 or 1.
+<<Bytes: sub interfaces>>=
+    module function word32_from_word64 (ww, i) result (w)
+      type(word64_t), intent(in) :: ww
+      integer, intent(in) :: i
+      type(word32_t) :: w
+    end function word32_from_word64
 <<Bytes: procedures>>=
-  function word32_from_word64 (ww, i) result (w)
+  module function word32_from_word64 (ww, i) result (w)
     type(word64_t), intent(in) :: ww
     integer, intent(in) :: i
     type(word32_t) :: w
@@ -531,8 +670,14 @@ number without spaces, highest byte first.
   interface word64_write
      module procedure word64_write_unit
   end interface
+<<Bytes: sub interfaces>>=
+    module subroutine word64_write_unit (ww, unit, words, bytes, decimal, newline)
+      type(word64_t), intent(in) :: ww
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: words, bytes, decimal, newline
+    end subroutine word64_write_unit
 <<Bytes: procedures>>=
-  subroutine word64_write_unit (ww, unit, words, bytes, decimal, newline)
+  module subroutine word64_write_unit (ww, unit, words, bytes, decimal, newline)
     type(word64_t), intent(in) :: ww
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: words, bytes, decimal, newline
@@ -572,18 +717,32 @@ where hash tables are used, mutatis mutandis.
 module hashes
 
   use kinds, only: i8, i32
-  use bytes
 
 <<Standard module head>>
 
 <<Hashes: public>>
 
+  interface
+<<Hashes: sub interfaces>>
+  end interface
+
+end module hashes
+@ %def hashes
+@
+<<[[hashes_sub.f90]]>>=
+<<File header>>
+
+submodule (hashes) hashes_s
+
+  use bytes
+
 contains
 
 <<Hashes: procedures>>
 
-end module hashes
-@ %def hashes
+end submodule hashes_s
+
+@ %def hashes_s
 @
 \subsection{The hash function}
 This is the one-at-a-time hash function by Bob Jenkins (from
@@ -597,8 +756,13 @@ interpretation of values differs from the C version.  This should not
 matter in practice, however.
 <<Hashes: public>>=
   public :: hash
+<<Hashes: sub interfaces>>=
+    module function hash (key) result (hashval)
+      integer(i32) :: hashval
+      integer(i8), dimension(:), intent(in) :: key
+    end function hash
 <<Hashes: procedures>>=
-  function hash (key) result (hashval)
+  module function hash (key) result (hashval)
     integer(i32) :: hashval
     integer(i8), dimension(:), intent(in) :: key
     type(word32_t) :: w
@@ -877,11 +1041,6 @@ The building blocks have been introduced in the [[bytes]] module.
 
 module md5
 
-  use kinds, only: i8, i32, i64
-  use io_units
-  use system_defs, only: BUFFER_SIZE
-  use system_defs, only: LF, EOR, EOF
-  use diagnostics
   use bytes
 
 <<Standard module head>>
@@ -890,16 +1049,35 @@ module md5
 
 <<MD5: types>>
 
-<<MD5: variables>>
-
 <<MD5: interfaces>>
+
+  interface
+<<MD5: sub interfaces>>
+  end interface
+
+end module md5
+@ %def md5
+@
+<<[[md5_sub.f90]]>>=
+<<File header>>
+
+submodule (md5) md5_s
+
+  use kinds, only: i8, i32, i64
+  use system_defs, only: BUFFER_SIZE
+  use system_defs, only: LF, EOR, EOF
+  use io_units
+  use diagnostics
+
+<<MD5: variables>>
 
 contains
 
 <<MD5: procedures>>
 
-end module md5
-@ %def md5
+end submodule md5_s
+
+@ %def md5_s
 @
 \subsection{Blocks}
 A block is a sequence of 16 words (64 bytes or 512 bits).  We
@@ -950,8 +1128,14 @@ bytes, decimal or hex.
   interface block_write
      module procedure block_write_unit
   end interface
+<<MD5: sub interfaces>>=
+    module subroutine block_write_unit (b, unit, bytes, decimal)
+      type(block_t), intent(in) :: b
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: bytes, decimal
+    end subroutine block_write_unit
 <<MD5: procedures>>=
-  subroutine block_write_unit (b, unit, bytes, decimal)
+  module subroutine block_write_unit (b, unit, bytes, decimal)
     type(block_t), intent(in) :: b
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: bytes, decimal
@@ -1190,8 +1374,14 @@ by byte.
   interface message_write
      module procedure message_write_unit
   end interface
+<<MD5: sub interfaces>>=
+    module subroutine message_write_unit (m, unit, bytes, decimal)
+      type(message_t), intent(in) :: m
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: bytes, decimal
+    end subroutine message_write_unit
 <<MD5: procedures>>=
-  subroutine message_write_unit (m, unit, bytes, decimal)
+  module subroutine message_write_unit (m, unit, bytes, decimal)
     type(message_t), intent(in) :: m
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: bytes, decimal
@@ -1427,8 +1617,13 @@ the entry in the predefined table.
 @ %def md5sum
 @ This function computes the MD5 sum of the input string and returns it
 as a 32-character string
+<<MD5: sub interfaces>>=
+    module function md5sum_from_string (s) result (digest)
+      character(len=*), intent(in) :: s
+      character(len=32) :: digest
+    end function md5sum_from_string
 <<MD5: procedures>>=
-  function md5sum_from_string (s) result (digest)
+  module function md5sum_from_string (s) result (digest)
     character(len=*), intent(in) :: s
     character(len=32) :: digest
     type(message_t) :: m
@@ -1441,8 +1636,13 @@ as a 32-character string
 @ %def md5sum_from_string
 @ This funct. reads from unit u (an unformmated sequence of
 integers) and computes the MD5 sum.
+<<MD5: sub interfaces>>=
+    module function md5sum_from_unit (u) result (digest)
+      integer, intent(in) :: u
+      character(len=32) :: digest
+    end function md5sum_from_unit
 <<MD5: procedures>>=
-  function md5sum_from_unit (u) result (digest)
+  module function md5sum_from_unit (u) result (digest)
     integer, intent(in) :: u
     character(len=32) :: digest
     type(message_t) :: m
@@ -1589,12 +1789,27 @@ module permutations
 
 <<Permutations: interfaces>>
 
+  interface
+<<Permutations: sub interfaces>>
+  end interface
+
+end module permutations
+@ %def permutations
+@
+<<[[permutations_sub.f90]]>>=
+<<File header>>
+
+submodule (permutations) permutations_s
+
+<<Permutations: variables>>
+
 contains
 
 <<Permutations: procedures>>
 
-end module permutations
-@ %def permutations
+end submodule permutations_s
+
+@ %def permutations_s
 @
 \subsection{Permutations}
 A permutation is an array of integers.  Each integer between one and
@@ -1613,8 +1828,16 @@ Initialize with the identity permutation.
 <<Permutations: public>>=
   public :: permutation_init
   public :: permutation_final
+<<Permutations: sub interfaces>>=
+    elemental module subroutine permutation_init (p, size)
+      type(permutation_t), intent(inout) :: p
+      integer, intent(in) :: size
+    end subroutine permutation_init
+    elemental module subroutine permutation_final (p)
+      type(permutation_t), intent(inout) :: p
+    end subroutine permutation_final
 <<Permutations: procedures>>=
-  elemental subroutine permutation_init (p, size)
+  elemental module subroutine permutation_init (p, size)
     type(permutation_t), intent(inout) :: p
     integer, intent(in) :: size
     integer :: i
@@ -1624,7 +1847,7 @@ Initialize with the identity permutation.
     end forall
   end subroutine permutation_init
 
-  elemental subroutine permutation_final (p)
+  elemental module subroutine permutation_final (p)
     type(permutation_t), intent(inout) :: p
     deallocate (p%p)
   end subroutine permutation_final
@@ -1633,8 +1856,13 @@ Initialize with the identity permutation.
 @ I/O:
 <<Permutations: public>>=
   public :: permutation_write
+<<Permutations: sub interfaces>>=
+    module subroutine permutation_write (p, u)
+      type(permutation_t), intent (in) :: p
+      integer, intent(in) :: u
+    end subroutine permutation_write
 <<Permutations: procedures>>=
-  subroutine permutation_write (p, u)
+  module subroutine permutation_write (p, u)
     type(permutation_t), intent (in) :: p
     integer, intent(in) :: u
     integer :: i
@@ -1653,8 +1881,13 @@ Initialize with the identity permutation.
 Administration:
 <<Permutations: public>>=
   public :: permutation_size
+<<Permutations: sub interfaces>>=
+    elemental module function permutation_size (perm) result (s)
+      type(permutation_t), intent(in) :: perm
+      integer :: s
+    end function permutation_size
 <<Permutations: procedures>>=
-  elemental function permutation_size (perm) result (s)
+  elemental module function permutation_size (perm) result (s)
     type(permutation_t), intent(in) :: perm
     integer :: s
     s = size (perm%p)
@@ -1664,8 +1897,14 @@ Administration:
 @ Extract an entry in a permutation.
 <<Permutations: public>>=
   public :: permute
+<<Permutations: sub interfaces>>=
+    elemental module function permute (i, p) result (j)
+      integer, intent(in) :: i
+      type(permutation_t), intent(in) :: p
+      integer :: j
+    end function permute
 <<Permutations: procedures>>=
-  elemental function permute (i, p) result (j)
+  elemental module function permute (i, p) result (j)
     integer, intent(in) :: i
     type(permutation_t), intent(in) :: p
     integer :: j
@@ -1682,8 +1921,13 @@ Check whether a permutation is valid: Each integer in the range occurs
 exactly once.
 <<Permutations: public>>=
   public :: permutation_ok
+<<Permutations: sub interfaces>>=
+    elemental module function permutation_ok (perm) result (ok)
+      type(permutation_t), intent(in) :: perm
+      logical :: ok
+    end function permutation_ok
 <<Permutations: procedures>>=
-  elemental function permutation_ok (perm) result (ok)
+  elemental module function permutation_ok (perm) result (ok)
     type(permutation_t), intent(in) :: perm
     logical :: ok
     integer :: i
@@ -1707,8 +1951,13 @@ set correctly.
 This cannot be elemental.
 <<Permutations: public>>=
   public :: permutation_find
+<<Permutations: sub interfaces>>=
+    module subroutine permutation_find (perm, a1, a2)
+      type(permutation_t), intent(inout) :: perm
+      integer, dimension(:), intent(in) :: a1, a2
+    end subroutine permutation_find
 <<Permutations: procedures>>=
-  subroutine permutation_find (perm, a1, a2)
+  module subroutine permutation_find (perm, a1, a2)
     type(permutation_t), intent(inout) :: perm
     integer, dimension(:), intent(in) :: a1, a2
     integer :: i, j
@@ -1743,8 +1992,13 @@ with the next mask.  The result is always stored back into the main
 list, starting from the end of the current list.
 <<Permutations: public>>=
   public :: permutation_array_make
+<<Permutations: sub interfaces>>=
+    module subroutine permutation_array_make (pa, code)
+      type(permutation_t), dimension(:), allocatable, intent(out) :: pa
+      integer, dimension(:), intent(in) :: code
+    end subroutine permutation_array_make
 <<Permutations: procedures>>=
-  subroutine permutation_array_make (pa, code)
+  module subroutine permutation_array_make (pa, code)
     type(permutation_t), dimension(:), allocatable, intent(out) :: pa
     integer, dimension(:), intent(in) :: code
     logical, dimension(size(code)) :: mask
@@ -1849,8 +2103,13 @@ permutation to start with, which must have the same length as the
 permutations that will be generated:
 <<Permutations: public>>=
   public :: factorial
+<<Permutations: sub interfaces>>=
+    elemental module function factorial (n) result (f)
+      integer, intent(in) :: n
+      integer :: f
+    end function factorial
 <<Permutations: procedures>>=
-  elemental function factorial (n) result (f)
+  elemental module function factorial (n) result (f)
     integer, intent(in) :: n
     integer :: f
     integer :: i
@@ -1872,8 +2131,14 @@ code.  If no permutation is given, leave as is.  (We may want to
 access the permutation directly here if this is efficiency-critical.)
 <<Permutations: public>>=
   public :: tc_permute
+<<Permutations: sub interfaces>>=
+    module function tc_permute (k, perm, mask_in) result (pk)
+      integer(TC), intent(in) :: k, mask_in
+      type(permutation_t), intent(in) :: perm
+      integer(TC) :: pk
+    end function tc_permute
 <<Permutations: procedures>>=
-  function tc_permute (k, perm, mask_in) result (pk)
+  module function tc_permute (k, perm, mask_in) result (pk)
     integer(TC), intent(in) :: k, mask_in
     type(permutation_t), intent(in) :: perm
     integer(TC) :: pk
@@ -1902,15 +2167,24 @@ still one point apart from the initial particles.
      module procedure decay_level_complement
   end interface
 @ %def decay_level
+<<Permutations: sub interfaces>>=
+    module function decay_level_complement (k, mask) result (l)
+      integer(TC), intent(in) :: k, mask
+      integer :: l
+    end function decay_level_complement
+    module function decay_level_simple (k) result(l)
+      integer(TC), intent(in) :: k
+      integer :: l
+    end function decay_level_simple
 <<Permutations: procedures>>=
-  function decay_level_complement (k, mask) result (l)
+  module function decay_level_complement (k, mask) result (l)
     integer(TC), intent(in) :: k, mask
     integer :: l
     l = min (decay_level_simple (k), &
          &   decay_level_simple (ieor (k, mask)) + 1)
   end function decay_level_complement
 
-  function decay_level_simple (k) result(l)
+  module function decay_level_simple (k) result(l)
     integer(TC), intent(in) :: k
     integer :: l
     integer :: i

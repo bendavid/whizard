@@ -203,7 +203,7 @@ system.stamp: $(PRELUDE) $(srcdir)/system.nw $(POSTLUDE)
 	for src in $(COMMON_F90) $(libsystem_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
-	for src in $(SYSTEM_SUBMODULES) $(libsystem_ut_la_SOURCES); do \
+	for src in $(SYSTEM_SUBMODULES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \

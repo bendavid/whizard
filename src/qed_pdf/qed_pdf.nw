@@ -54,6 +54,8 @@ submodule (electron_pdfs) electron_pdfs_s
   use numeric_utils
   use sm_physics, only: Li2, zeta2, zeta3
 
+  implicit none
+
 contains
 
 <<Electron PDFs: procedures>>

@@ -321,6 +321,8 @@ submodule (diagnostics) diagnostics_s
   use string_utils, only: str
   use io_units
 
+  implicit none
+
 contains
 
 <<Diagnostics: procedures>>
@@ -2159,6 +2161,8 @@ submodule (os_interface) os_interface_s
 
 <<Use mpi f08>>
 
+  implicit none
+
 contains
 
 <<OS interface: procedures>>
@@ -3532,6 +3536,8 @@ submodule (formats) formats_s
   use io_units
   use diagnostics
 
+  implicit none
+
 contains
 
 <<Formats: procedures>>
@@ -4109,6 +4115,8 @@ submodule (cputime) cputime_s
 
   use io_units
   use diagnostics
+
+  implicit none
 
 contains
 

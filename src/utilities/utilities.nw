@@ -52,8 +52,10 @@ end module file_utils
 <<File header>>
 
 submodule (file_utils) file_utils_s
- 
+
   use io_units
+
+  implicit none
 
 contains
 
@@ -126,6 +128,8 @@ end module file_registries
 submodule (file_registries) file_registries_s
 
   use io_units
+
+  implicit none
 
 contains
 
@@ -440,6 +444,8 @@ end module string_utils
 <<File header>>
 
 submodule (string_utils) string_utils_s
+
+  implicit none
 
 contains
 
@@ -855,7 +861,9 @@ submodule (format_utils) format_utils_s
 
   use string_utils, only: lower_case
   use io_units, only: given_output_unit
-  
+
+  implicit none
+
 contains
 
 <<Format utils: procedures>>
@@ -1247,6 +1255,8 @@ submodule (numeric_utils) numeric_utils_s
   use string_utils
   use constants
   use format_defs
+
+  implicit none
 
 contains
 
@@ -1770,9 +1780,7 @@ larger module which deals with array manipulations.
 <<File header>>
 module binary_tree
 
-  implicit none
-
-  private
+<<Standard module head>>
 
 <<Binary trees: public>>
   
@@ -1795,6 +1803,8 @@ end module binary_tree
 submodule (binary_tree) binary_tree_s
 
   use io_units
+
+  implicit none
 
 contains
 
@@ -2534,9 +2544,7 @@ end subroutine binary_tree_1
 module array_list
 <<Use kinds>>
 
-  implicit none
-
-  private
+<<Standard module head>>
 
 <<Array list: public>>
 
@@ -2558,6 +2566,8 @@ submodule (array_list) array_list_s
 
   use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
   use io_units
+
+  implicit none
 
 contains
 
@@ -3165,9 +3175,7 @@ end subroutine array_list_1
 
 module queue
 
-  implicit none
-
-  private
+<<Standard module head>>
 
 <<Queue: public>>
 
@@ -3188,6 +3196,8 @@ end module queue
 submodule (queue) queue_s
 
   use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+  implicit none
 
 contains
 
@@ -3354,9 +3364,7 @@ end submodule queue_s
 <<File header>>
 module iterator
 
-  implicit none
-
-  private
+<<Standard module head>>
 
 <<Iterator: public>>
 
@@ -3376,6 +3384,8 @@ end module iterator
 submodule (iterator) iterator_s
 
   use, intrinsic :: iso_fortran_env, only: ERROR_UNIT
+
+  implicit none
 
 contains
 
