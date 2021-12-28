@@ -39,14 +39,21 @@ COMMON_F90 = \
   sorting.f90 \
   solver.f90
 MPI_F90 = \
-  grids.f90_mpi
+  grids.f90_mpi \
+  grids_sub.f90_mpi
 SERIAL_F90 = \
-  grids.f90_serial
-COMBINATORICS_SUBMODULES = \
+  grids.f90_serial \
+  grids_sub.f90_serial
+COMMON_SUBMODULES = \
   bytes_sub.f90 \
   hashes_sub.f90 \
   md5_sub.f90 \
-  permutations_sub.f90
+  permutations_sub.f90 \
+  sorting_sub.f90 \
+  solver_sub.f90
+COMBINATORICS_SUBMODULES = \
+  $(COMMON_SUBMODULES) \
+  grids_sub.f90
 
 COMBINATORICS_MODULES = \
   $(COMMON_F90) \
@@ -67,8 +74,12 @@ DISTCLEANFILES = grids.f90
 if FC_USE_MPI
 grids.f90: grids.f90_mpi
 	-cp -f $< $@
+grids_sub.f90: grids_sub.f90_mpi
+	-cp -f $< $@
 else
 grids.f90: grids.f90_serial
+	-cp -f $< $@
+grids_sub.f90: grids_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -163,6 +174,9 @@ bytes_sub.lo: bytes.lo
 hashes_sub.lo: hashes.lo
 md5_sub.lo: md5.lo
 permutations_sub.lo: permutations.lo
+sorting_sub.lo: sorting.lo
+solver_sub.lo: solver.lo
+grids_sub.lo: grids.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -199,7 +213,7 @@ combinatorics.stamp: $(PRELUDE) $(srcdir)/combinatorics.nw $(POSTLUDE)
 	for src in $(COMMON_F90) $(libcombinatorics_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
-	for src in $(COMBINATORICS_SUBMODULES); do \
+	for src in $(COMMON_SUBMODULES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
 	done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \
@@ -210,7 +224,7 @@ combinatorics.stamp: $(PRELUDE) $(srcdir)/combinatorics.nw $(POSTLUDE)
         done
 	@mv -f combinatorics.tmp combinatorics.stamp
 
-$(COMMON_F90) $(COMBINATORICS_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
+$(COMMON_F90) $(COMMON_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f combinatorics.stamp; \

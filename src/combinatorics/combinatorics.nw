@@ -65,6 +65,8 @@ submodule (bytes) bytes_s
 
   use io_units
 
+  implicit none
+
 contains
 
 <<Bytes: procedures>>
@@ -100,6 +102,7 @@ However, we interpret bytes as unsigned integers.
      module procedure set_byte_from_i8
   end interface
 @ %def =
+@
 <<Bytes: sub interfaces>>=
     module subroutine set_byte_from_i8 (b, i)
       type(byte_t), intent(out) :: b
@@ -189,6 +192,7 @@ distinguish between printing zeros and printing blanks.
      module procedure word32_set_from_byte
   end interface
 @ %def =
+@
 <<Bytes: sub interfaces>>=
     module subroutine word32_set_from_i32 (w, i)
       type(word32_t), intent(out) :: w
@@ -210,6 +214,7 @@ status.
      module procedure i32_from_word32
   end interface
 @ %def =
+@
 <<Bytes: sub interfaces>>=
     module subroutine i32_from_word32 (i, w)
       integer(i32), intent(out) :: i
@@ -418,6 +423,7 @@ $2^{32}$).  We assume that all operands are completely filled.
      module procedure word_shftc
   end interface
 @ %def not, ior, ieor, iand, ishftc
+@
 <<Bytes: sub interfaces>>=
     module function word_not (w1) result (w2)
       type(word32_t), intent(in) :: w1
@@ -574,6 +580,7 @@ integers are signed).  The order is low-word, high-word.
      module procedure word64_set_from_word32
   end interface
 @ %def =
+@
 <<Bytes: sub interfaces>>=
     module subroutine word64_set_from_i64 (ww, i)
       type(word64_t), intent(out) :: ww
@@ -735,6 +742,8 @@ end module hashes
 submodule (hashes) hashes_s
 
   use bytes
+
+  implicit none
 
 contains
 
@@ -1068,6 +1077,8 @@ submodule (md5) md5_s
   use system_defs, only: LF, EOR, EOF
   use io_units
   use diagnostics
+
+  implicit none
 
 <<MD5: variables>>
 
@@ -1801,6 +1812,8 @@ end module permutations
 
 submodule (permutations) permutations_s
 
+  implicit none
+
 <<Permutations: variables>>
 
 contains
@@ -2167,6 +2180,7 @@ still one point apart from the initial particles.
      module procedure decay_level_complement
   end interface
 @ %def decay_level
+@
 <<Permutations: sub interfaces>>=
     module function decay_level_complement (k, mask) result (l)
       integer(TC), intent(in) :: k, mask
@@ -2206,7 +2220,6 @@ arrays.
 module sorting
 
 <<Use kinds>>
-  use diagnostics
 
 <<Standard module head>>
 
@@ -2214,12 +2227,29 @@ module sorting
 
 <<Sorting: interfaces>>
 
+  interface
+<<Sorting: sub interfaces>>
+  end interface
+
+end module sorting
+@ %def sorting
+@
+<<[[sorting_sub.f90]]>>=
+<<File header>>
+
+submodule (sorting) sorting_s
+
+  use diagnostics
+
+  implicit none
+
 contains
 
 <<Sorting: procedures>>
 
-end module sorting
-@ %def sorting
+end submodule sorting_s
+
+@ %def sorting_s
 @
 \subsection{Implementation}
 The [[sort]] function returns, for a given integer or real array, the
@@ -2245,20 +2275,33 @@ identical absolute value, the positive number comes first.
 @ %def sort sort_abs
 @ This variant of integer sort returns
 @ The body is identical, just the interface differs.
+<<Sorting: sub interfaces>>=
+    module function sort_int (val_in) result (val)
+      integer, dimension(:), intent(in) :: val_in
+      integer, dimension(size(val_in)) :: val
+    end function sort_int
+    module function sort_real (val_in) result (val)
+      real(default), dimension(:), intent(in) :: val_in
+      real(default), dimension(size(val_in)) :: val
+    end function sort_real
+    module function sort_int_abs (val_in) result (val)
+      integer, dimension(:), intent(in) :: val_in
+      integer, dimension(size(val_in)) :: val
+    end function sort_int_abs
 <<Sorting: procedures>>=
-  function sort_int (val_in) result (val)
+  module function sort_int (val_in) result (val)
     integer, dimension(:), intent(in) :: val_in
     integer, dimension(size(val_in)) :: val
   <<Sorting: sort>>
   end function sort_int
 
-  function sort_real (val_in) result (val)
+  module function sort_real (val_in) result (val)
     real(default), dimension(:), intent(in) :: val_in
     real(default), dimension(size(val_in)) :: val
   <<Sorting: sort>>
   end function sort_real
 
-  function sort_int_abs (val_in) result (val)
+  module function sort_int_abs (val_in) result (val)
     integer, dimension(:), intent(in) :: val_in
     integer, dimension(size(val_in)) :: val
   <<Sorting: sort abs>>
@@ -2285,20 +2328,34 @@ array of indices of the elements sorted by increasing value.
   end interface
 
 @ %def order order_abs
+@
+<<Sorting: sub interfaces>>=
+    module function order_int (val) result (idx)
+      integer, dimension(:), intent(in) :: val
+      integer, dimension(size(val)) :: idx
+    end function order_int
+    module function order_real (val) result (idx)
+      real(default), dimension(:), intent(in) :: val
+      integer, dimension(size(val)) :: idx
+    end function order_real
+    module function order_int_abs (val) result (idx)
+      integer, dimension(:), intent(in) :: val
+      integer, dimension(size(val)) :: idx
+    end function order_int_abs
 <<Sorting: procedures>>=
-  function order_int (val) result (idx)
+  module function order_int (val) result (idx)
     integer, dimension(:), intent(in) :: val
     integer, dimension(size(val)) :: idx
   <<Sorting: order>>
   end function order_int
 
-  function order_real (val) result (idx)
+  module function order_real (val) result (idx)
     real(default), dimension(:), intent(in) :: val
     integer, dimension(size(val)) :: idx
   <<Sorting: order>>
   end function order_real
 
-  function order_int_abs (val) result (idx)
+  module function order_int_abs (val) result (idx)
     integer, dimension(:), intent(in) :: val
     integer, dimension(size(val)) :: idx
   <<Sorting: order abs>>
@@ -2351,8 +2408,25 @@ which is real or integer.
   end interface
 
 @ %def merge merge_abs
+@
+<<Sorting: sub interfaces>>=
+    module subroutine merge_int (res, src1, src2, val)
+      integer, dimension(:), intent(out) :: res
+      integer, dimension(:), intent(in) :: src1, src2
+      integer, dimension(:), intent(in) :: val
+    end subroutine merge_int
+    module subroutine merge_real (res, src1, src2, val)
+      integer, dimension(:), intent(out) :: res
+      integer, dimension(:), intent(in) :: src1, src2
+      real(default), dimension(:), intent(in) :: val
+    end subroutine merge_real
+    module subroutine merge_int_abs (res, src1, src2, val)
+      integer, dimension(:), intent(out) :: res
+      integer, dimension(:), intent(in) :: src1, src2
+      integer, dimension(:), intent(in) :: val
+    end subroutine merge_int_abs
 <<Sorting: procedures>>=
-  subroutine merge_int (res, src1, src2, val)
+  module subroutine merge_int (res, src1, src2, val)
     integer, dimension(:), intent(out) :: res
     integer, dimension(:), intent(in) :: src1, src2
     integer, dimension(:), intent(in) :: val
@@ -2360,7 +2434,7 @@ which is real or integer.
   <<Sorting: merge>>
   end subroutine merge_int
 
-  subroutine merge_real (res, src1, src2, val)
+  module subroutine merge_real (res, src1, src2, val)
     integer, dimension(:), intent(out) :: res
     integer, dimension(:), intent(in) :: src1, src2
     real(default), dimension(:), intent(in) :: val
@@ -2368,7 +2442,7 @@ which is real or integer.
   <<Sorting: merge>>
   end subroutine merge_real
 
-  subroutine merge_int_abs (res, src1, src2, val)
+  module subroutine merge_int_abs (res, src1, src2, val)
     integer, dimension(:), intent(out) :: res
     integer, dimension(:), intent(in) :: src1, src2
     integer, dimension(:), intent(in) :: val
@@ -2590,26 +2664,43 @@ end module sorting_uti
 module grids
 
 <<Use kinds>>
-  use constants, only: zero, one, tiny_07
-  use io_units
-  use format_defs, only: FMT_16
-  use diagnostics
 <<Use mpi f08>>
 
 <<Standard module head>>
 
 <<Grids: public>>
 
-<<Grids: parameters>>
-
 <<Grids: types>>
+
+  interface
+<<Grids: sub interfaces>>
+  end interface
+
+end module grids
+@ %def grids
+<<[[grids_sub.f90]]>>=
+<<File header>>
+
+submodule (grids) grids_s
+
+  use constants, only: zero, one, tiny_07
+  use io_units
+  use format_defs, only: FMT_16
+  use diagnostics
+<<Use mpi f08>>
+
+  implicit none
+
+<<Grids: parameters>>
 
 contains
 
 <<Grids: procedures>>
 
-end module grids
-@ %def grids
+end submodule grids_s
+
+@ %def grids_s
+@
 @ Grids are used in many applications and a general implementation seems
 useful.  The relevant properties implemented so far are
 \begin{itemize}
@@ -2655,8 +2746,13 @@ default number of points is used then for each dimension.
   generic :: init => init_base, init_simple
   procedure :: init_base => grid_init_base
   procedure :: init_simple => grid_init_simple
+<<Grids: sub interfaces>>=
+    pure module subroutine grid_init_base (grid, points)
+      class(grid_t), intent(inout) :: grid
+      integer, dimension(:), intent(in) :: points
+    end subroutine grid_init_base
 <<Grids: procedures>>=
-  pure subroutine grid_init_base (grid, points)
+  pure module subroutine grid_init_base (grid, points)
     class(grid_t), intent(inout) :: grid
     integer, dimension(:), intent(in) :: points
     allocate (grid%points (size (points)))
@@ -2666,8 +2762,14 @@ default number of points is used then for each dimension.
   end subroutine grid_init_base
 
 @ %def grid_init_base
+@
+<<Grids: sub interfaces>>=
+    pure module subroutine grid_init_simple (grid, dimensions)
+      class(grid_t), intent(inout) :: grid
+      integer, intent(in) :: dimensions
+    end subroutine grid_init_simple
 <<Grids: procedures>>=
-  pure subroutine grid_init_simple (grid, dimensions)
+  pure module subroutine grid_init_simple (grid, dimensions)
     class(grid_t), intent(inout) :: grid
     integer, intent(in) :: dimensions
     allocate (grid%points (dimensions))
@@ -2680,8 +2782,13 @@ default number of points is used then for each dimension.
 @ Manual assignment (tests)
 <<Grids: grid: TBP>>=
   procedure :: set_values => grid_set_values
+<<Grids: sub interfaces>>=
+    module subroutine grid_set_values (grid, values)
+      class(grid_t), intent(inout) :: grid
+      real(default), dimension(:), intent(in) :: values
+    end subroutine grid_set_values
 <<Grids: procedures>>=
-  subroutine grid_set_values (grid, values)
+  module subroutine grid_set_values (grid, values)
     class(grid_t), intent(inout) :: grid
     real(default), dimension(:), intent(in) :: values
     grid%values = values
@@ -2696,8 +2803,12 @@ default number of points is used then for each dimension.
 of scope as it will be done by Fortran automatically.
 <<Grids: grid: TBP>>=
   procedure :: final => grid_final
+<<Grids: sub interfaces>>=
+    pure module subroutine grid_final (grid)
+      class(grid_t), intent(inout) :: grid
+    end subroutine grid_final
 <<Grids: procedures>>=
-  pure subroutine grid_final (grid)
+  pure module subroutine grid_final (grid)
     class(grid_t), intent(inout) :: grid
     if (allocated (grid%values)) then
        deallocate (grid%values)
@@ -2721,8 +2832,14 @@ segment first.
   generic :: get_value => get_value_from_x, get_value_from_indices
   procedure :: get_value_from_x => grid_get_value_from_x
   procedure :: get_value_from_indices => grid_get_value_from_indices
+<<Grids: sub interfaces>>=
+    module function grid_get_value_from_indices (grid, indices)
+      real(default) :: grid_get_value_from_indices
+      class(grid_t), intent(in) :: grid
+      integer, dimension(:), intent(in) :: indices
+    end function grid_get_value_from_indices
 <<Grids: procedures>>=
-  function grid_get_value_from_indices (grid, indices)
+  module function grid_get_value_from_indices (grid, indices)
     real(default) :: grid_get_value_from_indices
     class(grid_t), intent(in) :: grid
     integer, dimension(:), intent(in) :: indices
@@ -2730,8 +2847,15 @@ segment first.
   end function grid_get_value_from_indices
 
 @ %def grid_get_value_from_indices
+@
+<<Grids: sub interfaces>>=
+    module function grid_get_value_from_x (grid, x)
+      real(default) :: grid_get_value_from_x
+      class(grid_t), intent(in) :: grid
+      real(default), dimension(:), intent(in) :: x
+    end function grid_get_value_from_x
 <<Grids: procedures>>=
-  function grid_get_value_from_x (grid, x)
+  module function grid_get_value_from_x (grid, x)
     real(default) :: grid_get_value_from_x
     class(grid_t), intent(in) :: grid
     real(default), dimension(:), intent(in) :: x
@@ -2746,24 +2870,31 @@ search, for fine grids one could also implement a binary search for
 $\mathcal{O}(\log{N})$ behavior instead of $\mathcal{O}({N})$.
 <<Grids: grid: TBP>>=
   procedure :: get_segment => grid_get_segment
+<<Grids: sub interfaces>>=
+    module function grid_get_segment (grid, x, unit) result (segment)
+      class(grid_t), intent(in) :: grid
+      real(default), dimension(:), intent(in) :: x
+      integer, intent(in), optional :: unit
+      integer, dimension(1:size (x)) :: segment
+    end function grid_get_segment
 <<Grids: procedures>>=
-  function grid_get_segment (grid, x, unit)
+  module function grid_get_segment (grid, x, unit) result (segment)
     class(grid_t), intent(in) :: grid
     real(default), dimension(:), intent(in) :: x
     integer, intent(in), optional :: unit
-    integer, dimension(1:size (x)) :: grid_get_segment
+    integer, dimension(1:size (x)) :: segment
     integer :: dim, i
     real(default) :: segment_width
-    grid_get_segment = 0
+    segment = 0
     do dim = 1, size (grid%points)
        segment_width = one / grid%points (dim)
        SEARCH: do i = 1, grid%points (dim)
           if (x (dim) <= i * segment_width + tiny_07) then
-             grid_get_segment (dim) = i
+             segment (dim) = i
              exit SEARCH
           end if
        end do SEARCH
-       if (grid_get_segment (dim) == 0) then
+       if (segment (dim) == 0) then
           do i = 1, size(x)
              write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
                   "x[i] = ", x(i)
@@ -2786,8 +2917,14 @@ like hashing could be implemented.
 \end{align}
 <<Grids: grid: TBP>>=
   procedure :: get_index => grid_get_index
+<<Grids: sub interfaces>>=
+    pure module function grid_get_index (grid, indices) result (grid_index)
+      integer :: grid_index
+      class(grid_t), intent(in) :: grid
+      integer, dimension(:), intent(in) :: indices
+    end function grid_get_index
 <<Grids: procedures>>=
-  pure function grid_get_index (grid, indices) result (grid_index)
+  pure module function grid_get_index (grid, indices) result (grid_index)
     integer :: grid_index
     class(grid_t), intent(in) :: grid
     integer, dimension(:), intent(in) :: indices
@@ -2810,8 +2947,14 @@ the grids, such that the stepwise function $f$ defined by the grid is
 $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 <<Grids: grid: TBP>>=
   procedure :: update_maxima => grid_update_maxima
+<<Grids: sub interfaces>>=
+    module subroutine grid_update_maxima (grid, x, y)
+      class(grid_t), intent(inout) :: grid
+      real(default), dimension(:), intent(in) :: x
+      real(default), intent(in) :: y
+    end subroutine grid_update_maxima
 <<Grids: procedures>>=
-  subroutine grid_update_maxima (grid, x, y)
+  module subroutine grid_update_maxima (grid, x, y)
     class(grid_t), intent(inout) :: grid
     real(default), dimension(:), intent(in) :: x
     real(default), intent(in) :: y
@@ -2827,8 +2970,14 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 \emph{This is inefficient and non-general}.
 <<Grids: grid: TBP>>=
   procedure :: get_maximum_in_3d => grid_get_maximum_in_3d
+<<Grids: sub interfaces>>=
+    module function grid_get_maximum_in_3d (grid, projected_index) result (maximum)
+      real(default) :: maximum
+      class(grid_t), intent(in) :: grid
+      integer, intent(in) :: projected_index
+    end function grid_get_maximum_in_3d
 <<Grids: procedures>>=
-  function grid_get_maximum_in_3d (grid, projected_index) result (maximum)
+  module function grid_get_maximum_in_3d (grid, projected_index) result (maximum)
     real(default) :: maximum
     class(grid_t), intent(in) :: grid
     integer, intent(in) :: projected_index
@@ -2850,8 +2999,13 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 @
 <<Grids: grid: TBP>>=
   procedure :: is_non_zero_everywhere => grid_is_non_zero_everywhere
+<<Grids: sub interfaces>>=
+    pure module function grid_is_non_zero_everywhere (grid) result (yorn)
+      logical :: yorn
+      class(grid_t), intent(in) :: grid
+    end function grid_is_non_zero_everywhere
 <<Grids: procedures>>=
-  pure function grid_is_non_zero_everywhere (grid) result (yorn)
+  pure module function grid_is_non_zero_everywhere (grid) result (yorn)
     logical :: yorn
     class(grid_t), intent(in) :: grid
     yorn = all (abs (grid%values) > zero)
@@ -2862,8 +3016,13 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 We need this to determine whether the grid has been filled during integration.
 <<Grids: grid: TBP>>=
   procedure :: has_non_zero_entries => grid_has_non_zero_entries
+<<Grids: sub interfaces>>=
+    pure module function grid_has_non_zero_entries (grid) result (non_zero)
+      logical :: non_zero
+      class(grid_t), intent(in) :: grid
+    end function grid_has_non_zero_entries
 <<Grids: procedures>>=
-  pure function grid_has_non_zero_entries (grid) result (non_zero)
+  pure module function grid_has_non_zero_entries (grid) result (non_zero)
     logical :: non_zero
     class(grid_t), intent(in) :: grid
     non_zero = any (abs (grid%values) > zero)
@@ -2874,8 +3033,13 @@ We need this to determine whether the grid has been filled during integration.
 The operator has to be specified. We do not check on any specifications.
 <<MPI: Grids: grid: TBP>>=
   procedure :: mpi_reduce => grid_mpi_reduce
+<<MPI: Grids: sub interfaces>>=
+    module subroutine grid_mpi_reduce (grid, operator)
+      class(grid_t), intent(inout) :: grid
+      type(MPI_op), intent(in) :: operator
+    end subroutine grid_mpi_reduce
 <<MPI: Grids: procedures>>=
-  subroutine grid_mpi_reduce (grid, operator)
+  module subroutine grid_mpi_reduce (grid, operator)
     class(grid_t), intent(inout) :: grid
     type(MPI_op), intent(in) :: operator
     real(default), dimension(size (grid%values)) :: root_values
@@ -2893,8 +3057,13 @@ The operator has to be specified. We do not check on any specifications.
 
 <<Grids: grid: TBP>>=
   procedure :: write => grid_write
+<<Grids: sub interfaces>>=
+    module subroutine grid_write (grid, unit)
+      class(grid_t), intent(in) :: grid
+      integer, intent(in), optional :: unit
+    end subroutine grid_write
 <<Grids: procedures>>=
-  subroutine grid_write (grid, unit)
+  module subroutine grid_write (grid, unit)
     class(grid_t), intent(in) :: grid
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -2923,8 +3092,13 @@ The operator has to be specified. We do not check on any specifications.
 <<Grids: grid: TBP>>=
   procedure :: compute_and_write_mean_and_max => &
        grid_compute_and_write_mean_and_max
+<<Grids: sub interfaces>>=
+    module subroutine grid_compute_and_write_mean_and_max (grid, unit)
+      class(grid_t), intent(in) :: grid
+      integer, intent(in), optional :: unit
+    end subroutine grid_compute_and_write_mean_and_max
 <<Grids: procedures>>=
-  subroutine grid_compute_and_write_mean_and_max (grid, unit)
+  module subroutine grid_compute_and_write_mean_and_max (grid, unit)
     class(grid_t), intent(in) :: grid
     integer, intent(in), optional :: unit
     integer :: u, i, n_values
@@ -2961,8 +3135,13 @@ The operator has to be specified. We do not check on any specifications.
 @
 <<Grids: grid: TBP>>=
   procedure :: save_to_file => grid_save_to_file
+<<Grids: sub interfaces>>=
+    module subroutine grid_save_to_file (grid, file)
+      class(grid_t), intent(in) :: grid
+      character(len=*), intent(in) :: file
+    end subroutine grid_save_to_file
 <<Grids: procedures>>=
-  subroutine grid_save_to_file (grid, file)
+  module subroutine grid_save_to_file (grid, file)
     class(grid_t), intent(in) :: grid
     character(len=*), intent(in) :: file
     integer :: iostat, u, i
@@ -2997,8 +3176,14 @@ The operator has to be specified. We do not check on any specifications.
 @
 <<Grids: public>>=
   public :: verify_points_for_grid
+<<Grids: sub interfaces>>=
+    module function verify_points_for_grid (file, points) result (valid)
+      logical :: valid
+      character(len=*), intent(in) :: file
+      integer, dimension(:), intent(in) :: points
+    end function verify_points_for_grid
 <<Grids: procedures>>=
-  function verify_points_for_grid (file, points) result (valid)
+  module function verify_points_for_grid (file, points) result (valid)
     logical :: valid
     character(len=*), intent(in) :: file
     integer, dimension(:), intent(in) :: points
@@ -3042,8 +3227,13 @@ first two lines. The caller has to close it. Furthermore, we return
 @
 <<Grids: grid: TBP>>=
   procedure :: load_from_file => grid_load_from_file
+<<Grids: sub interfaces>>=
+    module subroutine grid_load_from_file (grid, file)
+      class(grid_t), intent(out) :: grid
+      character(len=*), intent(in) :: file
+    end subroutine grid_load_from_file
 <<Grids: procedures>>=
-  subroutine grid_load_from_file (grid, file)
+  module subroutine grid_load_from_file (grid, file)
     class(grid_t), intent(out) :: grid
     character(len=*), intent(in) :: file
     integer :: iostat, u, i
@@ -3355,29 +3545,45 @@ module solver
 
 <<Use kinds>>
   use constants, only: tiny_10
-  use numeric_utils
-  use diagnostics
 
 <<Standard module head>>
 
-<<solver: public>>
+<<Solver: public>>
 
-<<solver: parameters>>
+<<Solver: parameters>>
 
-<<solver: types>>
+<<Solver: types>>
 
-<<solver: interfaces>>
+<<Solver: interfaces>>
 
-contains
-
-<<solver: procedures>>
+  interface
+<<Solver: sub interfaces>>
+  end interface
 
 end module solver
 @ %def solver
 @
-<<solver: public>>=
+<<[[solver_sub.f90]]>>=
+<<File header>>
+
+submodule (solver) solver_s
+
+  use numeric_utils
+  use diagnostics
+
+  implicit none
+
+contains
+
+<<Solver: procedures>>
+
+end submodule solver_s
+
+@ %def solver_s
+@
+<<Solver: public>>=
   public :: solver_function_t
-<<solver: types>>=
+<<Solver: types>>=
   type, abstract :: solver_function_t
   contains
     procedure(solver_function_evaluate), deferred :: evaluate
@@ -3385,7 +3591,7 @@ end module solver
 
 @ %def solver_function_t
 @
-<<solver: interfaces>>=
+<<Solver: interfaces>>=
   abstract interface
      function solver_function_evaluate (solver_f, x) result (f)
        import
@@ -3397,10 +3603,20 @@ end module solver
 
 @ %def solver_function_evaluate
 @
-<<solver: public>>=
+<<Solver: public>>=
   public :: solve_secant
-<<solver: procedures>>=
-  function solve_secant (func, lower_start, upper_start, success, precision) result (x0)
+<<Solver: sub interfaces>>=
+    module function solve_secant &
+         (func, lower_start, upper_start, success, precision) result (x0)
+      class(solver_function_t), intent(in) :: func
+      real(default) :: x0
+      real(default), intent(in) :: lower_start, upper_start
+      real(default), intent(in), optional :: precision
+      logical, intent(out) :: success
+    end function solve_secant
+<<Solver: procedures>>=
+  module function solve_secant &
+       (func, lower_start, upper_start, success, precision) result (x0)
     class(solver_function_t), intent(in) :: func
     real(default) :: x0
     real(default), intent(in) :: lower_start, upper_start
@@ -3447,11 +3663,20 @@ end if
 @
 @ Implements the bisection root-finding method to find a root of [[func]]
 between [[lower_start]] and [[upper_start]] with tolerance [[precision]].
-<<solver: public>>=
+<<Solver: public>>=
   public :: solve_interval
-<<solver: procedures>>=
-  function solve_interval (func, lower_start, upper_start, success, precision) &
-                                                           result (x0)
+<<Solver: sub interfaces>>=
+    module function solve_interval &
+         (func, lower_start, upper_start, success, precision) result (x0)
+      class(solver_function_t), intent(in) :: func
+      real(default) :: x0
+      real(default), intent(in) :: lower_start, upper_start
+      real(default), intent(in), optional :: precision
+      logical, intent(out) :: success
+    end function solve_interval
+<<Solver: procedures>>=
+  module function solve_interval &
+       (func, lower_start, upper_start, success, precision) result (x0)
     class(solver_function_t), intent(in) :: func
     real(default) :: x0
     real(default), intent(in) :: lower_start, upper_start
@@ -3510,10 +3735,16 @@ between [[lower_start]] and [[upper_start]] with tolerance [[precision]].
 
 @ %def solve_interval
 @
-<<solver: public>>=
+<<Solver: public>>=
   public :: solve_qgaus
-<<solver: procedures>>=
-  function solve_qgaus (integrand, grid) result (integral)
+<<Solver: sub interfaces>>=
+    module function solve_qgaus (integrand, grid) result (integral)
+      class(solver_function_t), intent(in) :: integrand
+      complex(default) :: integral
+      real(default), dimension(:), intent(in) :: grid
+    end function solve_qgaus
+<<Solver: procedures>>=
+  module function solve_qgaus (integrand, grid) result (integral)
     class(solver_function_t), intent(in) :: integrand
     complex(default) :: integral
     real(default), dimension(:), intent(in) :: grid
@@ -3542,11 +3773,11 @@ between [[lower_start]] and [[upper_start]] with tolerance [[precision]].
 
 @ %def solve_qgaus
 @
-<<solver: parameters>>=
+<<Solver: parameters>>=
   real(default), parameter, public :: DEFAULT_PRECISION = tiny_10
 @ %def name
 @
-<<solver: parameters>>=
+<<Solver: parameters>>=
   integer, parameter :: MAX_TRIES = 10000
 @ %def MAX_TRIES
 @
@@ -3561,11 +3792,11 @@ module solver_ut
 
 <<Standard module head>>
 
-<<solver: public test>>
+<<Solver: public test>>
 
 contains
 
-<<solver: test driver>>
+<<Solver: test driver>>
 
 end module solver_ut
 @ %def solver_ut
@@ -3583,32 +3814,32 @@ module solver_uti
 
 <<Standard module head>>
 
-<<solver: test declarations>>
+<<Solver: test declarations>>
 
-<<solver: test types>>
+<<Solver: test types>>
 
 contains
 
-<<solver: tests>>
+<<Solver: tests>>
 
-<<solver: test auxiliary>>
+<<Solver: test auxiliary>>
 
 end module solver_uti
 @ %def solver_ut
 @ API: driver for the unit tests below.
-<<solver: public test>>=
+<<Solver: public test>>=
   public :: solver_test
-<<solver: test driver>>=
+<<Solver: test driver>>=
   subroutine solver_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<solver: execute tests>>
+  <<Solver: execute tests>>
   end subroutine solver_test
 
 @ %def solver_test
 @
 \subsubsection{Test functions}
-<<solver: test types>>=
+<<Solver: test types>>=
   type, extends (solver_function_t) :: test_function_1_t
   contains
     procedure :: evaluate => test_func_1
@@ -3616,7 +3847,7 @@ end module solver_uti
 
 @ %def test_function_1_t
 @
-<<solver: test types>>=
+<<Solver: test types>>=
   type, extends (solver_function_t) :: test_function_2_t
   contains
     procedure :: evaluate => test_func_2
@@ -3624,7 +3855,7 @@ end module solver_uti
 
 @ %def test_function_2_t
 @
-<<solver: test types>>=
+<<Solver: test types>>=
   type, extends (solver_function_t) :: test_function_3_t
   contains
     procedure :: evaluate => test_func_3
@@ -3632,7 +3863,7 @@ end module solver_uti
 
 @ %def test_function_3_t
 @
-<<solver: test types>>=
+<<Solver: test types>>=
   type, extends (solver_function_t) :: test_function_4_t
   contains
     procedure :: evaluate => test_func_4
@@ -3640,7 +3871,7 @@ end module solver_uti
 
 @ %def test_function_4_t
 @
-<<solver: test auxiliary>>=
+<<Solver: test auxiliary>>=
   function test_func_1 (solver_f, x) result (f)
     complex(default) :: f
     class(test_function_1_t), intent(in) :: solver_f
@@ -3681,12 +3912,12 @@ end module solver_uti
 @ %def test_func_1
 @
 \subsubsection{Solve trivial functions}
-<<solver: execute tests>>=
+<<Solver: execute tests>>=
   call test(solver_1, "solver_1", &
             "Solve trivial functions", u, results)
-<<solver: test declarations>>=
+<<Solver: test declarations>>=
   public :: solver_1
-<<solver: tests>>=
+<<Solver: tests>>=
   subroutine solver_1 (u)
     integer, intent(in) :: u
     real(default) :: zero_position
