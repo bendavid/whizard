@@ -71,7 +71,7 @@ execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
   ${UTILITIES_MODULES:.f90=.$(FCMOD)}
 
-#Submodules must not be included here
+# Submodules must not be included here
 # Dump module names into file Modules
 libutilities_Modules = ${UTILITIES_MODULES:.f90=} ${libutilities_ut_la_SOURCES:.f90=}
 Modules: Makefile

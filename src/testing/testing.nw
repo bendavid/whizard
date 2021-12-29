@@ -21,24 +21,40 @@ signal failure and write the output to a file.
 module unit_tests
 
 <<Use strings>>
-  use io_units
 
 <<Standard module head>>
 
 <<Tests: public>>
 
-<<Tests: parameters>>
-
 <<Tests: types>>
 
 <<Tests: interfaces>>
+
+  interface
+<<Tests: sub interfaces>>
+  end interface
+
+end module unit_tests
+@ %def unit_tests
+@
+<<[[unit_tests_sub.f90]]>>=
+<<File header>>
+
+submodule (unit_tests) unit_tests_s
+
+  use io_units
+
+  implicit none
+
+<<Tests: parameters>>
 
 contains
 
 <<Tests: procedures>>
 
-end module unit_tests
-@ %def unit_tests
+end submodule unit_tests_s
+
+@ %def unit_tests_s
 @
 \subsection{Parameters}
 Building blocks of file names.  The directory names and suffixes are
@@ -80,8 +96,15 @@ Here is the entry:
 @ Add a test result.
 <<Tests: test results: TBP>>=
   procedure :: add => test_results_add
+<<Tests: sub interfaces>>=
+    module subroutine test_results_add (list, name, description, success)
+      class(test_results_t), intent(inout) :: list
+      character(len=*), intent(in) :: name
+      character(len=*), intent(in) :: description
+      logical, intent(in) :: success
+    end subroutine test_results_add
 <<Tests: procedures>>=
-  subroutine test_results_add (list, name, description, success)
+  module subroutine test_results_add (list, name, description, success)
     class(test_results_t), intent(inout) :: list
     character(len=*), intent(in) :: name
     character(len=*), intent(in) :: description
@@ -108,8 +131,13 @@ Here is the entry:
 @ Display the current state.
 <<Tests: test results: TBP>>=
   procedure, private :: write => test_results_write
+<<Tests: sub interfaces>>=
+    module subroutine test_results_write (list, u)
+      class(test_results_t), intent(in) :: list
+      integer, intent(in) :: u
+    end subroutine test_results_write
 <<Tests: procedures>>=
-  subroutine test_results_write (list, u)
+  module subroutine test_results_write (list, u)
     class(test_results_t), intent(in) :: list
     integer, intent(in) :: u
     type(test_result_t), pointer :: result
@@ -142,8 +170,13 @@ Here is the entry:
 @ Return true if all tests were successful (or no test).
 <<Tests: test results: TBP>>=
   procedure, private :: report => test_results_report
+<<Tests: sub interfaces>>=
+    module subroutine test_results_report (list, success)
+      class(test_results_t), intent(in) :: list
+      logical, intent(out) :: success
+    end subroutine test_results_report
 <<Tests: procedures>>=
-  subroutine test_results_report (list, success)
+  module subroutine test_results_report (list, success)
     class(test_results_t), intent(in) :: list
     logical, intent(out) :: success
     success = list%n_failure == 0
@@ -155,20 +188,33 @@ Here is the entry:
   procedure :: get_n_pass => test_results_get_n_pass
   procedure :: get_n_fail => test_results_get_n_fail
   procedure :: get_n_total => test_results_get_n_total
+<<Tests: sub interfaces>>=
+    module function test_results_get_n_pass (list) result (n)
+      class(test_results_t), intent(in) :: list
+      integer :: n
+    end function test_results_get_n_pass
+    module function test_results_get_n_fail (list) result (n)
+      class(test_results_t), intent(in) :: list
+      integer :: n
+    end function test_results_get_n_fail
+    module function test_results_get_n_total (list) result (n)
+      class(test_results_t), intent(in) :: list
+      integer :: n
+    end function test_results_get_n_total
 <<Tests: procedures>>=
-  function test_results_get_n_pass (list) result (n)
+  module function test_results_get_n_pass (list) result (n)
     class(test_results_t), intent(in) :: list
     integer :: n
     n = list%n_success
   end function test_results_get_n_pass
 
-  function test_results_get_n_fail (list) result (n)
+  module function test_results_get_n_fail (list) result (n)
     class(test_results_t), intent(in) :: list
     integer :: n
     n = list%n_failure
   end function test_results_get_n_fail
 
-  function test_results_get_n_total (list) result (n)
+  module function test_results_get_n_total (list) result (n)
     class(test_results_t), intent(in) :: list
     integer :: n
     n = list%n_success + list%n_failure
@@ -180,8 +226,12 @@ Here is the entry:
 @ Delete the list.
 <<Tests: test results: TBP>>=
   procedure, private :: final => test_results_final
+<<Tests: sub interfaces>>=
+    module subroutine test_results_final (list)
+      class(test_results_t), intent(inout) :: list
+    end subroutine test_results_final
 <<Tests: procedures>>=
-  subroutine test_results_final (list)
+  module subroutine test_results_final (list)
     class(test_results_t), intent(inout) :: list
     type(test_result_t), pointer :: result
     do while (associated (list%first))
@@ -201,8 +251,14 @@ This will write results, report status, and finalize.  This is the
 only method which we need to access from outside.
 <<Tests: test results: TBP>>=
   procedure :: wrapup => test_results_wrapup
+<<Tests: sub interfaces>>=
+    module subroutine test_results_wrapup (list, u, success)
+      class(test_results_t), intent(inout) :: list
+      integer, intent(in) :: u
+      logical, intent(out), optional :: success
+    end subroutine test_results_wrapup
 <<Tests: procedures>>=
-  subroutine test_results_wrapup (list, u, success)
+  module subroutine test_results_wrapup (list, u, success)
     class(test_results_t), intent(inout) :: list
     integer, intent(in) :: u
     logical, intent(out), optional :: success
@@ -241,8 +297,16 @@ on any fatal error, if the runtime system does allow it.
 This is not normal behavior, but should be useful if something goes wrong.
 <<Tests: public>>=
   public :: test
+<<Tests: sub interfaces>>=
+    module subroutine test (test_proc, name, description, u_log, results)
+      procedure(unit_test) :: test_proc
+      character(*), intent(in) :: name
+      character(*), intent(in) :: description
+      integer, intent(in) :: u_log
+      type(test_results_t), intent(inout) :: results
+    end subroutine test
 <<Tests: procedures>>=
-  subroutine test (test_proc, name, description, u_log, results)
+  module subroutine test (test_proc, name, description, u_log, results)
     procedure(unit_test) :: test_proc
     character(*), intent(in) :: name
     character(*), intent(in) :: description
@@ -270,8 +334,13 @@ This is not normal behavior, but should be useful if something goes wrong.
 re-use in external test programs.
 <<Tests: public>>=
   public :: start_test
+<<Tests: sub interfaces>>=
+    module subroutine start_test (u_log, name)
+      integer, intent(in) :: u_log
+      character(*), intent(in) :: name
+    end subroutine start_test
 <<Tests: procedures>>=
-  subroutine start_test (u_log, name)
+  module subroutine start_test (u_log, name)
     integer, intent(in) :: u_log
     character(*), intent(in) :: name
 
@@ -285,8 +354,15 @@ re-use in external test programs.
 failure, copy the test results to an error file. 
 <<Tests: public>>=
   public :: compare_test_results
+<<Tests: sub interfaces>>=
+    module subroutine compare_test_results (u_test, u_log, name, success)
+      integer, intent(in) :: u_test
+      integer, intent(in) :: u_log
+      character(*), intent(in) :: name
+      logical, intent(out) :: success
+    end subroutine compare_test_results
 <<Tests: procedures>>=
-  subroutine compare_test_results (u_test, u_log, name, success)
+  module subroutine compare_test_results (u_test, u_log, name, success)
     integer, intent(in) :: u_test
     integer, intent(in) :: u_log
     character(*), intent(in) :: name

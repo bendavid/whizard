@@ -31,7 +31,13 @@
 noinst_LTLIBRARIES = libtesting.la
 
 libtesting_la_SOURCES = \
+  $(TESTING_MODULES) \
+  $(TESTING_SUBMODULES)
+
+TESTING_MODULES = \
   unit_tests.f90
+TESTING_SUBMODULES = \
+  unit_tests_sub.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = testing.nw
@@ -40,10 +46,11 @@ dist_noinst_DATA = testing.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libtesting_la_SOURCES:.f90=.$(FCMOD)}
+  ${TESTING_MODULES:.f90=.$(FCMOD)}
 
+# Submodules must not be included here
 # Dump module names into file Modules
-libtesting_Modules = ${libtesting_la_SOURCES:.f90=}
+libtesting_Modules = ${TESTING_MODULES:.f90=}
 Modules: Makefile
 	@for module in $(libtesting_Modules); do \
           echo $$module >> $@.new; \
@@ -104,6 +111,9 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../system
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+unit_tests_sub.lo: unit_tests.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -171,7 +181,7 @@ clean-local: clean-noweb
 	-rm -f testing.stamp testing.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

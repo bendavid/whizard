@@ -31,9 +31,16 @@
 
 noinst_LTLIBRARIES = libpdf_builtin.la
 
+PDF_MODULES = \
+  cteq6pdf.f90 mrst2004qed.f90 mstwpdf.f90 ct10pdf.f90 \
+  CJpdf.f90 ct14pdf.f90 ct18pdf.f90 pdf_builtin.f90
+
+PDF_SUBMODULES = \
+  pdf_builtin_sub.f90
+
 libpdf_builtin_la_SOURCES = \
-	cteq6pdf.f90 pdf_builtin.f90 mrst2004qed.f90 mstwpdf.f90 \
-	ct10pdf.f90 CJpdf.f90 ct14pdf.f90 ct18pdf.f90
+  $(PDF_MODULES) \
+  $(PDF_SUBMODULES)
 
 $(libpdf_builtin_la_OBJECTS): \
 	../basics/kinds.$(FCMOD) \
@@ -63,6 +70,10 @@ SUFFIXES = .lo .$(FCMOD)
 #       touch $@
 
 AM_FCFLAGS = -I../basics -I../utilities -I../system
+
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+pdf_builtin_sub.lo: pdf_builtin.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -103,7 +114,7 @@ ct18pdf.$(FCMOD): ct18pdf.lo
 clean-local:
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

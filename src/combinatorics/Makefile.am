@@ -98,7 +98,7 @@ execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
   ${COMBINAROTICS_MODULES:.f90=.$(FCMOD)}
 
-#Submodules must not be included here
+# Submodules must not be included here
 libcombinatorics_Modules = \
   ${COMBINATORICS_MODULES:.f90=} \
   ${libcombinatorics_ut_la_SOURCES:.f90=}
