@@ -32,11 +32,22 @@ noinst_LTLIBRARIES = libparsing.la
 check_LTLIBRARIES = libparsing_ut.la
 
 libparsing_la_SOURCES = \
+  $(PARSING_MODULES) \
+  $(PARSING_SUBMODULES)
+
+PARSING_MODULES = \
   ifiles.f90 \
   lexers.f90 \
   syntax_rules.f90 \
   parser.f90 \
   xml.f90
+
+PARSING_SUBMODULES = \
+  ifiles_sub.f90 \
+  lexers_sub.f90 \
+  syntax_rules_sub.f90 \
+  parser_sub.f90 \
+  xml_sub.f90
 
 libparsing_ut_la_SOURCES = \
   lexers_uti.f90 lexers_ut.f90 \
@@ -50,10 +61,11 @@ dist_noinst_DATA = parsing.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libparsing_la_SOURCES:.f90=.$(FCMOD)}
+  ${PARSING_MODULES:.f90=.$(FCMOD)}
 
+# Submodules must not be included here
 libparsing_Modules = \
-  ${libparsing_la_SOURCES:.f90=} \
+  ${PARSING_MODULES:.f90=} \
   ${libparsing_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libparsing_Modules); do \
@@ -119,6 +131,13 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+ifiles_sub.lo: ifiles.lo
+lexers_sub.lo: lexers.lo
+syntax_rules_sub.lo: syntax_rules.lo
+parser_sub.lo: parser.lo
+xml_sub.lo: xml.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -186,7 +205,7 @@ clean-local: clean-noweb
 	-rm -f parsing.stamp parsing.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
