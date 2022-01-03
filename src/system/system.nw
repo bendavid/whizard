@@ -1894,43 +1894,6 @@ with this, therefore temporarily disable it.
 
 @ %def cmplx2string cmplx2char
 @
-\subsection{Suppression of numerical noise}
-<<Diagnostics: public>>=
-  public :: pacify
-<<Diagnostics: interfaces>>=
-  interface pacify
-     module procedure pacify_real_default
-     module procedure pacify_complex_default
-  end interface pacify
-
-<<Diagnostics: sub interfaces>>=
-    elemental module subroutine pacify_real_default (x, tolerance)
-      real(default), intent(inout) :: x
-      real(default), intent(in) :: tolerance
-    end subroutine pacify_real_default
-
-    elemental module subroutine pacify_complex_default (x, tolerance)
-      complex(default), intent(inout) :: x
-      real(default), intent(in) :: tolerance
-    end subroutine pacify_complex_default
-<<Diagnostics: procedures>>=
-  elemental module subroutine pacify_real_default (x, tolerance)
-    real(default), intent(inout) :: x
-    real(default), intent(in) :: tolerance
-    if (abs (x) < tolerance)  x = 0._default
-  end subroutine pacify_real_default
-
-  elemental module subroutine pacify_complex_default (x, tolerance)
-    complex(default), intent(inout) :: x
-    real(default), intent(in) :: tolerance
-    if (abs (real (x)) < tolerance)   &
-         x = cmplx (0._default, aimag (x), kind=default)
-    if (abs (aimag (x)) < tolerance)  &
-         x = cmplx (real (x), 0._default, kind=default)
-  end subroutine pacify_complex_default
-
-@ %def pacify
-@
 \subsection{Signal handling}
 Killing the program by external signals may leave the files written by it in
 an undefined state.  This can be avoided by catching signals and deferring

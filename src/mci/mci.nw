@@ -2935,6 +2935,7 @@ module integration_results
   use io_units
   use format_utils, only: mp_format, pac_fmt
   use format_defs, only: FMT_10, FMT_14
+  use numeric_utils, only: pacify
   use diagnostics
   use md5
   use os_interface

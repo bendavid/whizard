@@ -3045,6 +3045,7 @@ module subevents
   use io_units
   use format_defs, only: FMT_14, FMT_19
   use format_utils, only: pac_fmt
+  use numeric_utils, only: pacify
   use physics_defs
   use sorting
   use c_particles

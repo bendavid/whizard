@@ -33,6 +33,10 @@ noinst_LTLIBRARIES = libphysics.la
 check_LTLIBRARIES = libphysics_ut.la
 
 libphysics_la_SOURCES = \
+  $(PHYSICS_MODULES) \
+  $(PHYSICS_SUBMODULES)
+
+PHYSICS_MODULES = \
   physics_defs.f90 \
   c_particles.f90 \
   lorentz.f90 \
@@ -41,6 +45,16 @@ libphysics_la_SOURCES = \
   sm_qcd.f90 \
   sm_qed.f90 \
   shower_algorithms.f90
+
+PHYSICS_SUBMODULES = \
+  physics_defs_sub.f90 \
+  c_particles_sub.f90 \
+  lorentz_sub.f90 \
+  phs_points_sub.f90 \
+  sm_physics_sub.f90 \
+  sm_qcd_sub.f90 \
+  sm_qed_sub.f90 \
+  shower_algorithms_sub.f90
 
 libphysics_ut_la_SOURCES = \
   sm_physics_uti.f90 sm_physics_ut.f90 \
@@ -55,10 +69,11 @@ dist_noinst_DATA = physics.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libphysics_la_SOURCES:.f90=.$(FCMOD)}
+  ${PHYSICS_MODULES:.f90=.$(FCMOD)}
 
+# Submodules must not be included here
 libphysics_Modules = \
-  ${libphysics_la_SOURCES:.f90=} \
+  ${PHYSICS_MODULES:.f90=} \
   ${libphysics_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libphysics_Modules); do \
@@ -124,6 +139,16 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+physics_defs_sub.lo: physics_defs.lo
+c_particles_sub.lo: c_particles.lo
+lorentz_sub.lo: lorentz.lo
+phs_points_sub.lo: phs_points.lo
+sm_physics_sub.lo: sm_physics.lo
+sm_qcd_sub.lo: sm_qcd.lo
+sm_qed_sub.lo: sm_qed.lo
+shower_algorithms_sub.lo: shower_algorithms.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -191,7 +216,7 @@ clean-local: clean-noweb
 	-rm -f physics.stamp physics.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

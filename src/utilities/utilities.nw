@@ -1773,6 +1773,43 @@ larger module which deals with array manipulations.
 
 @ %def split_array
 @
+\subsection{Suppression of numerical noise}
+<<Numeric utils: public>>=
+  public :: pacify
+<<Numeric utils: interfaces>>=
+  interface pacify
+     module procedure pacify_real_default
+     module procedure pacify_complex_default
+  end interface pacify
+
+<<Numeric utils: sub interfaces>>=
+    elemental module subroutine pacify_real_default (x, tolerance)
+      real(default), intent(inout) :: x
+      real(default), intent(in) :: tolerance
+    end subroutine pacify_real_default
+
+    elemental module subroutine pacify_complex_default (x, tolerance)
+      complex(default), intent(inout) :: x
+      real(default), intent(in) :: tolerance
+    end subroutine pacify_complex_default
+<<Numeric utils: procedures>>=
+  elemental module subroutine pacify_real_default (x, tolerance)
+    real(default), intent(inout) :: x
+    real(default), intent(in) :: tolerance
+    if (abs (x) < tolerance)  x = 0._default
+  end subroutine pacify_real_default
+
+  elemental module subroutine pacify_complex_default (x, tolerance)
+    complex(default), intent(inout) :: x
+    real(default), intent(in) :: tolerance
+    if (abs (real (x)) < tolerance)   &
+         x = cmplx (0._default, aimag (x), kind=default)
+    if (abs (aimag (x)) < tolerance)  &
+         x = cmplx (real (x), 0._default, kind=default)
+  end subroutine pacify_complex_default
+
+@ %def pacify
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Binary Tree}
 

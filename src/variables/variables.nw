@@ -39,6 +39,7 @@ module variables
 <<Use kinds>>
 <<Use strings>>
   use io_units
+  use numeric_utils, only: pacify
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_12, FMT_19
   use constants, only: eps0

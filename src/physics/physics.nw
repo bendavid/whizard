@@ -48,12 +48,27 @@ module physics_defs
 
 <<Physics defs: interfaces>>
 
+  interface
+<<Physics defs: sub interfaces>>
+  end interface
+
+end module physics_defs
+@ %def physics_defs
+@
+<<[[physics_defs_sub.f90]]>>=
+<<File header>>
+
+submodule (physics_defs) physics_defs_s
+
+  implicit none
+
 contains
 
 <<Physics defs: procedures>>
 
-end module physics_defs
-@ %def physics_defs
+end submodule physics_defs_s
+
+@ %def physics_defs_s
 @
 \subsection{Units}
 Conversion from energy units to cross-section units.
@@ -260,8 +275,17 @@ single beam described by a structure function.
      module procedure component_status_of_string
      module procedure component_status_to_string
   end interface
+<<Physics defs: sub interfaces>>=
+    elemental module function component_status_of_string (string) result (i)
+      integer :: i
+      type(string_t), intent(in) :: string
+    end function component_status_of_string
+    elemental module function component_status_to_string (i) result (string)
+      type(string_t) :: string
+      integer, intent(in) :: i
+    end function component_status_to_string
 <<Physics defs: procedures>>=
-  elemental function component_status_of_string (string) result (i)
+  elemental module function component_status_of_string (string) result (i)
     integer :: i
     type(string_t), intent(in) :: string
     select case (char(string))
@@ -286,7 +310,7 @@ single beam described by a structure function.
     end select
   end function component_status_of_string
 
-  elemental function component_status_to_string (i) result (string)
+  elemental module function component_status_to_string (i) result (string)
     type(string_t) :: string
     integer, intent(in) :: i
     select case (i)
@@ -315,8 +339,13 @@ single beam described by a structure function.
 @
 <<Physics defs: public>>=
   public :: is_nlo_component
+<<Physics defs: sub interfaces>>=
+    elemental module function is_nlo_component (comp) result (is_nlo)
+      logical :: is_nlo
+      integer, intent(in) :: comp
+    end function is_nlo_component
 <<Physics defs: procedures>>=
-  elemental function is_nlo_component (comp) result (is_nlo)
+  elemental module function is_nlo_component (comp) result (is_nlo)
     logical :: is_nlo
     integer, intent(in) :: comp
     select case (comp)
@@ -331,8 +360,13 @@ single beam described by a structure function.
 @
 <<Physics defs: public>>=
   public :: is_subtraction_component
+<<Physics defs: sub interfaces>>=
+    module function is_subtraction_component (emitter, nlo_type) result (is_subtraction)
+      logical :: is_subtraction
+      integer, intent(in) :: emitter, nlo_type
+    end function is_subtraction_component
 <<Physics defs: procedures>>=
-  function is_subtraction_component (emitter, nlo_type) result (is_subtraction)
+  module function is_subtraction_component (emitter, nlo_type) result (is_subtraction)
     logical :: is_subtraction
     integer, intent(in) :: emitter, nlo_type
     is_subtraction = nlo_type == NLO_REAL .and. emitter < 0
@@ -365,8 +399,13 @@ Some commonly used variables for the threshold computation
 @
 <<Physics defs: public>>=
   public :: thr_leg
+<<Physics defs: sub interfaces>>=
+    module function thr_leg (emitter) result (leg)
+      integer :: leg
+      integer, intent(in) :: emitter
+    end function thr_leg
 <<Physics defs: procedures>>=
-  function thr_leg (emitter) result (leg)
+  module function thr_leg (emitter) result (leg)
     integer :: leg
     integer, intent(in) :: emitter
     leg = emitter - THR_EMITTER_OFFSET
@@ -390,20 +429,36 @@ module c_particles
 
   use, intrinsic :: iso_c_binding !NODEP!
 
-  use io_units
-  use format_defs, only: FMT_14, FMT_19
-
 <<Standard module head>>
 
 <<C Particles: public>>
 
 <<C Particles: types>>
 
+  interface
+<<C Particles: sub interfaces>>
+  end interface
+
+end module c_particles
+@ %def c_particles
+@
+<<[[c_particles_sub.f90]]>>=
+<<File header>>
+
+submodule (c_particles) c_particles_s
+
+  use io_units
+  use format_defs, only: FMT_14, FMT_19
+
+  implicit none
+
 contains
 
 <<C Particles: procedures>>
-end module c_particles
-@ %def c_particles
+
+end submodule c_particles_s
+
+@ %def c_particles_s
 @
 <<C Particles: public>>=
   public :: c_prt_t
@@ -425,8 +480,13 @@ end module c_particles
 simplified version of [[prt_write]].
 <<C Particles: public>>=
   public :: c_prt_write
+<<C Particles: sub interfaces>>=
+    module subroutine c_prt_write (prt, unit)
+      type(c_prt_t), intent(in) :: prt
+      integer, intent(in), optional :: unit
+    end subroutine c_prt_write
 <<C Particles: procedures>>=
-  subroutine c_prt_write (prt, unit)
+  module subroutine c_prt_write (prt, unit)
     type(c_prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     integer :: u
@@ -461,12 +521,7 @@ elemental (or pure, if this is not possible).
 module lorentz
 
 <<Use kinds with double>>
-  use numeric_utils
-  use io_units
-  use constants, only: pi, twopi, degree, zero, one, two, eps0, tiny_07
-  use format_defs, only: FMT_11, FMT_13, FMT_15, FMT_19
-  use format_utils, only: pac_fmt
-  use diagnostics
+  use constants, only: zero, one
   use c_particles
 
 <<Standard module head>>
@@ -483,11 +538,34 @@ module lorentz
 
 <<Lorentz: interfaces>>
 
+  interface
+<<Lorentz: sub interfaces>>
+  end interface
+
+end module lorentz
+@ %def lorentz
+@
+<<[[lorentz_sub.f90]]>>=
+<<File header>>
+
+submodule (lorentz) lorentz_s
+
+  use constants, only: pi, twopi, degree, two, tiny_07, eps0
+  use numeric_utils
+  use io_units
+  use format_defs, only: FMT_11, FMT_13, FMT_15, FMT_19
+  use format_utils, only: pac_fmt
+  use diagnostics
+
+  implicit none
+
 contains
 
 <<Lorentz: procedures>>
-end module lorentz
-@ %def lorentz
+
+end submodule lorentz_s
+
+@ %def lorentz_s
 @
 \subsection{Three-vectors}
 First of all, let us introduce three-vectors in a trivial way.  The
@@ -506,8 +584,14 @@ a vector by extending the type definition later.
 @ Output a vector
 <<Lorentz: public>>=
   public :: vector3_write
+<<Lorentz: sub interfaces>>=
+    module subroutine vector3_write (p, unit, testflag)
+      type(vector3_t), intent(in) :: p
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag
+    end subroutine vector3_write
 <<Lorentz: procedures>>=
-  subroutine vector3_write (p, unit, testflag)
+  module subroutine vector3_write (p, unit, testflag)
     type(vector3_t), intent(in) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
@@ -530,8 +614,13 @@ a vector by extending the type definition later.
 @ Canonical three-vector:
 <<Lorentz: public>>=
   public :: vector3_canonical
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_canonical (k) result (p)
+      type(vector3_t) :: p
+      integer, intent(in) :: k
+    end function vector3_canonical
 <<Lorentz: procedures>>=
-  elemental function vector3_canonical (k) result (p)
+  elemental module function vector3_canonical (k) result (p)
     type(vector3_t) :: p
     integer, intent(in) :: k
     p = vector3_null
@@ -548,15 +637,25 @@ function for the generic momentum cannot be elemental.
      module procedure vector3_moving_canonical
      module procedure vector3_moving_generic
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_moving_canonical (p, k) result(q)
+      type(vector3_t) :: q
+      real(default), intent(in) :: p
+      integer, intent(in) :: k
+    end function vector3_moving_canonical
+    pure module function vector3_moving_generic (p) result(q)
+      real(default), dimension(3), intent(in) :: p
+      type(vector3_t) :: q
+    end function vector3_moving_generic
 <<Lorentz: procedures>>=
-  elemental function vector3_moving_canonical (p, k) result(q)
+  elemental module function vector3_moving_canonical (p, k) result(q)
     type(vector3_t) :: q
     real(default), intent(in) :: p
     integer, intent(in) :: k
     q = vector3_null
     q%p(k) = p
   end function vector3_moving_canonical
-  pure function vector3_moving_generic (p) result(q)
+  pure module function vector3_moving_generic (p) result(q)
     real(default), dimension(3), intent(in) :: p
     type(vector3_t) :: q
     q%p = p
@@ -573,13 +672,22 @@ function for the generic momentum cannot be elemental.
   interface operator(/=)
      module procedure vector3_neq
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_eq (p, q) result (r)
+      logical :: r
+      type(vector3_t), intent(in) :: p,q
+    end function vector3_eq
+    elemental module function vector3_neq (p, q) result (r)
+      logical :: r
+      type(vector3_t), intent(in) :: p,q
+    end function vector3_neq
 <<Lorentz: procedures>>=
-  elemental function vector3_eq (p, q) result (r)
+  elemental module function vector3_eq (p, q) result (r)
     logical :: r
     type(vector3_t), intent(in) :: p,q
     r = all (abs (p%p - q%p) < eps0)
   end function vector3_eq
-  elemental function vector3_neq (p, q) result (r)
+  elemental module function vector3_neq (p, q) result (r)
     logical :: r
     type(vector3_t), intent(in) :: p,q
     r = any (abs(p%p - q%p) > eps0)
@@ -596,13 +704,22 @@ function for the generic momentum cannot be elemental.
   interface operator(-)
      module procedure sub_vector3
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function add_vector3 (p, q) result (r)
+      type(vector3_t) :: r
+      type(vector3_t), intent(in) :: p,q
+    end function add_vector3
+    elemental module function sub_vector3 (p, q) result (r)
+      type(vector3_t) :: r
+      type(vector3_t), intent(in) :: p,q
+    end function sub_vector3
 <<Lorentz: procedures>>=
-  elemental function add_vector3 (p, q) result (r)
+  elemental module function add_vector3 (p, q) result (r)
     type(vector3_t) :: r
     type(vector3_t), intent(in) :: p,q
     r%p = p%p + q%p
   end function add_vector3
-  elemental function sub_vector3 (p, q) result (r)
+  elemental module function sub_vector3 (p, q) result (r)
     type(vector3_t) :: r
     type(vector3_t), intent(in) :: p,q
     r%p = p%p - q%p
@@ -621,38 +738,69 @@ similarly division:
   interface operator(/)
      module procedure div_vector3_real, div_vector3_integer
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function prod_real_vector3 (s, p) result (q)
+      type(vector3_t) :: q
+      real(default), intent(in) :: s
+      type(vector3_t), intent(in) :: p
+    end function prod_real_vector3
+    elemental module function prod_vector3_real (p, s) result (q)
+      type(vector3_t) :: q
+      real(default), intent(in) :: s
+      type(vector3_t), intent(in) :: p
+    end function prod_vector3_real
+    elemental module function div_vector3_real (p, s) result (q)
+      type(vector3_t) :: q
+      real(default), intent(in) :: s
+      type(vector3_t), intent(in) :: p
+    end function div_vector3_real
+    elemental module function prod_integer_vector3 (s, p) result (q)
+      type(vector3_t) :: q
+      integer, intent(in) :: s
+      type(vector3_t), intent(in) :: p
+    end function prod_integer_vector3
+    elemental module function prod_vector3_integer (p, s) result (q)
+      type(vector3_t) :: q
+      integer, intent(in) :: s
+      type(vector3_t), intent(in) :: p
+    end function prod_vector3_integer
+    elemental module function div_vector3_integer (p, s) result (q)
+      type(vector3_t) :: q
+      integer, intent(in) :: s
+      type(vector3_t), intent(in) :: p
+    end function div_vector3_integer
 <<Lorentz: procedures>>=
-  elemental function prod_real_vector3 (s, p) result (q)
+  elemental module function prod_real_vector3 (s, p) result (q)
     type(vector3_t) :: q
     real(default), intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = s * p%p
   end function prod_real_vector3
-  elemental function prod_vector3_real (p, s) result (q)
+  elemental module function prod_vector3_real (p, s) result (q)
     type(vector3_t) :: q
     real(default), intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = s * p%p
   end function prod_vector3_real
-  elemental function div_vector3_real (p, s) result (q)
+  elemental module function div_vector3_real (p, s) result (q)
     type(vector3_t) :: q
     real(default), intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = p%p/s
   end function div_vector3_real
-  elemental function prod_integer_vector3 (s, p) result (q)
+  elemental module function prod_integer_vector3 (s, p) result (q)
     type(vector3_t) :: q
     integer, intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = s * p%p
   end function prod_integer_vector3
-  elemental function prod_vector3_integer (p, s) result (q)
+  elemental module function prod_vector3_integer (p, s) result (q)
     type(vector3_t) :: q
     integer, intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = s * p%p
   end function prod_vector3_integer
-  elemental function div_vector3_integer (p, s) result (q)
+  elemental module function div_vector3_integer (p, s) result (q)
     type(vector3_t) :: q
     integer, intent(in) :: s
     type(vector3_t), intent(in) :: p
@@ -665,8 +813,13 @@ similarly division:
   interface operator(*)
      module procedure prod_vector3
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function prod_vector3 (p, q) result (s)
+      real(default) :: s
+      type(vector3_t), intent(in) :: p,q
+    end function prod_vector3
 <<Lorentz: procedures>>=
-  elemental function prod_vector3 (p, q) result (s)
+  elemental module function prod_vector3 (p, q) result (s)
     real(default) :: s
     type(vector3_t), intent(in) :: p,q
     s = dot_product (p%p, q%p)
@@ -679,8 +832,13 @@ similarly division:
   interface cross_product
      module procedure vector3_cross_product
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_cross_product (p, q) result (r)
+      type(vector3_t) :: r
+      type(vector3_t), intent(in) :: p,q
+    end function vector3_cross_product
 <<Lorentz: procedures>>=
-  elemental function vector3_cross_product (p, q) result (r)
+  elemental module function vector3_cross_product (p, q) result (r)
     type(vector3_t) :: r
     type(vector3_t), intent(in) :: p,q
     integer :: i
@@ -698,8 +856,14 @@ take the square root; so [[p**1]] is the length of [[p]].
   interface operator(**)
      module procedure power_vector3
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function power_vector3 (p, e) result (s)
+      real(default) :: s
+      type(vector3_t), intent(in) :: p
+      integer, intent(in) :: e
+    end function power_vector3
 <<Lorentz: procedures>>=
-  elemental function power_vector3 (p, e) result (s)
+  elemental module function power_vector3 (p, e) result (s)
     real(default) :: s
     type(vector3_t), intent(in) :: p
     integer, intent(in) :: e
@@ -719,8 +883,13 @@ take the square root; so [[p**1]] is the length of [[p]].
   interface operator(-)
      module procedure negate_vector3
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function negate_vector3 (p) result (q)
+      type(vector3_t) :: q
+      type(vector3_t), intent(in) :: p
+    end function negate_vector3
 <<Lorentz: procedures>>=
-  elemental function negate_vector3 (p) result (q)
+  elemental module function negate_vector3 (p) result (q)
     type(vector3_t) :: q
     type(vector3_t), intent(in) :: p
     integer :: i
@@ -745,8 +914,14 @@ take the square root; so [[p**1]] is the length of [[p]].
 @
 <<Lorentz: public>>=
   public :: vector3_set_component
+<<Lorentz: sub interfaces>>=
+    module subroutine vector3_set_component (p, i, value)
+      type(vector3_t), intent(inout) :: p
+      integer, intent(in) :: i
+      real(default), intent(in) :: value
+    end subroutine vector3_set_component
 <<Lorentz: procedures>>=
-  subroutine vector3_set_component (p, i, value)
+  module subroutine vector3_set_component (p, i, value)
     type(vector3_t), intent(inout) :: p
     integer, intent(in) :: i
     real(default), intent(in) :: value
@@ -755,8 +930,13 @@ take the square root; so [[p**1]] is the length of [[p]].
 
 @ %def vector3_set_component
 @
+<<Lorentz: sub interfaces>>=
+    pure module function sum_vector3 (p) result (q)
+      type(vector3_t) :: q
+      type(vector3_t), dimension(:), intent(in) :: p
+    end function sum_vector3
 <<Lorentz: procedures>>=
-  pure function sum_vector3 (p) result (q)
+  pure module function sum_vector3 (p) result (q)
     type(vector3_t) :: q
     type(vector3_t), dimension(:), intent(in) :: p
     integer :: i
@@ -770,8 +950,14 @@ take the square root; so [[p**1]] is the length of [[p]].
 <<Lorentz: public>>=
   public :: vector3_get_component
 @ %def component
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_get_component (p, k) result (c)
+      type(vector3_t), intent(in) :: p
+      integer, intent(in) :: k
+      real(default) :: c
+    end function vector3_get_component
 <<Lorentz: procedures>>=
-  elemental function vector3_get_component (p, k) result (c)
+  elemental module function vector3_get_component (p, k) result (c)
     type(vector3_t), intent(in) :: p
     integer, intent(in) :: k
     real(default) :: c
@@ -782,8 +968,13 @@ take the square root; so [[p**1]] is the length of [[p]].
 @ Extract all components.  This is not elemental.
 <<Lorentz: public>>=
   public :: vector3_get_components
+<<Lorentz: sub interfaces>>=
+    pure module function vector3_get_components (p) result (a)
+      type(vector3_t), intent(in) :: p
+      real(default), dimension(3) :: a
+    end function vector3_get_components
 <<Lorentz: procedures>>=
-  pure function vector3_get_components (p) result (a)
+  pure module function vector3_get_components (p) result (a)
     type(vector3_t), intent(in) :: p
     real(default), dimension(3) :: a
     a = p%p
@@ -798,8 +989,13 @@ normalized three-vector.  If the vector is null, we return a null vector.
   interface direction
      module procedure vector3_get_direction
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_get_direction (p) result (q)
+      type(vector3_t) :: q
+      type(vector3_t), intent(in) :: p
+    end function vector3_get_direction
 <<Lorentz: procedures>>=
-  elemental function vector3_get_direction (p) result (q)
+  elemental module function vector3_get_direction (p) result (q)
     type(vector3_t) :: q
     type(vector3_t), intent(in) :: p
     real(default) :: pp
@@ -833,8 +1029,15 @@ the time-critical applications do not involve four-vector operations.
   public :: vector4_write
 <<Lorentz: vector4: TBP>>=
   procedure :: write => vector4_write
+<<Lorentz: sub interfaces>>=
+    module subroutine vector4_write &
+           (p, unit, show_mass, testflag, compressed, ultra)
+      class(vector4_t), intent(in) :: p
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: show_mass, testflag, compressed, ultra
+    end subroutine vector4_write
 <<Lorentz: procedures>>=
-  subroutine vector4_write &
+  module subroutine vector4_write &
          (p, unit, show_mass, testflag, compressed, ultra)
     class(vector4_t), intent(in) :: p
     integer, intent(in), optional :: unit
@@ -871,14 +1074,24 @@ the time-critical applications do not involve four-vector operations.
 <<Lorentz: public>>=
   public :: vector4_write_raw
   public :: vector4_read_raw
+<<Lorentz: sub interfaces>>=
+    module subroutine vector4_write_raw (p, u)
+      type(vector4_t), intent(in) :: p
+      integer, intent(in) :: u
+    end subroutine vector4_write_raw
+    module subroutine vector4_read_raw (p, u, iostat)
+      type(vector4_t), intent(out) :: p
+      integer, intent(in) :: u
+      integer, intent(out), optional :: iostat
+    end subroutine vector4_read_raw
 <<Lorentz: procedures>>=
-  subroutine vector4_write_raw (p, u)
+  module subroutine vector4_write_raw (p, u)
     type(vector4_t), intent(in) :: p
     integer, intent(in) :: u
     write (u) p%p
   end subroutine vector4_write_raw
 
-  subroutine vector4_read_raw (p, u, iostat)
+  module subroutine vector4_read_raw (p, u, iostat)
     type(vector4_t), intent(out) :: p
     integer, intent(in) :: u
     integer, intent(out), optional :: iostat
@@ -897,8 +1110,13 @@ the time-critical applications do not involve four-vector operations.
 @ Canonical four-vector:
 <<Lorentz: public>>=
   public :: vector4_canonical
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_canonical (k) result (p)
+      type(vector4_t) :: p
+      integer, intent(in) :: k
+    end function vector4_canonical
 <<Lorentz: procedures>>=
-  elemental function vector4_canonical (k) result (p)
+  elemental module function vector4_canonical (k) result (p)
     type(vector4_t) :: p
     integer, intent(in) :: k
     p = vector4_null
@@ -909,8 +1127,13 @@ the time-critical applications do not involve four-vector operations.
 @ A particle at rest:
 <<Lorentz: public>>=
   public :: vector4_at_rest
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_at_rest (m) result (p)
+      type(vector4_t) :: p
+      real(default), intent(in) :: m
+    end function vector4_at_rest
 <<Lorentz: procedures>>=
-  elemental function vector4_at_rest (m) result (p)
+  elemental module function vector4_at_rest (m) result (p)
     type(vector4_t) :: p
     real(default), intent(in) :: m
     p = vector4_t ([ m, zero, zero, zero ])
@@ -925,15 +1148,26 @@ the time-critical applications do not involve four-vector operations.
      module procedure vector4_moving_canonical
      module procedure vector4_moving_generic
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_moving_canonical (E, p, k) result (q)
+      type(vector4_t) :: q
+      real(default), intent(in) :: E, p
+      integer, intent(in) :: k
+    end function vector4_moving_canonical
+    elemental module function vector4_moving_generic (E, p) result (q)
+      type(vector4_t) :: q
+      real(default), intent(in) :: E
+      type(vector3_t), intent(in) :: p
+    end function vector4_moving_generic
 <<Lorentz: procedures>>=
-  elemental function vector4_moving_canonical (E, p, k) result (q)
+  elemental module function vector4_moving_canonical (E, p, k) result (q)
     type(vector4_t) :: q
     real(default), intent(in) :: E, p
     integer, intent(in) :: k
     q = vector4_at_rest(E)
     q%p(k) = p
   end function vector4_moving_canonical
-  elemental function vector4_moving_generic (E, p) result (q)
+  elemental module function vector4_moving_generic (E, p) result (q)
     type(vector4_t) :: q
     real(default), intent(in) :: E
     type(vector3_t), intent(in) :: p
@@ -950,13 +1184,22 @@ the time-critical applications do not involve four-vector operations.
   interface operator(/=)
      module procedure vector4_neq
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_eq (p, q) result (r)
+      logical :: r
+      type(vector4_t), intent(in) :: p,q
+    end function vector4_eq
+    elemental module function vector4_neq (p, q) result (r)
+      logical :: r
+      type(vector4_t), intent(in) :: p,q
+    end function vector4_neq
 <<Lorentz: procedures>>=
-  elemental function vector4_eq (p, q) result (r)
+  elemental module function vector4_eq (p, q) result (r)
     logical :: r
     type(vector4_t), intent(in) :: p,q
     r = all (abs (p%p - q%p) < eps0)
   end function vector4_eq
-  elemental function vector4_neq (p, q) result (r)
+  elemental module function vector4_neq (p, q) result (r)
     logical :: r
     type(vector4_t), intent(in) :: p,q
     r = any (abs (p%p - q%p) > eps0)
@@ -971,13 +1214,22 @@ the time-critical applications do not involve four-vector operations.
   interface operator(-)
      module procedure sub_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function add_vector4 (p,q) result (r)
+      type(vector4_t) :: r
+      type(vector4_t), intent(in) :: p,q
+    end function add_vector4
+    elemental module function sub_vector4 (p,q) result (r)
+      type(vector4_t) :: r
+      type(vector4_t), intent(in) :: p,q
+    end function sub_vector4
 <<Lorentz: procedures>>=
-  elemental function add_vector4 (p,q) result (r)
+  elemental module function add_vector4 (p,q) result (r)
     type(vector4_t) :: r
     type(vector4_t), intent(in) :: p,q
     r%p = p%p + q%p
   end function add_vector4
-  elemental function sub_vector4 (p,q) result (r)
+  elemental module function sub_vector4 (p,q) result (r)
     type(vector4_t) :: r
     type(vector4_t), intent(in) :: p,q
     r%p = p%p - q%p
@@ -994,38 +1246,69 @@ the time-critical applications do not involve four-vector operations.
      module procedure div_vector4_real
      module procedure div_vector4_integer
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function prod_real_vector4 (s, p) result (q)
+      type(vector4_t) :: q
+      real(default), intent(in) :: s
+      type(vector4_t), intent(in) :: p
+    end function prod_real_vector4
+    elemental module function prod_vector4_real (p, s) result (q)
+      type(vector4_t) :: q
+      real(default), intent(in) :: s
+      type(vector4_t), intent(in) :: p
+    end function prod_vector4_real
+    elemental module function div_vector4_real (p, s) result (q)
+      type(vector4_t) :: q
+      real(default), intent(in) :: s
+      type(vector4_t), intent(in) :: p
+    end function div_vector4_real
+    elemental module function prod_integer_vector4 (s, p) result (q)
+      type(vector4_t) :: q
+      integer, intent(in) :: s
+      type(vector4_t), intent(in) :: p
+    end function prod_integer_vector4
+    elemental module function prod_vector4_integer (p, s) result (q)
+      type(vector4_t) :: q
+      integer, intent(in) :: s
+      type(vector4_t), intent(in) :: p
+    end function prod_vector4_integer
+    elemental module function div_vector4_integer (p, s) result (q)
+      type(vector4_t) :: q
+      integer, intent(in) :: s
+      type(vector4_t), intent(in) :: p
+    end function div_vector4_integer
 <<Lorentz: procedures>>=
-  elemental function prod_real_vector4 (s, p) result (q)
+  elemental module function prod_real_vector4 (s, p) result (q)
     type(vector4_t) :: q
     real(default), intent(in) :: s
     type(vector4_t), intent(in) :: p
     q%p = s * p%p
   end function prod_real_vector4
-  elemental function prod_vector4_real (p, s) result (q)
+  elemental module function prod_vector4_real (p, s) result (q)
     type(vector4_t) :: q
     real(default), intent(in) :: s
     type(vector4_t), intent(in) :: p
     q%p = s * p%p
   end function prod_vector4_real
-  elemental function div_vector4_real (p, s) result (q)
+  elemental module function div_vector4_real (p, s) result (q)
     type(vector4_t) :: q
     real(default), intent(in) :: s
     type(vector4_t), intent(in) :: p
     q%p = p%p/s
   end function div_vector4_real
-  elemental function prod_integer_vector4 (s, p) result (q)
+  elemental module function prod_integer_vector4 (s, p) result (q)
     type(vector4_t) :: q
     integer, intent(in) :: s
     type(vector4_t), intent(in) :: p
     q%p = s * p%p
   end function prod_integer_vector4
-  elemental function prod_vector4_integer (p, s) result (q)
+  elemental module function prod_vector4_integer (p, s) result (q)
     type(vector4_t) :: q
     integer, intent(in) :: s
     type(vector4_t), intent(in) :: p
     q%p = s * p%p
   end function prod_vector4_integer
-  elemental function div_vector4_integer (p, s) result (q)
+  elemental module function div_vector4_integer (p, s) result (q)
     type(vector4_t) :: q
     integer, intent(in) :: s
     type(vector4_t), intent(in) :: p
@@ -1041,8 +1324,13 @@ the time-critical applications do not involve four-vector operations.
   interface operator(**)
      module procedure power_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function prod_vector4 (p, q) result (s)
+      real(default) :: s
+      type(vector4_t), intent(in) :: p,q
+    end function prod_vector4
 <<Lorentz: procedures>>=
-  elemental function prod_vector4 (p, q) result (s)
+  elemental module function prod_vector4 (p, q) result (s)
     real(default) :: s
     type(vector4_t), intent(in) :: p,q
     s = p%p(0)*q%p(0) - dot_product(p%p(1:), q%p(1:))
@@ -1052,8 +1340,14 @@ the time-critical applications do not involve four-vector operations.
 @ The power operation for four-vectors is signed, i.e., [[p**1]] is
 positive for timelike and negative for spacelike vectors.  Note that
 [[(p**1)**2]] is not necessarily equal to [[p**2]].
+<<Lorentz: sub interfaces>>=
+    elemental module function power_vector4 (p, e) result (s)
+      real(default) :: s
+      type(vector4_t), intent(in) :: p
+      integer, intent(in) :: e
+    end function power_vector4
 <<Lorentz: procedures>>=
-  elemental function power_vector4 (p, e) result (s)
+  elemental module function power_vector4 (p, e) result (s)
     real(default) :: s
     type(vector4_t), intent(in) :: p
     integer, intent(in) :: e
@@ -1075,8 +1369,13 @@ positive for timelike and negative for spacelike vectors.  Note that
   interface operator(-)
      module procedure negate_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function negate_vector4 (p) result (q)
+      type(vector4_t) :: q
+      type(vector4_t), intent(in) :: p
+    end function negate_vector4
 <<Lorentz: procedures>>=
-  elemental function negate_vector4 (p) result (q)
+  elemental module function negate_vector4 (p) result (q)
     type(vector4_t) :: q
     type(vector4_t), intent(in) :: p
     integer :: i
@@ -1097,8 +1396,18 @@ positive for timelike and negative for spacelike vectors.  Note that
   end interface
 @ %def sum
 @
+<<Lorentz: sub interfaces>>=
+    pure module function sum_vector4 (p) result (q)
+      type(vector4_t) :: q
+      type(vector4_t), dimension(:), intent(in) :: p
+    end function sum_vector4
+    pure module function sum_vector4_mask (p, mask) result (q)
+      type(vector4_t) :: q
+      type(vector4_t), dimension(:), intent(in) :: p
+      logical, dimension(:), intent(in) :: mask
+    end function sum_vector4_mask
 <<Lorentz: procedures>>=
-  pure function sum_vector4 (p) result (q)
+  pure module function sum_vector4 (p) result (q)
     type(vector4_t) :: q
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i
@@ -1107,7 +1416,7 @@ positive for timelike and negative for spacelike vectors.  Note that
     end do
   end function sum_vector4
 
-  pure function sum_vector4_mask (p, mask) result (q)
+  pure module function sum_vector4_mask (p, mask) result (q)
     type(vector4_t) :: q
     type(vector4_t), dimension(:), intent(in) :: p
     logical, dimension(:), intent(in) :: mask
@@ -1123,8 +1432,14 @@ positive for timelike and negative for spacelike vectors.  Note that
 Manually set a component of the four-vector:
 <<Lorentz: public>>=
   public :: vector4_set_component
+<<Lorentz: sub interfaces>>=
+    module subroutine vector4_set_component (p, k, c)
+      type(vector4_t), intent(inout) :: p
+      integer, intent(in) :: k
+      real(default), intent(in) :: c
+    end subroutine vector4_set_component
 <<Lorentz: procedures>>=
-  subroutine vector4_set_component (p, k, c)
+  module subroutine vector4_set_component (p, k, c)
     type(vector4_t), intent(inout) :: p
     integer, intent(in) :: k
     real(default), intent(in) :: c
@@ -1135,8 +1450,14 @@ Manually set a component of the four-vector:
 Any component:
 <<Lorentz: public>>=
   public :: vector4_get_component
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_get_component (p, k) result (c)
+      real(default) :: c
+      type(vector4_t), intent(in) :: p
+      integer, intent(in) :: k
+    end function vector4_get_component
 <<Lorentz: procedures>>=
-  elemental function vector4_get_component (p, k) result (c)
+  elemental module function vector4_get_component (p, k) result (c)
     real(default) :: c
     type(vector4_t), intent(in) :: p
     integer, intent(in) :: k
@@ -1147,8 +1468,13 @@ Any component:
 @ Extract all components.  This is not elemental.
 <<Lorentz: public>>=
   public :: vector4_get_components
+<<Lorentz: sub interfaces>>=
+    pure module function vector4_get_components (p) result (a)
+      real(default), dimension(0:3) :: a
+      type(vector4_t), intent(in) :: p
+    end function vector4_get_components
 <<Lorentz: procedures>>=
-  pure function vector4_get_components (p) result (a)
+  pure module function vector4_get_components (p) result (a)
     real(default), dimension(0:3) :: a
     type(vector4_t), intent(in) :: p
     a = p%p
@@ -1163,8 +1489,13 @@ can apply three-vector operations on it:
   interface space_part
      module procedure vector4_get_space_part
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_get_space_part (p) result (q)
+      type(vector3_t) :: q
+      type(vector4_t), intent(in) :: p
+    end function vector4_get_space_part
 <<Lorentz: procedures>>=
-  elemental function vector4_get_space_part (p) result (q)
+  elemental module function vector4_get_space_part (p) result (q)
     type(vector3_t) :: q
     type(vector4_t), intent(in) :: p
     q%p = p%p(1:)
@@ -1178,8 +1509,13 @@ return a null vector.
   interface direction
      module procedure vector4_get_direction
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_get_direction (p) result (q)
+      type(vector3_t) :: q
+      type(vector4_t), intent(in) :: p
+    end function vector4_get_direction
 <<Lorentz: procedures>>=
-  elemental function vector4_get_direction (p) result (q)
+  elemental module function vector4_get_direction (p) result (q)
     type(vector3_t) :: q
     type(vector4_t), intent(in) :: p
     real(default) :: qq
@@ -1196,8 +1532,12 @@ return a null vector.
 @ Change the sign of the spatial part of a four-vector
 <<Lorentz: public>>=
   public :: vector4_invert_direction
+<<Lorentz: sub interfaces>>=
+    elemental module subroutine vector4_invert_direction (p)
+      type(vector4_t), intent(inout) :: p
+    end subroutine vector4_invert_direction
 <<Lorentz: procedures>>=
-  elemental subroutine vector4_invert_direction (p)
+  elemental module subroutine vector4_invert_direction (p)
     type(vector4_t), intent(inout) :: p
     p%p(1:3) = -p%p(1:3)
   end subroutine vector4_invert_direction
@@ -1213,14 +1553,39 @@ second version for an array of four-vectors.
             array_from_vector3_1, array_from_vector3_2, &
             vector4_from_array, vector3_from_array
   end interface
+<<Lorentz: sub interfaces>>=
+    pure module subroutine array_from_vector4_1 (a, p)
+      real(default), dimension(:), intent(out) :: a
+      type(vector4_t), intent(in) :: p
+    end subroutine array_from_vector4_1
+    pure module subroutine array_from_vector4_2 (a, p)
+      type(vector4_t), dimension(:), intent(in) :: p
+      real(default), dimension(:,:), intent(out) :: a
+    end subroutine array_from_vector4_2
+    pure module subroutine array_from_vector3_1 (a, p)
+      real(default), dimension(:), intent(out) :: a
+      type(vector3_t), intent(in) :: p
+    end subroutine array_from_vector3_1
+    pure module subroutine array_from_vector3_2 (a, p)
+      type(vector3_t), dimension(:), intent(in) :: p
+      real(default), dimension(:,:), intent(out) :: a
+    end subroutine array_from_vector3_2
+    pure module subroutine vector4_from_array (p, a)
+      type(vector4_t), intent(out) :: p
+      real(default), dimension(:), intent(in) :: a
+    end subroutine vector4_from_array
+    pure module subroutine vector3_from_array (p, a)
+      type(vector3_t), intent(out) :: p
+      real(default), dimension(:), intent(in) :: a
+    end subroutine vector3_from_array
 <<Lorentz: procedures>>=
-  pure subroutine array_from_vector4_1 (a, p)
+  pure module subroutine array_from_vector4_1 (a, p)
     real(default), dimension(:), intent(out) :: a
     type(vector4_t), intent(in) :: p
     a = p%p
   end subroutine array_from_vector4_1
 
-  pure subroutine array_from_vector4_2 (a, p)
+  pure module subroutine array_from_vector4_2 (a, p)
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), dimension(:,:), intent(out) :: a
     integer :: i
@@ -1229,13 +1594,13 @@ second version for an array of four-vectors.
     end forall
   end subroutine array_from_vector4_2
 
-  pure subroutine array_from_vector3_1 (a, p)
+  pure module subroutine array_from_vector3_1 (a, p)
     real(default), dimension(:), intent(out) :: a
     type(vector3_t), intent(in) :: p
     a = p%p
   end subroutine array_from_vector3_1
 
-  pure subroutine array_from_vector3_2 (a, p)
+  pure module subroutine array_from_vector3_2 (a, p)
     type(vector3_t), dimension(:), intent(in) :: p
     real(default), dimension(:,:), intent(out) :: a
     integer :: i
@@ -1244,13 +1609,13 @@ second version for an array of four-vectors.
     end forall
   end subroutine array_from_vector3_2
 
-  pure subroutine vector4_from_array (p, a)
+  pure module subroutine vector4_from_array (p, a)
     type(vector4_t), intent(out) :: p
     real(default), dimension(:), intent(in) :: a
     p%p(0:3) = a
   end subroutine vector4_from_array
 
-  pure subroutine vector3_from_array (p, a)
+  pure module subroutine vector3_from_array (p, a)
     type(vector3_t), intent(out) :: p
     real(default), dimension(:), intent(in) :: a
     p%p(1:3) = a
@@ -1260,8 +1625,13 @@ second version for an array of four-vectors.
 @
 <<Lorentz: public>>=
   public :: vector4
+<<Lorentz: sub interfaces>>=
+    pure module function vector4 (a) result (p)
+      type(vector4_t) :: p
+      real(default), intent(in), dimension(4) :: a
+    end function vector4
 <<Lorentz: procedures>>=
-  pure function vector4 (a) result (p)
+  pure module function vector4 (a) result (p)
     type(vector4_t) :: p
     real(default), intent(in), dimension(4) :: a
     p%p = a
@@ -1271,8 +1641,14 @@ second version for an array of four-vectors.
 @
 <<Lorentz: vector4: TBP>>=
   procedure :: to_pythia6 => vector4_to_pythia6
+<<Lorentz: sub interfaces>>=
+    pure module function vector4_to_pythia6 (vector4, m) result (p)
+      real(double), dimension(1:5) :: p
+      class(vector4_t), intent(in) :: vector4
+      real(default), intent(in), optional :: m
+    end function vector4_to_pythia6
 <<Lorentz: procedures>>=
-  pure function vector4_to_pythia6 (vector4, m) result (p)
+  pure module function vector4_to_pythia6 (vector4, m) result (p)
     real(double), dimension(1:5) :: p
     class(vector4_t), intent(in) :: vector4
     real(default), intent(in), optional :: m
@@ -1294,8 +1670,17 @@ vice versa:
   interface assignment (=)
      module procedure vector4_from_c_prt, c_prt_from_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    pure module subroutine vector4_from_c_prt (p, c_prt)
+      type(vector4_t), intent(out) :: p
+      type(c_prt_t), intent(in) :: c_prt
+    end subroutine vector4_from_c_prt
+    pure module subroutine c_prt_from_vector4 (c_prt, p)
+      type(c_prt_t), intent(out) :: c_prt
+      type(vector4_t), intent(in) :: p
+    end subroutine c_prt_from_vector4
 <<Lorentz: procedures>>=
-  pure subroutine vector4_from_c_prt (p, c_prt)
+  pure module subroutine vector4_from_c_prt (p, c_prt)
     type(vector4_t), intent(out) :: p
     type(c_prt_t), intent(in) :: c_prt
     p%p(0) = c_prt%pe
@@ -1304,7 +1689,7 @@ vice versa:
     p%p(3) = c_prt%pz
   end subroutine vector4_from_c_prt
 
-  pure subroutine c_prt_from_vector4 (c_prt, p)
+  pure module subroutine c_prt_from_vector4 (c_prt, p)
     type(c_prt_t), intent(out) :: c_prt
     type(vector4_t), intent(in) :: p
     c_prt%pe = p%p(0)
@@ -1320,8 +1705,14 @@ as its kinematical entries.  Compute the invariant mass, or use the
 optional mass-squared value instead.
 <<Lorentz: public>>=
   public :: vector4_to_c_prt
+<<Lorentz: sub interfaces>>=
+    elemental module function vector4_to_c_prt (p, p2) result (c_prt)
+      type(c_prt_t) :: c_prt
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in), optional :: p2
+    end function vector4_to_c_prt
 <<Lorentz: procedures>>=
-  elemental function vector4_to_c_prt (p, p2) result (c_prt)
+  elemental module function vector4_to_c_prt (p, p2) result (c_prt)
     type(c_prt_t) :: c_prt
     type(vector4_t), intent(in) :: p
     real(default), intent(in), optional :: p2
@@ -1348,8 +1739,17 @@ between $0\leq\phi<2\pi$.  In degenerate cases, return zero.
      module procedure vector3_azimuthal_angle
      module procedure vector4_azimuthal_angle
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_azimuthal_angle (p) result (phi)
+      real(default) :: phi
+      type(vector3_t), intent(in) :: p
+    end function vector3_azimuthal_angle
+    elemental module function vector4_azimuthal_angle (p) result (phi)
+      real(default) :: phi
+      type(vector4_t), intent(in) :: p
+    end function vector4_azimuthal_angle
 <<Lorentz: procedures>>=
-  elemental function vector3_azimuthal_angle (p) result (phi)
+  elemental module function vector3_azimuthal_angle (p) result (phi)
     real(default) :: phi
     type(vector3_t), intent(in) :: p
     if (any (abs (p%p(1:2)) > 0)) then
@@ -1359,7 +1759,7 @@ between $0\leq\phi<2\pi$.  In degenerate cases, return zero.
        phi = 0
     end if
   end function vector3_azimuthal_angle
-  elemental function vector4_azimuthal_angle (p) result (phi)
+  elemental module function vector4_azimuthal_angle (p) result (phi)
     real(default) :: phi
     type(vector4_t), intent(in) :: p
     phi = vector3_azimuthal_angle (space_part (p))
@@ -1374,13 +1774,22 @@ between $0\leq\phi<2\pi$.  In degenerate cases, return zero.
      module procedure vector3_azimuthal_angle_deg
      module procedure vector4_azimuthal_angle_deg
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_azimuthal_angle_deg (p) result (phi)
+      real(default) :: phi
+      type(vector3_t), intent(in) :: p
+    end function vector3_azimuthal_angle_deg
+    elemental module function vector4_azimuthal_angle_deg (p) result (phi)
+      real(default) :: phi
+      type(vector4_t), intent(in) :: p
+    end function vector4_azimuthal_angle_deg
 <<Lorentz: procedures>>=
-  elemental function vector3_azimuthal_angle_deg (p) result (phi)
+  elemental module function vector3_azimuthal_angle_deg (p) result (phi)
     real(default) :: phi
     type(vector3_t), intent(in) :: p
     phi = vector3_azimuthal_angle (p) / degree
   end function vector3_azimuthal_angle_deg
-  elemental function vector4_azimuthal_angle_deg (p) result (phi)
+  elemental module function vector4_azimuthal_angle_deg (p) result (phi)
     real(default) :: phi
     type(vector4_t), intent(in) :: p
     phi = vector4_azimuthal_angle (p) / degree
@@ -1397,8 +1806,17 @@ between $-\pi<\Delta\phi\leq\pi$.
      module procedure vector3_azimuthal_distance
      module procedure vector4_azimuthal_distance
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_azimuthal_distance (p, q) result (dphi)
+      real(default) :: dphi
+      type(vector3_t), intent(in) :: p,q
+    end function vector3_azimuthal_distance
+    elemental module function vector4_azimuthal_distance (p, q) result (dphi)
+      real(default) :: dphi
+      type(vector4_t), intent(in) :: p,q
+    end function vector4_azimuthal_distance
 <<Lorentz: procedures>>=
-  elemental function vector3_azimuthal_distance (p, q) result (dphi)
+  elemental module function vector3_azimuthal_distance (p, q) result (dphi)
     real(default) :: dphi
     type(vector3_t), intent(in) :: p,q
     dphi = vector3_azimuthal_angle (q) - vector3_azimuthal_angle (p)
@@ -1408,7 +1826,7 @@ between $-\pi<\Delta\phi\leq\pi$.
        dphi = dphi - twopi
     end if
   end function vector3_azimuthal_distance
-  elemental function vector4_azimuthal_distance (p, q) result (dphi)
+  elemental module function vector4_azimuthal_distance (p, q) result (dphi)
     real(default) :: dphi
     type(vector4_t), intent(in) :: p,q
     dphi = vector3_azimuthal_distance &
@@ -1424,13 +1842,22 @@ between $-\pi<\Delta\phi\leq\pi$.
      module procedure vector3_azimuthal_distance_deg
      module procedure vector4_azimuthal_distance_deg
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function vector3_azimuthal_distance_deg (p, q) result (dphi)
+      real(default) :: dphi
+      type(vector3_t), intent(in) :: p,q
+    end function vector3_azimuthal_distance_deg
+    elemental module function vector4_azimuthal_distance_deg (p, q) result (dphi)
+      real(default) :: dphi
+      type(vector4_t), intent(in) :: p,q
+    end function vector4_azimuthal_distance_deg
 <<Lorentz: procedures>>=
-  elemental function vector3_azimuthal_distance_deg (p, q) result (dphi)
+  elemental module function vector3_azimuthal_distance_deg (p, q) result (dphi)
     real(default) :: dphi
     type(vector3_t), intent(in) :: p,q
     dphi = vector3_azimuthal_distance (p, q) / degree
   end function vector3_azimuthal_distance_deg
-  elemental function vector4_azimuthal_distance_deg (p, q) result (dphi)
+  elemental module function vector4_azimuthal_distance_deg (p, q) result (dphi)
     real(default) :: dphi
     type(vector4_t), intent(in) :: p,q
     dphi = vector4_azimuthal_distance (p, q) / degree
@@ -1448,8 +1875,17 @@ always nonnegative.  Therefore, the result is nonnegative as well.
      module procedure polar_angle_vector3
      module procedure polar_angle_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function polar_angle_vector3 (p) result (theta)
+      real(default) :: theta
+      type(vector3_t), intent(in) :: p
+    end function polar_angle_vector3
+    elemental module function polar_angle_vector4 (p) result (theta)
+      real(default) :: theta
+      type(vector4_t), intent(in) :: p
+    end function polar_angle_vector4
 <<Lorentz: procedures>>=
-  elemental function polar_angle_vector3 (p) result (theta)
+  elemental module function polar_angle_vector3 (p) result (theta)
     real(default) :: theta
     type(vector3_t), intent(in) :: p
     if (any (abs (p%p) > 0)) then
@@ -1458,7 +1894,7 @@ always nonnegative.  Therefore, the result is nonnegative as well.
        theta = 0
     end if
   end function polar_angle_vector3
-  elemental function polar_angle_vector4 (p) result (theta)
+  elemental module function polar_angle_vector4 (p) result (theta)
     real(default) :: theta
     type(vector4_t), intent(in) :: p
     theta = polar_angle (space_part (p))
@@ -1473,8 +1909,17 @@ always nonnegative.  Therefore, the result is nonnegative as well.
      module procedure polar_angle_ct_vector3
      module procedure polar_angle_ct_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function polar_angle_ct_vector3 (p) result (ct)
+      real(default) :: ct
+      type(vector3_t), intent(in) :: p
+    end function polar_angle_ct_vector3
+    elemental module function polar_angle_ct_vector4 (p) result (ct)
+      real(default) :: ct
+      type(vector4_t), intent(in) :: p
+    end function polar_angle_ct_vector4
 <<Lorentz: procedures>>=
-  elemental function polar_angle_ct_vector3 (p) result (ct)
+  elemental module function polar_angle_ct_vector3 (p) result (ct)
     real(default) :: ct
     type(vector3_t), intent(in) :: p
     if (any (abs (p%p) > 0)) then
@@ -1483,7 +1928,7 @@ always nonnegative.  Therefore, the result is nonnegative as well.
        ct = 1
     end if
   end function polar_angle_ct_vector3
-  elemental function polar_angle_ct_vector4 (p) result (ct)
+  elemental module function polar_angle_ct_vector4 (p) result (ct)
     real(default) :: ct
     type(vector4_t), intent(in) :: p
     ct = polar_angle_ct (space_part (p))
@@ -1498,13 +1943,22 @@ always nonnegative.  Therefore, the result is nonnegative as well.
      module procedure polar_angle_deg_vector3
      module procedure polar_angle_deg_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function polar_angle_deg_vector3 (p) result (theta)
+      real(default) :: theta
+      type(vector3_t), intent(in) :: p
+    end function polar_angle_deg_vector3
+    elemental module function polar_angle_deg_vector4 (p) result (theta)
+      real(default) :: theta
+      type(vector4_t), intent(in) :: p
+    end function polar_angle_deg_vector4
 <<Lorentz: procedures>>=
-  elemental function polar_angle_deg_vector3 (p) result (theta)
+  elemental module function polar_angle_deg_vector3 (p) result (theta)
     real(default) :: theta
     type(vector3_t), intent(in) :: p
     theta = polar_angle (p) / degree
   end function polar_angle_deg_vector3
-  elemental function polar_angle_deg_vector4 (p) result (theta)
+  elemental module function polar_angle_deg_vector4 (p) result (theta)
     real(default) :: theta
     type(vector4_t), intent(in) :: p
     theta = polar_angle (p) / degree
@@ -1522,13 +1976,22 @@ positive $z$ axis as reference.
      module procedure enclosed_angle_vector3
      module procedure enclosed_angle_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function enclosed_angle_vector3 (p, q) result (theta)
+      real(default) :: theta
+      type(vector3_t), intent(in) :: p, q
+    end function enclosed_angle_vector3
+    elemental module function enclosed_angle_vector4 (p, q) result (theta)
+      real(default) :: theta
+      type(vector4_t), intent(in) :: p, q
+    end function enclosed_angle_vector4
 <<Lorentz: procedures>>=
-  elemental function enclosed_angle_vector3 (p, q) result (theta)
+  elemental module function enclosed_angle_vector3 (p, q) result (theta)
     real(default) :: theta
     type(vector3_t), intent(in) :: p, q
     theta = acos (enclosed_angle_ct (p, q))
   end function enclosed_angle_vector3
-  elemental function enclosed_angle_vector4 (p, q) result (theta)
+  elemental module function enclosed_angle_vector4 (p, q) result (theta)
     real(default) :: theta
     type(vector4_t), intent(in) :: p, q
     theta = enclosed_angle (space_part (p), space_part (q))
@@ -1543,8 +2006,17 @@ positive $z$ axis as reference.
      module procedure enclosed_angle_ct_vector3
      module procedure enclosed_angle_ct_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function enclosed_angle_ct_vector3 (p, q) result (ct)
+      real(default) :: ct
+      type(vector3_t), intent(in) :: p, q
+    end function enclosed_angle_ct_vector3
+    elemental module function enclosed_angle_ct_vector4 (p, q) result (ct)
+      real(default) :: ct
+      type(vector4_t), intent(in) :: p, q
+    end function enclosed_angle_ct_vector4
 <<Lorentz: procedures>>=
-  elemental function enclosed_angle_ct_vector3 (p, q) result (ct)
+  elemental module function enclosed_angle_ct_vector3 (p, q) result (ct)
     real(default) :: ct
     type(vector3_t), intent(in) :: p, q
     if (any (abs (p%p) > 0) .and. any (abs (q%p) > 0)) then
@@ -1558,7 +2030,7 @@ positive $z$ axis as reference.
        ct = 1
     end if
   end function enclosed_angle_ct_vector3
-  elemental function enclosed_angle_ct_vector4 (p, q) result (ct)
+  elemental module function enclosed_angle_ct_vector4 (p, q) result (ct)
     real(default) :: ct
     type(vector4_t), intent(in) :: p, q
     ct = enclosed_angle_ct (space_part (p), space_part (q))
@@ -1573,13 +2045,22 @@ positive $z$ axis as reference.
      module procedure enclosed_angle_deg_vector3
      module procedure enclosed_angle_deg_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function enclosed_angle_deg_vector3 (p, q) result (theta)
+      real(default) :: theta
+      type(vector3_t), intent(in) :: p, q
+    end function enclosed_angle_deg_vector3
+    elemental module function enclosed_angle_deg_vector4 (p, q) result (theta)
+      real(default) :: theta
+      type(vector4_t), intent(in) :: p, q
+    end function enclosed_angle_deg_vector4
 <<Lorentz: procedures>>=
-  elemental function enclosed_angle_deg_vector3 (p, q) result (theta)
+  elemental module function enclosed_angle_deg_vector3 (p, q) result (theta)
     real(default) :: theta
     type(vector3_t), intent(in) :: p, q
     theta = enclosed_angle (p, q) / degree
   end function enclosed_angle_deg_vector3
-  elemental function enclosed_angle_deg_vector4 (p, q) result (theta)
+  elemental module function enclosed_angle_deg_vector4 (p, q) result (theta)
     real(default) :: theta
     type(vector4_t), intent(in) :: p, q
     theta = enclosed_angle (p, q) / degree
@@ -1603,13 +2084,27 @@ four-momentum is not timelike, return zero.
   interface enclosed_angle_deg_rest_frame
      module procedure enclosed_angle_deg_rest_frame_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function enclosed_angle_rest_frame_vector4 (p, q) result (theta)
+      type(vector4_t), intent(in) :: p, q
+      real(default) :: theta
+    end function enclosed_angle_rest_frame_vector4
+    elemental module function enclosed_angle_ct_rest_frame_vector4 (p, q) result (ct)
+      type(vector4_t), intent(in) :: p, q
+      real(default) :: ct
+    end function enclosed_angle_ct_rest_frame_vector4
+    elemental module function enclosed_angle_deg_rest_frame_vector4 (p, q) &
+         result (theta)
+      type(vector4_t), intent(in) :: p, q
+      real(default) :: theta
+    end function enclosed_angle_deg_rest_frame_vector4
 <<Lorentz: procedures>>=
-  elemental function enclosed_angle_rest_frame_vector4 (p, q) result (theta)
+  elemental module function enclosed_angle_rest_frame_vector4 (p, q) result (theta)
     type(vector4_t), intent(in) :: p, q
     real(default) :: theta
     theta = acos (enclosed_angle_ct_rest_frame (p, q))
   end function enclosed_angle_rest_frame_vector4
-  elemental function enclosed_angle_ct_rest_frame_vector4 (p, q) result (ct)
+  elemental module function enclosed_angle_ct_rest_frame_vector4 (p, q) result (ct)
     type(vector4_t), intent(in) :: p, q
     real(default) :: ct
     if (invariant_mass(q) > 0) then
@@ -1620,7 +2115,7 @@ four-momentum is not timelike, return zero.
        ct = 1
     end if
   end function enclosed_angle_ct_rest_frame_vector4
-  elemental function enclosed_angle_deg_rest_frame_vector4 (p, q) &
+  elemental module function enclosed_angle_deg_rest_frame_vector4 (p, q) &
        result (theta)
     type(vector4_t), intent(in) :: p, q
     real(default) :: theta
@@ -1640,14 +2135,23 @@ The scalar transverse momentum (assuming the $z$ axis is longitudinal)
      module procedure transverse_part_vector4_beam_axis
      module procedure transverse_part_vector4_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function transverse_part_vector4_beam_axis (p) result (pT)
+      real(default) :: pT
+      type(vector4_t), intent(in) :: p
+    end function transverse_part_vector4_beam_axis
+    elemental module function transverse_part_vector4_vector4 (p1, p2) result (pT)
+      real(default) :: pT
+      type(vector4_t), intent(in) :: p1, p2
+    end function transverse_part_vector4_vector4
 <<Lorentz: procedures>>=
-  elemental function transverse_part_vector4_beam_axis (p) result (pT)
+  elemental module function transverse_part_vector4_beam_axis (p) result (pT)
     real(default) :: pT
     type(vector4_t), intent(in) :: p
     pT = sqrt(p%p(1)**2 + p%p(2)**2)
   end function transverse_part_vector4_beam_axis
 
-  elemental function transverse_part_vector4_vector4 (p1, p2) result (pT)
+  elemental module function transverse_part_vector4_vector4 (p1, p2) result (pT)
     real(default) :: pT
     type(vector4_t), intent(in) :: p1, p2
     real(default) :: p1_norm, p2_norm, p1p2, pT2
@@ -1668,8 +2172,13 @@ longitudinal).  Identical to [[momentum_z_component]].
   interface longitudinal_part
      module procedure longitudinal_part_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function longitudinal_part_vector4 (p) result (pL)
+      real(default) :: pL
+      type(vector4_t), intent(in) :: p
+    end function longitudinal_part_vector4
 <<Lorentz: procedures>>=
-  elemental function longitudinal_part_vector4 (p) result (pL)
+  elemental module function longitudinal_part_vector4 (p) result (pL)
     real(default) :: pL
     type(vector4_t), intent(in) :: p
     pL = p%p(3)
@@ -1683,8 +2192,13 @@ longitudinal).  Identical to [[momentum_z_component]].
   interface space_part_norm
      module procedure space_part_norm_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function space_part_norm_vector4 (p) result (p3)
+      real(default) :: p3
+      type(vector4_t), intent(in) :: p
+    end function space_part_norm_vector4
 <<Lorentz: procedures>>=
-  elemental function space_part_norm_vector4 (p) result (p3)
+  elemental module function space_part_norm_vector4 (p) result (p3)
     real(default) :: p3
     type(vector4_t), intent(in) :: p
     p3 = sqrt (p%p(1)**2 + p%p(2)**2 + p%p(3)**2)
@@ -1700,8 +2214,23 @@ longitudinal).  Identical to [[momentum_z_component]].
      module procedure energy_vector3
      module procedure energy_real
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function energy_vector4 (p) result (E)
+      real(default) :: E
+      type(vector4_t), intent(in) :: p
+    end function energy_vector4
+    elemental module function energy_vector3 (p, mass) result (E)
+      real(default) :: E
+      type(vector3_t), intent(in) :: p
+      real(default), intent(in), optional :: mass
+    end function energy_vector3
+    elemental module function energy_real (p, mass) result (E)
+      real(default) :: E
+      real(default), intent(in) :: p
+      real(default), intent(in), optional :: mass
+    end function energy_real
 <<Lorentz: procedures>>=
-  elemental function energy_vector4 (p) result (E)
+  elemental module function energy_vector4 (p) result (E)
     real(default) :: E
     type(vector4_t), intent(in) :: p
     E = p%p(0)
@@ -1710,7 +2239,7 @@ longitudinal).  Identical to [[momentum_z_component]].
 @ Alternative: The energy corresponding to a given momentum and mass.
 If the mass is omitted, it is zero
 <<Lorentz: procedures>>=
-  elemental function energy_vector3 (p, mass) result (E)
+  elemental module function energy_vector3 (p, mass) result (E)
     real(default) :: E
     type(vector3_t), intent(in) :: p
     real(default), intent(in), optional :: mass
@@ -1721,7 +2250,7 @@ If the mass is omitted, it is zero
     end if
   end function energy_vector3
 
-  elemental function energy_real (p, mass) result (E)
+  elemental module function energy_real (p, mass) result (E)
     real(default) :: E
     real(default), intent(in) :: p
     real(default), intent(in), optional :: mass
@@ -1741,8 +2270,13 @@ spacelike momenta.
   interface invariant_mass
      module procedure invariant_mass_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function invariant_mass_vector4 (p) result (m)
+      real(default) :: m
+      type(vector4_t), intent(in) :: p
+    end function invariant_mass_vector4
 <<Lorentz: procedures>>=
-  elemental function invariant_mass_vector4 (p) result (m)
+  elemental module function invariant_mass_vector4 (p) result (m)
     real(default) :: m
     type(vector4_t), intent(in) :: p
     real(default) :: msq
@@ -1754,7 +2288,6 @@ spacelike momenta.
     end if
   end function invariant_mass_vector4
 @ %def invariant_mass
-
 @ The invariant mass squared.  Zero for lightlike, negative for
 spacelike momenta.
 <<Lorentz: public functions>>=
@@ -1763,8 +2296,13 @@ spacelike momenta.
   interface invariant_mass_squared
      module procedure invariant_mass_squared_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function invariant_mass_squared_vector4 (p) result (msq)
+      real(default) :: msq
+      type(vector4_t), intent(in) :: p
+    end function invariant_mass_squared_vector4
 <<Lorentz: procedures>>=
-  elemental function invariant_mass_squared_vector4 (p) result (msq)
+  elemental module function invariant_mass_squared_vector4 (p) result (msq)
     real(default) :: msq
     type(vector4_t), intent(in) :: p
     msq = p*p
@@ -1779,8 +2317,13 @@ also is negative.
   interface transverse_mass
      module procedure transverse_mass_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function transverse_mass_vector4 (p) result (m)
+      real(default) :: m
+      type(vector4_t), intent(in) :: p
+    end function transverse_mass_vector4
 <<Lorentz: procedures>>=
-  elemental function transverse_mass_vector4 (p) result (m)
+  elemental module function transverse_mass_vector4 (p) result (m)
     real(default) :: m
     type(vector4_t), intent(in) :: p
     real(default) :: msq
@@ -1800,8 +2343,13 @@ also is negative.
   interface rapidity
      module procedure rapidity_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function rapidity_vector4 (p) result (y)
+      real(default) :: y
+      type(vector4_t), intent(in) :: p
+    end function rapidity_vector4
 <<Lorentz: procedures>>=
-  elemental function rapidity_vector4 (p) result (y)
+  elemental module function rapidity_vector4 (p) result (y)
     real(default) :: y
     type(vector4_t), intent(in) :: p
     y = .5 * log( (energy (p) + longitudinal_part (p)) &
@@ -1816,8 +2364,13 @@ also is negative.
   interface pseudorapidity
      module procedure pseudorapidity_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function pseudorapidity_vector4 (p) result (eta)
+      real(default) :: eta
+      type(vector4_t), intent(in) :: p
+    end function pseudorapidity_vector4
 <<Lorentz: procedures>>=
-  elemental function pseudorapidity_vector4 (p) result (eta)
+  elemental module function pseudorapidity_vector4 (p) result (eta)
     real(default) :: eta
     type(vector4_t), intent(in) :: p
     eta = -log( tan (.5 * polar_angle (p)))
@@ -1831,8 +2384,13 @@ also is negative.
   interface rapidity_distance
      module procedure rapidity_distance_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function rapidity_distance_vector4 (p, q) result (dy)
+      type(vector4_t), intent(in) :: p, q
+      real(default) :: dy
+    end function rapidity_distance_vector4
 <<Lorentz: procedures>>=
-  elemental function rapidity_distance_vector4 (p, q) result (dy)
+  elemental module function rapidity_distance_vector4 (p, q) result (dy)
     type(vector4_t), intent(in) :: p, q
     real(default) :: dy
     dy = rapidity (q) - rapidity (p)
@@ -1846,8 +2404,13 @@ also is negative.
   interface pseudorapidity_distance
      module procedure pseudorapidity_distance_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function pseudorapidity_distance_vector4 (p, q) result (deta)
+      real(default) :: deta
+      type(vector4_t), intent(in) :: p, q
+    end function pseudorapidity_distance_vector4
 <<Lorentz: procedures>>=
-  elemental function pseudorapidity_distance_vector4 (p, q) result (deta)
+  elemental module function pseudorapidity_distance_vector4 (p, q) result (deta)
     real(default) :: deta
     type(vector4_t), intent(in) :: p, q
     deta = pseudorapidity (q) - pseudorapidity (p)
@@ -1861,8 +2424,13 @@ also is negative.
   interface eta_phi_distance
      module procedure eta_phi_distance_vector4
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function eta_phi_distance_vector4 (p, q) result (dr)
+      type(vector4_t), intent(in) :: p, q
+      real(default) :: dr
+    end function eta_phi_distance_vector4
 <<Lorentz: procedures>>=
-  elemental function eta_phi_distance_vector4 (p, q) result (dr)
+  elemental module function eta_phi_distance_vector4 (p, q) result (dr)
     type(vector4_t), intent(in) :: p, q
     real(default) :: dr
     dr = sqrt ( &
@@ -1889,8 +2457,14 @@ also is negative.
   public :: lorentz_transformation_write
 <<Lorentz: lorentz transformation: TBP>>=
   procedure :: write => lorentz_transformation_write
+<<Lorentz: sub interfaces>>=
+    module subroutine lorentz_transformation_write (L, unit, testflag, ultra)
+      class(lorentz_transformation_t), intent(in) :: L
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag, ultra
+    end subroutine lorentz_transformation_write
 <<Lorentz: procedures>>=
-  subroutine lorentz_transformation_write (L, unit, testflag, ultra)
+  module subroutine lorentz_transformation_write (L, unit, testflag, ultra)
     class(lorentz_transformation_t), intent(in) :: L
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag, ultra
@@ -1918,8 +2492,13 @@ also is negative.
 @ Extract all components:
 <<Lorentz: public>>=
   public :: lorentz_transformation_get_components
+<<Lorentz: sub interfaces>>=
+    pure module function lorentz_transformation_get_components (L) result (a)
+      type(lorentz_transformation_t), intent(in) :: L
+      real(default), dimension(0:3,0:3) :: a
+    end function lorentz_transformation_get_components
 <<Lorentz: procedures>>=
-  pure function lorentz_transformation_get_components (L) result (a)
+  pure module function lorentz_transformation_get_components (L) result (a)
     type(lorentz_transformation_t), intent(in) :: L
     real(default), dimension(0:3,0:3) :: a
     a = L%L
@@ -1937,8 +2516,13 @@ indices and transposing is sufficient.
   interface inverse
      module procedure lorentz_transformation_inverse
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function lorentz_transformation_inverse (L) result (IL)
+      type(lorentz_transformation_t) :: IL
+      type(lorentz_transformation_t), intent(in) :: L
+    end function lorentz_transformation_inverse
 <<Lorentz: procedures>>=
-  elemental function lorentz_transformation_inverse (L) result (IL)
+  elemental module function lorentz_transformation_inverse (L) result (IL)
     type(lorentz_transformation_t) :: IL
     type(lorentz_transformation_t), intent(in) :: L
     IL%L(0,0) = L%L(0,0)
@@ -1992,8 +2576,13 @@ epsilon.
 @ Builds a unit vector orthogal to the input vector in the xy-plane.
 <<Lorentz: public functions>>=
   public :: create_orthogonal
+<<Lorentz: sub interfaces>>=
+    module function create_orthogonal (p_in) result (p_out)
+      type(vector3_t), intent(in) :: p_in
+      type(vector3_t) :: p_out
+    end function create_orthogonal
 <<Lorentz: procedures>>=
-  function create_orthogonal (p_in) result (p_out)
+  module function create_orthogonal (p_in) result (p_out)
     type(vector3_t), intent(in) :: p_in
     type(vector3_t) :: p_out
     real(default) :: ab
@@ -2014,8 +2603,13 @@ epsilon.
 @
 <<Lorentz: public functions>>=
   public :: create_unit_vector
+<<Lorentz: sub interfaces>>=
+    module function create_unit_vector (p_in) result (p_out)
+      type(vector4_t), intent(in) :: p_in
+      type(vector3_t) :: p_out
+    end function create_unit_vector
 <<Lorentz: procedures>>=
-  function create_unit_vector (p_in) result (p_out)
+  module function create_unit_vector (p_in) result (p_out)
     type(vector4_t), intent(in) :: p_in
     type(vector3_t) :: p_out
     p_out%p = p_in%p(1:3) / space_part_norm (p_in)
@@ -2025,8 +2619,13 @@ epsilon.
 @
 <<Lorentz: public functions>>=
   public :: normalize
+<<Lorentz: sub interfaces>>=
+    module function normalize(p) result (p_norm)
+      type(vector3_t) :: p_norm
+      type(vector3_t), intent(in) :: p
+    end function normalize
 <<Lorentz: procedures>>=
-  function normalize(p) result (p_norm)
+  module function normalize(p) result (p_norm)
     type(vector3_t) :: p_norm
     type(vector3_t), intent(in) :: p
     real(default) :: abs
@@ -2039,8 +2638,15 @@ epsilon.
 [[i_res_born]] and the optional argument [[i_emitter]].
 <<Lorentz: public>>=
   public :: compute_resonance_mass
+<<Lorentz: sub interfaces>>=
+    pure module function compute_resonance_mass (p, i_res_born, i_gluon) result (m)
+      real(default) :: m
+      type(vector4_t), intent(in), dimension(:) :: p
+      integer, intent(in), dimension(:) :: i_res_born
+      integer, intent(in), optional :: i_gluon
+    end function compute_resonance_mass
 <<Lorentz: procedures>>=
-  pure function compute_resonance_mass (p, i_res_born, i_gluon) result (m)
+  pure module function compute_resonance_mass (p, i_res_born, i_gluon) result (m)
     real(default) :: m
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), dimension(:) :: i_res_born
@@ -2054,8 +2660,17 @@ epsilon.
 @
 <<Lorentz: public>>=
   public :: get_resonance_momentum
+<<Lorentz: sub interfaces>>=
+    pure module function get_resonance_momentum &
+         (p, i_res_born, i_gluon) result (p_res)
+      type(vector4_t) :: p_res
+      type(vector4_t), intent(in), dimension(:) :: p
+      integer, intent(in), dimension(:) :: i_res_born
+      integer, intent(in), optional :: i_gluon
+    end function get_resonance_momentum
 <<Lorentz: procedures>>=
-  pure function get_resonance_momentum (p, i_res_born, i_gluon) result (p_res)
+  pure module function get_resonance_momentum &
+       (p, i_res_born, i_gluon) result (p_res)
     type(vector4_t) :: p_res
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), dimension(:) :: i_res_born
@@ -2072,8 +2687,14 @@ epsilon.
 @
 <<Lorentz: public>>=
   public :: create_two_particle_decay
+<<Lorentz: sub interfaces>>=
+    module function create_two_particle_decay (s, p1, p2) result (p_rest)
+      type(vector4_t), dimension(3) :: p_rest
+      real(default), intent(in) :: s
+      type(vector4_t), intent(in) :: p1, p2
+    end function create_two_particle_decay
 <<Lorentz: procedures>>=
-  function create_two_particle_decay (s, p1, p2) result (p_rest)
+  module function create_two_particle_decay (s, p1, p2) result (p_rest)
     type(vector4_t), dimension(3) :: p_rest
     real(default), intent(in) :: s
     type(vector4_t), intent(in) :: p1, p2
@@ -2115,8 +2736,13 @@ momentum $1$ and $2$ can be determined to be
 \end{equation*}
 <<Lorentz: public>>=
   public :: create_three_particle_decay
+<<Lorentz: sub interfaces>>=
+    module function create_three_particle_decay (p1, p2, p3) result (p_rest)
+      type(vector4_t), dimension(4) :: p_rest
+      type(vector4_t), intent(in) :: p1, p2, p3
+    end function create_three_particle_decay
 <<Lorentz: procedures>>=
-  function create_three_particle_decay (p1, p2, p3) result (p_rest)
+  module function create_three_particle_decay (p1, p2, p3) result (p_rest)
     type(vector4_t), dimension(4) :: p_rest
     type(vector4_t), intent(in) :: p1, p2, p3
     real(default) :: E1, E2, E3
@@ -2176,8 +2802,20 @@ momentum $1$ and $2$ can be determined to be
 @
 <<Lorentz: public>>=
   public :: generate_on_shell_decay
+<<Lorentz: sub interfaces>>=
+    recursive module subroutine generate_on_shell_decay (p_dec, &
+        p_in, p_out, i_real, msq_in, jac, evaluate_special)
+      type(vector4_t), intent(in) :: p_dec
+      type(vector4_t), intent(in), dimension(:) :: p_in
+      type(vector4_t), intent(inout), dimension(:) :: p_out
+      integer, intent(in) :: i_real
+      real(default), intent(in), optional :: msq_in
+      real(default), intent(inout), optional :: jac
+      procedure(evaluate_one_to_two_splitting_special), intent(in), &
+            pointer, optional :: evaluate_special
+    end subroutine generate_on_shell_decay
 <<Lorentz: procedures>>=
-  recursive subroutine generate_on_shell_decay (p_dec, &
+  recursive module subroutine generate_on_shell_decay (p_dec, &
       p_in, p_out, i_real, msq_in, jac, evaluate_special)
     type(vector4_t), intent(in) :: p_dec
     type(vector4_t), intent(in), dimension(:) :: p_in
@@ -2271,7 +2909,7 @@ momentum $1$ and $2$ can be determined to be
      type(vector4_t), intent(in) :: p_in
      real(default), intent(in) :: E, p
      type(vector3_t) :: vec
-     vec = p_in%p(1:3) / space_part_norm (p_in)
+     vec%p(1:3) = p_in%p(1:3) / space_part_norm (p_in)
      p_out = vector4_moving (E, p * vec)
    end function shift_momentum
 
@@ -2310,14 +2948,25 @@ is the transformation that turns $(m;\vec 0)$ into $(E;\vec p)$.
 Conversely, the inverse transformation boosts a vector \emph{into} the
 rest frame of a particle, in particular $(E;\vec p)$ into $(m;\vec
 0)$.
+<<Lorentz: sub interfaces>>=
+    elemental module function boost_from_rest_frame (p, m) result (L)
+      type(lorentz_transformation_t) :: L
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in) :: m
+    end function boost_from_rest_frame
+    elemental module function boost_from_rest_frame_vector3 (p, m) result (L)
+      type(lorentz_transformation_t) :: L
+      type(vector3_t), intent(in) :: p
+      real(default), intent(in) :: m
+    end function boost_from_rest_frame_vector3
 <<Lorentz: procedures>>=
-  elemental function boost_from_rest_frame (p, m) result (L)
+  elemental module function boost_from_rest_frame (p, m) result (L)
     type(lorentz_transformation_t) :: L
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: m
     L = boost_from_rest_frame_vector3 (space_part (p), m)
   end function boost_from_rest_frame
-  elemental function boost_from_rest_frame_vector3 (p, m) result (L)
+  elemental module function boost_from_rest_frame_vector3 (p, m) result (L)
     type(lorentz_transformation_t) :: L
     type(vector3_t), intent(in) :: p
     real(default), intent(in) :: m
@@ -2350,8 +2999,14 @@ rest frame of a particle, in particular $(E;\vec p)$ into $(m;\vec
 @ %def boost_from_rest_frame
 @ A canonical boost is a boost along one of the coordinate axes, which
 we may supply as an integer argument.  Here, $\gamma\beta$ is scalar.
+<<Lorentz: sub interfaces>>=
+    elemental module function boost_canonical (beta_gamma, k) result (L)
+      type(lorentz_transformation_t) :: L
+      real(default), intent(in) :: beta_gamma
+      integer, intent(in) :: k
+    end function boost_canonical
 <<Lorentz: procedures>>=
-  elemental function boost_canonical (beta_gamma, k) result (L)
+  elemental module function boost_canonical (beta_gamma, k) result (L)
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: beta_gamma
     integer, intent(in) :: k
@@ -2366,8 +3021,14 @@ we may supply as an integer argument.  Here, $\gamma\beta$ is scalar.
 @ %def boost_canonical
 @ Instead of a canonical axis, we can supply an arbitrary axis which
 need not be normalized.  If it is zero, return the unit matrix.
+<<Lorentz: sub interfaces>>=
+    elemental module function boost_generic (beta_gamma, axis) result (L)
+      type(lorentz_transformation_t) :: L
+      real(default), intent(in) :: beta_gamma
+      type(vector3_t), intent(in) :: axis
+    end function boost_generic
 <<Lorentz: procedures>>=
-  elemental function boost_generic (beta_gamma, axis) result (L)
+  elemental module function boost_generic (beta_gamma, axis) result (L)
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: beta_gamma
     type(vector3_t), intent(in) :: axis
@@ -2399,8 +3060,28 @@ calculate them.  Of course, the user has to ensure that
 $\cos^2\phi+\sin^2\phi=1$, and that the given axis [[n]] is normalized to
 one.  In the second form, the length of [[axis]] is the rotation
 angle.
+<<Lorentz: sub interfaces>>=
+    elemental module function rotation_generic_cs (cp, sp, axis) result (R)
+      type(lorentz_transformation_t) :: R
+      real(default), intent(in) :: cp, sp
+      type(vector3_t), intent(in) :: axis
+    end function rotation_generic_cs
+    elemental module function rotation_generic (axis) result (R)
+      type(lorentz_transformation_t) :: R
+      type(vector3_t), intent(in) :: axis
+    end function rotation_generic
+    elemental module function rotation_canonical_cs (cp, sp, k) result (R)
+      type(lorentz_transformation_t) :: R
+      real(default), intent(in) :: cp, sp
+      integer, intent(in) :: k
+    end function rotation_canonical_cs
+    elemental module function rotation_canonical (phi, k) result (R)
+      type(lorentz_transformation_t) :: R
+      real(default), intent(in) :: phi
+      integer, intent(in) :: k
+    end function rotation_canonical
 <<Lorentz: procedures>>=
-  elemental function rotation_generic_cs (cp, sp, axis) result (R)
+  elemental module function rotation_generic_cs (cp, sp, axis) result (R)
     type(lorentz_transformation_t) :: R
     real(default), intent(in) :: cp, sp
     type(vector3_t), intent(in) :: axis
@@ -2413,7 +3094,7 @@ angle.
        end do
     end do
   end function rotation_generic_cs
-  elemental function rotation_generic (axis) result (R)
+  elemental module function rotation_generic (axis) result (R)
     type(lorentz_transformation_t) :: R
     type(vector3_t), intent(in) :: axis
     real(default) :: phi
@@ -2428,7 +3109,7 @@ angle.
 @ Alternatively, give just the angle and label the coordinate axis by
 an integer.
 <<Lorentz: procedures>>=
-  elemental function rotation_canonical_cs (cp, sp, k) result (R)
+  elemental module function rotation_canonical_cs (cp, sp, k) result (R)
     type(lorentz_transformation_t) :: R
     real(default), intent(in) :: cp, sp
     integer, intent(in) :: k
@@ -2442,7 +3123,7 @@ an integer.
     end do
     R%L(k,k) = 1
   end function rotation_canonical_cs
-  elemental function rotation_canonical (phi, k) result (R)
+  elemental module function rotation_canonical (phi, k) result (R)
     type(lorentz_transformation_t) :: R
     real(default), intent(in) :: phi
     integer, intent(in) :: k
@@ -2459,8 +3140,18 @@ Reconstruct the rotation that rotates it into the second three-vector.
      module procedure rotation_to_2nd_generic
      module procedure rotation_to_2nd_canonical
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function rotation_to_2nd_generic (p, q) result (R)
+      type(lorentz_transformation_t) :: R
+      type(vector3_t), intent(in) :: p, q
+    end function rotation_to_2nd_generic
+    elemental module function rotation_to_2nd_canonical (k, p) result (R)
+      type(lorentz_transformation_t) :: R
+      integer, intent(in) :: k
+      type(vector3_t), intent(in) :: p
+    end function rotation_to_2nd_canonical
 <<Lorentz: procedures>>=
-  elemental function rotation_to_2nd_generic (p, q) result (R)
+  elemental module function rotation_to_2nd_generic (p, q) result (R)
     type(lorentz_transformation_t) :: R
     type(vector3_t), intent(in) :: p, q
     type(vector3_t) :: a, b, ab
@@ -2486,7 +3177,7 @@ Reconstruct the rotation that rotates it into the second three-vector.
 The same for a canonical axis: The function returns the transformation that
 rotates the $k$-axis into the direction of $p$.
 <<Lorentz: procedures>>=
-  elemental function rotation_to_2nd_canonical (k, p) result (R)
+  elemental module function rotation_to_2nd_canonical (k, p) result (R)
     type(lorentz_transformation_t) :: R
     integer, intent(in) :: k
     type(vector3_t), intent(in) :: p
@@ -2532,8 +3223,21 @@ consistent result one should have $(p_1+p_2)^2 = m^2$.
      module procedure transformation_rec_canonical
   end interface
 @ %def transformation
+<<Lorentz: sub interfaces>>=
+    elemental module function transformation_rec_generic (axis, p1, p2, m) result (L)
+      type(vector3_t), intent(in) :: axis
+      type(vector4_t), intent(in) :: p1, p2
+      real(default), intent(in) :: m
+      type(lorentz_transformation_t) :: L
+    end function transformation_rec_generic
+    elemental module function transformation_rec_canonical (k, p1, p2, m) result (L)
+      integer, intent(in) :: k
+      type(vector4_t), intent(in) :: p1, p2
+      real(default), intent(in) :: m
+      type(lorentz_transformation_t) :: L
+    end function transformation_rec_canonical
 <<Lorentz: procedures>>=
-  elemental function transformation_rec_generic (axis, p1, p2, m) result (L)
+  elemental module function transformation_rec_generic (axis, p1, p2, m) result (L)
     type(vector3_t), intent(in) :: axis
     type(vector4_t), intent(in) :: p1, p2
     real(default), intent(in) :: m
@@ -2541,7 +3245,7 @@ consistent result one should have $(p_1+p_2)^2 = m^2$.
     L = boost (p1 + p2, m)
     L = L * rotation_to_2nd (axis, space_part (inverse (L) * p1))
   end function transformation_rec_generic
-  elemental function transformation_rec_canonical (k, p1, p2, m) result (L)
+  elemental module function transformation_rec_canonical (k, p1, p2, m) result (L)
     integer, intent(in) :: k
     type(vector4_t), intent(in) :: p1, p2
     real(default), intent(in) :: m
@@ -2559,19 +3263,34 @@ Multiplying vectors and Lorentz transformations is straightforward.
      module procedure prod_LT_LT
      module procedure prod_vector4_LT
   end interface
+<<Lorentz: sub interfaces>>=
+    elemental module function prod_LT_vector4 (L, p) result (np)
+      type(vector4_t) :: np
+      type(lorentz_transformation_t), intent(in) :: L
+      type(vector4_t), intent(in) :: p
+    end function prod_LT_vector4
+    elemental module function prod_LT_LT (L1, L2) result (NL)
+      type(lorentz_transformation_t) :: NL
+      type(lorentz_transformation_t), intent(in) :: L1,L2
+    end function prod_LT_LT
+    elemental module function prod_vector4_LT (p, L) result (np)
+      type(vector4_t) :: np
+      type(vector4_t), intent(in) :: p
+      type(lorentz_transformation_t), intent(in) :: L
+    end function prod_vector4_LT
 <<Lorentz: procedures>>=
-  elemental function prod_LT_vector4 (L, p) result (np)
+  elemental module function prod_LT_vector4 (L, p) result (np)
     type(vector4_t) :: np
     type(lorentz_transformation_t), intent(in) :: L
     type(vector4_t), intent(in) :: p
     np%p = matmul (L%L, p%p)
   end function prod_LT_vector4
-  elemental function prod_LT_LT (L1, L2) result (NL)
+  elemental module function prod_LT_LT (L1, L2) result (NL)
     type(lorentz_transformation_t) :: NL
     type(lorentz_transformation_t), intent(in) :: L1,L2
     NL%L = matmul (L1%L, L2%L)
   end function prod_LT_LT
-  elemental function prod_vector4_LT (p, L) result (np)
+  elemental module function prod_vector4_LT (p, L) result (np)
     type(vector4_t) :: np
     type(vector4_t), intent(in) :: p
     type(lorentz_transformation_t), intent(in) :: L
@@ -2595,8 +3314,14 @@ boost along the $3$ axis:
 Instead of the angles we provide sine and cosine.
 <<Lorentz: public functions>>=
   public :: LT_compose_r3_r2_b3
+<<Lorentz: sub interfaces>>=
+    elemental module function LT_compose_r3_r2_b3 &
+         (cp, sp, ct, st, beta_gamma) result (L)
+      type(lorentz_transformation_t) :: L
+      real(default), intent(in) :: cp, sp, ct, st, beta_gamma
+    end function LT_compose_r3_r2_b3
 <<Lorentz: procedures>>=
-  elemental function LT_compose_r3_r2_b3 &
+  elemental module function LT_compose_r3_r2_b3 &
        (cp, sp, ct, st, beta_gamma) result (L)
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: cp, sp, ct, st, beta_gamma
@@ -2628,8 +3353,14 @@ Instead of the angles we provide sine and cosine.
 \end{equation}
 <<Lorentz: public functions>>=
   public :: LT_compose_r2_r3_b3
+<<Lorentz: sub interfaces>>=
+    elemental module function LT_compose_r2_r3_b3 &
+         (ct, st, cp, sp, beta_gamma) result (L)
+      type(lorentz_transformation_t) :: L
+      real(default), intent(in) :: ct, st, cp, sp, beta_gamma
+    end function LT_compose_r2_r3_b3
 <<Lorentz: procedures>>=
-  elemental function LT_compose_r2_r3_b3 &
+  elemental module function LT_compose_r2_r3_b3 &
        (ct, st, cp, sp, beta_gamma) result (L)
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: ct, st, cp, sp, beta_gamma
@@ -2663,8 +3394,20 @@ an arbitrary four-momentum and extracts the space part of the result:
 The second variant applies if there is no rotation
 <<Lorentz: public functions>>=
   public :: axis_from_p_r3_r2_b3, axis_from_p_b3
+<<Lorentz: sub interfaces>>=
+    elemental module function axis_from_p_r3_r2_b3 &
+         (p, cp, sp, ct, st, beta_gamma) result (n)
+      type(vector3_t) :: n
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in) :: cp, sp, ct, st, beta_gamma
+    end function axis_from_p_r3_r2_b3
+    elemental module function axis_from_p_b3 (p, beta_gamma) result (n)
+      type(vector3_t) :: n
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in) :: beta_gamma
+    end function axis_from_p_b3
 <<Lorentz: procedures>>=
-  elemental function axis_from_p_r3_r2_b3 &
+  elemental module function axis_from_p_r3_r2_b3 &
        (p, cp, sp, ct, st, beta_gamma) result (n)
     type(vector3_t) :: n
     type(vector4_t), intent(in) :: p
@@ -2681,7 +3424,7 @@ The second variant applies if there is no rotation
     end if
   end function axis_from_p_r3_r2_b3
 
-  elemental function axis_from_p_b3 (p, beta_gamma) result (n)
+  elemental module function axis_from_p_b3 (p, beta_gamma) result (n)
     type(vector3_t) :: n
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: beta_gamma
@@ -2700,8 +3443,13 @@ The K\"all\'en function, mostly used for the phase space.
 This is equivalent to $\lambda(x,y,z)=x^2+y^2+z^2-2xy-2xz-2yz$.
 <<Lorentz: public functions>>=
   public :: lambda
+<<Lorentz: sub interfaces>>=
+    elemental module function lambda (m1sq, m2sq, m3sq)
+      real(default) :: lambda
+      real(default), intent(in) :: m1sq, m2sq, m3sq
+    end function lambda
 <<Lorentz: procedures>>=
-  elemental function lambda (m1sq, m2sq, m3sq)
+  elemental module function lambda (m1sq, m2sq, m3sq)
     real(default) :: lambda
     real(default), intent(in) :: m1sq, m2sq, m3sq
     lambda = (m1sq - m2sq - m3sq)**2 - 4*m2sq*m3sq
@@ -2713,8 +3461,15 @@ energy, particle masses, and optionally the momentum of the
 c.m. system.
 <<Lorentz: public functions>>=
   public :: colliding_momenta
+<<Lorentz: sub interfaces>>=
+    module function colliding_momenta (sqrts, m, p_cm) result (p)
+      type(vector4_t), dimension(2) :: p
+      real(default), intent(in) :: sqrts
+      real(default), dimension(2), intent(in), optional :: m
+      real(default), intent(in), optional :: p_cm
+    end function colliding_momenta
 <<Lorentz: procedures>>=
-  function colliding_momenta (sqrts, m, p_cm) result (p)
+  module function colliding_momenta (sqrts, m, p_cm) result (p)
     type(vector4_t), dimension(2) :: p
     real(default), intent(in) :: sqrts
     real(default), dimension(2), intent(in), optional :: m
@@ -2767,20 +3522,33 @@ transformations.
      module procedure pacify_LT
   end interface pacify
 
+<<Lorentz: sub interfaces>>=
+    elemental module subroutine pacify_vector3 (p, tolerance)
+      type(vector3_t), intent(inout) :: p
+      real(default), intent(in) :: tolerance
+    end subroutine pacify_vector3
+    elemental module subroutine pacify_vector4 (p, tolerance)
+      type(vector4_t), intent(inout) :: p
+      real(default), intent(in) :: tolerance
+    end subroutine pacify_vector4
+    elemental module subroutine pacify_LT (LT, tolerance)
+      type(lorentz_transformation_t), intent(inout) :: LT
+      real(default), intent(in) :: tolerance
+    end subroutine pacify_LT
 <<Lorentz: procedures>>=
-  elemental subroutine pacify_vector3 (p, tolerance)
+  elemental module subroutine pacify_vector3 (p, tolerance)
     type(vector3_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
     where (abs (p%p) < tolerance)  p%p = zero
   end subroutine pacify_vector3
 
-  elemental subroutine pacify_vector4 (p, tolerance)
+  elemental module subroutine pacify_vector4 (p, tolerance)
     type(vector4_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
     where (abs (p%p) < tolerance)  p%p = zero
   end subroutine pacify_vector4
 
-  elemental subroutine pacify_LT (LT, tolerance)
+  elemental module subroutine pacify_LT (LT, tolerance)
     type(lorentz_transformation_t), intent(inout) :: LT
     real(default), intent(in) :: tolerance
     where (abs (LT%L) < tolerance)  LT%L = zero
@@ -2790,8 +3558,14 @@ transformations.
 @
 <<Lorentz: public>>=
   public :: vector_set_reshuffle
+<<Lorentz: sub interfaces>>=
+    module subroutine vector_set_reshuffle (p1, list, p2)
+      type(vector4_t), intent(in), dimension(:), allocatable :: p1
+      integer, intent(in), dimension(:), allocatable :: list
+      type(vector4_t), intent(out), dimension(:), allocatable :: p2
+    end subroutine vector_set_reshuffle
 <<Lorentz: procedures>>=
-  subroutine vector_set_reshuffle (p1, list, p2)
+  module subroutine vector_set_reshuffle (p1, list, p2)
     type(vector4_t), intent(in), dimension(:), allocatable :: p1
     integer, intent(in), dimension(:), allocatable :: list
     type(vector4_t), intent(out), dimension(:), allocatable :: p2
@@ -2808,8 +3582,14 @@ transformations.
 @
 <<Lorentz: public>>=
   public :: vector_set_is_cms
+<<Lorentz: sub interfaces>>=
+    module function vector_set_is_cms (p, n_in) result (is_cms)
+      logical :: is_cms
+      type(vector4_t), intent(in), dimension(:) :: p
+      integer, intent(in) :: n_in
+    end function vector_set_is_cms
 <<Lorentz: procedures>>=
-  function vector_set_is_cms (p, n_in) result (is_cms)
+  module function vector_set_is_cms (p, n_in) result (is_cms)
     logical :: is_cms
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in) :: n_in
@@ -2826,8 +3606,14 @@ transformations.
 @
 <<Lorentz: public>>=
   public :: vector_set_is_lab
+<<Lorentz: sub interfaces>>=
+    module function vector_set_is_lab (p, n_in) result (is_lab)
+      logical :: is_lab
+      type(vector4_t), intent(in), dimension(:) :: p
+      integer, intent(in) :: n_in
+    end function vector_set_is_lab
 <<Lorentz: procedures>>=
-  function vector_set_is_lab (p, n_in) result (is_lab)
+  module function vector_set_is_lab (p, n_in) result (is_lab)
     logical :: is_lab
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in) :: n_in
@@ -2838,8 +3624,18 @@ transformations.
 @
 <<Lorentz: public>>=
   public :: vector4_write_set
+<<Lorentz: sub interfaces>>=
+    module subroutine vector4_write_set (p, unit, show_mass, testflag, &
+          check_conservation, ultra, n_in)
+      type(vector4_t), intent(in), dimension(:) :: p
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: show_mass
+      logical, intent(in), optional :: testflag, ultra
+      logical, intent(in), optional :: check_conservation
+      integer, intent(in), optional :: n_in
+    end subroutine vector4_write_set
 <<Lorentz: procedures>>=
-  subroutine vector4_write_set (p, unit, show_mass, testflag, &
+  module subroutine vector4_write_set (p, unit, show_mass, testflag, &
         check_conservation, ultra, n_in)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
@@ -2886,8 +3682,17 @@ transformations.
 @
 <<Lorentz: public>>=
   public :: vector4_check_momentum_conservation
+<<Lorentz: sub interfaces>>=
+    module subroutine vector4_check_momentum_conservation (p, n_in, unit, &
+       abs_smallness, rel_smallness, verbose)
+      type(vector4_t), dimension(:), intent(in) :: p
+      integer, intent(in) :: n_in
+      integer, intent(in), optional :: unit
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+      logical, intent(in), optional :: verbose
+    end subroutine vector4_check_momentum_conservation
 <<Lorentz: procedures>>=
-  subroutine vector4_check_momentum_conservation (p, n_in, unit, &
+  module subroutine vector4_check_momentum_conservation (p, n_in, unit, &
      abs_smallness, rel_smallness, verbose)
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: n_in
@@ -2943,8 +3748,13 @@ formulae, $[ij]$ can be obtained by using the relation $S_{ij} =
 -[ji]$. Thus, a minus-sign has to be applied.
 <<Lorentz: public>>=
   public :: spinor_product
+<<Lorentz: sub interfaces>>=
+    module subroutine spinor_product (p1, p2, prod1, prod2)
+      type(vector4_t), intent(in) :: p1, p2
+      complex(default), intent(out) :: prod1, prod2
+    end subroutine spinor_product
 <<Lorentz: procedures>>=
-  subroutine spinor_product (p1, p2, prod1, prod2)
+  module subroutine spinor_product (p1, p2, prod1, prod2)
     type(vector4_t), intent(in) :: p1, p2
     complex(default), intent(out) :: prod1, prod2
     real(default) :: sij
@@ -2979,12 +3789,7 @@ module phs_points
 
 <<Use kinds>>
   use lorentz, only: vector4_t
-  use lorentz, only: vector4_null
-  use lorentz, only: vector4_write_set
   use lorentz, only: lorentz_transformation_t
-  use lorentz, only: operator(==)
-  use lorentz, only: operator(*)
-  use lorentz, only: operator(**)
   use lorentz, only: sum
 
 <<Standard module head>>
@@ -2995,12 +3800,33 @@ module phs_points
 
 <<PHS points: interfaces>>
 
+  interface
+<<PHS points: sub interfaces>>
+  end interface
+
+end module phs_points
+@ %def phs_points
+@
+<<[[phs_points_sub.f90]]>>=
+<<File header>>
+
+submodule (phs_points) phs_points_s
+
+  use lorentz, only: vector4_null
+  use lorentz, only: vector4_write_set
+  use lorentz, only: operator(==)
+  use lorentz, only: operator(*)
+  use lorentz, only: operator(**)
+
+  implicit none
+
 contains
 
 <<PHS points: procedures>>
 
-end module phs_points
-@ %def phs_points
+end submodule phs_points_s
+
+@ %def phs_points_s
 @
 \subsection{PHS point definition}
 This is a trivial container for an array of momenta.  The main
@@ -3022,8 +3848,18 @@ Output.  This is instrumented with options, which have to be
 provided by the caller.
 <<PHS points: phs point: TBP>>=
   procedure :: write => phs_point_write
+<<PHS points: sub interfaces>>=
+    module subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
+        check_conservation, ultra, n_in)
+      class(phs_point_t), intent(in) :: phs_point
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: show_mass
+      logical, intent(in), optional :: testflag, ultra
+      logical, intent(in), optional :: check_conservation
+      integer, intent(in), optional :: n_in
+    end subroutine phs_point_write
 <<PHS points: procedures>>=
-  subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
+  module subroutine phs_point_write (phs_point, unit, show_mass, testflag, &
       check_conservation, ultra, n_in)
     class(phs_point_t), intent(in) :: phs_point
     integer, intent(in), optional :: unit
@@ -3053,8 +3889,13 @@ provided by the caller.
      module procedure vector4_from_phs_point
   end interface
 @ Initialize with zero momenta but fixed size
+<<PHS points: sub interfaces>>=
+    pure module subroutine phs_point_from_n (phs_point, n_particles)
+      type(phs_point_t), intent(out) :: phs_point
+      integer, intent(in) :: n_particles
+    end subroutine phs_point_from_n
 <<PHS points: procedures>>=
-  pure subroutine phs_point_from_n (phs_point, n_particles)
+  pure module subroutine phs_point_from_n (phs_point, n_particles)
     type(phs_point_t), intent(out) :: phs_point
     integer, intent(in) :: n_particles
     allocate (phs_point%p (n_particles), source = vector4_null)
@@ -3062,14 +3903,23 @@ provided by the caller.
 
 @ %def phs_point_init_from_n
 @ Transform from/to plain vector array
+<<PHS points: sub interfaces>>=
+    pure module subroutine phs_point_from_vector4 (phs_point, p)
+      type(phs_point_t), intent(out) :: phs_point
+      type(vector4_t), dimension(:), intent(in) :: p
+    end subroutine phs_point_from_vector4
+    pure module subroutine vector4_from_phs_point (p, phs_point)
+      class(phs_point_t), intent(in) :: phs_point
+      type(vector4_t), dimension(:), allocatable, intent(out) :: p
+    end subroutine vector4_from_phs_point
 <<PHS points: procedures>>=
-  pure subroutine phs_point_from_vector4 (phs_point, p)
+  pure module subroutine phs_point_from_vector4 (phs_point, p)
     type(phs_point_t), intent(out) :: phs_point
     type(vector4_t), dimension(:), intent(in) :: p
     phs_point%p = p
   end subroutine phs_point_from_vector4
 
-  pure subroutine vector4_from_phs_point (p, phs_point)
+  pure module subroutine vector4_from_phs_point (p, phs_point)
     class(phs_point_t), intent(in) :: phs_point
     type(vector4_t), dimension(:), allocatable, intent(out) :: p
     if (allocated (phs_point%p))  p = phs_point%p
@@ -3084,8 +3934,13 @@ provided by the caller.
   interface size
      module procedure phs_point_size
   end interface size
+<<PHS points: sub interfaces>>=
+    pure module function phs_point_size (phs_point) result (s)
+      class(phs_point_t), intent(in) :: phs_point
+      integer :: s
+    end function phs_point_size
 <<PHS points: procedures>>=
-  pure function phs_point_size (phs_point) result (s)
+  pure module function phs_point_size (phs_point) result (s)
     class(phs_point_t), intent(in) :: phs_point
     integer :: s
     if (allocated (phs_point%p)) then
@@ -3103,8 +3958,15 @@ provided by the caller.
   interface operator(==)
      module procedure phs_point_eq
   end interface operator(==)
+<<PHS points: sub interfaces>>=
+    elemental module function phs_point_eq &
+         (phs_point_1, phs_point_2) result (flag)
+      class(phs_point_t), intent(in) :: phs_point_1, phs_point_2
+      logical :: flag
+    end function phs_point_eq
 <<PHS points: procedures>>=
-  elemental function phs_point_eq (phs_point_1, phs_point_2) result (flag)
+  elemental module function phs_point_eq &
+       (phs_point_1, phs_point_2) result (flag)
     class(phs_point_t), intent(in) :: phs_point_1, phs_point_2
     logical :: flag
     if (allocated (phs_point_1%p) .and. (allocated (phs_point_2%p))) then
@@ -3118,8 +3980,13 @@ provided by the caller.
 @ Extract all momenta, as a method
 <<PHS points: phs point: TBP>>=
   procedure :: get => phs_point_get
+<<PHS points: sub interfaces>>=
+    pure module function phs_point_get (phs_point) result (p)
+      class(phs_point_t), intent(in) :: phs_point
+      type(vector4_t), dimension(:), allocatable :: p
+    end function phs_point_get
 <<PHS points: procedures>>=
-  pure function phs_point_get (phs_point) result (p)
+  pure module function phs_point_get (phs_point) result (p)
     class(phs_point_t), intent(in) :: phs_point
     type(vector4_t), dimension(:), allocatable :: p
     if (allocated (phs_point%p)) then
@@ -3133,8 +4000,14 @@ provided by the caller.
 @ Extract a subset of all momenta.
 <<PHS points: phs point: TBP>>=
   procedure :: select => phs_point_select
+<<PHS points: sub interfaces>>=
+    elemental module function phs_point_select (phs_point, i) result (p)
+      class(phs_point_t), intent(in) :: phs_point
+      integer, intent(in) :: i
+      type(vector4_t) :: p
+    end function phs_point_select
 <<PHS points: procedures>>=
-  elemental function phs_point_select (phs_point, i) result (p)
+  elemental module function phs_point_select (phs_point, i) result (p)
     class(phs_point_t), intent(in) :: phs_point
     integer, intent(in) :: i
     type(vector4_t) :: p
@@ -3149,8 +4022,14 @@ provided by the caller.
 @ Return the invariant mass squared for a subset of momenta
 <<PHS points: phs point: TBP>>=
   procedure :: get_msq => phs_point_get_msq
+<<PHS points: sub interfaces>>=
+    pure module function phs_point_get_msq (phs_point, iarray) result (msq)
+      class(phs_point_t), intent(in) :: phs_point
+      integer, dimension(:), intent(in) :: iarray
+      real(default) :: msq
+    end function phs_point_get_msq
 <<PHS points: procedures>>=
-  pure function phs_point_get_msq (phs_point, iarray) result (msq)
+  pure module function phs_point_get_msq (phs_point, iarray) result (msq)
     class(phs_point_t), intent(in) :: phs_point
     integer, dimension(:), intent(in) :: iarray
     real(default) :: msq
@@ -3172,8 +4051,14 @@ Lorentz transformation.
   interface operator(*)
      module procedure prod_LT_phs_point
   end interface operator(*)
+<<PHS points: sub interfaces>>=
+    elemental module function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
+      type(lorentz_transformation_t), intent(in) :: L
+      type(phs_point_t), intent(in) :: phs_point
+      type(phs_point_t) :: phs_point_LT
+    end function prod_LT_phs_point
 <<PHS points: procedures>>=
-  elemental function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
+  elemental module function prod_LT_phs_point (L, phs_point) result (phs_point_LT)
     type(lorentz_transformation_t), intent(in) :: L
     type(phs_point_t), intent(in) :: phs_point
     type(phs_point_t) :: phs_point_LT
@@ -3190,8 +4075,19 @@ Lorentz transformation.
      module procedure phs_point_sum
      module procedure phs_point_sum_iarray
   end interface sum
+<<PHS points: sub interfaces>>=
+    pure module function phs_point_sum (phs_point, mask) result (p)
+      class(phs_point_t), intent(in) :: phs_point
+      logical, dimension(:), intent(in), optional :: mask
+      type(vector4_t) :: p
+    end function phs_point_sum
+    pure module function phs_point_sum_iarray (phs_point, iarray) result (p)
+      class(phs_point_t), intent(in) :: phs_point
+      integer, dimension(:), intent(in) :: iarray
+      type(vector4_t) :: p
+    end function phs_point_sum_iarray
 <<PHS points: procedures>>=
-  pure function phs_point_sum (phs_point, mask) result (p)
+  pure module function phs_point_sum (phs_point, mask) result (p)
     class(phs_point_t), intent(in) :: phs_point
     logical, dimension(:), intent(in), optional :: mask
     type(vector4_t) :: p
@@ -3202,7 +4098,7 @@ Lorentz transformation.
     end if
   end function phs_point_sum
   
-  pure function phs_point_sum_iarray (phs_point, iarray) result (p)
+  pure module function phs_point_sum_iarray (phs_point, iarray) result (p)
     class(phs_point_t), intent(in) :: phs_point
     integer, dimension(:), intent(in) :: iarray
     type(vector4_t) :: p
@@ -3221,8 +4117,14 @@ specified beam energy.  We assume that the momenta represent a
 scattering process (two incoming particles) in the c.m.\ frame.
 <<PHS points: phs point: TBP>>=
   procedure :: get_x => phs_point_get_x
+<<PHS points: sub interfaces>>=
+    pure module function phs_point_get_x (phs_point, E_beam) result (x) 
+      class(phs_point_t), intent(in) :: phs_point
+      real(default), dimension(2) :: x
+      real(default), intent(in) :: E_beam
+    end function phs_point_get_x
 <<PHS points: procedures>>=
-  pure function phs_point_get_x (phs_point, E_beam) result (x) 
+  pure module function phs_point_get_x (phs_point, E_beam) result (x) 
     class(phs_point_t), intent(in) :: phs_point
     real(default), dimension(2) :: x
     real(default), intent(in) :: E_beam
@@ -3317,12 +4219,8 @@ elemental (or pure, if this is not possible).
 
 module sm_physics
 
-<<Use kinds>>
-  use io_units
+<<Use kinds with double>>
   use constants
-  use numeric_utils
-  use diagnostics
-  use permutations, only: factorial
   use physics_defs
   use lorentz
 
@@ -3332,12 +4230,32 @@ module sm_physics
 
 <<SM physics: parameters>>
 
+  interface
+<<SM physics: sub interfaces>>
+  end interface
+
+end module sm_physics
+@ %def sm_physics
+@
+<<[[sm_physics_sub.f90]]>>=
+<<File header>>
+
+submodule (sm_physics) sm_physics_s
+
+  use io_units
+  use numeric_utils
+  use diagnostics
+  use permutations, only: factorial
+
+  implicit none
+
 contains
 
 <<SM physics: procedures>>
 
-end module sm_physics
-@ %def sm_physics
+end submodule sm_physics_s
+
+@ %def sm_physics_s
 @
 \subsection{Constants for Quantum Field Theory calculations}
 
@@ -3393,41 +4311,73 @@ and quartic electric charges of a number [[nf]] of active quark flavors.
 <<SM physics: public>>=
   public :: beta0, beta1, beta2
   public :: coeff_b0, coeff_b1, coeff_b2, coeffqed_b0, coeffqed_b1
-  public :: sumQ2q, sumQ4q
+<<SM physics: sub interfaces>>=
+    pure module function beta0 (nf)
+      real(default), intent(in) :: nf
+      real(default) :: beta0
+    end function beta0
+    pure module function beta1 (nf)
+      real(default), intent(in) :: nf
+      real(default) :: beta1
+    end function beta1
+    pure module function beta2 (nf)
+      real(default), intent(in) :: nf
+      real(default) :: beta2
+    end function beta2
+    pure module function coeff_b0 (nf)
+      real(default), intent(in) :: nf
+      real(default) :: coeff_b0
+    end function coeff_b0
+    pure module function coeff_b1 (nf)
+      real(default), intent(in) :: nf
+      real(default) :: coeff_b1
+    end function coeff_b1
+    pure module function coeff_b2 (nf)
+      real(default), intent(in) :: nf
+      real(default) :: coeff_b2
+    end function coeff_b2
+    pure module function coeffqed_b0 (nf, nlep)
+      integer, intent(in) :: nf, nlep
+      real(default) :: n_lep, coeffqed_b0
+    end function coeffqed_b0
+    pure module function coeffqed_b1 (nf, nlep)
+      integer, intent(in) :: nf, nlep
+      real(default) :: n_lep, coeffqed_b1
+    end function coeffqed_b1
 <<SM physics: procedures>>=
-  pure function beta0 (nf)
+  pure module function beta0 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta0
     beta0 = 11.0_default - two/three * nf
   end function beta0
 
-  pure function beta1 (nf)
+  pure module function beta1 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta1
     beta1 = 51.0_default - 19.0_default/three * nf
   end function beta1
 
-  pure function beta2 (nf)
+  pure module function beta2 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta2
     beta2 = 2857.0_default - 5033.0_default / 9.0_default * &
                     nf + 325.0_default/27.0_default * nf**2
   end function beta2
 
-  pure function coeff_b0 (nf)
+  pure module function coeff_b0 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b0
     coeff_b0 = (11.0_default * CA - two * nf) / (12.0_default * pi)
   end function coeff_b0
 
-  pure function coeff_b1 (nf)
+  pure module function coeff_b1 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b1
     coeff_b1 = (17.0_default * CA**2 - five * CA * nf - three * CF * nf) / &
                (24.0_default * pi**2)
   end function coeff_b1
 
-  pure function coeff_b2 (nf)
+  pure module function coeff_b2 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b2
     coeff_b2 = (2857.0_default/54.0_default * CA**3 - &
@@ -3437,14 +4387,14 @@ and quartic electric charges of a number [[nf]] of active quark flavors.
                     11.0_default/9.0_default * CF * nf**2) / (four*pi)**3
   end function coeff_b2
 
-  pure function coeffqed_b0 (nf, nlep)
+  pure module function coeffqed_b0 (nf, nlep)
     integer, intent(in) :: nf, nlep
     real(default) :: n_lep, coeffqed_b0
     n_lep = real(nlep, kind=default)
     coeffqed_b0 = - (three * sumQ2q (nf) + n_lep) / (three*pi)
   end function coeffqed_b0
 
-  pure function coeffqed_b1 (nf, nlep)
+  pure module function coeffqed_b1 (nf, nlep)
     integer, intent(in) :: nf, nlep
     real(default) :: n_lep, coeffqed_b1
     n_lep = real(nlep, kind=default)
@@ -3502,8 +4452,35 @@ scale and e.g. $\alpha_s(m_Z)$ as input. Here, we take the one which
 takes the QCD scale and scale as inputs from the PDG book.
 <<SM physics: public>>=
   public :: running_as, running_as_lam, running_alpha, running_alpha_num
+<<SM physics: sub interfaces>>=
+    pure module function running_as (scale, al_mz, mz, order, nf) result (ascale)
+      real(default), intent(in) :: scale
+      real(default), intent(in), optional :: al_mz, nf, mz
+      integer, intent(in), optional :: order
+      real(default) :: ascale
+    end function running_as
+    pure module function running_as_lam (nf, scale, lambda, order) result (ascale)
+      real(default), intent(in) :: nf, scale
+      real(default), intent(in), optional :: lambda
+      integer, intent(in), optional :: order
+      real(default) :: ascale
+     end function running_as_lam
+    pure module function running_alpha &
+         (scale, al_me, me, order, nf, nlep) result (ascale)
+      real(default), intent(in) :: scale
+      real(default), intent(in), optional :: al_me, me
+      integer, intent(in), optional :: order, nf, nlep
+      real(default) :: ascale
+    end function running_alpha
+    pure module function running_alpha_num &
+         (scale, al_me, me, order, nf, nlep) result (ascale)
+      real(default), intent(in) :: scale
+      real(default), intent(in), optional :: al_me, me
+      integer, intent(in), optional :: order, nf, nlep
+      real(default) :: ascale
+    end function running_alpha_num
 <<SM physics: procedures>>=
-  pure function running_as (scale, al_mz, mz, order, nf) result (ascale)
+  pure module function running_as (scale, al_mz, mz, order, nf) result (ascale)
     real(default), intent(in) :: scale
     real(default), intent(in), optional :: al_mz, nf, mz
     integer, intent(in), optional :: order
@@ -3549,7 +4526,7 @@ takes the QCD scale and scale as inputs from the PDG book.
     end select
   end function running_as
 
-  pure function running_as_lam (nf, scale, lambda, order) result (ascale)
+  pure module function running_as_lam (nf, scale, lambda, order) result (ascale)
     real(default), intent(in) :: nf, scale
     real(default), intent(in), optional :: lambda
     integer, intent(in), optional :: order
@@ -3588,7 +4565,7 @@ takes the QCD scale and scale as inputs from the PDG book.
     end select
   end function running_as_lam
 
-  pure function running_alpha &
+  pure module function running_alpha &
        (scale, al_me, me, order, nf, nlep) result (ascale)
     real(default), intent(in) :: scale
     real(default), intent(in), optional :: al_me, me
@@ -3637,7 +4614,7 @@ takes the QCD scale and scale as inputs from the PDG book.
     end select
   end function running_alpha
 
-  pure function running_alpha_num &
+  pure module function running_alpha_num &
        (scale, al_me, me, order, nf, nlep) result (ascale)
     real(default), intent(in) :: scale
     real(default), intent(in), optional :: al_me, me
@@ -3719,25 +4696,34 @@ functions and not parameters.
   \frac{10}{9} T_R N_f
 \end{equation}
 <<SM physics: parameters>>=
-  real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
+  real(default), parameter, public ::  gamma_q = three/two * CF, &
      k_q = (7.0_default/two - pi**2/6.0_default) * CF
 
 @ %def gamma_q
 @
 <<SM physics: public>>=
   public :: gamma_g, k_g
+<<SM physics: sub interfaces>>=
+    elemental module function gamma_g (nf) result (gg)
+      real(default), intent(in) :: nf
+      real(default) :: gg
+    end function gamma_g
+    elemental module function k_g (nf) result (kg)
+      real(default), intent(in) :: nf
+      real(default) :: kg
+    end function k_g
 <<SM physics: procedures>>=
-  elemental function gamma_g (nf) result (gg)
-     real(kind=default), intent(in) :: nf
-     real(kind=default) :: gg
-     gg = 11.0_default/6.0_default * CA - two/three * TR * nf
+  elemental module function gamma_g (nf) result (gg)
+    real(default), intent(in) :: nf
+    real(default) :: gg
+    gg = 11.0_default/6.0_default * CA - two/three * TR * nf
   end function gamma_g
 
-  elemental function k_g (nf) result (kg)
-     real(kind=default), intent(in) :: nf
-     real(kind=default) :: kg
-     kg = (67.0_default/18.0_default - pi**2/6.0_default) * CA - &
-                10.0_default/9.0_default * TR * nf
+  elemental module function k_g (nf) result (kg)
+    real(default), intent(in) :: nf
+    real(default) :: kg
+    kg = (67.0_default/18.0_default - pi**2/6.0_default) * CA - &
+         10.0_default/9.0_default * TR * nf
   end function k_g
 
 @ %def gamma_g
@@ -3757,22 +4743,25 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
 10^{-15}$.
 <<SM physics: public>>=
   public :: Li2
-<<SM physics: procedures>>=
-  elemental function Li2 (x)
-      use kinds, only: double
+<<SM physics: sub interfaces>>=
+    elemental module function Li2 (x)
       real(default), intent(in) :: x
       real(default) :: Li2
-      Li2 = real( Li2_double (real(x, kind=double)), kind=default)
+    end function Li2
+<<SM physics: procedures>>=
+  elemental module function Li2 (x)
+    real(default), intent(in) :: x
+    real(default) :: Li2
+    Li2 = real( Li2_double (real(x, kind=double)), kind=default)
   end function Li2
 
 @ %def: Li2
 @
 <<SM physics: procedures>>=
   elemental function Li2_double (x)  result (Li2)
-    use kinds, only: double
-    real(kind=double), intent(in) :: x
-    real(kind=double) :: Li2
-    real(kind=double), parameter :: pi2_6 = pi**2/6
+    real(double), intent(in) :: x
+    real(double) :: Li2
+    real(double), parameter :: pi2_6 = pi**2/6
     if (abs(1-x) < tiny_07) then
        Li2 = pi2_6
     else if (abs(1-x) <  0.5_double) then
@@ -3787,9 +4776,9 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
     end if
   contains
     elemental function Li2_restricted (x) result (Li2)
-      real(kind=double), intent(in) :: x
-      real(kind=double) :: Li2
-      real(kind=double) :: tmp, z, z2
+      real(double), intent(in) :: x
+      real(double) :: Li2
+      real(double) :: tmp, z, z2
       z = - log (1-x)
       z2 = z**2
 ! Horner's rule for the powers z^3 through z^19
@@ -3816,8 +4805,13 @@ Eq. (6.3.6):
 \end{equation}
 <<SM physics: public>>=
   public :: psic
+<<SM physics: sub interfaces>>=
+    elemental module function psic (z) result (psi)
+      complex(default), intent(in) :: z
+      complex(default) :: psi
+    end function psic
 <<SM physics: procedures>>=
-  elemental function psic (z) result (psi)
+  elemental module function psic (z) result (psi)
     complex(default), intent(in) :: z
     complex(default) :: psi
     complex(default) :: shift, zz, zi, zi2
@@ -3845,8 +4839,14 @@ Eq. (6.4.11):
 \end{equation}
 <<SM physics: public>>=
   public :: psim
+<<SM physics: sub interfaces>>=
+    elemental module function psim (z, m) result (psi)
+      complex(default), intent(in) :: z
+      integer, intent(in) :: m
+      complex(default) :: psi
+    end function psim
 <<SM physics: procedures>>=
-  elemental function psim (z, m) result (psi)
+  elemental module function psim (z, m) result (psi)
     complex(default), intent(in) :: z
     integer, intent(in) :: m
     complex(default) :: psi
@@ -3904,8 +4904,19 @@ imaginary part is set to zero.
 <<SM physics: public>>=
   public :: cnielsen
   public :: nielsen
+<<SM physics: sub interfaces>>=
+    module function cnielsen (n, m, x) result (nplog)
+      integer, intent(in) :: n, m
+      real(default), intent(in) :: x
+      complex(default) :: nplog
+    end function cnielsen
+    module function nielsen (n, m, x) result (nplog)
+      integer, intent(in) :: n, m
+      real(default), intent(in) :: x
+      real(default) :: nplog
+    end function nielsen
 <<SM physics: procedures>>=
-  function cnielsen (n, m, x) result (nplog)
+  module function cnielsen (n, m, x) result (nplog)
     integer, intent(in) :: n, m
     real(default), intent(in) :: x
     complex(default) :: nplog
@@ -4300,7 +5311,7 @@ imaginary part is set to zero.
     end if
   end function cnielsen
 
-  function nielsen (n, m, x) result (nplog)
+  module function nielsen (n, m, x) result (nplog)
     integer, intent(in) :: n, m
     real(default), intent(in) :: x
     real(default) :: nplog
@@ -4311,8 +5322,14 @@ imaginary part is set to zero.
 @ $\text{Li}_{n}(x) = S_{n-1,1}(x)$.
 <<SM physics: public>>=
   public :: polylog
+<<SM physics: sub interfaces>>=
+    module function polylog (n, x) result (plog)
+      integer, intent(in) :: n
+      real(default), intent(in) :: x
+      real(default) :: plog
+    end function polylog
 <<SM physics: procedures>>=
-  function polylog (n, x) result (plog)
+  module function polylog (n, x) result (plog)
     integer, intent(in) :: n
     real(default), intent(in) :: x
     real(default) :: plog
@@ -4323,8 +5340,13 @@ imaginary part is set to zero.
 @ $\text{Li}_2(x)$.
 <<SM physics: public>>=
   public :: dilog
+<<SM physics: sub interfaces>>=
+    module function dilog (x) result (dlog)
+      real(default), intent(in) :: x
+      real(default) :: dlog
+    end function dilog
 <<SM physics: procedures>>=
-  function dilog (x) result (dlog)
+  module function dilog (x) result (dlog)
     real(default), intent(in) :: x
     real(default) :: dlog
     dlog = polylog (2,x)
@@ -4334,8 +5356,13 @@ imaginary part is set to zero.
 @ $\text{Li}_3(x)$.
 <<SM physics: public>>=
   public :: trilog
+<<SM physics: sub interfaces>>=
+    module function trilog (x) result (tlog)
+      real(default), intent(in) :: x
+      real(default) :: tlog
+    end function trilog
 <<SM physics: procedures>>=
-  function trilog (x) result (tlog)
+  module function trilog (x) result (tlog)
     real(default), intent(in) :: x
     real(default) :: tlog
     tlog = polylog (3,x)
@@ -4348,8 +5375,13 @@ These functions appear in the calculation of the effective one-loop coupling of
 a (pseudo)scalar to a vector boson pair.
 <<SM physics: public>>=
   public :: faux
+<<SM physics: sub interfaces>>=
+    elemental module function faux (x) result (y)
+      real(default), intent(in) :: x
+      complex(default) :: y
+    end function faux
 <<SM physics: procedures>>=
-  elemental function faux (x) result (y)
+  elemental module function faux (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
     if (1 <= x) then
@@ -4364,8 +5396,13 @@ a (pseudo)scalar to a vector boson pair.
 @
 <<SM physics: public>>=
   public :: fonehalf
+<<SM physics: sub interfaces>>=
+    elemental module function fonehalf (x) result (y)
+      real(default), intent(in) :: x
+      complex(default) :: y
+    end function fonehalf
 <<SM physics: procedures>>=
-  elemental function fonehalf (x) result (y)
+  elemental module function fonehalf (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
     if (abs(x) < eps0) then
@@ -4379,8 +5416,13 @@ a (pseudo)scalar to a vector boson pair.
 @
 <<SM physics: public>>=
   public :: fonehalf_pseudo
+<<SM physics: sub interfaces>>=
+    module function fonehalf_pseudo (x) result (y)
+      real(default), intent(in) :: x
+      complex(default) :: y
+    end function fonehalf_pseudo
 <<SM physics: procedures>>=
-  function fonehalf_pseudo (x) result (y)
+  module function fonehalf_pseudo (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
     if (abs(x) < eps0) then
@@ -4394,8 +5436,13 @@ a (pseudo)scalar to a vector boson pair.
 @
 <<SM physics: public>>=
   public :: fone
+<<SM physics: sub interfaces>>=
+    elemental module function fone (x) result  (y)
+      real(default), intent(in) :: x
+      complex(default) :: y
+    end function fone
 <<SM physics: procedures>>=
-  elemental function fone (x) result  (y)
+  elemental module function fone (x) result  (y)
     real(default), intent(in) :: x
     complex(default) :: y
     if (abs(x) < eps0) then
@@ -4411,8 +5458,13 @@ a (pseudo)scalar to a vector boson pair.
 @
 <<SM physics: public>>=
   public :: gaux
+<<SM physics: sub interfaces>>=
+    elemental module function gaux (x) result (y)
+      real(default), intent(in) :: x
+      complex(default) :: y
+    end function gaux
 <<SM physics: procedures>>=
-  elemental function gaux (x) result (y)
+  elemental module function gaux (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
     if (1 <= x) then
@@ -4428,8 +5480,13 @@ a (pseudo)scalar to a vector boson pair.
 @
 <<SM physics: public>>=
   public :: tri_i1
+<<SM physics: sub interfaces>>=
+    elemental module function tri_i1 (a,b) result (y)
+      real(default), intent(in) :: a,b
+      complex(default) :: y
+    end function tri_i1
 <<SM physics: procedures>>=
-  elemental function tri_i1 (a,b) result (y)
+  elemental module function tri_i1 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
     if (a < eps0 .or. b < eps0) then
@@ -4445,8 +5502,13 @@ a (pseudo)scalar to a vector boson pair.
 @
 <<SM physics: public>>=
   public :: tri_i2
+<<SM physics: sub interfaces>>=
+    elemental module function tri_i2 (a,b) result (y)
+      real(default), intent(in) :: a,b
+      complex(default) :: y
+    end function tri_i2
 <<SM physics: procedures>>=
-  elemental function tri_i2 (a,b) result (y)
+  elemental module function tri_i2 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
     if (a < eps0 .or. b < eps0) then
@@ -4463,8 +5525,13 @@ These functions are for the running of the strong coupling constants,
 $\alpha_s$.
 <<SM physics: public>>=
   public :: run_b0
+<<SM physics: sub interfaces>>=
+    elemental module function run_b0 (nf) result (bnull)
+      integer, intent(in) :: nf
+      real(default) :: bnull
+    end function run_b0
 <<SM physics: procedures>>=
-  elemental function run_b0 (nf) result (bnull)
+  elemental module function run_b0 (nf) result (bnull)
     integer, intent(in) :: nf
     real(default) :: bnull
     bnull = 33.0_default - 2.0_default * nf
@@ -4474,22 +5541,32 @@ $\alpha_s$.
 @
 <<SM physics: public>>=
   public :: run_b1
-<<SM physics: procedures>>=
-  elemental function run_b1 (nf) result (bone)
+<<SM physics: sub interfaces>>=
+    elemental module function run_b1 (nf) result (bone)
       integer, intent(in) :: nf
       real(default) :: bone
-      bone = 6.0_default * (153.0_default - 19.0_default * nf)/run_b0(nf)**2
+    end function run_b1
+<<SM physics: procedures>>=
+  elemental module function run_b1 (nf) result (bone)
+    integer, intent(in) :: nf
+    real(default) :: bone
+    bone = 6.0_default * (153.0_default - 19.0_default * nf)/run_b0(nf)**2
   end function run_b1
 
 @ %def run_b1
 @
 <<SM physics: public>>=
   public :: run_aa
+<<SM physics: sub interfaces>>=
+    elemental module function run_aa (nf) result (aaa)
+        integer, intent(in) :: nf
+        real(default) :: aaa
+    end function run_aa
 <<SM physics: procedures>>=
-  elemental function run_aa (nf) result (aaa)
-      integer, intent(in) :: nf
-      real(default) :: aaa
-      aaa = 12.0_default * PI / run_b0(nf)
+  elemental module function run_aa (nf) result (aaa)
+    integer, intent(in) :: nf
+    real(default) :: aaa
+    aaa = 12.0_default * PI / run_b0(nf)
   end function run_aa
 
 @ %def run_aa
@@ -4512,61 +5589,82 @@ following functions.
 
 <<SM physics: public>>=
   public :: ff_dipole
-<<SM physics: procedures>>=
-  pure subroutine ff_dipole (v_ijk,y_ijk,p_ij,pp_k,p_i,p_j,p_k)
+<<SM physics: sub interfaces>>=
+    pure module subroutine ff_dipole (v_ijk, y_ijk, p_ij, pp_k, p_i, p_j, p_k)
       type(vector4_t), intent(in) :: p_i, p_j, p_k
       type(vector4_t), intent(out) :: p_ij, pp_k
-      real(kind=default), intent(out) :: y_ijk
-      real(kind=default) :: z_i
-      real(kind=default), intent(out) :: v_ijk
-      z_i   = (p_i*p_k) / ((p_k*p_j) + (p_k*p_i))
-      y_ijk = (p_i*p_j) / ((p_i*p_j) + (p_i*p_k) + (p_j*p_k))
-      p_ij  = p_i + p_j - y_ijk/(1.0_default - y_ijk) * p_k
-      pp_k  = (1.0/(1.0_default - y_ijk)) * p_k
-      !!! We don't multiply by alpha_s right here:
-      v_ijk = 8.0_default * PI * CF * &
-           (2.0 / (1.0 - z_i*(1.0 - y_ijk)) - (1.0 + z_i))
+      real(default), intent(out) :: y_ijk
+      real(default), intent(out) :: v_ijk
+    end subroutine ff_dipole
+<<SM physics: procedures>>=
+  pure module subroutine ff_dipole (v_ijk, y_ijk, p_ij, pp_k, p_i, p_j, p_k)
+    type(vector4_t), intent(in) :: p_i, p_j, p_k
+    type(vector4_t), intent(out) :: p_ij, pp_k
+    real(default), intent(out) :: y_ijk
+    real(default) :: z_i
+    real(default), intent(out) :: v_ijk
+    z_i   = (p_i*p_k) / ((p_k*p_j) + (p_k*p_i))
+    y_ijk = (p_i*p_j) / ((p_i*p_j) + (p_i*p_k) + (p_j*p_k))
+    p_ij  = p_i + p_j - y_ijk/(1.0_default - y_ijk) * p_k
+    pp_k  = (1.0/(1.0_default - y_ijk)) * p_k
+    !!! We don't multiply by alpha_s right here:
+    v_ijk = 8.0_default * PI * CF * &
+         (2.0 / (1.0 - z_i*(1.0 - y_ijk)) - (1.0 + z_i))
   end subroutine ff_dipole
 
 @ %def ff_dipole
 @
 <<SM physics: public>>=
   public :: fi_dipole
+<<SM physics: sub interfaces>>=
+    pure module subroutine fi_dipole (v_ija, x_ija, p_ij, pp_a, p_i, p_j, p_a)
+      type(vector4_t), intent(in) :: p_i,  p_j,  p_a
+      type(vector4_t), intent(out) :: p_ij, pp_a
+      real(default), intent(out) :: x_ija
+      real(default), intent(out) :: v_ija
+    end subroutine fi_dipole
 <<SM physics: procedures>>=
-  pure subroutine fi_dipole (v_ija,x_ija,p_ij,pp_a,p_i,p_j,p_a)
-     type(vector4_t), intent(in) :: p_i, p_j, p_a
-     type(vector4_t), intent(out) :: p_ij, pp_a
-     real(kind=default), intent(out) :: x_ija
-     real(kind=default) :: z_i
-     real(kind=default), intent(out) :: v_ija
-     z_i   = (p_i*p_a) / ((p_a*p_j) + (p_a*p_i))
-     x_ija = ((p_i*p_a) + (p_j*p_a) - (p_i*p_j)) &
-          / ((p_i*p_a) + (p_j*p_a))
-     p_ij  = p_i + p_j - (1.0_default - x_ija) * p_a
-     pp_a  = x_ija * p_a
-     !!! We don't not multiply by alpha_s right here:
-     v_ija = 8.0_default * PI * CF * &
-          (2.0 / (1.0 - z_i + (1.0 - x_ija)) - (1.0 + z_i)) / x_ija
+  pure module subroutine fi_dipole (v_ija, x_ija, p_ij, pp_a, p_i, p_j, p_a)
+    type(vector4_t), intent(in) :: p_i, p_j, p_a
+    type(vector4_t), intent(out) :: p_ij, pp_a
+    real(default), intent(out) :: x_ija
+    real(default) :: z_i
+    real(default), intent(out) :: v_ija
+    z_i   = (p_i*p_a) / ((p_a*p_j) + (p_a*p_i))
+    x_ija = ((p_i*p_a) + (p_j*p_a) - (p_i*p_j)) &
+         / ((p_i*p_a) + (p_j*p_a))
+    p_ij  = p_i + p_j - (1.0_default - x_ija) * p_a
+    pp_a  = x_ija * p_a
+    !!! We don't not multiply by alpha_s right here:
+    v_ija = 8.0_default * PI * CF * &
+         (2.0 / (1.0 - z_i + (1.0 - x_ija)) - (1.0 + z_i)) / x_ija
   end subroutine fi_dipole
 
 @ %def fi_dipole
 @
 <<SM physics: public>>=
   public :: if_dipole
+<<SM physics: sub interfaces>>=
+    pure module subroutine if_dipole (v_kja, u_j, p_aj, pp_k, p_k, p_j, p_a)
+      type(vector4_t), intent(in) :: p_k, p_j, p_a
+      type(vector4_t), intent(out) :: p_aj, pp_k
+      real(default), intent(out) :: u_j
+      real(default), intent(out) :: v_kja
+    end subroutine if_dipole
 <<SM physics: procedures>>=
-  pure subroutine if_dipole (v_kja,u_j,p_aj,pp_k,p_k,p_j,p_a)
-     type(vector4_t), intent(in) :: p_k, p_j, p_a
-     type(vector4_t), intent(out) :: p_aj, pp_k
-     real(kind=default), intent(out) :: u_j
-     real(kind=default) :: x_kja
-     real(kind=default), intent(out) :: v_kja
-     u_j   = (p_a*p_j) / ((p_a*p_j) + (p_a*p_k))
-     x_kja = ((p_a*p_k) + (p_a*p_j) - (p_j*p_k)) &
-          / ((p_a*p_j) + (p_a*p_k))
-     p_aj  = x_kja * p_a
-     pp_k  = p_k + p_j - (1.0_default - x_kja) * p_a
-     v_kja = 8.0_default * PI * CF * &
-          (2.0 / (1.0 - x_kja + u_j) - (1.0 + x_kja)) / x_kja
+  pure module subroutine if_dipole (v_kja, u_j, p_aj, pp_k, p_k, p_j, p_a)
+    type(vector4_t), intent(in) :: p_k, p_j, p_a
+    type(vector4_t), intent(out) :: p_aj, pp_k
+    real(default), intent(out) :: u_j
+    real(default) :: x_kja
+    real(default), intent(out) :: v_kja
+    u_j   = (p_a*p_j) / ((p_a*p_j) + (p_a*p_k))
+    x_kja = ((p_a*p_k) + (p_a*p_j) - (p_j*p_k)) &
+         / ((p_a*p_j) + (p_a*p_k))
+    p_aj  = x_kja * p_a
+    pp_k  = p_k + p_j - (1.0_default - x_kja) * p_a
+    v_kja = 8.0_default * PI * CF * &
+         (2.0 / (1.0 - x_kja + u_j) - (1.0 + x_kja)) / x_kja
   end subroutine if_dipole
 
 @ %def if_dipole
@@ -4574,47 +5672,55 @@ following functions.
 whose kinematics all get changed by the initial-initial dipole insertion.
 <<SM physics: public>>=
   public :: ii_dipole
-<<SM physics: procedures>>=
-  pure subroutine ii_dipole (v_jab,v_j,p_in,p_out,flag_1or2)
+<<SM physics: sub interfaces>>=
+    pure module subroutine ii_dipole (v_jab, v_j, p_in, p_out, flag_1or2)
       type(vector4_t), dimension(:), intent(in) :: p_in
       type(vector4_t), dimension(size(p_in)-1), intent(out) :: p_out
       logical, intent(in) :: flag_1or2
-      real(kind=default), intent(out) :: v_j
-      real(kind=default), intent(out) :: v_jab
-      type(vector4_t) :: p_a, p_b, p_j
-      type(vector4_t) :: k, kk
-      type(vector4_t) :: p_aj
-      real(kind=default) :: x_jab
-      integer :: i
-      !!! flag_1or2 decides whether this a 12 or 21 dipole
-      if (flag_1or2) then
-         p_a = p_in(1)
-         p_b = p_in(2)
-      else
-         p_b = p_in(1)
-         p_a = p_in(2)
-      end if
-      !!! We assume that the unresolved particle has always the last
-      !!! momentum
-      p_j = p_in(size(p_in))
-      x_jab = ((p_a*p_b) - (p_a*p_j) - (p_b*p_j)) / (p_a*p_b)
-      v_j = (p_a*p_j) / (p_a * p_b)
-      p_aj  = x_jab * p_a
-      k     = p_a + p_b - p_j
-      kk    = p_aj + p_b
-      do i = 3, size(p_in)-1
-         p_out(i) = p_in(i) - 2.0*((k+kk)*p_in(i))/((k+kk)*(k+kk)) * (k+kk) + &
-              (2.0 * (k*p_in(i)) / (k*k)) * kk
-      end do
-      if (flag_1or2) then
-         p_out(1) = p_aj
-         p_out(2) = p_b
-      else
-         p_out(1) = p_b
-         p_out(2) = p_aj
-      end if
-      v_jab = 8.0_default * PI * CF * &
-           (2.0 / (1.0 - x_jab) - (1.0 + x_jab)) / x_jab
+      real(default), intent(out) :: v_j
+      real(default), intent(out) :: v_jab
+    end subroutine ii_dipole
+<<SM physics: procedures>>=
+  pure module subroutine ii_dipole (v_jab, v_j, p_in, p_out, flag_1or2)
+    type(vector4_t), dimension(:), intent(in) :: p_in
+    type(vector4_t), dimension(size(p_in)-1), intent(out) :: p_out
+    logical, intent(in) :: flag_1or2
+    real(default), intent(out) :: v_j
+    real(default), intent(out) :: v_jab
+    type(vector4_t) :: p_a, p_b, p_j
+    type(vector4_t) :: k, kk
+    type(vector4_t) :: p_aj
+    real(default) :: x_jab
+    integer :: i
+    !!! flag_1or2 decides whether this a 12 or 21 dipole
+    if (flag_1or2) then
+       p_a = p_in(1)
+       p_b = p_in(2)
+    else
+       p_b = p_in(1)
+       p_a = p_in(2)
+    end if
+    !!! We assume that the unresolved particle has always the last
+    !!! momentum
+    p_j = p_in(size(p_in))
+    x_jab = ((p_a*p_b) - (p_a*p_j) - (p_b*p_j)) / (p_a*p_b)
+    v_j = (p_a*p_j) / (p_a * p_b)
+    p_aj  = x_jab * p_a
+    k     = p_a + p_b - p_j
+    kk    = p_aj + p_b
+    do i = 3, size(p_in)-1
+       p_out(i) = p_in(i) - 2.0*((k+kk)*p_in(i))/((k+kk)*(k+kk)) * (k+kk) + &
+            (2.0 * (k*p_in(i)) / (k*k)) * kk
+    end do
+    if (flag_1or2) then
+       p_out(1) = p_aj
+       p_out(2) = p_b
+    else
+       p_out(1) = p_b
+       p_out(2) = p_aj
+    end if
+    v_jab = 8.0_default * PI * CF * &
+         (2.0 / (1.0 - x_jab) - (1.0 + x_jab)) / x_jab
   end subroutine ii_dipole
 @ %def ii_dipole
 @
@@ -4627,10 +5733,15 @@ centered at $x=1-\frac{\epsilon}{2}$:
 
 <<SM physics: public>>=
   public :: delta
+<<SM physics: sub interfaces>>=
+    elemental module function delta (x,eps) result (z)
+       real(default), intent(in) :: x, eps
+       real(default) :: z
+    end function delta
 <<SM physics: procedures>>=
-  elemental function delta (x,eps) result (z)
-     real(kind=default), intent(in) :: x, eps
-     real(kind=default) :: z
+  elemental module function delta (x,eps) result (z)
+     real(default), intent(in) :: x, eps
+     real(default) :: z
      if (x > one - eps) then
         z = one / eps
      else
@@ -4646,15 +5757,20 @@ function divided by the weight for the WHIZARD numerical integration
 over the interval.
 <<SM physics: public>>=
   public :: plus_distr
+<<SM physics: sub interfaces>>=
+    elemental module function plus_distr (x,eps) result (plusd)
+      real(default), intent(in) :: x, eps
+      real(default) :: plusd
+    end function plus_distr
 <<SM physics: procedures>>=
-  elemental function plus_distr (x,eps) result (plusd)
-     real(kind=default), intent(in) :: x, eps
-     real(kind=default) :: plusd
-     if (x > one - eps) then
-        plusd = log(eps) / eps
-     else
-        plusd = one / (one - x)
-     end if
+  elemental module function plus_distr (x,eps) result (plusd)
+    real(default), intent(in) :: x, eps
+    real(default) :: plusd
+    if (x > one - eps) then
+       plusd = log(eps) / eps
+    else
+       plusd = one / (one - x)
+    end if
   end function plus_distr
 
 @ %def plus_distr
@@ -4676,49 +5792,69 @@ function might depend on the physics case under consideration, it is
 implemented as an input variable.
 <<SM physics: public>>=
   public :: pqq
+<<SM physics: sub interfaces>>=
+    elemental module function pqq (x,eps) result (pqqx)
+      real(default), intent(in) :: x, eps
+      real(default) :: pqqx
+    end function pqq
 <<SM physics: procedures>>=
-  elemental function pqq (x,eps) result (pqqx)
-     real(kind=default), intent(in) :: x, eps
-     real(kind=default) :: pqqx
-     if (x > (1.0_default - eps)) then
-        pqqx = (eps - one) / two + two * log(eps) / eps - &
-             three * (eps - one) / eps / two
-     else
-        pqqx = (one + x**2) / (one - x)
-     end if
-     pqqx = CF * pqqx
+  elemental module function pqq (x,eps) result (pqqx)
+    real(default), intent(in) :: x, eps
+    real(default) :: pqqx
+    if (x > (1.0_default - eps)) then
+       pqqx = (eps - one) / two + two * log(eps) / eps - &
+            three * (eps - one) / eps / two
+    else
+       pqqx = (one + x**2) / (one - x)
+    end if
+    pqqx = CF * pqqx
   end function pqq
 
 @ %def pqq
 @
 <<SM physics: public>>=
   public :: pgq
+<<SM physics: sub interfaces>>=
+    elemental module function pgq (x) result (pgqx)
+      real(default), intent(in) :: x
+      real(default) :: pgqx
+    end function pgq
 <<SM physics: procedures>>=
-  elemental function pgq (x) result (pgqx)
-     real(kind=default), intent(in) :: x
-     real(kind=default) :: pgqx
-     pgqx = TR * (x**2 + (one - x)**2)
+  elemental module function pgq (x) result (pgqx)
+    real(default), intent(in) :: x
+    real(default) :: pgqx
+    pgqx = TR * (x**2 + (one - x)**2)
   end function pgq
 
 @ %def pgq
 @
 <<SM physics: public>>=
   public :: pqg
+<<SM physics: sub interfaces>>=
+    elemental module function pqg (x) result (pqgx)
+      real(default), intent(in) :: x
+      real(default) :: pqgx
+    end function pqg
 <<SM physics: procedures>>=
-  elemental function pqg (x) result (pqgx)
-     real(kind=default), intent(in) :: x
-     real(kind=default) :: pqgx
-     pqgx = CF * (one + (one - x)**2) / x
+  elemental module function pqg (x) result (pqgx)
+    real(default), intent(in) :: x
+    real(default) :: pqgx
+    pqgx = CF * (one + (one - x)**2) / x
   end function pqg
 
 @ %def pqg
 @
 <<SM physics: public>>=
   public :: pgg
+<<SM physics: sub interfaces>>=
+    elemental module function pgg (x, nf, eps) result (pggx)
+      real(default), intent(in) :: x, nf, eps
+      real(default) :: pggx
+    end function pgg
 <<SM physics: procedures>>=
-  elemental function pgg (x, nf, eps) result (pggx)
-    real(kind=default), intent(in) :: x, nf, eps
-    real(kind=default) :: pggx
+  elemental module function pgg (x, nf, eps) result (pggx)
+    real(default), intent(in) :: x, nf, eps
+    real(default) :: pggx
     pggx = two * CA * ( plus_distr (x, eps) + (one-x)/x - one + &
                    x*(one-x)) + delta (x, eps)  * gamma_g(nf)
   end function pgg
@@ -4732,10 +5868,15 @@ the splitting functions:
 \end{align}
 <<SM physics: public>>=
   public :: pqq_reg
+<<SM physics: sub interfaces>>=
+    elemental module function pqq_reg (x) result (pqqregx)
+       real(default), intent(in) :: x
+       real(default) :: pqqregx
+    end function pqq_reg
 <<SM physics: procedures>>=
-  elemental function pqq_reg (x) result (pqqregx)
-     real(kind=default), intent(in) :: x
-     real(kind=default) :: pqqregx
+  elemental module function pqq_reg (x) result (pqqregx)
+     real(default), intent(in) :: x
+     real(default) :: pqqregx
      pqqregx = - CF * (one + x)
   end function pqq_reg
 
@@ -4743,10 +5884,15 @@ the splitting functions:
 @
 <<SM physics: public>>=
   public :: pgg_reg
+<<SM physics: sub interfaces>>=
+    elemental module function pgg_reg (x) result (pggregx)
+       real(default), intent(in) :: x
+       real(default) :: pggregx
+    end function pgg_reg
 <<SM physics: procedures>>=
-  elemental function pgg_reg (x) result (pggregx)
-     real(kind=default), intent(in) :: x
-     real(kind=default) :: pggregx
+  elemental module function pgg_reg (x) result (pggregx)
+     real(default), intent(in) :: x
+     real(default) :: pggregx
      pggregx = two * CA * ((one - x)/x - one + x*(one - x))
   end function pgg_reg
 
@@ -4777,10 +5923,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 \end{align}
 <<SM physics: public>>=
   public :: kbarqg
+<<SM physics: sub interfaces>>=
+    module function kbarqg (x) result (kbarqgx)
+      real(default), intent(in) :: x
+      real(default) :: kbarqgx
+    end function kbarqg
 <<SM physics: procedures>>=
-  function kbarqg (x) result (kbarqgx)
-    real(kind=default), intent(in) :: x
-    real(kind=default) :: kbarqgx
+  module function kbarqg (x) result (kbarqgx)
+    real(default), intent(in) :: x
+    real(default) :: kbarqgx
     kbarqgx = pqg(x) * log((one-x)/x) + CF * x
   end function kbarqg
 
@@ -4788,10 +5939,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @
 <<SM physics: public>>=
   public :: kbargq
+<<SM physics: sub interfaces>>=
+    module function kbargq (x) result (kbargqx)
+      real(default), intent(in) :: x
+      real(default) :: kbargqx
+    end function kbargq
 <<SM physics: procedures>>=
-  function kbargq (x) result (kbargqx)
-    real(kind=default), intent(in) :: x
-    real(kind=default) :: kbargqx
+  module function kbargq (x) result (kbargqx)
+    real(default), intent(in) :: x
+    real(default) :: kbargqx
     kbargqx = pgq(x) * log((one-x)/x) + two * TR * x * (one - x)
   end function kbargq
 
@@ -4799,10 +5955,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @
 <<SM physics: public>>=
   public :: kbarqq
+<<SM physics: sub interfaces>>=
+    module function kbarqq (x,eps) result (kbarqqx)
+      real(default), intent(in) :: x, eps
+      real(default) :: kbarqqx
+    end function kbarqq
 <<SM physics: procedures>>=
-  function kbarqq (x,eps) result (kbarqqx)
-    real(kind=default), intent(in) :: x, eps
-    real(kind=default) :: kbarqqx
+  module function kbarqq (x,eps) result (kbarqqx)
+    real(default), intent(in) :: x, eps
+    real(default) :: kbarqqx
     kbarqqx = CF*(log_plus_distr(x,eps) - (one+x) * log((one-x)/x) + (one - &
          x) - (five - pi**2) * delta(x,eps))
   end function kbarqq
@@ -4811,10 +5972,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @
 <<SM physics: public>>=
   public :: kbargg
+<<SM physics: sub interfaces>>=
+    module function kbargg (x,eps,nf) result (kbarggx)
+      real(default), intent(in) :: x, eps, nf
+      real(default) :: kbarggx
+    end function kbargg
 <<SM physics: procedures>>=
-  function kbargg (x,eps,nf) result (kbarggx)
-    real(kind=default), intent(in) :: x, eps, nf
-    real(kind=default) :: kbarggx
+  module function kbargg (x,eps,nf) result (kbarggx)
+    real(default), intent(in) :: x, eps, nf
+    real(default) :: kbarggx
     kbarggx = CA * (log_plus_distr(x,eps) + two * ((one-x)/x - one + &
                          x*(one-x) * log((1-x)/x))) - delta(x,eps) * &
                          ((50.0_default/9.0_default - pi**2) * CA - &
@@ -4831,10 +5997,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 
 <<SM physics: public>>=
   public :: ktildeqq
+<<SM physics: sub interfaces>>=
+    module function ktildeqq (x,eps) result (ktildeqqx)
+      real(default), intent(in) :: x, eps
+      real(default) :: ktildeqqx
+    end function ktildeqq
 <<SM physics: procedures>>=
-  function ktildeqq (x,eps) result (ktildeqqx)
-    real(kind=default), intent(in) :: x, eps
-    real(kind=default) :: ktildeqqx
+  module function ktildeqq (x,eps) result (ktildeqqx)
+    real(default), intent(in) :: x, eps
+    real(default) :: ktildeqqx
     ktildeqqx = pqq_reg (x) * log(one-x) + CF * ( - log2_plus_distr (x,eps) &
                           - pi**2/three * delta(x,eps))
   end function ktildeqq
@@ -4843,10 +6014,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @
 <<SM physics: public>>=
   public :: ktildeqg
+<<SM physics: sub interfaces>>=
+    module function ktildeqg (x,eps) result (ktildeqgx)
+      real(default), intent(in) :: x, eps
+      real(default) :: ktildeqgx
+    end function ktildeqg
 <<SM physics: procedures>>=
-  function ktildeqg (x,eps) result (ktildeqgx)
-    real(kind=default), intent(in) :: x, eps
-    real(kind=default) :: ktildeqgx
+  module function ktildeqg (x,eps) result (ktildeqgx)
+    real(default), intent(in) :: x, eps
+    real(default) :: ktildeqgx
     ktildeqgx = pqg (x) * log(one-x)
   end function ktildeqg
 
@@ -4854,10 +6030,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @
 <<SM physics: public>>=
   public :: ktildegq
+<<SM physics: sub interfaces>>=
+    module function ktildegq (x,eps) result (ktildegqx)
+      real(default), intent(in) :: x, eps
+      real(default) :: ktildegqx
+    end function ktildegq
 <<SM physics: procedures>>=
-  function ktildegq (x,eps) result (ktildegqx)
-    real(kind=default), intent(in) :: x, eps
-    real(kind=default) :: ktildegqx
+  module function ktildegq (x,eps) result (ktildegqx)
+    real(default), intent(in) :: x, eps
+    real(default) :: ktildegqx
     ktildegqx = pgq (x) * log(one-x)
   end function ktildegq
 
@@ -4865,10 +6046,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @
 <<SM physics: public>>=
   public :: ktildegg
+<<SM physics: sub interfaces>>=
+    module function ktildegg (x,eps) result (ktildeggx)
+      real(default), intent(in) :: x, eps
+      real(default) :: ktildeggx
+    end function ktildegg
 <<SM physics: procedures>>=
-  function ktildegg (x,eps) result (ktildeggx)
-    real(kind=default), intent(in) :: x, eps
-    real(kind=default) :: ktildeggx
+  module function ktildegg (x,eps) result (ktildeggx)
+    real(default), intent(in) :: x, eps
+    real(default) :: ktildeggx
     ktildeggx = pgg_reg (x) * log(one-x) + CA * ( - &
        log2_plus_distr (x,eps) - pi**2/three * delta(x,eps))
   end function ktildegg
@@ -4880,25 +6066,34 @@ three-dimensional array, where the index always gives the inverse
 power of the DREG expansion parameter, $\epsilon$.
 <<SM physics: public>>=
   public :: insert_q
+<<SM physics: sub interfaces>>=
+    pure module function insert_q () result (i_q)
+      real(default), dimension(0:2) :: i_q
+    end function insert_q
 <<SM physics: procedures>>=
-  pure function insert_q ()
-    real(kind=default), dimension(0:2) :: insert_q
-    insert_q(0) = gamma_q + k_q - pi**2/three * CF
-    insert_q(1) = gamma_q
-    insert_q(2) = CF
+  pure module function insert_q () result (i_q)
+    real(default), dimension(0:2) :: i_q
+    i_q(0) = gamma_q + k_q - pi**2/three * CF
+    i_q(1) = gamma_q
+    i_q(2) = CF
   end function insert_q
 
 @ %def insert_q
 @
 <<SM physics: public>>=
   public :: insert_g
+<<SM physics: sub interfaces>>=
+    pure module function insert_g (nf) result (i_g)
+      real(default), intent(in) :: nf
+      real(default), dimension(0:2) :: i_g
+    end function insert_g
 <<SM physics: procedures>>=
-  pure function insert_g (nf)
-    real(kind=default), intent(in) :: nf
-    real(kind=default), dimension(0:2) :: insert_g
-    insert_g(0) = gamma_g (nf) + k_g (nf) - pi**2/three * CA
-    insert_g(1) = gamma_g (nf)
-    insert_g(2) = CA
+  pure module function insert_g (nf) result (i_g)
+    real(default), intent(in) :: nf
+    real(default), dimension(0:2) :: i_g
+    i_g(0) = gamma_g (nf) + k_g (nf) - pi**2/three * CA
+    i_g(1) = gamma_g (nf)
+    i_g(2) = CA
   end function insert_g
 
 @ %def insert_g
@@ -4911,17 +6106,26 @@ all, the $K$ functions get modified:
 \end{equation}
 <<SM physics: public>>=
   public :: k_q_al, k_g_al
+<<SM physics: sub interfaces>>=
+    pure module function k_q_al (alpha)
+      real(default), intent(in) :: alpha
+      real(default) :: k_q_al
+    end function k_q_al
+    pure module function k_g_al (alpha, nf)
+      real(default), intent(in) :: alpha, nf
+      real(default) :: k_g_al
+    end function k_g_al
 <<SM physics: procedures>>=
-  pure function k_q_al (alpha)
-    real(kind=default), intent(in) :: alpha
-    real(kind=default) :: k_q_al
+  pure module function k_q_al (alpha)
+    real(default), intent(in) :: alpha
+    real(default) :: k_q_al
     k_q_al = k_q - CF * (log(alpha))**2 + gamma_q * &
                       (alpha - one - log(alpha))
   end function k_q_al
 
-  pure function k_g_al (alpha, nf)
-    real(kind=default), intent(in) :: alpha, nf
-    real(kind=default) :: k_g_al
+  pure module function k_g_al (alpha, nf)
+    real(default), intent(in) :: alpha, nf
+    real(default) :: k_g_al
     k_g_al = k_g (nf) - CA * (log(alpha))**2 + gamma_g (nf) * &
                      (alpha - one - log(alpha))
   end function k_g_al
@@ -4934,21 +6138,26 @@ $\alpha$,  $P_{1-\alpha}(x) = \left( \frac{1}{1-x}
 function cannot be elemental.
 <<SM physics: public>>=
   public :: plus_distr_al
+<<SM physics: sub interfaces>>=
+    module function plus_distr_al (x,alpha,eps) result (plusd_al)
+      real(default), intent(in) :: x,  eps, alpha
+      real(default) :: plusd_al
+    end function plus_distr_al
 <<SM physics: procedures>>=
-  function plus_distr_al (x,alpha,eps) result (plusd_al)
-     real(kind=default), intent(in) :: x,  eps, alpha
-     real(kind=default) :: plusd_al
-     if ((one - alpha) >= (one - eps)) then
-        plusd_al = zero
-        call msg_fatal ('sm_physics, plus_distr_al: alpha and epsilon chosen wrongly')
-     elseif (x < (1.0_default - alpha)) then
-        plusd_al = 0
-     else if (x > (1.0_default - eps)) then
-        plusd_al = log(eps/alpha)/eps
-     else
-        plusd_al = one/(one-x)
-     end if
-   end function plus_distr_al
+  module function plus_distr_al (x,alpha,eps) result (plusd_al)
+    real(default), intent(in) :: x,  eps, alpha
+    real(default) :: plusd_al
+    if ((one - alpha) >= (one - eps)) then
+       plusd_al = zero
+       call msg_fatal ('sm_physics, plus_distr_al: alpha and epsilon chosen wrongly')
+    elseif (x < (1.0_default - alpha)) then
+       plusd_al = 0
+    else if (x > (1.0_default - eps)) then
+       plusd_al = log(eps/alpha)/eps
+    else
+       plusd_al = one/(one-x)
+    end if
+  end function plus_distr_al
 
 @ %def plus_distr_al
 @ Introducing phase-space slicing parameters, these standard flavor
@@ -4985,10 +6194,15 @@ kernels $\overline{K}^{ab}$ become:
 \end{align}
 <<SM physics: public>>=
   public :: kbarqg_al
+<<SM physics: sub interfaces>>=
+    module function kbarqg_al (x,alpha,eps) result (kbarqgx)
+      real(default), intent(in) :: x, alpha, eps
+      real(default) :: kbarqgx
+    end function kbarqg_al
 <<SM physics: procedures>>=
-  function kbarqg_al (x,alpha,eps) result (kbarqgx)
-    real(kind=default), intent(in) :: x, alpha, eps
-    real(kind=default) :: kbarqgx
+  module function kbarqg_al (x,alpha,eps) result (kbarqgx)
+    real(default), intent(in) :: x, alpha, eps
+    real(default) :: kbarqgx
     kbarqgx = pqg (x) * log(alpha*(one-x)/x) + CF * x
   end function kbarqg_al
 @ %def kbarqg_al
@@ -4996,10 +6210,15 @@ kernels $\overline{K}^{ab}$ become:
 
 <<SM physics: public>>=
   public :: kbargq_al
+<<SM physics: sub interfaces>>=
+    module function kbargq_al (x,alpha,eps) result (kbargqx)
+      real(default), intent(in) :: x, alpha, eps
+      real(default) :: kbargqx
+    end function kbargq_al
 <<SM physics: procedures>>=
-  function kbargq_al (x,alpha,eps) result (kbargqx)
-    real(kind=default), intent(in) :: x, alpha, eps
-    real(kind=default) :: kbargqx
+  module function kbargq_al (x,alpha,eps) result (kbargqx)
+    real(default), intent(in) :: x, alpha, eps
+    real(default) :: kbargqx
     kbargqx = pgq (x) * log(alpha*(one-x)/x) + two * TR * x * (one-x)
   end function kbargq_al
 @ %def kbargq_al
@@ -5007,37 +6226,47 @@ kernels $\overline{K}^{ab}$ become:
 
 <<SM physics: public>>=
   public :: kbarqq_al
+<<SM physics: sub interfaces>>=
+    module function kbarqq_al (x,alpha,eps) result (kbarqqx)
+      real(default), intent(in) :: x, alpha, eps
+      real(default) :: kbarqqx
+    end function kbarqq_al
 <<SM physics: procedures>>=
-  function kbarqq_al (x,alpha,eps) result (kbarqqx)
-     real(kind=default), intent(in) :: x, alpha, eps
-     real(kind=default) :: kbarqqx
-     kbarqqx = CF * (one - x) + pqq_reg(x) * log(alpha*(one-x)/x) &
-              + CF * log_plus_distr(x,eps) &
-             - (gamma_q + k_q_al(alpha) - CF * &
-              five/6.0_default  * pi**2 - CF * (log(alpha))**2) * &
-              delta(x,eps) + &
-              CF * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
-     if (x < (one-alpha)) then
-        kbarqqx = kbarqqx - CF * two/(one-x) * log((two-x)/(one-x))
-     end if
+  module function kbarqq_al (x,alpha,eps) result (kbarqqx)
+    real(default), intent(in) :: x, alpha, eps
+    real(default) :: kbarqqx
+    kbarqqx = CF * (one - x) + pqq_reg(x) * log(alpha*(one-x)/x) &
+         + CF * log_plus_distr(x,eps) &
+         - (gamma_q + k_q_al(alpha) - CF * &
+         five/6.0_default  * pi**2 - CF * (log(alpha))**2) * &
+         delta(x,eps) + &
+         CF * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
+    if (x < (one-alpha)) then
+       kbarqqx = kbarqqx - CF * two/(one-x) * log((two-x)/(one-x))
+    end if
   end function kbarqq_al
 
 @ %def kbarqq_al
 <<SM physics: public>>=
   public :: kbargg_al
+<<SM physics: sub interfaces>>=
+    module function kbargg_al (x,alpha,eps,nf) result (kbarggx)
+      real(default), intent(in) :: x, alpha, eps, nf
+      real(default) :: kbarggx
+    end function kbargg_al
 <<SM physics: procedures>>=
-  function kbargg_al (x,alpha,eps,nf) result (kbarggx)
-     real(kind=default), intent(in) :: x, alpha, eps, nf
-     real(kind=default) :: kbarggx
-     kbarggx = pgg_reg(x) * log(alpha*(one-x)/x) &
-              + CA * log_plus_distr(x,eps) &
-             - (gamma_g(nf) + k_g_al(alpha,nf) - CA * &
-              five/6.0_default  * pi**2 - CA * (log(alpha))**2) * &
-              delta(x,eps) + &
-              CA * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
-     if (x < (one-alpha)) then
-        kbarggx = kbarggx - CA * two/(one-x) * log((two-x)/(one-x))
-     end if
+  module function kbargg_al (x,alpha,eps,nf) result (kbarggx)
+    real(default), intent(in) :: x, alpha, eps, nf
+    real(default) :: kbarggx
+    kbarggx = pgg_reg(x) * log(alpha*(one-x)/x) &
+         + CA * log_plus_distr(x,eps) &
+         - (gamma_g(nf) + k_g_al(alpha,nf) - CA * &
+         five/6.0_default  * pi**2 - CA * (log(alpha))**2) * &
+         delta(x,eps) + &
+         CA * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
+    if (x < (one-alpha)) then
+       kbarggx = kbarggx - CA * two/(one-x) * log((two-x)/(one-x))
+    end if
   end function kbargg_al
 
 @ %def kbargg_al
@@ -5049,10 +6278,15 @@ parameter, are:
 \end{equation}
 <<SM physics: public>>=
   public :: ktildeqq_al
+<<SM physics: sub interfaces>>=
+    module function ktildeqq_al (x,alpha,eps) result (ktildeqqx)
+      real(default), intent(in) :: x, eps, alpha
+      real(default) :: ktildeqqx
+    end function ktildeqq_al
 <<SM physics: procedures>>=
-  function ktildeqq_al (x,alpha,eps) result (ktildeqqx)
-    real(kind=default), intent(in) :: x, eps, alpha
-    real(kind=default) :: ktildeqqx
+  module function ktildeqq_al (x,alpha,eps) result (ktildeqqx)
+    real(default), intent(in) :: x, eps, alpha
+    real(default) :: ktildeqqx
     ktildeqqx = pqq_reg(x) * log((one-x)/alpha) + CF*( &
          - log2_plus_distr_al(x,alpha,eps) - Pi**2/three * delta(x,eps) &
          + (one+x**2)/(one-x) * log(min(one,(alpha/(one-x)))) &
@@ -5072,10 +6306,15 @@ $[0,1-\epsilon]$, which is $\log^2(x) + 2 Li_2(x) -
 irrespective of the fact what the user chooses.
 <<SM physics: public>>=
   public :: log_plus_distr
+<<SM physics: sub interfaces>>=
+    module function log_plus_distr (x,eps) result (lpd)
+       real(default), intent(in) :: x, eps
+       real(default) :: lpd, eps2
+    end function log_plus_distr
 <<SM physics: procedures>>=
-  function log_plus_distr (x,eps) result (lpd)
-     real(kind=default), intent(in) :: x, eps
-     real(kind=default) :: lpd, eps2
+  module function log_plus_distr (x,eps) result (lpd)
+     real(default), intent(in) :: x, eps
+     real(default) :: lpd, eps2
      eps2 = min (eps, 0.1816_default)
      if (x > (1.0_default - eps2)) then
         lpd = ((log(eps2))**2 + two*Li2(eps2) - pi**2/three)/eps2
@@ -5088,15 +6327,20 @@ irrespective of the fact what the user chooses.
 @ Logarithmic $+$-distribution, $2 \left( \frac{\log(1/(1-x))}{1-x} \right)_+$.
 <<SM physics: public>>=
   public :: log2_plus_distr
+<<SM physics: sub interfaces>>=
+    module function log2_plus_distr (x,eps) result (lpd)
+      real(default), intent(in) :: x, eps
+      real(default) :: lpd
+    end function log2_plus_distr
 <<SM physics: procedures>>=
-  function log2_plus_distr (x,eps) result (lpd)
-      real(kind=default), intent(in) :: x, eps
-      real(kind=default) :: lpd
-      if (x > (1.0_default - eps)) then
-         lpd = - (log(eps))**2/eps
-      else
-         lpd = two*log(one/(one-x))/(one-x)
-      end if
+  module function log2_plus_distr (x,eps) result (lpd)
+    real(default), intent(in) :: x, eps
+    real(default) :: lpd
+    if (x > (1.0_default - eps)) then
+       lpd = - (log(eps))**2/eps
+    else
+       lpd = two*log(one/(one-x))/(one-x)
+    end if
   end function log2_plus_distr
 
 @ %def log2_plus_distr
@@ -5104,10 +6348,15 @@ irrespective of the fact what the user chooses.
 \left( \frac{\log(1/(1-x))}{1-x} \right)_{1-\alpha}$.
 <<SM physics: public>>=
   public :: log2_plus_distr_al
+<<SM physics: sub interfaces>>=
+    module function log2_plus_distr_al (x,alpha,eps) result (lpd_al)
+      real(default), intent(in) :: x, eps, alpha
+      real(default) :: lpd_al
+    end function log2_plus_distr_al
 <<SM physics: procedures>>=
-  function log2_plus_distr_al (x,alpha,eps) result (lpd_al)
-    real(kind=default), intent(in) :: x, eps, alpha
-    real(kind=default) :: lpd_al
+  module function log2_plus_distr_al (x,alpha,eps) result (lpd_al)
+    real(default), intent(in) :: x, eps, alpha
+    real(default) :: lpd_al
     if ((one - alpha) >= (one - eps)) then
        lpd_al = zero
        call msg_fatal ('alpha and epsilon chosen wrongly')
@@ -5135,22 +6384,37 @@ cut-off seperates resolvable from unresolvable emissions.
   public :: p_gqq
   public :: p_ggg
 @ $q\to q g$
+<<SM physics: sub interfaces>>=
+    elemental module function p_qqg (z) result (P)
+      real(default), intent(in) :: z
+      real(default) :: P
+    end function p_qqg
 <<SM physics: procedures>>=
-  elemental function p_qqg (z) result (P)
+  elemental module function p_qqg (z) result (P)
     real(default), intent(in) :: z
     real(default) :: P
     P = CF * (one + z**2) / (one - z)
   end function p_qqg
 @ $g\to q \bar{q}$
+<<SM physics: sub interfaces>>=
+    elemental module function p_gqq (z) result (P)
+      real(default), intent(in) :: z
+      real(default) :: P
+    end function p_gqq
 <<SM physics: procedures>>=
-  elemental function p_gqq (z) result (P)
+  elemental module function p_gqq (z) result (P)
     real(default), intent(in) :: z
     real(default) :: P
     P = TR * (z**2 + (one - z)**2)
   end function p_gqq
 @ $g\to g g$
+<<SM physics: sub interfaces>>=
+    elemental module function p_ggg (z) result (P)
+      real(default), intent(in) :: z
+      real(default) :: P
+    end function p_ggg
 <<SM physics: procedures>>=
-  elemental function p_ggg (z) result (P)
+  elemental module function p_ggg (z) result (P)
     real(default), intent(in) :: z
     real(default) :: P
     P = NC * ((one - z) / z + z / (one - z) + z * (one - z))
@@ -5162,22 +6426,35 @@ cut-off seperates resolvable from unresolvable emissions.
   public :: integral_over_p_qqg
   public :: integral_over_p_gqq
   public :: integral_over_p_ggg
+<<SM physics: sub interfaces>>=
+    pure module function integral_over_p_qqg (zmin, zmax) result (integral)
+      real(default), intent(in) :: zmin, zmax
+      real(default) :: integral
+    end function integral_over_p_qqg
+    pure module function integral_over_p_gqq (zmin, zmax) result (integral)
+      real(default), intent(in) :: zmin, zmax
+      real(default) :: integral
+    end function integral_over_p_gqq
+    pure module function integral_over_p_ggg (zmin, zmax) result (integral)
+      real(default), intent(in) :: zmin, zmax
+      real(default) :: integral
+    end function integral_over_p_ggg
 <<SM physics: procedures>>=
-  pure function integral_over_p_qqg (zmin, zmax) result (integral)
+  pure module function integral_over_p_qqg (zmin, zmax) result (integral)
     real(default), intent(in) :: zmin, zmax
     real(default) :: integral
     integral = (two / three) * (- zmax**2 + zmin**2 - &
          two * (zmax - zmin) + four * log((one - zmin) / (one - zmax)))
   end function integral_over_p_qqg
 
-  pure function integral_over_p_gqq (zmin, zmax) result (integral)
+  pure module function integral_over_p_gqq (zmin, zmax) result (integral)
     real(default), intent(in) :: zmin, zmax
     real(default) :: integral
     integral = 0.5_default * ((two / three) * &
          (zmax**3 - zmin**3) - (zmax**2 - zmin**2) + (zmax - zmin))
   end function integral_over_p_gqq
 
-  pure function integral_over_p_ggg (zmin, zmax) result (integral)
+  pure module function integral_over_p_ggg (zmin, zmax) result (integral)
     real(default), intent(in) :: zmin, zmax
     real(default) :: integral
     integral = three * ((log(zmax) - two * zmax - &
@@ -5193,8 +6470,14 @@ cut-off seperates resolvable from unresolvable emissions.
 @ $q_a\to q_b g_c$, the helicity of the quark is not changed by gluon
 emission and the gluon is preferably polarized in the branching plane
 ($l_c=1$):
+<<SM physics: sub interfaces>>=
+    elemental module function p_qqg_pol (z, l_a, l_b, l_c) result (P)
+      real(default), intent(in) :: z
+      integer, intent(in) :: l_a, l_b, l_c
+      real(default) :: P
+    end function p_qqg_pol
 <<SM physics: procedures>>=
-  elemental function p_qqg_pol (z, l_a, l_b, l_c) result (P)
+  elemental module function p_qqg_pol (z, l_a, l_b, l_c) result (P)
     real(default), intent(in) :: z
     integer, intent(in) :: l_a, l_b, l_c
     real(default) :: P
@@ -5218,8 +6501,14 @@ functions are defined as complex functions:
 @ Splitting function $P_{qq}(N)$:
 <<SM physics: public>>=
   public :: pqqm
+<<SM physics: sub interfaces>>=
+    module function pqqm (n, c_f) result (pqq_m)
+      integer, intent(in) :: n
+      real(default), intent(in) :: c_f
+      complex(default) :: pqq_m
+    end function pqqm
 <<SM physics: procedures>>=
-  function pqqm (n, c_f) result (pqq_m)
+  module function pqqm (n, c_f) result (pqq_m)
     integer, intent(in) :: n
     real(default), intent(in) :: c_f
     complex(default) :: pqq_m
@@ -5279,8 +6568,14 @@ the factor $\mathcal{F}_1$ can be expressed as
 @
 <<SM physics: public>>=
   public :: top_width_sm_lo
+<<SM physics: sub interfaces>>=
+    elemental module function top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb) &
+           result (gamma)
+      real(default) :: gamma
+      real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb
+    end function top_width_sm_lo
 <<SM physics: procedures>>=
-  elemental function top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb) &
+  elemental module function top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb) &
          result (gamma)
     real(default) :: gamma
     real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb
@@ -5297,8 +6592,13 @@ the factor $\mathcal{F}_1$ can be expressed as
 @
 <<SM physics: public>>=
   public :: g_mu_from_alpha
+<<SM physics: sub interfaces>>=
+    elemental module function g_mu_from_alpha (alpha, mw, sinthw) result (g_mu)
+      real(default) :: g_mu
+      real(default), intent(in) :: alpha, mw, sinthw
+    end function g_mu_from_alpha
 <<SM physics: procedures>>=
-  elemental function g_mu_from_alpha (alpha, mw, sinthw) result (g_mu)
+  elemental module function g_mu_from_alpha (alpha, mw, sinthw) result (g_mu)
     real(default) :: g_mu
     real(default), intent(in) :: alpha, mw, sinthw
     g_mu = pi * alpha / sqrt(two) / mw**2 / sinthw**2
@@ -5308,8 +6608,13 @@ the factor $\mathcal{F}_1$ can be expressed as
 @
 <<SM physics: public>>=
   public :: alpha_from_g_mu
+<<SM physics: sub interfaces>>=
+    elemental module function alpha_from_g_mu (g_mu, mw, sinthw) result (alpha)
+      real(default) :: alpha
+      real(default), intent(in) :: g_mu, mw, sinthw
+    end function alpha_from_g_mu
 <<SM physics: procedures>>=
-  elemental function alpha_from_g_mu (g_mu, mw, sinthw) result (alpha)
+  elemental module function alpha_from_g_mu (g_mu, mw, sinthw) result (alpha)
     real(default) :: alpha
     real(default), intent(in) :: g_mu, mw, sinthw
     alpha = g_mu * sqrt(two) / pi * mw**2 * sinthw**2
@@ -5319,8 +6624,14 @@ the factor $\mathcal{F}_1$ can be expressed as
 @ Cf. (3.3)-(3.7) in [[1207.5018]].
 <<SM physics: public>>=
   public :: top_width_sm_qcd_nlo_massless_b
+<<SM physics: sub interfaces>>=
+    elemental module function top_width_sm_qcd_nlo_massless_b &
+           (alpha, sinthw, vtb, mtop, mw, alphas) result (gamma)
+      real(default) :: gamma
+      real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, alphas
+    end function top_width_sm_qcd_nlo_massless_b
 <<SM physics: procedures>>=
-  elemental function top_width_sm_qcd_nlo_massless_b &
+  elemental module function top_width_sm_qcd_nlo_massless_b &
          (alpha, sinthw, vtb, mtop, mw, alphas) result (gamma)
     real(default) :: gamma
     real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, alphas
@@ -5335,8 +6646,13 @@ the factor $\mathcal{F}_1$ can be expressed as
 @
 <<SM physics: public>>=
   public :: f0
+<<SM physics: sub interfaces>>=
+    elemental module function f0 (w2) result (f)
+      real(default) :: f
+      real(default), intent(in) :: w2
+    end function f0
 <<SM physics: procedures>>=
-  elemental function f0 (w2) result (f)
+  elemental module function f0 (w2) result (f)
     real(default) :: f
     real(default), intent(in) :: w2
     f = two * (one - w2)**2 * (1 + 2 * w2)
@@ -5346,8 +6662,13 @@ the factor $\mathcal{F}_1$ can be expressed as
 @
 <<SM physics: public>>=
   public :: f1
+<<SM physics: sub interfaces>>=
+    elemental module function f1 (w2) result (f)
+      real(default) :: f
+      real(default), intent(in) :: w2
+    end function f1
 <<SM physics: procedures>>=
-  elemental function f1 (w2) result (f)
+  elemental module function f1 (w2) result (f)
     real(default) :: f
     real(default), intent(in) :: w2
     f = f0 (w2) * (pi**2 + two * Li2 (w2) - two * Li2 (one - w2)) &
@@ -5361,8 +6682,14 @@ the factor $\mathcal{F}_1$ can be expressed as
 cf. Jezabek / Kuehn 1989.
 <<SM physics: public>>=
   public :: top_width_sm_qcd_nlo_jk
+<<SM physics: sub interfaces>>=
+    elemental module function top_width_sm_qcd_nlo_jk &
+           (alpha, sinthw, vtb, mtop, mw, mb, alphas) result (gamma)
+      real(default) :: gamma
+      real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alphas
+    end function top_width_sm_qcd_nlo_jk
 <<SM physics: procedures>>=
-  elemental function top_width_sm_qcd_nlo_jk &
+  elemental module function top_width_sm_qcd_nlo_jk &
          (alpha, sinthw, vtb, mtop, mw, mb, alphas) result (gamma)
     real(default) :: gamma
     real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alphas
@@ -5380,8 +6707,14 @@ cf. Jezabek / Kuehn 1989.
 (2.6) of arXiv:1204.1513v1 by Campbell and Ellis.
 <<SM physics: public>>=
   public :: top_width_sm_qcd_nlo_ce
+<<SM physics: sub interfaces>>=
+    elemental module function top_width_sm_qcd_nlo_ce &
+         (alpha, sinthw, vtb, mtop, mw, mb, alpha_s) result (gamma)
+      real(default) :: gamma
+      real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alpha_s
+    end function top_width_sm_qcd_nlo_ce
 <<SM physics: procedures>>=
-  elemental function top_width_sm_qcd_nlo_ce &
+  elemental module function top_width_sm_qcd_nlo_ce &
        (alpha, sinthw, vtb, mtop, mw, mb, alpha_s) result (gamma)
     real(default) :: gamma
     real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alpha_s
@@ -5420,8 +6753,13 @@ cf. Jezabek / Kuehn 1989.
 @
 <<SM physics: public>>=
   public :: ff0
+<<SM physics: sub interfaces>>=
+    elemental module function ff0 (eps2, w2) result (f)
+      real(default) :: f
+      real(default), intent(in) :: eps2, w2
+    end function ff0
 <<SM physics: procedures>>=
-  elemental function ff0 (eps2, w2) result (f)
+  elemental module function ff0 (eps2, w2) result (f)
     real(default) :: f
     real(default), intent(in) :: eps2, w2
     f = one / two * sqrt(ff_lambda (eps2, w2)) * ff_f0 (eps2, w2)
@@ -5431,8 +6769,13 @@ cf. Jezabek / Kuehn 1989.
 @
 <<SM physics: public>>=
   public :: ff_f0
+<<SM physics: sub interfaces>>=
+    elemental module function ff_f0 (eps2, w2) result (f)
+      real(default) :: f
+      real(default), intent(in) :: eps2, w2
+    end function ff_f0
 <<SM physics: procedures>>=
-  elemental function ff_f0 (eps2, w2) result (f)
+  elemental module function ff_f0 (eps2, w2) result (f)
     real(default) :: f
     real(default), intent(in) :: eps2, w2
     f = four * ((1 - eps2)**2 + w2 * (1 + eps2) - 2 * w2**2)
@@ -5442,8 +6785,13 @@ cf. Jezabek / Kuehn 1989.
 @
 <<SM physics: public>>=
   public :: ff_lambda
+<<SM physics: sub interfaces>>=
+    elemental module function ff_lambda (eps2, w2) result (l)
+      real(default) :: l
+      real(default), intent(in) :: eps2, w2
+    end function ff_lambda
 <<SM physics: procedures>>=
-  elemental function ff_lambda (eps2, w2) result (l)
+  elemental module function ff_lambda (eps2, w2) result (l)
     real(default) :: l
     real(default), intent(in) :: eps2, w2
     l = one + w2**2 + eps2**2 - two * (w2 + eps2 + w2 * eps2)
@@ -5453,8 +6801,13 @@ cf. Jezabek / Kuehn 1989.
 @
 <<SM physics: public>>=
   public :: ff1
+<<SM physics: sub interfaces>>=
+    elemental module function ff1 (eps2, w2) result (f)
+      real(default) :: f
+      real(default), intent(in) :: eps2, w2
+    end function ff1
 <<SM physics: procedures>>=
-  elemental function ff1 (eps2, w2) result (f)
+  elemental module function ff1 (eps2, w2) result (f)
     real(default) :: f
     real(default), intent(in) :: eps2, w2
     real(default) :: uq, uw, sq_lam, fff
@@ -5886,13 +7239,7 @@ interface.  Later modules may define additional implementations.
 module sm_qcd
 
 <<Use kinds>>
-  use io_units
-  use format_defs, only: FMT_12
-  use numeric_utils
-  use diagnostics
-  use md5
   use physics_defs
-  use sm_physics
 
 <<Standard module head>>
 
@@ -5902,12 +7249,34 @@ module sm_qcd
 
 <<SM qcd: interfaces>>
 
+  interface
+<<SM qcd: sub interfaces>>
+  end interface
+
+end module sm_qcd
+@ %def sm_qcd
+@
+<<[[sm_qcd_sub.f90]]>>=
+<<File header>>
+
+submodule (sm_qcd) sm_qcd_s
+
+  use io_units
+  use format_defs, only: FMT_12
+  use numeric_utils
+  use diagnostics
+  use md5
+  use sm_physics
+
+  implicit none
+
 contains
 
 <<SM qcd: procedures>>
 
-end module sm_qcd
-@ %def sm_qcd
+end submodule sm_qcd_s
+
+@ %def sm_qcd_s
 @
 \subsection{Coupling: Abstract Data Type}
 This is the abstract version of the QCD coupling implementation.
@@ -5967,8 +7336,13 @@ value.  By default, this is the value at $M_Z$.
 @ Output.
 <<SM qcd: alpha qcd fixed: TBP>>=
   procedure :: write => alpha_qcd_fixed_write
+<<SM qcd: sub interfaces>>=
+    module subroutine alpha_qcd_fixed_write (object, unit)
+      class(alpha_qcd_fixed_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine alpha_qcd_fixed_write
 <<SM qcd: procedures>>=
-  subroutine alpha_qcd_fixed_write (object, unit)
+  module subroutine alpha_qcd_fixed_write (object, unit)
     class(alpha_qcd_fixed_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -5981,8 +7355,14 @@ value.  By default, this is the value at $M_Z$.
 @ Calculation: the scale is ignored in this case.
 <<SM qcd: alpha qcd fixed: TBP>>=
   procedure :: get => alpha_qcd_fixed_get
+<<SM qcd: sub interfaces>>=
+    module function alpha_qcd_fixed_get (alpha_qcd, scale) result (alpha)
+      class(alpha_qcd_fixed_t), intent(in) :: alpha_qcd
+      real(default), intent(in) :: scale
+      real(default) :: alpha
+    end function alpha_qcd_fixed_get
 <<SM qcd: procedures>>=
-  function alpha_qcd_fixed_get (alpha_qcd, scale) result (alpha)
+  module function alpha_qcd_fixed_get (alpha_qcd, scale) result (alpha)
     class(alpha_qcd_fixed_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
     real(default) :: alpha
@@ -6013,8 +7393,13 @@ approximation.
 @ Output.
 <<SM qcd: alpha qcd from scale: TBP>>=
   procedure :: write => alpha_qcd_from_scale_write
+<<SM qcd: sub interfaces>>=
+    module subroutine alpha_qcd_from_scale_write (object, unit)
+      class(alpha_qcd_from_scale_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine alpha_qcd_from_scale_write
 <<SM qcd: procedures>>=
-  subroutine alpha_qcd_from_scale_write (object, unit)
+  module subroutine alpha_qcd_from_scale_write (object, unit)
     class(alpha_qcd_from_scale_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -6033,8 +7418,14 @@ account thresholds, so the number of flavors should be the correct one
 for the chosen scale.  Normally, this should be the $Z$ boson mass.
 <<SM qcd: alpha qcd from scale: TBP>>=
   procedure :: get => alpha_qcd_from_scale_get
+<<SM qcd: sub interfaces>>=
+    module function alpha_qcd_from_scale_get (alpha_qcd, scale) result (alpha)
+      class(alpha_qcd_from_scale_t), intent(in) :: alpha_qcd
+      real(default), intent(in) :: scale
+      real(default) :: alpha
+    end function alpha_qcd_from_scale_get
 <<SM qcd: procedures>>=
-  function alpha_qcd_from_scale_get (alpha_qcd, scale) result (alpha)
+  module function alpha_qcd_from_scale_get (alpha_qcd, scale) result (alpha)
     class(alpha_qcd_from_scale_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
     real(default) :: alpha
@@ -6062,8 +7453,13 @@ the order of the approximation.
 @ Output.
 <<SM qcd: alpha qcd from lambda: TBP>>=
   procedure :: write => alpha_qcd_from_lambda_write
+<<SM qcd: sub interfaces>>=
+    module subroutine alpha_qcd_from_lambda_write (object, unit)
+      class(alpha_qcd_from_lambda_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine alpha_qcd_from_lambda_write
 <<SM qcd: procedures>>=
-  subroutine alpha_qcd_from_lambda_write (object, unit)
+  module subroutine alpha_qcd_from_lambda_write (object, unit)
     class(alpha_qcd_from_lambda_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -6081,8 +7477,14 @@ the one that is appropriate for the chosen number of effective
 flavors.  Again, thresholds are not incorporated.
 <<SM qcd: alpha qcd from lambda: TBP>>=
   procedure :: get => alpha_qcd_from_lambda_get
+<<SM qcd: sub interfaces>>=
+    module function alpha_qcd_from_lambda_get (alpha_qcd, scale) result (alpha)
+      class(alpha_qcd_from_lambda_t), intent(in) :: alpha_qcd
+      real(default), intent(in) :: scale
+      real(default) :: alpha
+    end function alpha_qcd_from_lambda_get
 <<SM qcd: procedures>>=
-  function alpha_qcd_from_lambda_get (alpha_qcd, scale) result (alpha)
+  module function alpha_qcd_from_lambda_get (alpha_qcd, scale) result (alpha)
     class(alpha_qcd_from_lambda_t), intent(in) :: alpha_qcd
     real(default), intent(in) :: scale
     real(default) :: alpha
@@ -6113,8 +7515,14 @@ set the type-specific parameters directly (by a [[dispatch]] routine).
 then any extra components.
 <<SM qcd: qcd: TBP>>=
   procedure :: write => qcd_write
+<<SM qcd: sub interfaces>>=
+    module subroutine qcd_write (qcd, unit, show_md5sum)
+      class(qcd_t), intent(in) :: qcd
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: show_md5sum
+    end subroutine qcd_write
 <<SM qcd: procedures>>=
-  subroutine qcd_write (qcd, unit, show_md5sum)
+  module subroutine qcd_write (qcd, unit, show_md5sum)
     class(qcd_t), intent(in) :: qcd
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_md5sum
@@ -6136,8 +7544,13 @@ then any extra components.
 done by writing them to a temporary file, using a standard format.
 <<SM qcd: qcd: TBP>>=
   procedure :: compute_alphas_md5sum => qcd_compute_alphas_md5sum
+<<SM qcd: sub interfaces>>=
+    module subroutine qcd_compute_alphas_md5sum (qcd)
+      class(qcd_t), intent(inout) :: qcd
+      integer :: unit
+    end subroutine qcd_compute_alphas_md5sum
 <<SM qcd: procedures>>=
-  subroutine qcd_compute_alphas_md5sum (qcd)
+  module subroutine qcd_compute_alphas_md5sum (qcd)
     class(qcd_t), intent(inout) :: qcd
     integer :: unit
     if (allocated (qcd%alpha)) then
@@ -6155,8 +7568,13 @@ done by writing them to a temporary file, using a standard format.
 @ Retrieve the MD5 sum of the qcd setup.
 <<SM qcd: qcd: TBP>>=
   procedure :: get_md5sum => qcd_get_md5sum
+<<SM qcd: sub interfaces>>=
+    module function qcd_get_md5sum (qcd) result (md5sum)
+      character(32) :: md5sum
+      class(qcd_t), intent(inout) :: qcd
+    end function qcd_get_md5sum
 <<SM qcd: procedures>>=
-  function qcd_get_md5sum (qcd) result (md5sum)
+  module function qcd_get_md5sum (qcd) result (md5sum)
     character(32) :: md5sum
     class(qcd_t), intent(inout) :: qcd
     md5sum = qcd%md5sum
@@ -6364,11 +7782,7 @@ $\alpha_\text{em}$ as well.
 module sm_qed
 
 <<Use kinds>>
-  use io_units
-  use format_defs, only: FMT_12
-  use md5
   use physics_defs
-  use sm_physics
 
 <<Standard module head>>
 
@@ -6378,12 +7792,32 @@ module sm_qed
 
 <<SM qed: interfaces>>
 
+  interface
+<<SM qed: sub interfaces>>
+  end interface
+
+end module sm_qed
+@ %def sm_qed
+@
+<<[[sm_qed_sub.f90]]>>=
+<<File header>>
+
+submodule (sm_qed) sm_qed_s
+
+  use io_units
+  use format_defs, only: FMT_12
+  use md5
+  use sm_physics
+
+  implicit none
+
 contains
 
 <<SM qed: procedures>>
 
-end module sm_qed
-@ %def sm_qed
+end submodule sm_qed_s
+
+@ %def sm_qed_s
 @
 \subsection{Coupling: Abstract Data Type}
 This is the abstract version of the QCD coupling implementation.
@@ -6444,8 +7878,13 @@ model.
 @ Output.
 <<SM qed: alpha qed fixed: TBP>>=
   procedure :: write => alpha_qed_fixed_write
+<<SM qed: sub interfaces>>=
+    module subroutine alpha_qed_fixed_write (object, unit)
+      class(alpha_qed_fixed_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine alpha_qed_fixed_write
 <<SM qed: procedures>>=
-  subroutine alpha_qed_fixed_write (object, unit)
+  module subroutine alpha_qed_fixed_write (object, unit)
     class(alpha_qed_fixed_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -6458,8 +7897,14 @@ model.
 @ Calculation: the scale is ignored in this case.
 <<SM qed: alpha qed fixed: TBP>>=
   procedure :: get => alpha_qed_fixed_get
+<<SM qed: sub interfaces>>=
+    module function alpha_qed_fixed_get (alpha_qed, scale) result (alpha)
+      class(alpha_qed_fixed_t), intent(in) :: alpha_qed
+      real(default), intent(in) :: scale
+      real(default) :: alpha
+    end function alpha_qed_fixed_get
 <<SM qed: procedures>>=
-  function alpha_qed_fixed_get (alpha_qed, scale) result (alpha)
+  module function alpha_qed_fixed_get (alpha_qed, scale) result (alpha)
     class(alpha_qed_fixed_t), intent(in) :: alpha_qed
     real(default), intent(in) :: scale
     real(default) :: alpha
@@ -6492,8 +7937,13 @@ approximation.
 @ Output.
 <<SM qed: alpha qed from scale: TBP>>=
   procedure :: write => alpha_qed_from_scale_write
+<<SM qed: sub interfaces>>=
+    module subroutine alpha_qed_from_scale_write (object, unit)
+      class(alpha_qed_from_scale_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine alpha_qed_from_scale_write
 <<SM qed: procedures>>=
-  subroutine alpha_qed_from_scale_write (object, unit)
+  module subroutine alpha_qed_from_scale_write (object, unit)
     class(alpha_qed_from_scale_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -6514,8 +7964,14 @@ account thresholds, so the number of flavors should be the correct one
 for the chosen scale.  Normally, this should be the $Z$ boson mass.
 <<SM qed: alpha qed from scale: TBP>>=
   procedure :: get => alpha_qed_from_scale_get
+<<SM qed: sub interfaces>>=
+    module function alpha_qed_from_scale_get (alpha_qed, scale) result (alpha)
+      class(alpha_qed_from_scale_t), intent(in) :: alpha_qed
+      real(default), intent(in) :: scale
+      real(default) :: alpha
+    end function alpha_qed_from_scale_get
 <<SM qed: procedures>>=
-  function alpha_qed_from_scale_get (alpha_qed, scale) result (alpha)
+  module function alpha_qed_from_scale_get (alpha_qed, scale) result (alpha)
     class(alpha_qed_from_scale_t), intent(in) :: alpha_qed
     real(default), intent(in) :: scale
     real(default) :: alpha
@@ -6551,8 +8007,14 @@ Output.  We first print the polymorphic [[alpha]] which contains a headline,
 then any extra components.
 <<SM qed: qed: TBP>>=
   procedure :: write => qed_write
+<<SM qed: sub interfaces>>=
+    module subroutine qed_write (qed, unit, show_md5sum)
+      class(qed_t), intent(in) :: qed
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: show_md5sum
+    end subroutine qed_write
 <<SM qed: procedures>>=
-  subroutine qed_write (qed, unit, show_md5sum)
+  module subroutine qed_write (qed, unit, show_md5sum)
     class(qed_t), intent(in) :: qed
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_md5sum
@@ -6574,8 +8036,13 @@ then any extra components.
 done by writing them to a temporary file, using a standard format.
 <<SM qed: qed: TBP>>=
   procedure :: compute_alpha_md5sum => qed_compute_alpha_md5sum
+<<SM qed: sub interfaces>>=
+    module subroutine qed_compute_alpha_md5sum (qed)
+      class(qed_t), intent(inout) :: qed
+      integer :: unit
+    end subroutine qed_compute_alpha_md5sum
 <<SM qed: procedures>>=
-  subroutine qed_compute_alpha_md5sum (qed)
+  module subroutine qed_compute_alpha_md5sum (qed)
     class(qed_t), intent(inout) :: qed
     integer :: unit
     if (allocated (qed%alpha)) then
@@ -6593,8 +8060,13 @@ done by writing them to a temporary file, using a standard format.
 @ Retrieve the MD5 sum of the qed setup.
 <<SM qed: qed: TBP>>=
   procedure :: get_md5sum => qed_get_md5sum
+<<SM qed: sub interfaces>>=
+    module function qed_get_md5sum (qed) result (md5sum)
+      character(32) :: md5sum
+      class(qed_t), intent(inout) :: qed
+    end function qed_get_md5sum
 <<SM qed: procedures>>=
-  function qed_get_md5sum (qed) result (md5sum)
+  module function qed_get_md5sum (qed) result (md5sum)
     character(32) :: md5sum
     class(qed_t), intent(inout) :: qed
     md5sum = qed%md5sum
@@ -6760,23 +8232,39 @@ We check two different implementations of the abstract QED coupling.
 module shower_algorithms
 
 <<Use kinds>>
-  use diagnostics
-  use constants
 
 <<Standard module head>>
 
-<<shower algorithms: public>>
+<<Shower algorithms: public>>
 
-<<shower algorithms: interfaces>>
+<<Shower algorithms: interfaces>>
 
-contains
-
-<<shower algorithms: procedures>>
-
-<<shower algorithms: tests>>
+  interface
+<<Shower algorithms: sub interfaces>>
+  end interface
 
 end module shower_algorithms
 @ %def shower_algorithms
+<<[[shower_algorithms_sub.f90]]>>=
+<<File header>>
+
+submodule (shower_algorithms) shower_algorithms_s
+
+  use diagnostics
+  use constants
+
+  implicit none
+
+contains
+
+<<Shower algorithms: procedures>>
+
+<<Shower algorithms: tests>>
+
+end submodule shower_algorithms_s
+
+@ %def shower_algorithms_s
+@
 @ We want to generate emission variables [[x]]$\in\mathds{R}^d$
 proportional to
 \begin{align}
@@ -6790,8 +8278,17 @@ algorithm is described in Appendix B of 0709.2092 and is proven e.g.~in
 1211.7204 and hep-ph/0606275.  Intuitively speaking, we overestimate the
 emission probability and can therefore set [[scale_max = scale]] if the
 emission is rejected.
-<<shower algorithms: procedures>>=
-  subroutine generate_vetoed (x, overestimator, true_function, &
+<<Shower algorithms: sub interfaces>>=
+    module subroutine generate_vetoed (x, overestimator, true_function, &
+           sudakov, inverse_sudakov, scale_min)
+      real(default), dimension(:), intent(out) :: x
+      !class(rng_t), intent(inout) :: rng
+      procedure(XXX_function), pointer, intent(in) :: overestimator, true_function
+      procedure(sudakov_p), pointer, intent(in) :: sudakov, inverse_sudakov
+      real(default), intent(in) :: scale_min
+    end subroutine generate_vetoed
+<<Shower algorithms: procedures>>=
+  module subroutine generate_vetoed (x, overestimator, true_function, &
          sudakov, inverse_sudakov, scale_min)
     real(default), dimension(:), intent(out) :: x
     !class(rng_t), intent(inout) :: rng
@@ -6814,7 +8311,7 @@ emission is rejected.
 
 @ %def generate_vetoed
 @
-<<shower algorithms: procedures>>=
+<<Shower algorithms: procedures>>=
   subroutine generate_on_hypersphere (x, overestimator, scale)
     real(default), dimension(:), intent(out) :: x
     procedure(XXX_function), pointer, intent(in) :: overestimator
@@ -6824,7 +8321,7 @@ emission is rejected.
 
 @ %def generate_on_hypersphere
 @
-<<shower algorithms: interfaces>>=
+<<Shower algorithms: interfaces>>=
   interface
     pure function XXX_function (x)
       import
@@ -6842,13 +8339,13 @@ emission is rejected.
 @
 \subsection{Unit tests}
 (Currently unused.)
-<<XXX shower algorithms: public>>=
+<<XXX Shower algorithms: public>>=
   public :: shower_algorithms_test
-<<XXX shower algorithms: tests>>=
+<<XXX Shower algorithms: tests>>=
   subroutine shower_algorithms_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<shower algorithms: execute tests>>
+  <<Shower algorithms: execute tests>>
   end subroutine shower_algorithms_test
 
 @ %def shower_algorithms_test

@@ -3034,6 +3034,7 @@ end module sf_aux_ut
 module sf_aux_uti
 
 <<Use kinds>>
+  use numeric_utils, only: pacify
   use lorentz
 
   use sf_aux
@@ -8278,6 +8279,7 @@ module sf_base
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_17, FMT_19
+  use numeric_utils, only: pacify
   use diagnostics
   use lorentz
   use quantum_numbers
@@ -19219,6 +19221,7 @@ end module sf_gaussian_ut
 module sf_gaussian_uti
 
 <<Use kinds>>
+  use numeric_utils, only: pacify
   use physics_defs, only: ELECTRON
   use lorentz
   use pdg_arrays
@@ -19923,6 +19926,7 @@ module sf_beam_events_uti
 <<Use kinds>>
 <<Use strings>>
   use io_units
+  use numeric_utils, only: pacify
   use physics_defs, only: ELECTRON
   use lorentz
   use pdg_arrays
