@@ -1,13 +1,12 @@
-!$Id: cpp_strings.f90 6133 2014-09-17 14:42:33Z kilian $
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2021 by 
+! Copyright (C) 1999-2022 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
+!
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -78,35 +77,22 @@ module cpp_strings
      module procedure cpp_string_len
   end interface len
 
-contains
-
-  subroutine cpp_string_init (s, cptr)
-    class(cpp_string_t), intent(out) :: s
-    type(c_ptr), intent(in) :: cptr
-    s%cptr = cptr
-    s%strlen = cpp_str_length (cptr)
-  end subroutine cpp_string_init
-
-  subroutine cpp_string_final (s)
-    class(cpp_string_t), intent(inout) :: s
-    call cpp_str_delete (s%cptr)
-    s%cptr = c_null_ptr
-    s%strlen = 0
-  end subroutine cpp_string_final
-
-  function char_from_cpp_string (s) result (c)
-    type(cpp_string_t), intent(in) :: s
-    character(len=s%strlen) :: c
-    integer :: i
-    do i = 1, s%strlen
-       c(i:i) = cpp_str_get (s%cptr, int (i-1, c_int))
-    end do
-  end function char_from_cpp_string
-
-  function cpp_string_len (s) result (len)
-    type(cpp_string_t), intent(in) :: s
-    integer :: len
-    len = s%strlen
-  end function cpp_string_len
+  interface
+    module subroutine cpp_string_init (s, cptr)
+      class(cpp_string_t), intent(out) :: s
+      type(c_ptr), intent(in) :: cptr
+    end subroutine cpp_string_init
+    module subroutine cpp_string_final (s)
+      class(cpp_string_t), intent(inout) :: s
+    end subroutine cpp_string_final
+    module function char_from_cpp_string (s) result (c)
+      type(cpp_string_t), intent(in) :: s
+      character(len=s%strlen) :: c
+    end function char_from_cpp_string
+    module function cpp_string_len (s) result (len)
+      type(cpp_string_t), intent(in) :: s
+      integer :: len
+    end function cpp_string_len
+  end interface
 
 end module cpp_strings

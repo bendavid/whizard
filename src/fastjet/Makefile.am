@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2021 by 
+# Copyright (C) 1999-2022 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -30,13 +30,15 @@ if FASTJET_AVAILABLE
 noinst_LTLIBRARIES = libFastjetWrap.la
 libFastjetWrap_la_SOURCES = \
   CppStringsWrap.cpp FastjetWrap.cpp \
-  cpp_strings.f90 fastjet.f90
+  cpp_strings.f90 cpp_strings_sub.f90 \
+  fastjet.f90 fastjet_sub.f90
 libFastjetWrap_la_CPPFLAGS = $(FASTJET_CXXFLAGS)
 else
 noinst_LTLIBRARIES = libFastjetWrap_dummy.la
 libFastjetWrap_dummy_la_SOURCES = \
   CppStringsWrap_dummy.f90 FastjetWrap_dummy.f90 \
-  cpp_strings.f90 fastjet.f90
+  cpp_strings.f90 cpp_strings_sub.f90 \
+  fastjet.f90 fastjet_sub.f90
 endif
 
 # Modules and installation
@@ -80,7 +82,9 @@ fastjet.lo: cpp_strings.lo
 fastjet.lo: \
   ../basics/kinds.$(FCMOD) \
   ../physics/lorentz.$(FCMOD)
+fastjet_sub.lo: fastjet.lo
 cpp_strings.$(FCMOD): cpp_strings.lo
+cpp_strings_sub.lo: cpp_strings.lo
 fastjet.$(FCMOD): fastjet.lo
 
 AM_FCFLAGS += -I../basics -I../utilities -I../testing -I../system -I../physics
@@ -100,5 +104,5 @@ maintainer-clean-local:
 clean-local:
 	-rm -f $(MODULES)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
