@@ -691,14 +691,13 @@ re-initialization.
        end if
     case (V_SEV)
        if (var%is_known) then
-          call subevt_write (var%pval, u, prefix="       ", &
-               pacified = pacified)
+          call var%pval%write (u, prefix="       ", pacified = pacified)
        else
           write (u, "(A)", advance=advance)  "[unknown subevent]"
        end if
     case (V_PDG)
        if (var%is_known) then
-          call pdg_array_write (var%aval, u);  write (u, *)
+          call var%aval%write (u);  write (u, *)
        else
           write (u, "(A)", advance=advance)  "[unknown PDG array]"
        end if
@@ -7043,10 +7042,10 @@ combined.
     type(subevt_t), intent(in) :: sev
     integer :: i, n
     type(prt_t) :: prt
-    n = subevt_get_length (sev)
+    n = sev%get_length ()
     ht = 0
     do i = 1, n
-       prt = subevt_get_prt (sev, i)
+       prt = sev%get_prt (i)
        ht = ht + &
             sqrt (obs_pt1(prt)**2 + obs_mass_squared1(prt))
     end do

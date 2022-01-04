@@ -45,8 +45,6 @@ generic procedures which handle scalar and array arguments.
 module particle_specifiers
 
 <<Use strings>>
-  use io_units
-  use diagnostics
 
 <<Standard module head>>
 
@@ -56,12 +54,34 @@ module particle_specifiers
 
 <<Particle specifiers: interfaces>>
 
+  interface
+<<Particle specifiers: sub interfaces>>
+  end interface
+
+contains
+
+<<Particle specifiers: main procedures>>
+
+end module particle_specifiers
+@ %def particle_specifiers
+@
+<<[[particle_specifiers_sub.f90]]>>=
+<<File header>>
+
+submodule (particle_specifiers) particle_specifiers_s
+
+  use io_units
+  use diagnostics
+
+  implicit none
+
 contains
 
 <<Particle specifiers: procedures>>
 
-end module particle_specifiers
-@ %def particle_specifiers
+end submodule particle_specifiers_s
+
+@ %def particle_specifiers_s
 @
 \subsection{Base type}
 This is an abstract type which can hold a single particle or an expression.
@@ -115,8 +135,13 @@ make variadic arrays.
 @ Output as a string: delegate.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: to_string => prt_expr_to_string
+<<Particle specifiers: sub interfaces>>=
+    recursive module function prt_expr_to_string (object) result (string)
+      class(prt_expr_t), intent(in) :: object
+      type(string_t) :: string
+    end function prt_expr_to_string
 <<Particle specifiers: procedures>>=
-  recursive function prt_expr_to_string (object) result (string)
+  recursive module function prt_expr_to_string (object) result (string)
     class(prt_expr_t), intent(in) :: object
     type(string_t) :: string
     if (allocated (object%x)) then
@@ -128,9 +153,10 @@ make variadic arrays.
 
 @ %def prt_expr_to_string
 @ Allocate the expression as a particle specifier and copy the value.
+Due to compiler bugs in gfortran 7-9 not in submodule.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: init_spec => prt_expr_init_spec
-<<Particle specifiers: procedures>>=
+<<Particle specifiers: main procedures>>=
   subroutine prt_expr_init_spec (object, spec)
     class(prt_expr_t), intent(out) :: object
     type(prt_spec_t), intent(in) :: spec
@@ -143,10 +169,11 @@ make variadic arrays.
 
 @ %def prt_expr_init_spec
 @ Allocate as a list/sum and allocate for a given length
+Due to compiler bugs in gfortran 7-9 not in submodule.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: init_list => prt_expr_init_list
   procedure :: init_sum => prt_expr_init_sum
-<<Particle specifiers: procedures>>=
+<<Particle specifiers: main procedures>>=
   subroutine prt_expr_init_list (object, n)
     class(prt_expr_t), intent(out) :: object
     integer, intent(in) :: n
@@ -173,8 +200,13 @@ make variadic arrays.
 sum.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: get_n_terms => prt_expr_get_n_terms
+<<Particle specifiers: sub interfaces>>=
+    module function prt_expr_get_n_terms (object) result (n)
+      class(prt_expr_t), intent(in) :: object
+      integer :: n
+    end function prt_expr_get_n_terms
 <<Particle specifiers: procedures>>=
-  function prt_expr_get_n_terms (object) result (n)
+  module function prt_expr_get_n_terms (object) result (n)
     class(prt_expr_t), intent(in) :: object
     integer :: n
     if (allocated (object%x)) then
@@ -196,8 +228,14 @@ term is a list.  This makes sense only if the expression has been completely
 expanded, so the list contains only atoms.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: term_to_array => prt_expr_term_to_array
+<<Particle specifiers: sub interfaces>>=
+    recursive module subroutine prt_expr_term_to_array (object, array, i)
+      class(prt_expr_t), intent(in) :: object
+      type(prt_spec_t), dimension(:), intent(inout), allocatable :: array
+      integer, intent(in) :: i
+    end subroutine prt_expr_term_to_array
 <<Particle specifiers: procedures>>=
-  recursive subroutine prt_expr_term_to_array (object, array, i)
+  recursive module subroutine prt_expr_term_to_array (object, array, i)
     class(prt_expr_t), intent(in) :: object
     type(prt_spec_t), dimension(:), intent(inout), allocatable :: array
     integer, intent(in) :: i
@@ -252,8 +290,14 @@ Output.  Old-style subroutines.
      module procedure prt_spec_write1
      module procedure prt_spec_write2
   end interface prt_spec_write
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_spec_write1 (object, unit, advance)
+      type(prt_spec_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      character(len=*), intent(in), optional :: advance
+    end subroutine prt_spec_write1
 <<Particle specifiers: procedures>>=
-  subroutine prt_spec_write1 (object, unit, advance)
+  module subroutine prt_spec_write1 (object, unit, advance)
     type(prt_spec_t), intent(in) :: object
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: advance
@@ -266,8 +310,14 @@ Output.  Old-style subroutines.
 
 @ %def prt_spec_write1
 @ Write an array as a list of particle specifiers.
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_spec_write2 (prt_spec, unit, advance)
+      type(prt_spec_t), dimension(:), intent(in) :: prt_spec
+      integer, intent(in), optional :: unit
+      character(len=*), intent(in), optional :: advance
+    end subroutine prt_spec_write2
 <<Particle specifiers: procedures>>=
-  subroutine prt_spec_write2 (prt_spec, unit, advance)
+  module subroutine prt_spec_write2 (prt_spec, unit, advance)
     type(prt_spec_t), dimension(:), intent(in) :: prt_spec
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: advance
@@ -292,8 +342,13 @@ Output.  Old-style subroutines.
      module procedure prt_spec_read2
   end interface prt_spec_read
 @ Read a single particle specifier
+<<Particle specifiers: sub interfaces>>=
+    pure module subroutine prt_spec_read1 (prt_spec, string)
+      type(prt_spec_t), intent(out) :: prt_spec
+      type(string_t), intent(in) :: string
+    end subroutine prt_spec_read1
 <<Particle specifiers: procedures>>=
-  pure subroutine prt_spec_read1 (prt_spec, string)
+  pure module subroutine prt_spec_read1 (prt_spec, string)
     type(prt_spec_t), intent(out) :: prt_spec
     type(string_t), intent(in) :: string
     type(string_t) :: arg, buffer
@@ -332,8 +387,13 @@ Output.  Old-style subroutines.
 @ %def prt_spec_read1
 @ Read a particle specifier array, given as a single string.  The
 array is allocated to the correct size.
+<<Particle specifiers: sub interfaces>>=
+    pure module subroutine prt_spec_read2 (prt_spec, string)
+      type(prt_spec_t), dimension(:), intent(out), allocatable :: prt_spec
+      type(string_t), intent(in) :: string
+    end subroutine prt_spec_read2
 <<Particle specifiers: procedures>>=
-  pure subroutine prt_spec_read2 (prt_spec, string)
+  pure module subroutine prt_spec_read2 (prt_spec, string)
     type(prt_spec_t), dimension(:), intent(out), allocatable :: prt_spec
     type(string_t), intent(in) :: string
     type(string_t) :: buffer
@@ -365,18 +425,33 @@ Initialize a particle specifier.
   public :: new_prt_spec
 <<Particle specifiers: interfaces>>=
   interface new_prt_spec
-     module procedure new_prt_spec
+     module procedure new_prt_spec_
      module procedure new_prt_spec_polarized
      module procedure new_prt_spec_unstable
   end interface new_prt_spec
+<<Particle specifiers: sub interfaces>>=
+    elemental module function new_prt_spec_ (name) result (prt_spec)
+      type(string_t), intent(in) :: name
+      type(prt_spec_t) :: prt_spec
+    end function new_prt_spec_
+    elemental module function new_prt_spec_polarized (name, polarized) result (prt_spec)
+      type(string_t), intent(in) :: name
+      logical, intent(in) :: polarized
+      type(prt_spec_t) :: prt_spec
+    end function new_prt_spec_polarized
+    pure module function new_prt_spec_unstable (name, decay) result (prt_spec)
+      type(string_t), intent(in) :: name
+      type(string_t), dimension(:), intent(in) :: decay
+      type(prt_spec_t) :: prt_spec
+    end function new_prt_spec_unstable
 <<Particle specifiers: procedures>>=
-  elemental function new_prt_spec (name) result (prt_spec)
+  elemental module function new_prt_spec_ (name) result (prt_spec)
     type(string_t), intent(in) :: name
     type(prt_spec_t) :: prt_spec
     prt_spec%name = name
-  end function new_prt_spec
+  end function new_prt_spec_
 
-  elemental function new_prt_spec_polarized (name, polarized) result (prt_spec)
+  elemental module function new_prt_spec_polarized (name, polarized) result (prt_spec)
     type(string_t), intent(in) :: name
     logical, intent(in) :: polarized
     type(prt_spec_t) :: prt_spec
@@ -384,7 +459,7 @@ Initialize a particle specifier.
     prt_spec%polarized = polarized
   end function new_prt_spec_polarized
 
-  pure function new_prt_spec_unstable (name, decay) result (prt_spec)
+  pure module function new_prt_spec_unstable (name, decay) result (prt_spec)
     type(string_t), intent(in) :: name
     type(string_t), dimension(:), intent(in) :: decay
     type(prt_spec_t) :: prt_spec
@@ -399,8 +474,13 @@ Initialize a particle specifier.
 Return the particle name without qualifiers
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: get_name => prt_spec_get_name
+<<Particle specifiers: sub interfaces>>=
+    elemental module function prt_spec_get_name (prt_spec) result (name)
+      class(prt_spec_t), intent(in) :: prt_spec
+      type(string_t) :: name
+    end function prt_spec_get_name
 <<Particle specifiers: procedures>>=
-  elemental function prt_spec_get_name (prt_spec) result (name)
+  elemental module function prt_spec_get_name (prt_spec) result (name)
     class(prt_spec_t), intent(in) :: prt_spec
     type(string_t) :: name
     name = prt_spec%name
@@ -410,8 +490,13 @@ Return the particle name without qualifiers
 @ Return the name with qualifiers
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: to_string => prt_spec_to_string
+<<Particle specifiers: sub interfaces>>=
+    module function prt_spec_to_string (object) result (string)
+      class(prt_spec_t), intent(in) :: object
+      type(string_t) :: string
+    end function prt_spec_to_string
 <<Particle specifiers: procedures>>=
-  function prt_spec_to_string (object) result (string)
+  module function prt_spec_to_string (object) result (string)
     class(prt_spec_t), intent(in) :: object
     type(string_t) :: string
     integer :: i
@@ -432,8 +517,13 @@ Return the particle name without qualifiers
 @ Return the polarization flag
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: is_polarized => prt_spec_is_polarized
+<<Particle specifiers: sub interfaces>>=
+    elemental module function prt_spec_is_polarized (prt_spec) result (flag)
+      class(prt_spec_t), intent(in) :: prt_spec
+      logical :: flag
+    end function prt_spec_is_polarized
 <<Particle specifiers: procedures>>=
-  elemental function prt_spec_is_polarized (prt_spec) result (flag)
+  elemental module function prt_spec_is_polarized (prt_spec) result (flag)
     class(prt_spec_t), intent(in) :: prt_spec
     logical :: flag
     flag = prt_spec%polarized
@@ -443,8 +533,13 @@ Return the particle name without qualifiers
 @ The particle is unstable if there is a decay array.
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: is_unstable => prt_spec_is_unstable
+<<Particle specifiers: sub interfaces>>=
+    elemental module function prt_spec_is_unstable (prt_spec) result (flag)
+      class(prt_spec_t), intent(in) :: prt_spec
+      logical :: flag
+    end function prt_spec_is_unstable
 <<Particle specifiers: procedures>>=
-  elemental function prt_spec_is_unstable (prt_spec) result (flag)
+  elemental module function prt_spec_is_unstable (prt_spec) result (flag)
     class(prt_spec_t), intent(in) :: prt_spec
     logical :: flag
     flag = allocated (prt_spec%decay)
@@ -454,8 +549,13 @@ Return the particle name without qualifiers
 @ Return the number of decay channels
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: get_n_decays => prt_spec_get_n_decays
+<<Particle specifiers: sub interfaces>>=
+    elemental module function prt_spec_get_n_decays (prt_spec) result (n)
+      class(prt_spec_t), intent(in) :: prt_spec
+      integer :: n
+    end function prt_spec_get_n_decays
 <<Particle specifiers: procedures>>=
-  elemental function prt_spec_get_n_decays (prt_spec) result (n)
+  elemental module function prt_spec_get_n_decays (prt_spec) result (n)
     class(prt_spec_t), intent(in) :: prt_spec
     integer :: n
     if (allocated (prt_spec%decay)) then
@@ -469,8 +569,13 @@ Return the particle name without qualifiers
 @ Return the decay channels
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: get_decays => prt_spec_get_decays
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_spec_get_decays (prt_spec, decay)
+      class(prt_spec_t), intent(in) :: prt_spec
+      type(string_t), dimension(:), allocatable, intent(out) :: decay
+    end subroutine prt_spec_get_decays
 <<Particle specifiers: procedures>>=
-  subroutine prt_spec_get_decays (prt_spec, decay)
+  module subroutine prt_spec_get_decays (prt_spec, decay)
     class(prt_spec_t), intent(in) :: prt_spec
     type(string_t), dimension(:), allocatable, intent(out) :: decay
     if (allocated (prt_spec%decay)) then
@@ -487,8 +592,12 @@ Return the particle name without qualifiers
 There is nothing to expand here:
 <<Particle specifiers: prt spec: TBP>>=
   procedure :: expand_sub => prt_spec_expand_sub
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_spec_expand_sub (object)
+      class(prt_spec_t), intent(inout) :: object
+    end subroutine prt_spec_expand_sub
 <<Particle specifiers: procedures>>=
-  subroutine prt_spec_expand_sub (object)
+  module subroutine prt_spec_expand_sub (object)
     class(prt_spec_t), intent(inout) :: object
   end subroutine prt_spec_expand_sub
 
@@ -512,8 +621,13 @@ also a list.  The components of the [[expr]] array, if any, should all be
 filled.
 <<Particle specifiers: prt spec list: TBP>>=
   procedure :: to_string => prt_spec_list_to_string
+<<Particle specifiers: sub interfaces>>=
+    recursive module function prt_spec_list_to_string (object) result (string)
+      class(prt_spec_list_t), intent(in) :: object
+      type(string_t) :: string
+    end function prt_spec_list_to_string
 <<Particle specifiers: procedures>>=
-  recursive function prt_spec_list_to_string (object) result (string)
+  recursive module function prt_spec_list_to_string (object) result (string)
     class(prt_spec_list_t), intent(in) :: object
     type(string_t) :: string
     integer :: i
@@ -536,8 +650,12 @@ filled.
 components as direct members of the current list.
 <<Particle specifiers: prt spec list: TBP>>=
   procedure :: flatten => prt_spec_list_flatten
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_spec_list_flatten (object)
+      class(prt_spec_list_t), intent(inout) :: object
+    end subroutine prt_spec_list_flatten
 <<Particle specifiers: procedures>>=
-  subroutine prt_spec_list_flatten (object)
+  module subroutine prt_spec_list_flatten (object)
     class(prt_spec_list_t), intent(inout) :: object
     type(prt_expr_t), dimension(:), allocatable :: tmp_expr
     integer :: i, n_flat, i_flat
@@ -570,8 +688,8 @@ components as direct members of the current list.
 
 @ %def prt_spec_list_flatten
 @ Convert a list of sums into a sum of lists.  (Subexpressions which are not
-sums are left untouched.)
-<<Particle specifiers: procedures>>=
+sums are left untouched.) Due to compiler bug in gfortran 7-9 not in submodule.
+<<Particle specifiers: main procedures>>=
   subroutine distribute_prt_spec_list (object)
     class(prt_spec_expr_t), intent(inout), allocatable :: object
     class(prt_spec_expr_t), allocatable :: new_object
@@ -627,8 +745,12 @@ sums are left untouched.)
 @ Apply [[expand]] to all components of the list.
 <<Particle specifiers: prt spec list: TBP>>=
   procedure :: expand_sub => prt_spec_list_expand_sub
+<<Particle specifiers: sub interfaces>>=
+    recursive module subroutine prt_spec_list_expand_sub (object)
+      class(prt_spec_list_t), intent(inout) :: object
+    end subroutine prt_spec_list_expand_sub
 <<Particle specifiers: procedures>>=
-  recursive subroutine prt_spec_list_expand_sub (object)
+  recursive module subroutine prt_spec_list_expand_sub (object)
     class(prt_spec_list_t), intent(inout) :: object
     integer :: i
     if (allocated (object%expr)) then
@@ -657,8 +779,13 @@ a list or also a sum.  The components of the [[expr]] array, if any, should
 all be filled.
 <<Particle specifiers: prt spec sum: TBP>>=
   procedure :: to_string => prt_spec_sum_to_string
+<<Particle specifiers: sub interfaces>>=
+    recursive module function prt_spec_sum_to_string (object) result (string)
+      class(prt_spec_sum_t), intent(in) :: object
+      type(string_t) :: string
+    end function prt_spec_sum_to_string
 <<Particle specifiers: procedures>>=
-  recursive function prt_spec_sum_to_string (object) result (string)
+  recursive module function prt_spec_sum_to_string (object) result (string)
     class(prt_spec_sum_t), intent(in) :: object
     type(string_t) :: string
     integer :: i
@@ -685,8 +812,12 @@ components as direct members of the current sum.
 This is identical to [[prt_spec_list_flatten]] above, except for the type.
 <<Particle specifiers: prt spec sum: TBP>>=
   procedure :: flatten => prt_spec_sum_flatten
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_spec_sum_flatten (object)
+      class(prt_spec_sum_t), intent(inout) :: object
+    end subroutine prt_spec_sum_flatten
 <<Particle specifiers: procedures>>=
-  subroutine prt_spec_sum_flatten (object)
+  module subroutine prt_spec_sum_flatten (object)
     class(prt_spec_sum_t), intent(inout) :: object
     type(prt_expr_t), dimension(:), allocatable :: tmp_expr
     integer :: i, n_flat, i_flat
@@ -721,8 +852,12 @@ This is identical to [[prt_spec_list_flatten]] above, except for the type.
 @ Apply [[expand]] to all terms in the sum.
 <<Particle specifiers: prt spec sum: TBP>>=
   procedure :: expand_sub => prt_spec_sum_expand_sub
+<<Particle specifiers: sub interfaces>>=
+    recursive module subroutine prt_spec_sum_expand_sub (object)
+      class(prt_spec_sum_t), intent(inout) :: object
+    end subroutine prt_spec_sum_expand_sub
 <<Particle specifiers: procedures>>=
-  recursive subroutine prt_spec_sum_expand_sub (object)
+  recursive module subroutine prt_spec_sum_expand_sub (object)
     class(prt_spec_sum_t), intent(inout) :: object
     integer :: i
     if (allocated (object%expr)) then
@@ -748,9 +883,10 @@ Note that the precedence of comma and plus are opposite to this expansion, so
 the parentheses in the final expression are necessary.
 
 We assume that subexpressions are filled, i.e., arrays are allocated.
+Do to compiler bug in gfortran 7-9 not in submodule.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: expand => prt_expr_expand
-<<Particle specifiers: procedures>>=
+<<Particle specifiers: main procedures>>=
   recursive subroutine prt_expr_expand (expr)
     class(prt_expr_t), intent(inout) :: expr
     if (allocated (expr%x)) then
@@ -1095,10 +1231,6 @@ For defining aliases, we introduce a special type which holds a set of
 
 module pdg_arrays
 
-  use io_units
-  use sorting
-  use physics_defs
-
 <<Standard module head>>
 
 <<PDG arrays: public>>
@@ -1107,12 +1239,31 @@ module pdg_arrays
 
 <<PDG arrays: interfaces>>
 
+  interface
+<<PDG arrays: sub interfaces>>
+  end interface
+
+end module pdg_arrays
+@ %def pdg_arrays
+@
+<<[[pdg_arrays_sub.f90]]>>=
+<<File header>>
+
+submodule (pdg_arrays) pdg_arrays_s
+
+  use io_units
+  use sorting
+  use physics_defs
+
+  implicit none
+
 contains
 
 <<PDG arrays: procedures>>
 
-end module pdg_arrays
-@ %def pdg_arrays
+end submodule pdg_arrays_s
+
+@ %def pdg_arrays_s
 @
 \subsection{Type definition}
 Using an allocatable array eliminates the need for initializer and/or
@@ -1128,13 +1279,16 @@ finalizer.
   end type pdg_array_t
 
 @ %def pdg_array_t
-@ Output
-<<PDG arrays: public>>=
-  public :: pdg_array_write
+@ Output.
 <<PDG arrays: pdg array: TBP>>=
   procedure :: write => pdg_array_write
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_write (aval, unit)
+      class(pdg_array_t), intent(in) :: aval
+      integer, intent(in), optional :: unit
+    end subroutine pdg_array_write
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_write (aval, unit)
+  module subroutine pdg_array_write (aval, unit)
     class(pdg_array_t), intent(in) :: aval
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -1153,8 +1307,13 @@ finalizer.
 @
 <<PDG arrays: public>>=
   public :: pdg_array_write_set
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_write_set (aval, unit)
+      type(pdg_array_t), intent(in), dimension(:) :: aval
+      integer, intent(in), optional :: unit
+    end subroutine pdg_array_write_set
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_write_set (aval, unit)
+  module subroutine pdg_array_write_set (aval, unit)
     type(pdg_array_t), intent(in), dimension(:) :: aval
     integer, intent(in), optional :: unit
     integer :: i
@@ -1179,22 +1338,35 @@ allocatable by the caller.
      module procedure int_array_from_pdg_array
   end interface
 
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_from_int_array (aval, iarray)
+      type(pdg_array_t), intent(out) :: aval
+      integer, dimension(:), intent(in) :: iarray
+    end subroutine pdg_array_from_int_array
+    elemental module subroutine pdg_array_from_int (aval, int)
+      type(pdg_array_t), intent(out) :: aval
+      integer, intent(in) :: int
+    end subroutine pdg_array_from_int
+    module subroutine int_array_from_pdg_array (iarray, aval)
+      integer, dimension(:), allocatable, intent(out) :: iarray
+      type(pdg_array_t), intent(in) :: aval
+    end subroutine int_array_from_pdg_array
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_from_int_array (aval, iarray)
+  module subroutine pdg_array_from_int_array (aval, iarray)
     type(pdg_array_t), intent(out) :: aval
     integer, dimension(:), intent(in) :: iarray
     allocate (aval%pdg (size (iarray)))
     aval%pdg = iarray
   end subroutine pdg_array_from_int_array
 
-  elemental subroutine pdg_array_from_int (aval, int)
+  elemental module subroutine pdg_array_from_int (aval, int)
     type(pdg_array_t), intent(out) :: aval
     integer, intent(in) :: int
     allocate (aval%pdg (1))
     aval%pdg = int
   end subroutine pdg_array_from_int
 
-  subroutine int_array_from_pdg_array (iarray, aval)
+  module subroutine int_array_from_pdg_array (iarray, aval)
     integer, dimension(:), allocatable, intent(out) :: iarray
     type(pdg_array_t), intent(in) :: aval
     if (allocated (aval%pdg)) then
@@ -1204,35 +1376,49 @@ allocatable by the caller.
        allocate (iarray (0))
     end if
   end subroutine int_array_from_pdg_array
-  
+
 @ %def pdg_array_from_int_array pdg_array_from_int int_array_from_pdg_array 
 @ Allocate space for a PDG array
-<<PDG arrays: public>>=
-  public :: pdg_array_init
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: init => pdg_array_init
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_init (aval, n_elements)
+      class(pdg_array_t), intent(inout) :: aval
+      integer, intent(in) :: n_elements
+    end subroutine pdg_array_init
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_init (aval, n_elements)
-    type(pdg_array_t), intent(inout) :: aval
+  module subroutine pdg_array_init (aval, n_elements)
+    class(pdg_array_t), intent(inout) :: aval
     integer, intent(in) :: n_elements
     allocate(aval%pdg(n_elements))
   end subroutine pdg_array_init
 
 @ %def pdg_array_init
 @ Deallocate a previously allocated pdg array
-<<PDG arrays: public>>=
-  public :: pdg_array_delete
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: delete => pdg_array_delete
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_delete (aval)
+      class(pdg_array_t), intent(inout) :: aval
+    end subroutine pdg_array_delete
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_delete (aval)
-    type(pdg_array_t), intent(inout) :: aval
+  module subroutine pdg_array_delete (aval)
+    class(pdg_array_t), intent(inout) :: aval
     if (allocated (aval%pdg)) deallocate (aval%pdg)
   end subroutine pdg_array_delete
 
 @ %def pdg_array_delete
 @ Merge two pdg arrays, i.e. append a particle string to another leaving out doublettes
-<<PDG arrays: public>>=
-  public :: pdg_array_merge
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: merge => pdg_array_merge
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_merge (aval1, aval2)
+      class(pdg_array_t), intent(inout) :: aval1
+      type(pdg_array_t), intent(in) :: aval2
+    end subroutine pdg_array_merge
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_merge (aval1, aval2)
-    type(pdg_array_t), intent(inout) :: aval1
+  module subroutine pdg_array_merge (aval1, aval2)
+    class(pdg_array_t), intent(inout) :: aval1
     type(pdg_array_t), intent(in) :: aval2
     type(pdg_array_t) :: aval
     if (allocated (aval1%pdg) .and. allocated (aval2%pdg)) then
@@ -1243,17 +1429,20 @@ allocatable by the caller.
       aval = aval2
     end if
     call pdg_array_delete (aval1)
-    aval1 = aval%pdg
+    call pdg_array_from_int_array (aval1, aval%pdg)
   end subroutine pdg_array_merge
 
 @ %def pdg_array_merge
 @ Length of the array.
-<<PDG arrays: public>>=
-  public :: pdg_array_get_length
 <<PDG arrays: pdg array: TBP>>=
   procedure :: get_length => pdg_array_get_length
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_array_get_length (aval) result (n)
+      class(pdg_array_t), intent(in) :: aval
+      integer :: n
+    end function pdg_array_get_length
 <<PDG arrays: procedures>>=
-  elemental function pdg_array_get_length (aval) result (n)
+  elemental module function pdg_array_get_length (aval) result (n)
     class(pdg_array_t), intent(in) :: aval
     integer :: n
     if (allocated (aval%pdg)) then
@@ -1265,12 +1454,16 @@ allocatable by the caller.
 
 @ %def pdg_array_get_length
 @ Return the element with index i.
-<<PDG arrays: public>>=
-  public :: pdg_array_get
 <<PDG arrays: pdg array: TBP>>=
   procedure :: get => pdg_array_get
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_array_get (aval, i) result (pdg)
+      class(pdg_array_t), intent(in) :: aval
+      integer, intent(in), optional :: i
+      integer :: pdg
+    end function pdg_array_get
 <<PDG arrays: procedures>>=
-  elemental function pdg_array_get (aval, i) result (pdg)
+  elemental module function pdg_array_get (aval, i) result (pdg)
     class(pdg_array_t), intent(in) :: aval
     integer, intent(in), optional :: i
     integer :: pdg
@@ -1285,8 +1478,14 @@ allocatable by the caller.
 @ Explicitly set the element with index i.
 <<PDG arrays: pdg array: TBP>>=
   procedure :: set => pdg_array_set
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_array_set (aval, i, pdg)
+      class(pdg_array_t), intent(inout) :: aval
+      integer, intent(in) :: i
+      integer, intent(in) :: pdg
+    end subroutine pdg_array_set
 <<PDG arrays: procedures>>=
-  subroutine pdg_array_set (aval, i, pdg)
+  module subroutine pdg_array_set (aval, i, pdg)
     class(pdg_array_t), intent(inout) :: aval
     integer, intent(in) :: i
     integer, intent(in) :: pdg
@@ -1297,8 +1496,14 @@ allocatable by the caller.
 @
 <<PDG arrays: pdg array: TBP>>=
   procedure :: add => pdg_array_add
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_add (aval, aval_add) result (aval_out)
+      type(pdg_array_t) :: aval_out
+      class(pdg_array_t), intent(in) :: aval
+      type(pdg_array_t), intent(in) :: aval_add
+    end function pdg_array_add
 <<PDG arrays: procedures>>=
-  function pdg_array_add (aval, aval_add) result (aval_out)
+  module function pdg_array_add (aval, aval_add) result (aval_out)
     type(pdg_array_t) :: aval_out
     class(pdg_array_t), intent(in) :: aval
     type(pdg_array_t), intent(in) :: aval_add
@@ -1314,12 +1519,17 @@ allocatable by the caller.
 
 @ %def pdg_array_add
 @ Replace element with index [[i]] by a new array of elements.
-<<PDG arrays: public>>=
-  public :: pdg_array_replace
 <<PDG arrays: pdg array: TBP>>=
   procedure :: replace => pdg_array_replace
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_replace (aval, i, pdg_new) result (aval_new)
+      class(pdg_array_t), intent(in) :: aval
+      integer, intent(in) :: i
+      integer, dimension(:), intent(in) :: pdg_new
+      type(pdg_array_t) :: aval_new
+    end function pdg_array_replace
 <<PDG arrays: procedures>>=
-  function pdg_array_replace (aval, i, pdg_new) result (aval_new)
+  module function pdg_array_replace (aval, i, pdg_new) result (aval_new)
     class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: pdg_new
@@ -1342,8 +1552,13 @@ allocatable by the caller.
      module procedure concat_pdg_arrays
   end interface
 
+<<PDG arrays: sub interfaces>>=
+    module function concat_pdg_arrays (aval1, aval2) result (aval)
+      type(pdg_array_t) :: aval
+      type(pdg_array_t), intent(in) :: aval1, aval2
+    end function concat_pdg_arrays
 <<PDG arrays: procedures>>=
-  function concat_pdg_arrays (aval1, aval2) result (aval)
+  module function concat_pdg_arrays (aval1, aval2) result (aval)
     type(pdg_array_t) :: aval
     type(pdg_array_t), intent(in) :: aval1, aval2
     integer :: n1, n2
@@ -1375,8 +1590,14 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 
 @ %def .match.
 @ Match a single code against the array.
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_array_match_integer (aval, pdg) result (flag)
+      logical :: flag
+      type(pdg_array_t), intent(in) :: aval
+      integer, intent(in) :: pdg
+    end function pdg_array_match_integer
 <<PDG arrays: procedures>>=
-  elemental function pdg_array_match_integer (aval, pdg) result (flag)
+  elemental module function pdg_array_match_integer (aval, pdg) result (flag)
     logical :: flag
     type(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: pdg
@@ -1393,8 +1614,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if the pdg-number corresponds to a quark
 <<PDG arrays: public>>=
   public :: is_quark
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_quark (pdg_nr)
+      logical :: is_quark
+      integer, intent(in) :: pdg_nr
+    end function is_quark
 <<PDG arrays: procedures>>=
-  elemental function is_quark (pdg_nr)
+  elemental module function is_quark (pdg_nr)
     logical :: is_quark
     integer, intent(in) :: pdg_nr
     if (abs (pdg_nr) >= 1 .and. abs (pdg_nr) <= 6) then
@@ -1408,8 +1634,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if pdg-number corresponds to a gluon
 <<PDG arrays: public>>=
   public :: is_gluon
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_gluon (pdg_nr)
+      logical :: is_gluon
+      integer, intent(in) :: pdg_nr
+    end function is_gluon
 <<PDG arrays: procedures>>=
-  elemental function is_gluon (pdg_nr)
+  elemental module function is_gluon (pdg_nr)
     logical :: is_gluon
     integer, intent(in) :: pdg_nr
     if (pdg_nr == GLUON) then
@@ -1423,8 +1654,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if pdg-number corresponds to a photon
 <<PDG arrays: public>>=
   public :: is_photon
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_photon (pdg_nr)
+      logical :: is_photon
+      integer, intent(in) :: pdg_nr
+    end function is_photon
 <<PDG arrays: procedures>>=
-  elemental function is_photon (pdg_nr)
+  elemental module function is_photon (pdg_nr)
     logical :: is_photon
     integer, intent(in) :: pdg_nr
     if (pdg_nr == PHOTON) then
@@ -1438,8 +1674,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if pdg-number corresponds to a colored particle
 <<PDG arrays: public>>=
   public :: is_colored
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_colored (pdg_nr)
+      logical :: is_colored
+      integer, intent(in) :: pdg_nr
+    end function is_colored
 <<PDG arrays: procedures>>=
-  elemental function is_colored (pdg_nr)
+  elemental module function is_colored (pdg_nr)
     logical :: is_colored
     integer, intent(in) :: pdg_nr
     is_colored = is_quark (pdg_nr) .or. is_gluon (pdg_nr)
@@ -1449,8 +1690,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if the pdg-number corresponds to a lepton
 <<PDG arrays: public>>=
   public :: is_lepton
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_lepton (pdg_nr)
+      logical :: is_lepton
+      integer, intent(in) :: pdg_nr
+    end function is_lepton
 <<PDG arrays: procedures>>=
-  elemental function is_lepton (pdg_nr)
+  elemental module function is_lepton (pdg_nr)
     logical :: is_lepton
     integer, intent(in) :: pdg_nr
     if (abs (pdg_nr) >= ELECTRON .and. &
@@ -1465,8 +1711,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @
 <<PDG arrays: public>>=
   public :: is_fermion
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_fermion (pdg_nr)
+      logical :: is_fermion
+      integer, intent(in) :: pdg_nr
+    end function is_fermion
 <<PDG arrays: procedures>>=
-  elemental function is_fermion (pdg_nr)
+  elemental module function is_fermion (pdg_nr)
     logical :: is_fermion
     integer, intent(in) :: pdg_nr
     is_fermion = is_lepton(pdg_nr) .or. is_quark(pdg_nr)
@@ -1476,8 +1727,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if the pdg-number corresponds to a massless vector boson
 <<PDG arrays: public>>=
   public :: is_massless_vector
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_massless_vector (pdg_nr)
+      integer, intent(in) :: pdg_nr
+      logical :: is_massless_vector
+    end function is_massless_vector
 <<PDG arrays: procedures>>=
-  elemental function is_massless_vector (pdg_nr)
+  elemental module function is_massless_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_massless_vector
     if (pdg_nr == GLUON .or. pdg_nr == PHOTON) then
@@ -1491,8 +1747,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if pdg-number corresponds to a massive vector boson
 <<PDG arrays: public>>=
   public :: is_massive_vector
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_massive_vector (pdg_nr)
+      integer, intent(in) :: pdg_nr
+      logical :: is_massive_vector
+    end function is_massive_vector
 <<PDG arrays: procedures>>=
-  elemental function is_massive_vector (pdg_nr)
+  elemental module function is_massive_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_massive_vector
     if (abs (pdg_nr) == Z_BOSON .or. abs (pdg_nr) == W_BOSON) then
@@ -1506,8 +1767,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if pdg-number corresponds to a vector boson
 <<PDG arrays: public>>=
   public :: is_vector
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_vector (pdg_nr)
+      integer, intent(in) :: pdg_nr
+      logical :: is_vector
+    end function is_vector
 <<PDG arrays: procedures>>=
-  elemental function is_vector (pdg_nr)
+  elemental module function is_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_vector
     if (is_massless_vector (pdg_nr) .or. is_massive_vector (pdg_nr)) then
@@ -1521,8 +1787,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if particle is elementary.
 <<PDG arrays: public>>=
   public :: is_elementary
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_elementary (pdg_nr)
+      integer, intent(in) :: pdg_nr
+      logical :: is_elementary
+    end function is_elementary
 <<PDG arrays: procedures>>=
-  elemental function is_elementary (pdg_nr)
+  elemental module function is_elementary (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_elementary
     if (is_vector (pdg_nr) .or. is_fermion (pdg_nr) .or. pdg_nr == 25) then
@@ -1536,8 +1807,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if particle is an EW boson or scalar.
 <<PDG arrays: public>>=
   public :: is_ew_boson_scalar
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_ew_boson_scalar (pdg_nr)
+      integer, intent(in) :: pdg_nr
+      logical :: is_ew_boson_scalar
+    end function is_ew_boson_scalar
 <<PDG arrays: procedures>>=
-  elemental function is_ew_boson_scalar (pdg_nr)
+  elemental module function is_ew_boson_scalar (pdg_nr)
     integer, intent(in) :: pdg_nr
     logical :: is_ew_boson_scalar
     if (is_photon (pdg_nr) .or. is_massive_vector (pdg_nr) .or. pdg_nr == 25) then
@@ -1551,8 +1827,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 @ Check if particle is strongly interacting
 <<PDG arrays: pdg array: TBP>>=
   procedure :: has_colored_particles => pdg_array_has_colored_particles
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_has_colored_particles (pdg) result (colored)
+      class(pdg_array_t), intent(in) :: pdg
+      logical :: colored
+    end function pdg_array_has_colored_particles
 <<PDG arrays: procedures>>=
-  function pdg_array_has_colored_particles (pdg) result (colored)
+  module function pdg_array_has_colored_particles (pdg) result (colored)
     class(pdg_array_t), intent(in) :: pdg
     logical :: colored
     integer :: i, pdg_nr
@@ -1578,64 +1859,70 @@ particle is a part of. It is constructed in a way that the exclusion of
 coupling power combinations is well-defined.
 <<PDG arrays: public>>=
   public :: query_coupling_powers
-<<PDG arrays: procedures>>=
-    function query_coupling_powers (flv, a_power, as_power) result (valid)
+<<PDG arrays: sub interfaces>>=
+    module function query_coupling_powers (flv, a_power, as_power) result (valid)
        integer, intent(in), dimension(:) :: flv
-       integer, dimension(:, :), allocatable :: power_pair_array
-       integer, dimension(2) :: power_pair_ref
        integer, intent(in) :: a_power, as_power
-       integer :: i, n_legs, n_gluons, n_quarks, n_gamWZH, n_leptons
-       logical, dimension(:), allocatable :: pairs_included
        logical :: valid
-       integer :: n_bound
-       power_pair_ref = [a_power, as_power]
-       n_legs = size (flv)
-       allocate (power_pair_array (2, n_legs - 1))
-       do i = 1, n_legs - 1
-          power_pair_array (1, i) = n_legs - 1 - i
-          power_pair_array (2, i) = i - 1
-       end do
-       allocate (pairs_included (n_legs - 1))
-       pairs_included = .true.
-       n_gluons = count (is_gluon (flv))
-       n_gamWZH = count (is_ew_boson_scalar (flv))
-       n_quarks = count (is_quark (flv))
-       n_leptons = count (is_lepton (flv))
-       if (n_gluons >= 1 .and. n_gluons <= 3) then
-          do i = 1, n_gluons
-             pairs_included (i) = .false.
-          end do
-       else if (n_gluons > 2 .and. n_quarks <= 2 .and. n_gluons + n_quarks == n_legs) then
-          do i = 1, n_legs - 2
-             pairs_included (i) = .false.
-          end do
-       end if
-       n_bound = 0
-       if (n_gamWZH + n_leptons == n_legs) then
-          n_bound = n_gamWZH + n_leptons - 2
-       else if (n_quarks == 2 .and. n_leptons + n_quarks + n_gamWZH == n_legs) then
-          n_bound = n_legs - 2
-       else if (n_gamWZH + n_leptons > 0) then
-          n_bound = int (n_leptons/2.) + n_gamWZH
-       end if
-       if (n_bound > 0) then
-          do i = 1, n_bound
-             pairs_included (n_legs - i) = .false.
-          end do
-       end if
-       if (n_quarks == 4 .and. .not. qcd_ew_interferences (flv)) then
-          do i = 1, 2
-             pairs_included (n_legs - i) = .false.
-          end do
-       end if
-       valid = .false.
-       do i = 1, n_legs - 1
-          if (all (power_pair_array (:, i) == power_pair_ref) .and. pairs_included (i)) then
-             valid = .true.
-             exit
-          end if
-       end do
     end function query_coupling_powers
+<<PDG arrays: procedures>>=
+  module function query_coupling_powers (flv, a_power, as_power) result (valid)
+     integer, intent(in), dimension(:) :: flv
+     integer, dimension(:, :), allocatable :: power_pair_array
+     integer, dimension(2) :: power_pair_ref
+     integer, intent(in) :: a_power, as_power
+     integer :: i, n_legs, n_gluons, n_quarks, n_gamWZH, n_leptons
+     logical, dimension(:), allocatable :: pairs_included
+     logical :: valid
+     integer :: n_bound
+     power_pair_ref = [a_power, as_power]
+     n_legs = size (flv)
+     allocate (power_pair_array (2, n_legs - 1))
+     do i = 1, n_legs - 1
+        power_pair_array (1, i) = n_legs - 1 - i
+        power_pair_array (2, i) = i - 1
+     end do
+     allocate (pairs_included (n_legs - 1))
+     pairs_included = .true.
+     n_gluons = count (is_gluon (flv))
+     n_gamWZH = count (is_ew_boson_scalar (flv))
+     n_quarks = count (is_quark (flv))
+     n_leptons = count (is_lepton (flv))
+     if (n_gluons >= 1 .and. n_gluons <= 3) then
+        do i = 1, n_gluons
+           pairs_included (i) = .false.
+        end do
+     else if (n_gluons > 2 .and. n_quarks <= 2 .and. n_gluons + n_quarks == n_legs) then
+        do i = 1, n_legs - 2
+           pairs_included (i) = .false.
+        end do
+     end if
+     n_bound = 0
+     if (n_gamWZH + n_leptons == n_legs) then
+        n_bound = n_gamWZH + n_leptons - 2
+     else if (n_quarks == 2 .and. n_leptons + n_quarks + n_gamWZH == n_legs) then
+        n_bound = n_legs - 2
+     else if (n_gamWZH + n_leptons > 0) then
+        n_bound = n_leptons/2 + n_gamWZH
+     end if
+     if (n_bound > 0) then
+        do i = 1, n_bound
+           pairs_included (n_legs - i) = .false.
+        end do
+     end if
+     if (n_quarks == 4 .and. .not. qcd_ew_interferences (flv)) then
+        do i = 1, 2
+           pairs_included (n_legs - i) = .false.
+        end do
+     end if
+     valid = .false.
+     do i = 1, n_legs - 1
+        if (all (power_pair_array (:, i) == power_pair_ref) .and. pairs_included (i)) then
+           valid = .true.
+           exit
+        end if
+     end do
+  end function query_coupling_powers
 
 @ %def query_coupling_powers
 This functions checks if there is a flavor structure which possibly can
@@ -1644,30 +1931,40 @@ at least 2 quark pairs whereby the quarks of at least one quark pair must
 have the same flavor.
 <<PDG arrays: public>>=
   public :: qcd_ew_interferences
-<<PDG arrays: procedures>>=
-    function qcd_ew_interferences (flv) result (valid)
+<<PDG arrays: sub interfaces>>=
+    module function qcd_ew_interferences (flv) result (valid)
        integer, intent(in), dimension(:) :: flv
-       integer :: i, n_pairs
-       logical :: valid, qqbar_pair
-       n_pairs = 0
-       valid = .false.
-       qqbar_pair = .false.
-       if (count (is_quark (flv)) >= 4) then
-          do i = DOWN_Q, TOP_Q
-             qqbar_pair = count (abs (flv) == i) >= 2
-             if (qqbar_pair) n_pairs = n_pairs + 1
-             if (n_pairs > 0) then
-                valid = .true.
-                exit
-             end if
-          end do
-       end if
+       logical :: valid
     end function qcd_ew_interferences
+<<PDG arrays: procedures>>=
+  module function qcd_ew_interferences (flv) result (valid)
+     integer, intent(in), dimension(:) :: flv
+     integer :: i, n_pairs
+     logical :: valid, qqbar_pair
+     n_pairs = 0
+     valid = .false.
+     qqbar_pair = .false.
+     if (count (is_quark (flv)) >= 4) then
+        do i = DOWN_Q, TOP_Q
+           qqbar_pair = count (abs (flv) == i) >= 2
+           if (qqbar_pair) n_pairs = n_pairs + 1
+           if (n_pairs > 0) then
+              valid = .true.
+              exit
+           end if
+        end do
+     end if
+  end function qcd_ew_interferences
 
 @ %def qcd_ew_interferences
 @ Match two arrays.  Succeeds if any pair of entries matches.
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_match_pdg_array (aval1, aval2) result (flag)
+      logical :: flag
+      type(pdg_array_t), intent(in) :: aval1, aval2
+    end function pdg_array_match_pdg_array
 <<PDG arrays: procedures>>=
-  function pdg_array_match_pdg_array (aval1, aval2) result (flag)
+  module function pdg_array_match_pdg_array (aval1, aval2) result (flag)
     logical :: flag
     type(pdg_array_t), intent(in) :: aval1, aval2
     if (allocated (aval1%pdg) .and. allocated (aval2%pdg)) then
@@ -1711,8 +2008,33 @@ antiparticle, scanning from left to right.
      module procedure pdg_array_ne
   end interface
 
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_array_lt (aval1, aval2) result (flag)
+      type(pdg_array_t), intent(in) :: aval1, aval2
+      logical :: flag
+    end function pdg_array_lt
+    elemental module function pdg_array_gt (aval1, aval2) result (flag)
+      type(pdg_array_t), intent(in) :: aval1, aval2
+      logical :: flag
+    end function pdg_array_gt
+    elemental module function pdg_array_le (aval1, aval2) result (flag)
+      type(pdg_array_t), intent(in) :: aval1, aval2
+      logical :: flag
+    end function pdg_array_le
+    elemental module function pdg_array_ge (aval1, aval2) result (flag)
+      type(pdg_array_t), intent(in) :: aval1, aval2
+      logical :: flag
+    end function pdg_array_ge
+    elemental module function pdg_array_eq (aval1, aval2) result (flag)
+      type(pdg_array_t), intent(in) :: aval1, aval2
+      logical :: flag
+    end function pdg_array_eq
+    elemental module function pdg_array_ne (aval1, aval2) result (flag)
+      type(pdg_array_t), intent(in) :: aval1, aval2
+      logical :: flag
+    end function pdg_array_ne
 <<PDG arrays: procedures>>=
-  elemental function pdg_array_lt (aval1, aval2) result (flag)
+  elemental module function pdg_array_lt (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical :: flag
     integer :: i
@@ -1735,25 +2057,25 @@ antiparticle, scanning from left to right.
     end if
   end function pdg_array_lt
 
-  elemental function pdg_array_gt (aval1, aval2) result (flag)
+  elemental module function pdg_array_gt (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical :: flag
     flag = .not. (aval1 < aval2 .or. aval1 == aval2)
   end function pdg_array_gt
 
-  elemental function pdg_array_le (aval1, aval2) result (flag)
+  elemental module function pdg_array_le (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical :: flag
     flag = aval1 < aval2 .or. aval1 == aval2
   end function pdg_array_le
 
-  elemental function pdg_array_ge (aval1, aval2) result (flag)
+  elemental module function pdg_array_ge (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical :: flag
     flag = .not. (aval1 < aval2)
   end function pdg_array_ge
 
-  elemental function pdg_array_eq (aval1, aval2) result (flag)
+  elemental module function pdg_array_eq (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical :: flag
     if (size (aval1%pdg) /= size (aval2%pdg)) then
@@ -1763,7 +2085,7 @@ antiparticle, scanning from left to right.
     end if
   end function pdg_array_eq
 
-  elemental function pdg_array_ne (aval1, aval2) result (flag)
+  elemental module function pdg_array_ne (aval1, aval2) result (flag)
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical :: flag
     flag = .not. (aval1 == aval2)
@@ -1783,8 +2105,17 @@ vice versa.
      module procedure pdg_array_inequivalent
   end interface
 
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_array_equivalent (aval1, aval2) result (eq)
+      logical :: eq
+      type(pdg_array_t), intent(in) :: aval1, aval2
+    end function pdg_array_equivalent
+    elemental module function pdg_array_inequivalent (aval1, aval2) result (neq)
+      logical :: neq
+      type(pdg_array_t), intent(in) :: aval1, aval2
+    end function pdg_array_inequivalent
 <<PDG arrays: procedures>>=
-  elemental function pdg_array_equivalent (aval1, aval2) result (eq)
+  elemental module function pdg_array_equivalent (aval1, aval2) result (eq)
     logical :: eq
     type(pdg_array_t), intent(in) :: aval1, aval2
     logical, dimension(:), allocatable :: match1, match2
@@ -1810,7 +2141,7 @@ vice versa.
     end if
   end function pdg_array_equivalent
 
-  elemental function pdg_array_inequivalent (aval1, aval2) result (neq)
+  elemental module function pdg_array_inequivalent (aval1, aval2) result (neq)
     logical :: neq
     type(pdg_array_t), intent(in) :: aval1, aval2
     neq = .not. pdg_array_equivalent (aval1, aval2)
@@ -1830,8 +2161,14 @@ sorting, we eliminate double entries.
 
 <<PDG arrays: pdg array: TBP>>=
   procedure :: sort_abs => pdg_array_sort_abs
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_sort_abs (aval1, unique) result (aval2)
+      class(pdg_array_t), intent(in) :: aval1
+      logical, intent(in), optional :: unique
+      type(pdg_array_t) :: aval2
+    end function pdg_array_sort_abs
 <<PDG arrays: procedures>>=
-  function pdg_array_sort_abs (aval1, unique) result (aval2)
+  module function pdg_array_sort_abs (aval1, unique) result (aval2)
     class(pdg_array_t), intent(in) :: aval1
     logical, intent(in), optional :: unique
     type(pdg_array_t) :: aval2
@@ -1860,23 +2197,35 @@ sorting, we eliminate double entries.
 @
 <<PDG arrays: pdg array: TBP>>=
   procedure :: intersect => pdg_array_intersect
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_intersect (aval1, match) result (aval2)
+     class(pdg_array_t), intent(in) :: aval1
+     integer, dimension(:) :: match
+     type(pdg_array_t) :: aval2
+    end function pdg_array_intersect
 <<PDG arrays: procedures>>=
-  function pdg_array_intersect (aval1, match) result (aval2)
+  module function pdg_array_intersect (aval1, match) result (aval2)
    class(pdg_array_t), intent(in) :: aval1
    integer, dimension(:) :: match
    type(pdg_array_t) :: aval2
    integer, dimension(:), allocatable :: isec
    integer :: i
    isec = pack (aval1%pdg, [(any(aval1%pdg(i) == match), i=1,size(aval1%pdg))])
-   aval2 = isec
+   call pdg_array_from_int_array (aval2, isec)
   end function pdg_array_intersect
 
 @ %def pdg_array_intersect
 @
 <<PDG arrays: pdg array: TBP>>=
   procedure :: search_for_particle => pdg_array_search_for_particle
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_array_search_for_particle (pdg, i_part) result (found)
+      class(pdg_array_t), intent(in) :: pdg
+      integer, intent(in) :: i_part
+      logical :: found
+    end function pdg_array_search_for_particle
 <<PDG arrays: procedures>>=
-  elemental function pdg_array_search_for_particle (pdg, i_part) result (found)
+  elemental module function pdg_array_search_for_particle (pdg, i_part) result (found)
     class(pdg_array_t), intent(in) :: pdg
     integer, intent(in) :: i_part
     logical :: found
@@ -1887,8 +2236,13 @@ sorting, we eliminate double entries.
 @
 <<PDG arrays: pdg array: TBP>>=
   procedure :: invert => pdg_array_invert
+<<PDG arrays: sub interfaces>>=
+    module function pdg_array_invert (pdg) result (pdg_inverse)
+      class(pdg_array_t), intent(in) :: pdg
+      type(pdg_array_t) :: pdg_inverse
+    end function pdg_array_invert
 <<PDG arrays: procedures>>=
-  function pdg_array_invert (pdg) result (pdg_inverse)
+  module function pdg_array_invert (pdg) result (pdg_inverse)
     class(pdg_array_t), intent(in) :: pdg
     type(pdg_array_t) :: pdg_inverse
     integer :: i, n
@@ -1922,8 +2276,13 @@ some convenience methods.
 @ Output, as a comma-separated list without advancing I/O.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: write => pdg_list_write
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_write (object, unit)
+      class(pdg_list_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine pdg_list_write
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_write (object, unit)
+  module subroutine pdg_list_write (object, unit)
     class(pdg_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -1941,8 +2300,13 @@ some convenience methods.
 <<PDG arrays: pdg list: TBP>>=
   generic :: init => pdg_list_init_size
   procedure, private :: pdg_list_init_size
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_init_size (pl, n)
+      class(pdg_list_t), intent(out) :: pl
+      integer, intent(in) :: n
+    end subroutine pdg_list_init_size
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_init_size (pl, n)
+  module subroutine pdg_list_init_size (pl, n)
     class(pdg_list_t), intent(out) :: pl
     integer, intent(in) :: n
     allocate (pl%a (n))
@@ -1954,14 +2318,19 @@ in the list becomes a single-particle PDG array.
 <<PDG arrays: pdg list: TBP>>=
   generic :: init => pdg_list_init_int_array
   procedure, private :: pdg_list_init_int_array
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_init_int_array (pl, pdg)
+      class(pdg_list_t), intent(out) :: pl
+      integer, dimension(:), intent(in) :: pdg
+    end subroutine pdg_list_init_int_array
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_init_int_array (pl, pdg)
+  module subroutine pdg_list_init_int_array (pl, pdg)
     class(pdg_list_t), intent(out) :: pl
     integer, dimension(:), intent(in) :: pdg
     integer :: i
     allocate (pl%a (size (pdg)))
     do i = 1, size (pdg)
-       pl%a(i) = pdg(i)
+       call pdg_array_from_int (pl%a(i), pdg(i))
     end do
   end subroutine pdg_list_init_int_array
 
@@ -1974,22 +2343,38 @@ in the list becomes a single-particle PDG array.
   procedure, private :: pdg_list_set_int
   procedure, private :: pdg_list_set_int_array
   procedure, private :: pdg_list_set_pdg_array
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_set_int (pl, i, pdg)
+      class(pdg_list_t), intent(inout) :: pl
+      integer, intent(in) :: i
+      integer, intent(in) :: pdg
+    end subroutine pdg_list_set_int
+    module subroutine pdg_list_set_int_array (pl, i, pdg)
+      class(pdg_list_t), intent(inout) :: pl
+      integer, intent(in) :: i
+      integer, dimension(:), intent(in) :: pdg
+    end subroutine pdg_list_set_int_array
+    module subroutine pdg_list_set_pdg_array (pl, i, pa)
+      class(pdg_list_t), intent(inout) :: pl
+      integer, intent(in) :: i
+      type(pdg_array_t), intent(in) :: pa
+    end subroutine pdg_list_set_pdg_array
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_set_int (pl, i, pdg)
+  module subroutine pdg_list_set_int (pl, i, pdg)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     integer, intent(in) :: pdg
-    pl%a(i) = pdg
+    call pdg_array_from_int (pl%a(i), pdg)
   end subroutine pdg_list_set_int
 
-  subroutine pdg_list_set_int_array (pl, i, pdg)
+  module subroutine pdg_list_set_int_array (pl, i, pdg)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: pdg
-    pl%a(i) = pdg
+    call pdg_array_from_int_array (pl%a(i), pdg)
   end subroutine pdg_list_set_int_array
 
-  subroutine pdg_list_set_pdg_array (pl, i, pa)
+  module subroutine pdg_list_set_pdg_array (pl, i, pa)
     class(pdg_list_t), intent(inout) :: pl
     integer, intent(in) :: i
     type(pdg_array_t), intent(in) :: pa
@@ -2000,8 +2385,13 @@ in the list becomes a single-particle PDG array.
 @ Array size, not the length of individual entries
 <<PDG arrays: pdg list: TBP>>=
   procedure :: get_size => pdg_list_get_size
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_get_size (pl) result (n)
+      class(pdg_list_t), intent(in) :: pl
+      integer :: n
+    end function pdg_list_get_size
 <<PDG arrays: procedures>>=
-  function pdg_list_get_size (pl) result (n)
+  module function pdg_list_get_size (pl) result (n)
     class(pdg_list_t), intent(in) :: pl
     integer :: n
     if (allocated (pl%a)) then
@@ -2015,8 +2405,14 @@ in the list becomes a single-particle PDG array.
 @ Return an entry, as a PDG array.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: get => pdg_list_get
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_get (pl, i) result (pa)
+      type(pdg_array_t) :: pa
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: i
+    end function pdg_list_get
 <<PDG arrays: procedures>>=
-  function pdg_list_get (pl, i) result (pa)
+  module function pdg_list_get (pl, i) result (pa)
     type(pdg_array_t) :: pa
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
@@ -2029,8 +2425,13 @@ The individual entries (PDG arrays) should already be sorted, so we can test
 for equality.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: is_regular => pdg_list_is_regular
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_is_regular (pl) result (flag)
+      class(pdg_list_t), intent(in) :: pl
+      logical :: flag
+    end function pdg_list_is_regular
 <<PDG arrays: procedures>>=
-  function pdg_list_is_regular (pl) result (flag)
+  module function pdg_list_is_regular (pl) result (flag)
     class(pdg_list_t), intent(in) :: pl
     logical :: flag
     integer :: i, j, s
@@ -2057,8 +2458,14 @@ If [[n_in]] is supplied, we do not reorder the first [[n_in]] particle
 entries.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: sort_abs => pdg_list_sort_abs
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_sort_abs (pl, n_in) result (pl_sorted)
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in), optional :: n_in
+      type(pdg_list_t) :: pl_sorted
+    end function pdg_list_sort_abs
 <<PDG arrays: procedures>>=
-  function pdg_list_sort_abs (pl, n_in) result (pl_sorted)
+  module function pdg_list_sort_abs (pl, n_in) result (pl_sorted)
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in), optional :: n_in
     type(pdg_list_t) :: pl_sorted
@@ -2099,8 +2506,13 @@ are not allocated.
 <<PDG arrays: pdg list: TBP>>=
   generic :: operator (==) => pdg_list_eq
   procedure, private :: pdg_list_eq
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_eq (pl1, pl2) result (flag)
+      class(pdg_list_t), intent(in) :: pl1, pl2
+      logical :: flag
+    end function pdg_list_eq
 <<PDG arrays: procedures>>=
-  function pdg_list_eq (pl1, pl2) result (flag)
+  module function pdg_list_eq (pl1, pl2) result (flag)
     class(pdg_list_t), intent(in) :: pl1, pl2
     logical :: flag
     integer :: i
@@ -2140,8 +2552,13 @@ false.
 <<PDG arrays: pdg list: TBP>>=
   generic :: operator (<) => pdg_list_lt
   procedure, private :: pdg_list_lt
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_lt (pl1, pl2) result (flag)
+      class(pdg_list_t), intent(in) :: pl1, pl2
+      logical :: flag
+    end function pdg_list_lt
 <<PDG arrays: procedures>>=
-  function pdg_list_lt (pl1, pl2) result (flag)
+  module function pdg_list_lt (pl1, pl2) result (flag)
     class(pdg_list_t), intent(in) :: pl1, pl2
     logical :: flag
     integer :: i
@@ -2191,8 +2608,16 @@ replace [[#i]] only by the first entry of [[pl_insert]], and insert
 the remainder after entry [[n_in]].
 <<PDG arrays: pdg list: TBP>>=
   procedure :: replace => pdg_list_replace
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
+      type(pdg_list_t) :: pl_out
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: i
+      class(pdg_list_t), intent(in) :: pl_insert
+      integer, intent(in), optional :: n_in
+    end function pdg_list_replace
 <<PDG arrays: procedures>>=
-  function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
+  module function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
     type(pdg_list_t) :: pl_out
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
@@ -2237,8 +2662,16 @@ the remainder after entry [[n_in]].
 @
 <<PDG arrays: pdg list: TBP>>=
   procedure :: fusion => pdg_list_fusion
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_fusion (pl, pl_insert, i, check_if_existing) result (pl_out)
+      type(pdg_list_t) :: pl_out
+      class(pdg_list_t), intent(in) :: pl
+      type(pdg_list_t), intent(in) :: pl_insert
+      integer, intent(in) :: i
+      logical, intent(in) :: check_if_existing
+    end function pdg_list_fusion
 <<PDG arrays: procedures>>=
-  function pdg_list_fusion (pl, pl_insert, i, check_if_existing) result (pl_out)
+  module function pdg_list_fusion (pl, pl_insert, i, check_if_existing) result (pl_out)
     type(pdg_list_t) :: pl_out
     class(pdg_list_t), intent(in) :: pl
     type(pdg_list_t), intent(in) :: pl_insert
@@ -2267,8 +2700,13 @@ the remainder after entry [[n_in]].
 @
 <<PDG arrays: pdg list: TBP>>=
   procedure :: get_pdg_sizes => pdg_list_get_pdg_sizes
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_get_pdg_sizes (pl) result (i_size)
+      integer, dimension(:), allocatable :: i_size
+      class(pdg_list_t), intent(in) :: pl
+    end function pdg_list_get_pdg_sizes
 <<PDG arrays: procedures>>=
-  function pdg_list_get_pdg_sizes (pl) result (i_size)
+  module function pdg_list_get_pdg_sizes (pl) result (i_size)
     integer, dimension(:), allocatable :: i_size
     class(pdg_list_t), intent(in) :: pl
     integer :: i, n
@@ -2284,8 +2722,14 @@ the remainder after entry [[n_in]].
 one.  This is done in-place.  If there is no match, return failure.
 <<PDG arrays: pdg list: TBP>>=
   procedure :: match_replace => pdg_list_match_replace
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_match_replace (pl, pl_match, success)
+      class(pdg_list_t), intent(inout) :: pl
+      class(pdg_list_t), intent(in) :: pl_match
+      logical, intent(out) :: success
+    end subroutine pdg_list_match_replace
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_match_replace (pl, pl_match, success)
+  module subroutine pdg_list_match_replace (pl, pl_match, success)
     class(pdg_list_t), intent(inout) :: pl
     class(pdg_list_t), intent(in) :: pl_match
     logical, intent(out) :: success
@@ -2311,15 +2755,27 @@ indicates the list elements that should be checked.
   generic :: operator (.match.) => pdg_list_match_pdg_array
   procedure, private :: pdg_list_match_pdg_array
   procedure :: find_match => pdg_list_find_match_pdg_array
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_match_pdg_array (pl, pa) result (flag)
+      class(pdg_list_t), intent(in) :: pl
+      type(pdg_array_t), intent(in) :: pa
+      logical :: flag
+    end function pdg_list_match_pdg_array
+    module function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
+      class(pdg_list_t), intent(in) :: pl
+      type(pdg_array_t), intent(in) :: pa
+      logical, dimension(:), intent(in), optional :: mask
+      integer :: i
+    end function pdg_list_find_match_pdg_array
 <<PDG arrays: procedures>>=
-  function pdg_list_match_pdg_array (pl, pa) result (flag)
+  module function pdg_list_match_pdg_array (pl, pa) result (flag)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), intent(in) :: pa
     logical :: flag
     flag = pl%find_match (pa) /= 0
   end function pdg_list_match_pdg_array
 
-  function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
+  module function pdg_list_find_match_pdg_array (pl, pa, mask) result (i)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), intent(in) :: pa
     logical, dimension(:), intent(in), optional :: mask
@@ -2339,8 +2795,13 @@ indicates the list elements that should be checked.
 intent(out) or as function result, so be conservative here:
 <<PDG arrays: pdg list: TBP>>=
   procedure :: create_pdg_array => pdg_list_create_pdg_array
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_create_pdg_array (pl, pdg)
+      class(pdg_list_t), intent(in) :: pl
+      type(pdg_array_t), dimension(:), intent(inout), allocatable :: pdg
+    end subroutine pdg_list_create_pdg_array
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_create_pdg_array (pl, pdg)
+  module subroutine pdg_list_create_pdg_array (pl, pdg)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), dimension(:), intent(inout), allocatable :: pdg
     integer :: n_elements
@@ -2359,8 +2820,14 @@ intent(out) or as function result, so be conservative here:
 @
 <<PDG arrays: pdg list: TBP>>=
   procedure :: create_antiparticles => pdg_list_create_antiparticles
+<<PDG arrays: sub interfaces>>=
+    module subroutine pdg_list_create_antiparticles (pl, pl_anti, n_new_particles)
+      class(pdg_list_t), intent(in) :: pl
+      type(pdg_list_t), intent(out) :: pl_anti
+      integer, intent(out) :: n_new_particles
+    end subroutine pdg_list_create_antiparticles
 <<PDG arrays: procedures>>=
-  subroutine pdg_list_create_antiparticles (pl, pl_anti, n_new_particles)
+  module subroutine pdg_list_create_antiparticles (pl, pl_anti, n_new_particles)
     class(pdg_list_t), intent(in) :: pl
     type(pdg_list_t), intent(out) :: pl_anti
     integer, intent(out) :: n_new_particles
@@ -2393,8 +2860,14 @@ intent(out) or as function result, so be conservative here:
 @
 <<PDG arrays: pdg list: TBP>>=
   procedure :: search_for_particle => pdg_list_search_for_particle
+<<PDG arrays: sub interfaces>>=
+    elemental module function pdg_list_search_for_particle (pl, i_part) result (found)
+      logical :: found
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: i_part
+    end function pdg_list_search_for_particle
 <<PDG arrays: procedures>>=
-  elemental function pdg_list_search_for_particle (pl, i_part) result (found)
+  elemental module function pdg_list_search_for_particle (pl, i_part) result (found)
     logical :: found
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i_part
@@ -2409,8 +2882,13 @@ intent(out) or as function result, so be conservative here:
 @
 <<PDG arrays: pdg list: TBP>>=
   procedure :: contains_colored_particles => pdg_list_contains_colored_particles
+<<PDG arrays: sub interfaces>>=
+    module function pdg_list_contains_colored_particles (pl) result (colored)
+      class(pdg_list_t), intent(in) :: pl
+      logical :: colored
+    end function pdg_list_contains_colored_particles
 <<PDG arrays: procedures>>=
-  function pdg_list_contains_colored_particles (pl) result (colored)
+  module function pdg_list_contains_colored_particles (pl) result (colored)
     class(pdg_list_t), intent(in) :: pl
     logical :: colored
     integer :: i
@@ -3042,12 +3520,7 @@ module subevents
   use, intrinsic :: iso_c_binding !NODEP!
 
 <<Use kinds>>
-  use io_units
-  use format_defs, only: FMT_14, FMT_19
-  use format_utils, only: pac_fmt
   use numeric_utils, only: pacify
-  use physics_defs
-  use sorting
   use c_particles
   use lorentz
   use pdg_arrays
@@ -3063,12 +3536,33 @@ module subevents
 
 <<Subevents: interfaces>>
 
+  interface
+<<Subevents: sub interfaces>>
+  end interface
+
+end module subevents
+@ %def subevents
+@
+<<[[subevents_sub.f90]]>>=
+<<File header>>
+
+submodule (subevents) subevents_s
+
+  use io_units
+  use format_defs, only: FMT_14, FMT_19
+  use format_utils, only: pac_fmt
+  use physics_defs
+  use sorting
+
+  implicit none
+
 contains
 
 <<Subevents: procedures>>
 
-end module subevents
-@ %def subevents
+end submodule subevents_s
+
+@ %def subevents_s
 @
 \subsection{Particles}
 For the purpose of this module, a particle has a type which can
@@ -3170,8 +3664,13 @@ This version is for temporary particle objects, so the [[src]] array
 is not set.
 <<Subevents: public>>=
   public :: prt_init_combine
+<<Subevents: sub interfaces>>=
+    module subroutine prt_init_combine (prt, prt1, prt2)
+      type(prt_t), intent(out) :: prt
+      type(prt_t), intent(in) :: prt1, prt2
+    end subroutine prt_init_combine
 <<Subevents: procedures>>=
-  subroutine prt_init_combine (prt, prt1, prt2)
+  module subroutine prt_init_combine (prt, prt1, prt2)
     type(prt_t), intent(out) :: prt
     type(prt_t), intent(in) :: prt1, prt2
     type(vector4_t) :: p
@@ -3205,8 +3704,13 @@ is not set.
 \subsubsection{Accessing contents}
 <<Subevents: public>>=
   public :: prt_get_pdg
+<<Subevents: sub interfaces>>=
+    elemental module function prt_get_pdg (prt) result (pdg)
+      integer :: pdg
+      type(prt_t), intent(in) :: prt
+    end function prt_get_pdg
 <<Subevents: procedures>>=
-  elemental function prt_get_pdg (prt) result (pdg)
+  elemental module function prt_get_pdg (prt) result (pdg)
     integer :: pdg
     type(prt_t), intent(in) :: prt
     pdg = prt%pdg
@@ -3215,8 +3719,13 @@ is not set.
 @ %def prt_get_pdg
 <<Subevents: public>>=
   public :: prt_get_momentum
+<<Subevents: sub interfaces>>=
+    elemental module function prt_get_momentum (prt) result (p)
+      type(vector4_t) :: p
+      type(prt_t), intent(in) :: prt
+    end function prt_get_momentum
 <<Subevents: procedures>>=
-  elemental function prt_get_momentum (prt) result (p)
+  elemental module function prt_get_momentum (prt) result (p)
     type(vector4_t) :: p
     type(prt_t), intent(in) :: prt
     p = prt%p
@@ -3225,8 +3734,13 @@ is not set.
 @ %def prt_get_momentum
 <<Subevents: public>>=
   public :: prt_get_msq
+<<Subevents: sub interfaces>>=
+    elemental module function prt_get_msq (prt) result (msq)
+      real(default) :: msq
+      type(prt_t), intent(in) :: prt
+    end function prt_get_msq
 <<Subevents: procedures>>=
-  elemental function prt_get_msq (prt) result (msq)
+  elemental module function prt_get_msq (prt) result (msq)
     real(default) :: msq
     type(prt_t), intent(in) :: prt
     msq = prt%p2
@@ -3235,8 +3749,13 @@ is not set.
 @ %def prt_get_msq
 <<Subevents: public>>=
   public :: prt_is_polarized
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_polarized (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_polarized
 <<Subevents: procedures>>=
-  elemental function prt_is_polarized (prt) result (flag)
+  elemental module function prt_is_polarized (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt%polarized
@@ -3245,8 +3764,13 @@ is not set.
 @ %def prt_is_polarized
 <<Subevents: public>>=
   public :: prt_get_helicity
+<<Subevents: sub interfaces>>=
+    elemental module function prt_get_helicity (prt) result (h)
+      integer :: h
+      type(prt_t), intent(in) :: prt
+    end function prt_get_helicity
 <<Subevents: procedures>>=
-  elemental function prt_get_helicity (prt) result (h)
+  elemental module function prt_get_helicity (prt) result (h)
     integer :: h
     type(prt_t), intent(in) :: prt
     h = prt%h
@@ -3255,8 +3779,13 @@ is not set.
 @ %def prt_get_helicity
 <<Subevents: public>>=
   public :: prt_is_colorized
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_colorized (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_colorized
 <<Subevents: procedures>>=
-  elemental function prt_is_colorized (prt) result (flag)
+  elemental module function prt_is_colorized (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt%colorized
@@ -3265,8 +3794,13 @@ is not set.
 @ %def prt_is_colorized
 <<Subevents: public>>=
   public :: prt_is_clustered
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_clustered (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_clustered
 <<Subevents: procedures>>=
-  elemental function prt_is_clustered (prt) result (flag)
+  elemental module function prt_is_clustered (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt%clustered
@@ -3275,8 +3809,13 @@ is not set.
 @ %def prt_is_clustered
 <<Subevents: public>>=
   public :: prt_is_recombinable
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_recombinable (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_recombinable
 <<Subevents: procedures>>=
-  elemental function prt_is_recombinable (prt) result (flag)
+  elemental module function prt_is_recombinable (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt_is_parton (prt) .or. &
@@ -3288,19 +3827,29 @@ is not set.
 @ %def prt_is_recombinable
 <<Subevents: public>>=
   public :: prt_is_photon
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_photon (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_photon
 <<Subevents: procedures>>=
-  elemental function prt_is_photon (prt) result (flag)
+  elemental module function prt_is_photon (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt%pdg == PHOTON
   end function prt_is_photon
-  
+
 @ %def prt_is_photon
 We do not take the top quark into account here.
 <<Subevents: public>>=
   public :: prt_is_parton
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_parton (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_parton
 <<Subevents: procedures>>=
-  elemental function prt_is_parton (prt) result (flag)
+  elemental module function prt_is_parton (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = abs(prt%pdg) == DOWN_Q .or. &
@@ -3310,24 +3859,34 @@ We do not take the top quark into account here.
            abs(prt%pdg) == BOTTOM_Q .or. &
            prt%pdg == GLUON
   end function prt_is_parton
-  
+
 @ %def prt_is_parton
 <<Subevents: public>>=
   public :: prt_is_lepton
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_lepton (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_lepton
 <<Subevents: procedures>>=
-  elemental function prt_is_lepton (prt) result (flag)
+  elemental module function prt_is_lepton (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = abs(prt%pdg) == ELECTRON .or. &
            abs(prt%pdg) == MUON     .or. &
            abs(prt%pdg) == TAU
   end function prt_is_lepton
-  
+
 @ %def prt_is_lepton
 <<Subevents: public>>=
   public :: prt_is_b_jet
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_b_jet (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_b_jet
 <<Subevents: procedures>>=
-  elemental function prt_is_b_jet (prt) result (flag)
+  elemental module function prt_is_b_jet (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt%is_b_jet
@@ -3336,8 +3895,13 @@ We do not take the top quark into account here.
 @ %def prt_is_b_jet
 <<Subevents: public>>=
   public :: prt_is_c_jet
+<<Subevents: sub interfaces>>=
+    elemental module function prt_is_c_jet (prt) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt
+    end function prt_is_c_jet
 <<Subevents: procedures>>=
-  elemental function prt_is_c_jet (prt) result (flag)
+  elemental module function prt_is_c_jet (prt) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt
     flag = prt%is_c_jet
@@ -3351,8 +3915,17 @@ color line indices are unique.)
 <<Subevents: public>>=
   public :: prt_get_n_col
   public :: prt_get_n_acl
+<<Subevents: sub interfaces>>=
+    elemental module function prt_get_n_col (prt) result (n)
+      integer :: n
+      type(prt_t), intent(in) :: prt
+    end function prt_get_n_col
+    elemental module function prt_get_n_acl (prt) result (n)
+      integer :: n
+      type(prt_t), intent(in) :: prt
+    end function prt_get_n_acl
 <<Subevents: procedures>>=
-  elemental function prt_get_n_col (prt) result (n)
+  elemental module function prt_get_n_col (prt) result (n)
     integer :: n
     type(prt_t), intent(in) :: prt
     integer, dimension(:), allocatable :: col, acl
@@ -3365,7 +3938,7 @@ color line indices are unique.)
     end if
   end function prt_get_n_col
 
-  elemental function prt_get_n_acl (prt) result (n)
+  elemental module function prt_get_n_acl (prt) result (n)
     integer :: n
     type(prt_t), intent(in) :: prt
     integer, dimension(:), allocatable :: col, acl
@@ -3383,8 +3956,13 @@ color line indices are unique.)
 @ Return the color and anticolor-flow line indices explicitly.
 <<Subevents: public>>=
   public :: prt_get_color_indices
+<<Subevents: sub interfaces>>=
+    module subroutine prt_get_color_indices (prt, col, acl)
+      type(prt_t), intent(in) :: prt
+      integer, dimension(:), allocatable, intent(out) :: col, acl
+    end subroutine prt_get_color_indices
 <<Subevents: procedures>>=
-  subroutine prt_get_color_indices (prt, col, acl)
+  module subroutine prt_get_color_indices (prt, col, acl)
     type(prt_t), intent(in) :: prt
     integer, dimension(:), allocatable, intent(out) :: col, acl
     if (prt%colorized) then
@@ -3482,8 +4060,13 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
   end interface
 
 @ %def c_prt
+<<Subevents: sub interfaces>>=
+    elemental module function c_prt_from_prt (prt) result (c_prt)
+      type(c_prt_t) :: c_prt
+      type(prt_t), intent(in) :: prt
+    end function c_prt_from_prt
 <<Subevents: procedures>>=
-  elemental function c_prt_from_prt (prt) result (c_prt)
+  elemental module function c_prt_from_prt (prt) result (c_prt)
     type(c_prt_t) :: c_prt
     type(prt_t), intent(in) :: prt
     c_prt = prt%p
@@ -3502,8 +4085,14 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
 \subsubsection{Output}
 <<Subevents: public>>=
   public :: prt_write
+<<Subevents: sub interfaces>>=
+    module subroutine prt_write (prt, unit, testflag)
+      type(prt_t), intent(in) :: prt
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag
+    end subroutine prt_write
 <<Subevents: procedures>>=
-  subroutine prt_write (prt, unit, testflag)
+  module subroutine prt_write (prt, unit, testflag)
     type(prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
@@ -3574,8 +4163,13 @@ Two particles match if their [[src]] arrays are the same.
   end interface
 
 @ %def .match.
+<<Subevents: sub interfaces>>=
+    elemental module function prt_match (prt1, prt2) result (match)
+      logical :: match
+      type(prt_t), intent(in) :: prt1, prt2
+    end function prt_match
 <<Subevents: procedures>>=
-  elemental function prt_match (prt1, prt2) result (match)
+  elemental module function prt_match (prt1, prt2) result (match)
     logical :: match
     type(prt_t), intent(in) :: prt1, prt2
     if (size (prt1%src) == size (prt2%src)) then
@@ -3637,8 +4231,13 @@ incoming particle, is color entries must be reversed.
 whether the combination is valid (no common [[src]] entry).
 <<Subevents: public>>=
   public :: are_disjoint
+<<Subevents: sub interfaces>>=
+    module function are_disjoint (prt_in1, prt_in2) result (flag)
+      logical :: flag
+      type(prt_t), intent(in) :: prt_in1, prt_in2
+    end function are_disjoint
 <<Subevents: procedures>>=
-  function are_disjoint (prt_in1, prt_in2) result (flag)
+  module function are_disjoint (prt_in1, prt_in2) result (flag)
     logical :: flag
     type(prt_t), intent(in) :: prt_in1, prt_in2
     flag = index_lists_are_disjoint (prt_in1%src, prt_in2%src)
@@ -3736,8 +4335,13 @@ value [[n_active]] determines the number of meaningful entries.
 number of contained particles is set equal to the size.
 <<Subevents: public>>=
   public :: subevt_init
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_init (subevt, n_active)
+      type(subevt_t), intent(out) :: subevt
+      integer, intent(in), optional :: n_active
+    end subroutine subevt_init
 <<Subevents: procedures>>=
-  subroutine subevt_init (subevt, n_active)
+  module subroutine subevt_init (subevt, n_active)
     type(subevt_t), intent(out) :: subevt
     integer, intent(in), optional :: n_active
     if (present (n_active))  subevt%n_active = n_active
@@ -3749,11 +4353,16 @@ number of contained particles is set equal to the size.
 is greater than the previous one, do a real reallocation.  Otherwise,
 just reset the recorded size. Contents are untouched, but become
 invalid.
-<<Subevents: public>>=
-  public :: subevt_reset
+<<Subevents: subevt: TBP>>=
+  procedure :: reset => subevt_reset
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_reset (subevt, n_active)
+      class(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: n_active
+    end subroutine subevt_reset
 <<Subevents: procedures>>=
-  subroutine subevt_reset (subevt, n_active)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_reset (subevt, n_active)
+    class(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: n_active
     subevt%n_active = n_active
     if (subevt%n_active > size (subevt%prt)) then
@@ -3765,12 +4374,17 @@ invalid.
 @ %def subevt_reset
 @ Output.  No prefix for the headline 'subevt', because this will usually be
 printed appending to a previous line.
-<<Subevents: public>>=
-  public :: subevt_write
 <<Subevents: subevt: TBP>>=
   procedure :: write => subevt_write
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_write (object, unit, prefix, pacified)
+      class(subevt_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      character(*), intent(in), optional :: prefix
+      logical, intent(in), optional :: pacified
+    end subroutine subevt_write
 <<Subevents: procedures>>=
-  subroutine subevt_write (object, unit, prefix, pacified)
+  module subroutine subevt_write (object, unit, prefix, pacified)
     class(subevt_t), intent(in) :: object
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
@@ -3794,14 +4408,19 @@ deep copy (as would be default assignment).
   end interface
 
 @ %def =
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_assign (subevt, subevt_in)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: subevt_in
+    end subroutine subevt_assign
 <<Subevents: procedures>>=
-  subroutine subevt_assign (subevt, subevt_in)
+  module subroutine subevt_assign (subevt, subevt_in)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: subevt_in
     if (.not. allocated (subevt%prt)) then
        call subevt_init (subevt, subevt_in%n_active)
     else
-       call subevt_reset (subevt, subevt_in%n_active)
+       call subevt%reset (subevt_in%n_active)
     end if
     subevt%prt(:subevt%n_active) = subevt_in%prt(:subevt%n_active)
   end subroutine subevt_assign
@@ -3811,13 +4430,45 @@ deep copy (as would be default assignment).
 \subsubsection{Fill contents}
 Store incoming/outgoing particles which are completely defined.
 <<Subevents: public>>=
-  public :: subevt_set_beam
-  public :: subevt_set_incoming
-  public :: subevt_set_outgoing
-  public :: subevt_set_composite
+<<Subevents: subevt: TBP>>=
+  procedure :: set_beam => subevt_set_beam
+  procedure :: set_composite => subevt_set_composite
+  procedure :: set_incoming => subevt_set_incoming
+  procedure :: set_outgoing => subevt_set_outgoing
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_set_beam (subevt, i, pdg, p, p2, src)
+      class(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: i
+      integer, intent(in) :: pdg
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in) :: p2
+      integer, dimension(:), intent(in), optional :: src
+    end subroutine subevt_set_beam
+    module subroutine subevt_set_incoming (subevt, i, pdg, p, p2, src)
+      class(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: i
+      integer, intent(in) :: pdg
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in) :: p2
+      integer, dimension(:), intent(in), optional :: src
+    end subroutine subevt_set_incoming
+    module subroutine subevt_set_outgoing (subevt, i, pdg, p, p2, src)
+      class(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: i
+      integer, intent(in) :: pdg
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in) :: p2
+      integer, dimension(:), intent(in), optional :: src
+    end subroutine subevt_set_outgoing
+    module subroutine subevt_set_composite (subevt, i, p, src)
+      class(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: i
+      type(vector4_t), intent(in) :: p
+      integer, dimension(:), intent(in) :: src
+    end subroutine subevt_set_composite
 <<Subevents: procedures>>=
-  subroutine subevt_set_beam (subevt, i, pdg, p, p2, src)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_beam (subevt, i, pdg, p, p2, src)
+    class(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: i
     integer, intent(in) :: pdg
     type(vector4_t), intent(in) :: p
@@ -3830,8 +4481,8 @@ Store incoming/outgoing particles which are completely defined.
     end if
   end subroutine subevt_set_beam
 
-  subroutine subevt_set_incoming (subevt, i, pdg, p, p2, src)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_incoming (subevt, i, pdg, p, p2, src)
+    class(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: i
     integer, intent(in) :: pdg
     type(vector4_t), intent(in) :: p
@@ -3844,8 +4495,8 @@ Store incoming/outgoing particles which are completely defined.
     end if
   end subroutine subevt_set_incoming
 
-  subroutine subevt_set_outgoing (subevt, i, pdg, p, p2, src)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_outgoing (subevt, i, pdg, p, p2, src)
+    class(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: i
     integer, intent(in) :: pdg
     type(vector4_t), intent(in) :: p
@@ -3858,8 +4509,8 @@ Store incoming/outgoing particles which are completely defined.
     end if
   end subroutine subevt_set_outgoing
 
-  subroutine subevt_set_composite (subevt, i, p, src)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_composite (subevt, i, p, src)
+    class(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: i
     type(vector4_t), intent(in) :: p
     integer, dimension(:), intent(in) :: src
@@ -3869,13 +4520,26 @@ Store incoming/outgoing particles which are completely defined.
 @ %def subevt_set_incoming subevt_set_outgoing subevt_set_composite
 @ Separately assign flavors, simultaneously for all incoming/outgoing
 particles.
-<<Subevents: public>>=
-  public :: subevt_set_pdg_beam
-  public :: subevt_set_pdg_incoming
-  public :: subevt_set_pdg_outgoing
+<<Subevents: subevt: TBP>>=
+  procedure :: set_pdg_beam => subevt_set_pdg_beam
+  procedure :: set_pdg_incoming => subevt_set_pdg_incoming
+  procedure :: set_pdg_outgoing => subevt_set_pdg_outgoing
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_set_pdg_beam (subevt, pdg)
+      class(subevt_t), intent(inout) :: subevt
+      integer, dimension(:), intent(in) :: pdg
+    end subroutine subevt_set_pdg_beam
+    module subroutine subevt_set_pdg_incoming (subevt, pdg)
+      class(subevt_t), intent(inout) :: subevt
+      integer, dimension(:), intent(in) :: pdg
+    end subroutine subevt_set_pdg_incoming
+    module subroutine subevt_set_pdg_outgoing (subevt, pdg)
+      class(subevt_t), intent(inout) :: subevt
+      integer, dimension(:), intent(in) :: pdg
+    end subroutine subevt_set_pdg_outgoing
 <<Subevents: procedures>>=
-  subroutine subevt_set_pdg_beam (subevt, pdg)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_pdg_beam (subevt, pdg)
+    class(subevt_t), intent(inout) :: subevt
     integer, dimension(:), intent(in) :: pdg
     integer :: i, j
     j = 1
@@ -3888,8 +4552,8 @@ particles.
     end do
   end subroutine subevt_set_pdg_beam
 
-  subroutine subevt_set_pdg_incoming (subevt, pdg)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_pdg_incoming (subevt, pdg)
+    class(subevt_t), intent(inout) :: subevt
     integer, dimension(:), intent(in) :: pdg
     integer :: i, j
     j = 1
@@ -3902,8 +4566,8 @@ particles.
     end do
   end subroutine subevt_set_pdg_incoming
 
-  subroutine subevt_set_pdg_outgoing (subevt, pdg)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_pdg_outgoing (subevt, pdg)
+    class(subevt_t), intent(inout) :: subevt
     integer, dimension(:), intent(in) :: pdg
     integer :: i, j
     j = 1
@@ -3921,13 +4585,26 @@ particles.
 @ %def subevt_set_pdg_outgoing
 @ Separately assign momenta, simultaneously for all incoming/outgoing
 particles.
-<<Subevents: public>>=
-  public :: subevt_set_p_beam
-  public :: subevt_set_p_incoming
-  public :: subevt_set_p_outgoing
+<<Subevents: subevt: TBP>>=
+  procedure :: set_p_beam => subevt_set_p_beam
+  procedure :: set_p_incoming => subevt_set_p_incoming
+  procedure :: set_p_outgoing => subevt_set_p_outgoing
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_set_p_beam (subevt, p)
+      class(subevt_t), intent(inout) :: subevt
+      type(vector4_t), dimension(:), intent(in) :: p
+    end subroutine subevt_set_p_beam
+    module subroutine subevt_set_p_incoming (subevt, p)
+      class(subevt_t), intent(inout) :: subevt
+      type(vector4_t), dimension(:), intent(in) :: p
+    end subroutine subevt_set_p_incoming
+    module subroutine subevt_set_p_outgoing (subevt, p)
+      class(subevt_t), intent(inout) :: subevt
+      type(vector4_t), dimension(:), intent(in) :: p
+    end subroutine subevt_set_p_outgoing
 <<Subevents: procedures>>=
-  subroutine subevt_set_p_beam (subevt, p)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_p_beam (subevt, p)
+    class(subevt_t), intent(inout) :: subevt
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i, j
     j = 1
@@ -3940,8 +4617,8 @@ particles.
     end do
   end subroutine subevt_set_p_beam
 
-  subroutine subevt_set_p_incoming (subevt, p)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_p_incoming (subevt, p)
+    class(subevt_t), intent(inout) :: subevt
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i, j
     j = 1
@@ -3954,8 +4631,8 @@ particles.
     end do
   end subroutine subevt_set_p_incoming
 
-  subroutine subevt_set_p_outgoing (subevt, p)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_p_outgoing (subevt, p)
+    class(subevt_t), intent(inout) :: subevt
     type(vector4_t), dimension(:), intent(in) :: p
     integer :: i, j
     j = 1
@@ -3973,13 +4650,26 @@ particles.
 @ %def subevt_set_p_outgoing
 @ Separately assign the squared invariant mass, simultaneously for all
 incoming/outgoing particles.
-<<Subevents: public>>=
-  public :: subevt_set_p2_beam
-  public :: subevt_set_p2_incoming
-  public :: subevt_set_p2_outgoing
+<<Subevents: subevt: TBP>>=
+  procedure :: set_p2_beam => subevt_set_p2_beam
+  procedure :: set_p2_incoming => subevt_set_p2_incoming
+  procedure :: set_p2_outgoing => subevt_set_p2_outgoing
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_set_p2_beam (subevt, p2)
+      class(subevt_t), intent(inout) :: subevt
+      real(default), dimension(:), intent(in) :: p2
+    end subroutine subevt_set_p2_beam
+    module subroutine subevt_set_p2_incoming (subevt, p2)
+      class(subevt_t), intent(inout) :: subevt
+      real(default), dimension(:), intent(in) :: p2
+    end subroutine subevt_set_p2_incoming
+    module subroutine subevt_set_p2_outgoing (subevt, p2)
+      class(subevt_t), intent(inout) :: subevt
+      real(default), dimension(:), intent(in) :: p2
+    end subroutine subevt_set_p2_outgoing
 <<Subevents: procedures>>=
-  subroutine subevt_set_p2_beam (subevt, p2)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_p2_beam (subevt, p2)
+    class(subevt_t), intent(inout) :: subevt
     real(default), dimension(:), intent(in) :: p2
     integer :: i, j
     j = 1
@@ -3992,8 +4682,8 @@ incoming/outgoing particles.
     end do
   end subroutine subevt_set_p2_beam
 
-  subroutine subevt_set_p2_incoming (subevt, p2)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_p2_incoming (subevt, p2)
+    class(subevt_t), intent(inout) :: subevt
     real(default), dimension(:), intent(in) :: p2
     integer :: i, j
     j = 1
@@ -4006,8 +4696,8 @@ incoming/outgoing particles.
     end do
   end subroutine subevt_set_p2_incoming
 
-  subroutine subevt_set_p2_outgoing (subevt, p2)
-    type(subevt_t), intent(inout) :: subevt
+  module subroutine subevt_set_p2_outgoing (subevt, p2)
+    class(subevt_t), intent(inout) :: subevt
     real(default), dimension(:), intent(in) :: p2
     integer :: i, j
     j = 1
@@ -4026,8 +4716,13 @@ incoming/outgoing particles.
 @ Set polarization for an entry
 <<Subevents: public>>=
   public :: subevt_polarize
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_polarize (subevt, i, h)
+      type(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: i, h
+    end subroutine subevt_polarize
 <<Subevents: procedures>>=
-  subroutine subevt_polarize (subevt, i, h)
+  module subroutine subevt_polarize (subevt, i, h)
     type(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: i, h
     call prt_polarize (subevt%prt(i), h)
@@ -4037,8 +4732,13 @@ incoming/outgoing particles.
 @ Set color-flow indices for an entry
 <<Subevents: public>>=
   public :: subevt_colorize
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_colorize (subevt, i, col, acl)
+      type(subevt_t), intent(inout) :: subevt
+      integer, intent(in) :: i, col, acl
+    end subroutine subevt_colorize
 <<Subevents: procedures>>=
-  subroutine subevt_colorize (subevt, i, col, acl)
+  module subroutine subevt_colorize (subevt, i, col, acl)
     type(subevt_t), intent(inout) :: subevt
     integer, intent(in) :: i, col, acl
     if (col > 0 .and. acl > 0) then
@@ -4056,34 +4756,50 @@ incoming/outgoing particles.
 @
 \subsubsection{Accessing contents}
 Return true if the subevent has entries.
-<<Subevents: public>>=
-  public :: subevt_is_nonempty
+<<Subevents: subevt: TBP>>=
+  procedure :: is_nonempty => subevt_is_nonempty
+<<Subevents: sub interfaces>>=
+    module function subevt_is_nonempty (subevt) result (flag)
+      logical :: flag
+      class(subevt_t), intent(in) :: subevt
+    end function subevt_is_nonempty
 <<Subevents: procedures>>=
-  function subevt_is_nonempty (subevt) result (flag)
+  module function subevt_is_nonempty (subevt) result (flag)
     logical :: flag
-    type(subevt_t), intent(in) :: subevt
+    class(subevt_t), intent(in) :: subevt
     flag = subevt%n_active /= 0
   end function subevt_is_nonempty
 
 @ %def subevt_is_nonempty
 @ Return the number of entries
-<<Subevents: public>>=
-  public :: subevt_get_length
+<<Subevents: subevt: TBP>>=
+  procedure :: get_length => subevt_get_length
+<<Subevents: sub interfaces>>=
+    module function subevt_get_length (subevt) result (length)
+      integer :: length
+      class(subevt_t), intent(in) :: subevt
+    end function subevt_get_length
 <<Subevents: procedures>>=
-  function subevt_get_length (subevt) result (length)
+  module function subevt_get_length (subevt) result (length)
     integer :: length
-    type(subevt_t), intent(in) :: subevt
+    class(subevt_t), intent(in) :: subevt
     length = subevt%n_active
   end function subevt_get_length
 
 @ %def subevt_get_length
 @ Return a specific particle.  The index is not checked for validity.
-<<Subevents: public>>=
-  public :: subevt_get_prt
+<<Subevents: subevt: TBP>>=
+  procedure :: get_prt => subevt_get_prt
+<<Subevents: sub interfaces>>=
+    module function subevt_get_prt (subevt, i) result (prt)
+      type(prt_t) :: prt
+      class(subevt_t), intent(in) :: subevt
+      integer, intent(in) :: i
+    end function subevt_get_prt
 <<Subevents: procedures>>=
-  function subevt_get_prt (subevt, i) result (prt)
+  module function subevt_get_prt (subevt, i) result (prt)
     type(prt_t) :: prt
-    type(subevt_t), intent(in) :: subevt
+    class(subevt_t), intent(in) :: subevt
     integer, intent(in) :: i
     prt = subevt%prt(i)
   end function subevt_get_prt
@@ -4091,11 +4807,16 @@ Return true if the subevent has entries.
 @ %def subevt_get_prt
 @ Return the partonic energy squared.  We take the particles with flag
 [[PRT_INCOMING]] and compute their total invariant mass.
-<<Subevents: public>>=
-  public :: subevt_get_sqrts_hat
+<<Subevents: subevt: TBP>>=
+  procedure :: get_sqrts_hat => subevt_get_sqrts_hat
+<<Subevents: sub interfaces>>=
+    module function subevt_get_sqrts_hat (subevt) result (sqrts_hat)
+      class(subevt_t), intent(in) :: subevt
+      real(default) :: sqrts_hat
+    end function subevt_get_sqrts_hat
 <<Subevents: procedures>>=
-  function subevt_get_sqrts_hat (subevt) result (sqrts_hat)
-    type(subevt_t), intent(in) :: subevt
+  module function subevt_get_sqrts_hat (subevt) result (sqrts_hat)
+    class(subevt_t), intent(in) :: subevt
     real(default) :: sqrts_hat
     type(vector4_t) :: p
     integer :: i
@@ -4110,18 +4831,27 @@ Return true if the subevent has entries.
 @ %def subevt_get_sqrts_hat
 @ Return the number of incoming (outgoing) particles, respectively.
 Beam particles or composites are not counted.
-<<Subevents: public>>=
-  public :: subevt_get_n_in
-  public :: subevt_get_n_out
+<<Subevents: subevt: TBP>>=
+  procedure :: get_n_in => subevt_get_n_in
+  procedure :: get_n_out => subevt_get_n_out
+<<Subevents: sub interfaces>>=
+    module function subevt_get_n_in (subevt) result (n_in)
+      class(subevt_t), intent(in) :: subevt
+      integer :: n_in
+    end function subevt_get_n_in
+    module function subevt_get_n_out (subevt) result (n_out)
+      class(subevt_t), intent(in) :: subevt
+      integer :: n_out
+    end function subevt_get_n_out
 <<Subevents: procedures>>=
-  function subevt_get_n_in (subevt) result (n_in)
-    type(subevt_t), intent(in) :: subevt
+  module function subevt_get_n_in (subevt) result (n_in)
+    class(subevt_t), intent(in) :: subevt
     integer :: n_in
     n_in = count (subevt%prt(:subevt%n_active)%type == PRT_INCOMING)
   end function subevt_get_n_in
 
-  function subevt_get_n_out (subevt) result (n_out)
-    type(subevt_t), intent(in) :: subevt
+  module function subevt_get_n_out (subevt) result (n_out)
+    class(subevt_t), intent(in) :: subevt
     integer :: n_out
     n_out = count (subevt%prt(:subevt%n_active)%type == PRT_OUTGOING)
   end function subevt_get_n_out
@@ -4136,15 +4866,25 @@ Beam particles or composites are not counted.
   end interface
 
 @ %def c_prt
+<<Subevents: sub interfaces>>=
+    module function c_prt_from_subevt (subevt, i) result (c_prt)
+      type(c_prt_t) :: c_prt
+      type(subevt_t), intent(in) :: subevt
+      integer, intent(in) :: i
+    end function c_prt_from_subevt
+    module function c_prt_array_from_subevt (subevt) result (c_prt_array)
+      type(subevt_t), intent(in) :: subevt
+      type(c_prt_t), dimension(subevt%n_active) :: c_prt_array
+    end function c_prt_array_from_subevt
 <<Subevents: procedures>>=
-  function c_prt_from_subevt (subevt, i) result (c_prt)
+  module function c_prt_from_subevt (subevt, i) result (c_prt)
     type(c_prt_t) :: c_prt
     type(subevt_t), intent(in) :: subevt
     integer, intent(in) :: i
     c_prt = c_prt_from_prt (subevt%prt(i))
   end function c_prt_from_subevt
 
-  function c_prt_array_from_subevt (subevt) result (c_prt_array)
+  module function c_prt_array_from_subevt (subevt) result (c_prt_array)
     type(subevt_t), intent(in) :: subevt
     type(c_prt_t), dimension(subevt%n_active) :: c_prt_array
     c_prt_array = c_prt_from_prt (subevt%prt(1:subevt%n_active))
@@ -4163,15 +4903,21 @@ If a mask is present, it refers to the second subevent.
 Particles where the mask is not set are discarded.
 <<Subevents: public>>=
   public :: subevt_join
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_join (subevt, pl1, pl2, mask2)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl1, pl2
+      logical, dimension(:), intent(in), optional :: mask2
+    end subroutine subevt_join
 <<Subevents: procedures>>=
-  subroutine subevt_join (subevt, pl1, pl2, mask2)
+  module subroutine subevt_join (subevt, pl1, pl2, mask2)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1, pl2
     logical, dimension(:), intent(in), optional :: mask2
     integer :: n1, n2, i, n
     n1 = pl1%n_active
     n2 = pl2%n_active
-    call subevt_reset (subevt, n1 + n2)
+    call subevt%reset (n1 + n2)
     subevt%prt(:n1)   = pl1%prt(:n1)
     n = n1
     if (present (mask2)) then
@@ -4220,8 +4966,14 @@ We thus require that in a given pseudoparticle, each original particle
 occurs at most once.
 <<Subevents: public>>=
   public :: subevt_combine
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_combine (subevt, pl1, pl2, mask12)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl1, pl2
+      logical, dimension(:,:), intent(in), optional :: mask12
+    end subroutine subevt_combine
 <<Subevents: procedures>>=
-  subroutine subevt_combine (subevt, pl1, pl2, mask12)
+  module subroutine subevt_combine (subevt, pl1, pl2, mask12)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1, pl2
     logical, dimension(:,:), intent(in), optional :: mask12
@@ -4229,7 +4981,7 @@ occurs at most once.
     logical :: ok
     n1 = pl1%n_active
     n2 = pl2%n_active
-    call subevt_reset (subevt, n1 * n2)
+    call subevt%reset (n1 * n2)
     n = 1
     do i1 = 1, n1
        do i2 = 1, n2
@@ -4266,15 +5018,21 @@ chance that the result depends on the order of the input list and is
 not as expected.  This situation should be avoided.)
 <<Subevents: public>>=
   public :: subevt_collect
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_collect (subevt, pl1, mask1)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl1
+      logical, dimension(:), intent(in) :: mask1
+    end subroutine subevt_collect
 <<Subevents: procedures>>=
-  subroutine subevt_collect (subevt, pl1, mask1)
+  module subroutine subevt_collect (subevt, pl1, mask1)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1
     logical, dimension(:), intent(in) :: mask1
     type(prt_t) :: prt
     integer :: i
     logical :: ok
-    call subevt_reset (subevt, 1)
+    call subevt%reset (1)
     subevt%n_active = 0
     do i = 1, pl1%n_active
        if (mask1(i)) then
@@ -4307,8 +5065,18 @@ jet, we derive the jet source entries.  Finally, we delete the C structures
 that have been constructed by FastJet and its interface.
 <<Subevents: public>>=
   public :: subevt_cluster
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_cluster (subevt, pl1, dcut, mask1, jet_def, &
+         keep_jets, exclusive)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl1
+      real(default), intent(in) :: dcut
+      logical, dimension(:), intent(in) :: mask1
+      type(jet_definition_t), intent(in) :: jet_def
+      logical, intent(in) :: keep_jets, exclusive
+    end subroutine subevt_cluster
 <<Subevents: procedures>>=
-  subroutine subevt_cluster (subevt, pl1, dcut, mask1, jet_def, &
+  module subroutine subevt_cluster (subevt, pl1, dcut, mask1, jet_def, &
        keep_jets, exclusive)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1
@@ -4381,7 +5149,7 @@ that have been constructed by FastJet and its interface.
       integer, dimension(n_src) :: src_fill
       integer :: i, jet, k, combined_pdg, pdg, n_quarks, n_src_fill
       logical :: is_b, is_c
-      call subevt_reset (subevt, size (jet_out))
+      call subevt%reset (size (jet_out))
       do jet = 1, size (jet_out)
          pdg = 0; src_fill = 0; n_src_fill = 0; combined_pdg = 0; n_quarks = 0
          is_b = .false.; is_c = .false.
@@ -4426,8 +5194,16 @@ moment, we take here the first photon from the subevent to possibly
 recombine and leave this open for generalization.
 <<Subevents: public>>=
   public :: subevt_recombine
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_recombine (subevt, pl, mask1, reco_r0, keep_flv)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl
+      logical, dimension(:), intent(in) :: mask1
+      logical, intent(in) :: keep_flv
+      real(default), intent(in) :: reco_r0
+    end subroutine subevt_recombine
 <<Subevents: procedures>>=
-  subroutine subevt_recombine (subevt, pl, mask1, reco_r0, keep_flv)
+  module subroutine subevt_recombine (subevt, pl, mask1, reco_r0, keep_flv)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     type(prt_t), dimension(:), allocatable :: prt_rec
@@ -4439,7 +5215,7 @@ recombine and leave this open for generalization.
     type(prt_t) :: prt_gam, prt_comb
     logical :: recombine, ok
     integer :: i, n, i_gam, n_gam, n_rec, pdg_orig
-    n = subevt_get_length (pl)
+    n = pl%get_length ()
     n_gam = 0
     FIND_FIRST_PHOTON: do i = 1, n
        if (prt_is_photon (pl%prt (i))) then
@@ -4469,7 +5245,7 @@ recombine and leave this open for generalization.
           i_sortr = order (del_rij)
           recombine = del_rij (i_sortr (1)) <= reco_r0 .and. mask1(i_gam)
           if (recombine) then
-             call subevt_reset (subevt, pl%n_active-n_gam)
+             call subevt%reset (pl%n_active-n_gam)
              do i = 1, n_rec
                 if (i == i_sortr(1)) then
                    pdg_orig = prt_get_pdg (prt_rec(i_sortr (1)))
@@ -4496,13 +5272,19 @@ recombine and leave this open for generalization.
 @ Return a list of all particles for which the mask is true.
 <<Subevents: public>>=
   public :: subevt_select
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_select (subevt, pl, mask1)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl
+      logical, dimension(:), intent(in) :: mask1
+    end subroutine subevt_select
 <<Subevents: procedures>>=
-  subroutine subevt_select (subevt, pl, mask1)
+  module subroutine subevt_select (subevt, pl, mask1)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     logical, dimension(:), intent(in) :: mask1
     integer :: i, n
-    call subevt_reset (subevt, pl%n_active)
+    call subevt%reset (pl%n_active)
     n = 0
     do i = 1, pl%n_active
        if (mask1(i)) then
@@ -4519,27 +5301,33 @@ specified [[index]].  If [[index]] is negative, count from the end.
 If it is out of bounds, return an empty list.
 <<Subevents: public>>=
   public :: subevt_extract
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_extract (subevt, pl, index)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl
+      integer, intent(in) :: index
+    end subroutine subevt_extract
 <<Subevents: procedures>>=
-  subroutine subevt_extract (subevt, pl, index)
+  module subroutine subevt_extract (subevt, pl, index)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     integer, intent(in) :: index
     if (index > 0) then
        if (index <= pl%n_active) then
-          call subevt_reset (subevt, 1)
+          call subevt%reset (1)
           subevt%prt(1) = pl%prt(index)
        else
-          call subevt_reset (subevt, 0)
+          call subevt%reset (0)
        end if
     else if (index < 0) then
        if (abs (index) <= pl%n_active) then
-          call subevt_reset (subevt, 1)
+          call subevt%reset (1)
           subevt%prt(1) = pl%prt(pl%n_active + 1 + index)
        else
-          call subevt_reset (subevt, 0)
+          call subevt%reset (0)
        end if
     else
-       call subevt_reset (subevt, 0)
+       call subevt%reset (0)
     end if
   end subroutine subevt_extract
 
@@ -4556,8 +5344,23 @@ PDG value.
      module procedure subevt_sort_real
   end interface
 
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_sort_pdg (subevt, pl)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl
+    end subroutine subevt_sort_pdg
+    module subroutine subevt_sort_int (subevt, pl, ival)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl
+      integer, dimension(:), intent(in) :: ival
+    end subroutine subevt_sort_int
+    module subroutine subevt_sort_real (subevt, pl, rval)
+      type(subevt_t), intent(inout) :: subevt
+      type(subevt_t), intent(in) :: pl
+      real(default), dimension(:), intent(in) :: rval
+    end subroutine subevt_sort_real
 <<Subevents: procedures>>=
-  subroutine subevt_sort_pdg (subevt, pl)
+  module subroutine subevt_sort_pdg (subevt, pl)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     integer :: n
@@ -4565,22 +5368,22 @@ PDG value.
     call subevt_sort_int (subevt, pl, abs (3 * subevt%prt(:n)%pdg - 1))
   end subroutine subevt_sort_pdg
 
-  subroutine subevt_sort_int (subevt, pl, ival)
+  module subroutine subevt_sort_int (subevt, pl, ival)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     integer, dimension(:), intent(in) :: ival
-    call subevt_reset (subevt, pl%n_active)
+    call subevt%reset (pl%n_active)
     subevt%n_active = pl%n_active
     subevt%prt = pl%prt( order (ival) )
   end subroutine subevt_sort_int
 
-  subroutine subevt_sort_real (subevt, pl, rval)
+  module subroutine subevt_sort_real (subevt, pl, rval)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     real(default), dimension(:), intent(in) :: rval
     integer :: i
     integer, dimension(size(rval)) :: idx
-    call subevt_reset (subevt, pl%n_active)
+    call subevt%reset (pl%n_active)
     subevt%n_active = pl%n_active
     if (allocated (subevt%prt))  deallocate (subevt%prt)
     allocate (subevt%prt (size(pl%prt)))
@@ -4595,8 +5398,15 @@ PDG value.
 codes (and optionally particle type: beam, incoming, outgoing).
 <<Subevents: public>>=
   public :: subevt_select_pdg_code
+<<Subevents: sub interfaces>>=
+    module subroutine subevt_select_pdg_code (subevt, aval, subevt_in, prt_type)
+      type(subevt_t), intent(inout) :: subevt
+      type(pdg_array_t), intent(in) :: aval
+      type(subevt_t), intent(in) :: subevt_in
+      integer, intent(in), optional :: prt_type
+    end subroutine subevt_select_pdg_code
 <<Subevents: procedures>>=
-  subroutine subevt_select_pdg_code (subevt, aval, subevt_in, prt_type)
+  module subroutine subevt_select_pdg_code (subevt, aval, subevt_in, prt_type)
     type(subevt_t), intent(inout) :: subevt
     type(pdg_array_t), intent(in) :: aval
     type(subevt_t), intent(in) :: subevt_in
@@ -4611,7 +5421,7 @@ codes (and optionally particle type: beam, incoming, outgoing).
     if (present (prt_type)) &
          mask = mask .and. subevt_in%prt(:n_active)%type == prt_type
     n_match = count (mask)
-    call subevt_reset (subevt, n_match)
+    call subevt%reset (n_match)
     j = 0
     do i = 1, n_active
        if (mask(i)) then
@@ -4641,8 +5451,15 @@ to double precision, even if the main program uses higher precision.
   end interface pacify
 
 @ %def pacify
+<<Subevents: sub interfaces>>=
+    module subroutine pacify_prt (prt)
+      class(prt_t), intent(inout) :: prt
+    end subroutine pacify_prt
+    module subroutine pacify_subevt (subevt)
+      class(subevt_t), intent(inout) :: subevt
+    end subroutine pacify_subevt
 <<Subevents: procedures>>=
-  subroutine pacify_prt (prt)
+  module subroutine pacify_prt (prt)
     class(prt_t), intent(inout) :: prt
     real(default) :: e
     e = max (1E-10_default * energy (prt%p), 1E-13_default)
@@ -4650,7 +5467,7 @@ to double precision, even if the main program uses higher precision.
     call pacify (prt%p2, 1E3_default * e)
   end subroutine pacify_prt
 
-  subroutine pacify_subevt (subevt)
+  module subroutine pacify_subevt (subevt)
     class(subevt_t), intent(inout) :: subevt
     integer :: i
     do i = 1, subevt%n_active
@@ -4691,12 +5508,7 @@ module analysis
 
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use format_utils, only: quote_underscore, tex_format
-  use system_defs, only: TAB
-  use diagnostics
   use os_interface
-  use ifiles
 
 <<Standard module head>>
 
@@ -4710,12 +5522,33 @@ module analysis
 
 <<Analysis: variables>>
 
+  interface
+<<Analysis: sub interfaces>>
+  end interface
+
+end module analysis
+@ %def analysis
+@
+<<[[analysis_sub.f90]]>>=
+<<File header>>
+
+submodule (analysis) analysis_s
+
+  use io_units
+  use format_utils, only: quote_underscore, tex_format
+  use system_defs, only: TAB
+  use diagnostics
+  use ifiles
+
+  implicit none
+
 contains
 
 <<Analysis: procedures>>
 
-end module analysis
-@ %def analysis
+end submodule analysis_s
+
+@ %def analysis_s
 @
 \subsection{Output formats}
 These formats share a common field width (alignment).
@@ -4758,15 +5591,21 @@ plots, also as graph elements.  The [[graph_options]] copy is used for
      logical :: y_max_set = .false.
      type(string_t) :: gmlcode_bg
      type(string_t) :: gmlcode_fg
+   contains
+   <<Analysis: graph options: TBP>>
   end type graph_options_t
 
 @ %def graph_options_t
 @ Initialize the record, all strings are empty.  The limits are undefined.
-<<Analysis: public>>=
-  public :: graph_options_init
+<<Analysis: graph options: TBP>>=
+  procedure :: init => graph_options_init
+<<Analysis: sub interfaces>>=
+    module subroutine graph_options_init (graph_options)
+      class(graph_options_t), intent(out) :: graph_options
+    end subroutine graph_options_init
 <<Analysis: procedures>>=
-  subroutine graph_options_init (graph_options)
-    type(graph_options_t), intent(out) :: graph_options
+  module subroutine graph_options_init (graph_options)
+    class(graph_options_t), intent(out) :: graph_options
     graph_options%id = ""
     graph_options%title = ""
     graph_options%description = ""
@@ -4778,14 +5617,29 @@ plots, also as graph elements.  The [[graph_options]] copy is used for
 
 @ %def graph_options_init
 @ Set individual options.
-<<Analysis: public>>=
-  public :: graph_options_set
+<<Analysis: graph options: TBP>>=
+  procedure :: set => graph_options_set
+<<Analysis: sub interfaces>>=
+    module subroutine graph_options_set (graph_options, id, &
+         title, description, x_label, y_label, width_mm, height_mm, &
+         x_log, y_log, x_min, x_max, y_min, y_max, &
+         gmlcode_bg, gmlcode_fg)
+      class(graph_options_t), intent(inout) :: graph_options
+      type(string_t), intent(in), optional :: id
+      type(string_t), intent(in), optional :: title
+      type(string_t), intent(in), optional :: description
+      type(string_t), intent(in), optional :: x_label, y_label
+      integer, intent(in), optional :: width_mm, height_mm
+      logical, intent(in), optional :: x_log, y_log
+      real(default), intent(in), optional :: x_min, x_max, y_min, y_max
+      type(string_t), intent(in), optional :: gmlcode_bg, gmlcode_fg
+    end subroutine graph_options_set
 <<Analysis: procedures>>=
-  subroutine graph_options_set (graph_options, id, &
+  module subroutine graph_options_set (graph_options, id, &
        title, description, x_label, y_label, width_mm, height_mm, &
        x_log, y_log, x_min, x_max, y_min, y_max, &
        gmlcode_bg, gmlcode_fg)
-    type(graph_options_t), intent(inout) :: graph_options
+    class(graph_options_t), intent(inout) :: graph_options
     type(string_t), intent(in), optional :: id
     type(string_t), intent(in), optional :: title
     type(string_t), intent(in), optional :: description
@@ -4817,11 +5671,16 @@ plots, also as graph elements.  The [[graph_options]] copy is used for
 
 @ %def graph_options_set
 @ Write a simple account of all options.
-<<Analysis: public>>=
-  public :: graph_options_write
+<<Analysis: graph options: TBP>>=
+  procedure :: write => graph_options_write
+<<Analysis: sub interfaces>>=
+    module subroutine graph_options_write (gro, unit)
+      class(graph_options_t), intent(in) :: gro
+      integer, intent(in), optional :: unit
+    end subroutine graph_options_write
 <<Analysis: procedures>>=
-  subroutine graph_options_write (gro, unit)
-    type(graph_options_t), intent(in) :: gro
+  module subroutine graph_options_write (gro, unit)
+    class(graph_options_t), intent(in) :: gro
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
@@ -5060,15 +5919,22 @@ These options apply to an individual graph element (histogram or plot).
      type(string_t) :: symbol
      type(string_t) :: gmlcode_bg
      type(string_t) :: gmlcode_fg
+   contains
+   <<Analysis: drawing options: TBP>>
   end type drawing_options_t
 
 @ %def drawing_options_t
 @ Write a simple account of all options.
-<<Analysis: public>>=
-  public :: drawing_options_write
+<<Analysis: drawing options: TBP>>=
+  procedure :: write => drawing_options_write
+<<Analysis: sub interfaces>>=
+    module subroutine drawing_options_write (dro, unit)
+      class(drawing_options_t), intent(in) :: dro
+      integer, intent(in), optional :: unit
+    end subroutine drawing_options_write
 <<Analysis: procedures>>=
-  subroutine drawing_options_write (dro, unit)
-     type(drawing_options_t), intent(in) :: dro
+  module subroutine drawing_options_write (dro, unit)
+    class(drawing_options_t), intent(in) :: dro
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit)
@@ -5092,12 +5958,19 @@ These options apply to an individual graph element (histogram or plot).
 @ %def drawing_options_write
 @ Init with empty strings and default options, appropriate for either
 histogram or plot.
-<<Analysis: public>>=
-  public :: drawing_options_init_histogram
-  public :: drawing_options_init_plot
+<<Analysis: drawing options: TBP>>=
+  procedure :: init_histogram => drawing_options_init_histogram
+  procedure :: init_plot => drawing_options_init_plot
+<<Analysis: sub interfaces>>=
+    module subroutine drawing_options_init_histogram (dro)
+      class(drawing_options_t), intent(out) :: dro
+    end subroutine drawing_options_init_histogram
+    module subroutine drawing_options_init_plot (dro)
+      class(drawing_options_t), intent(out) :: dro
+    end subroutine drawing_options_init_plot
 <<Analysis: procedures>>=
-  subroutine drawing_options_init_histogram (dro)
-    type(drawing_options_t), intent(out) :: dro
+  module subroutine drawing_options_init_histogram (dro)
+    class(drawing_options_t), intent(out) :: dro
     dro%dataset = "dat"
     dro%with_hbars = .true.
     dro%with_base = .true.
@@ -5112,8 +5985,8 @@ histogram or plot.
     dro%gmlcode_fg = ""
   end subroutine drawing_options_init_histogram
 
-  subroutine drawing_options_init_plot (dro)
-    type(drawing_options_t), intent(out) :: dro
+  module subroutine drawing_options_init_plot (dro)
+    class(drawing_options_t), intent(out) :: dro
     dro%dataset = "dat"
     dro%draw = .true.
     dro%fill_options = "withcolor col.default"
@@ -5127,14 +6000,27 @@ histogram or plot.
 @ %def drawing_options_init_histogram
 @ %def drawing_options_init_plot
 @ Set individual options.
-<<Analysis: public>>=
-  public :: drawing_options_set
+<<Analysis: drawing options: TBP>>=
+  procedure :: set => drawing_options_set
+<<Analysis: sub interfaces>>=
+    module subroutine drawing_options_set (dro, dataset, &
+         with_hbars, with_base, piecewise, fill, draw, err, symbols, &
+         fill_options, draw_options, err_options, symbol, &
+         gmlcode_bg, gmlcode_fg)
+      class(drawing_options_t), intent(inout) :: dro
+      type(string_t), intent(in), optional :: dataset
+      logical, intent(in), optional :: with_hbars, with_base, piecewise
+      logical, intent(in), optional :: fill, draw, err, symbols
+      type(string_t), intent(in), optional :: fill_options, draw_options
+      type(string_t), intent(in), optional :: err_options, symbol
+      type(string_t), intent(in), optional :: gmlcode_bg, gmlcode_fg
+    end subroutine drawing_options_set
 <<Analysis: procedures>>=
-  subroutine drawing_options_set (dro, dataset, &
+  module subroutine drawing_options_set (dro, dataset, &
        with_hbars, with_base, piecewise, fill, draw, err, symbols, &
        fill_options, draw_options, err_options, symbol, &
        gmlcode_bg, gmlcode_fg)
-    type(drawing_options_t), intent(inout) :: dro
+    class(drawing_options_t), intent(inout) :: dro
     type(string_t), intent(in), optional :: dataset
     logical, intent(in), optional :: with_hbars, with_base, piecewise
     logical, intent(in), optional :: fill, draw, err, symbols
@@ -5292,7 +6178,7 @@ sums which are necessary for proper averaging.
     if (present (graph_options)) then
        obs%graph_options = graph_options
     else
-       call graph_options_init (obs%graph_options)
+       call obs%graph_options%init ()
     end if
   end subroutine observable_init
 
@@ -5316,8 +6202,19 @@ sums which are necessary for proper averaging.
      module procedure observable_record_value_weighted
   end interface
 
+<<Analysis: sub interfaces>>=
+    module subroutine observable_record_value_unweighted (obs, value, success)
+      type(observable_t), intent(inout) :: obs
+      real(default), intent(in) :: value
+      logical, intent(out), optional :: success
+    end subroutine observable_record_value_unweighted
+    module subroutine observable_record_value_weighted (obs, value, weight, success)
+      type(observable_t), intent(inout) :: obs
+      real(default), intent(in) :: value, weight
+      logical, intent(out), optional :: success
+    end subroutine observable_record_value_weighted
 <<Analysis: procedures>>=
-  subroutine observable_record_value_unweighted (obs, value, success)
+  module subroutine observable_record_value_unweighted (obs, value, success)
     type(observable_t), intent(inout) :: obs
     real(default), intent(in) :: value
     logical, intent(out), optional :: success
@@ -5329,7 +6226,7 @@ sums which are necessary for proper averaging.
     if (present (success))  success = .true.
   end subroutine observable_record_value_unweighted
 
-  subroutine observable_record_value_weighted (obs, value, weight, success)
+  module subroutine observable_record_value_weighted (obs, value, weight, success)
     type(observable_t), intent(inout) :: obs
     real(default), intent(in) :: value, weight
     logical, intent(out), optional :: success
@@ -5705,8 +6602,32 @@ pointer (sub)components.
      module procedure histogram_init_bin_width
   end interface
 
+<<Analysis: sub interfaces>>=
+    module subroutine histogram_init_n_bins (h, id, &
+         lower_bound, upper_bound, n_bins, normalize_bins, &
+         obs_label, obs_unit, graph_options, drawing_options)
+      type(histogram_t), intent(out) :: h
+      type(string_t), intent(in) :: id
+      real(default), intent(in) :: lower_bound, upper_bound
+      integer, intent(in) :: n_bins
+      logical, intent(in) :: normalize_bins
+      type(string_t), intent(in), optional :: obs_label, obs_unit
+      type(graph_options_t), intent(in), optional :: graph_options
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine histogram_init_n_bins
+    module subroutine histogram_init_bin_width (h, id, &
+         lower_bound, upper_bound, bin_width, normalize_bins, &
+         obs_label, obs_unit, graph_options, drawing_options)
+      type(histogram_t), intent(out) :: h
+      type(string_t), intent(in) :: id
+      real(default), intent(in) :: lower_bound, upper_bound, bin_width
+      logical, intent(in) :: normalize_bins
+      type(string_t), intent(in), optional :: obs_label, obs_unit
+      type(graph_options_t), intent(in), optional :: graph_options
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine histogram_init_bin_width
 <<Analysis: procedures>>=
-  subroutine histogram_init_n_bins (h, id, &
+  module subroutine histogram_init_n_bins (h, id, &
        lower_bound, upper_bound, n_bins, normalize_bins, &
        obs_label, obs_unit, graph_options, drawing_options)
     type(histogram_t), intent(out) :: h
@@ -5737,17 +6658,17 @@ pointer (sub)components.
     if (present (graph_options)) then
        h%graph_options = graph_options
     else
-       call graph_options_init (h%graph_options)
+       call h%graph_options%init ()
     end if
     call graph_options_set (h%graph_options, id = id)
     if (present (drawing_options)) then
        h%drawing_options = drawing_options
     else
-       call drawing_options_init_histogram (h%drawing_options)
+       call h%drawing_options%init_histogram ()
     end if
   end subroutine histogram_init_n_bins
 
-  subroutine histogram_init_bin_width (h, id, &
+  module subroutine histogram_init_bin_width (h, id, &
        lower_bound, upper_bound, bin_width, normalize_bins, &
        obs_label, obs_unit, graph_options, drawing_options)
     type(histogram_t), intent(out) :: h
@@ -6143,8 +7064,18 @@ results for underflow or overflow, respectively.
     module procedure point_init_contents
     module procedure point_init_point
   end interface
+<<Analysis: sub interfaces>>=
+    module subroutine point_init_contents (point, x, y, yerr, xerr)
+      type(point_t), intent(out) :: point
+      real(default), intent(in) :: x, y
+      real(default), intent(in), optional :: yerr, xerr
+    end subroutine point_init_contents
+    module subroutine point_init_point (point, point_in)
+      type(point_t), intent(out) :: point
+      type(point_t), intent(in) :: point_in
+    end subroutine point_init_point
 <<Analysis: procedures>>=
-  subroutine point_init_contents (point, x, y, yerr, xerr)
+  module subroutine point_init_contents (point, x, y, yerr, xerr)
     type(point_t), intent(out) :: point
     real(default), intent(in) :: x, y
     real(default), intent(in), optional :: yerr, xerr
@@ -6154,7 +7085,7 @@ results for underflow or overflow, respectively.
     if (present (xerr))  point%xerr = xerr
   end subroutine point_init_contents
 
-  subroutine point_init_point (point, point_in)
+  module subroutine point_init_point (point, point_in)
     type(point_t), intent(out) :: point
     type(point_t), intent(in) :: point_in
     point%x = point_in%x
@@ -6239,8 +7170,15 @@ direction.
      module procedure plot_init_empty
      module procedure plot_init_plot
   end interface
+<<Analysis: sub interfaces>>=
+    module subroutine plot_init_empty (p, id, graph_options, drawing_options)
+      type(plot_t), intent(out) :: p
+      type(string_t), intent(in) :: id
+      type(graph_options_t), intent(in), optional :: graph_options
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine plot_init_empty
 <<Analysis: procedures>>=
-  subroutine plot_init_empty (p, id, graph_options, drawing_options)
+  module subroutine plot_init_empty (p, id, graph_options, drawing_options)
     type(plot_t), intent(out) :: p
     type(string_t), intent(in) :: id
     type(graph_options_t), intent(in), optional :: graph_options
@@ -6248,13 +7186,13 @@ direction.
     if (present (graph_options)) then
        p%graph_options = graph_options
     else
-       call graph_options_init (p%graph_options)
+       call p%graph_options%init ()
     end if
-    call graph_options_set (p%graph_options, id = id)
+    call p%graph_options%set (id = id)
     if (present (drawing_options)) then
        p%drawing_options = drawing_options
     else
-       call drawing_options_init_plot (p%drawing_options)
+       call p%drawing_options%init_plot ()
     end if
   end subroutine plot_init_empty
 
@@ -6264,8 +7202,14 @@ set of drawing options.
 
 Since [[p]] has pointer (sub)components, we have to explicitly deep-copy the
 original.
+<<Analysis: sub interfaces>>=
+    module subroutine plot_init_plot (p, p_in, drawing_options)
+      type(plot_t), intent(out) :: p
+      type(plot_t), intent(in) :: p_in
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine plot_init_plot
 <<Analysis: procedures>>=
-  subroutine plot_init_plot (p, p_in, drawing_options)
+  module subroutine plot_init_plot (p, p_in, drawing_options)
     type(plot_t), intent(out) :: p
     type(plot_t), intent(in) :: p_in
     type(drawing_options_t), intent(in), optional :: drawing_options
@@ -6606,9 +7550,9 @@ filled one by one, optionally with modified drawing options.
     if (present (graph_options)) then
        g%graph_options = graph_options
     else
-       call graph_options_init (g%graph_options)
+       call g%graph_options%init ()
     end if
-    call graph_options_set (g%graph_options, id = id)
+    call g%graph_options%set (id = id)
   end subroutine graph_init
 
 @ %def graph_init
@@ -6627,7 +7571,7 @@ filled one by one, optionally with modified drawing options.
     gro => histogram_get_graph_options_ptr (g%el(i)%h)
     dro => histogram_get_drawing_options_ptr (g%el(i)%h)
     id = graph_options_get_id (gro)
-    call drawing_options_set (dro, dataset = "dat." // id)
+    call dro%set (dataset = "dat." // id)
   end subroutine graph_insert_histogram
 
 @ %def graph_insert_histogram
@@ -6646,7 +7590,7 @@ filled one by one, optionally with modified drawing options.
     gro => plot_get_graph_options_ptr (g%el(i)%p)
     dro => plot_get_drawing_options_ptr (g%el(i)%p)
     id = graph_options_get_id (gro)
-    call drawing_options_set (dro, dataset = "dat." // id)
+    call dro%set (dataset = "dat." // id)
   end subroutine graph_insert_plot
 
 @ %def graph_insert_plot
@@ -7077,17 +8021,17 @@ Return a pointer to the next object in the list.
        call observable_write (obj%obs, unit)
     case (AN_HISTOGRAM)
        if (verb) then
-          call graph_options_write (obj%h%graph_options, unit)
+          call obj%h%graph_options%write (unit)
           write (u, *)
-          call drawing_options_write (obj%h%drawing_options, unit)
+          call obj%h%drawing_options%write (unit)
           write (u, *)
        end if
        call histogram_write (obj%h, unit)
     case (AN_PLOT)
        if (verb) then
-          call graph_options_write (obj%p%graph_options, unit)
+          call obj%p%graph_options%write (unit)
           write (u, *)
-          call drawing_options_write (obj%p%drawing_options, unit)
+          call obj%p%drawing_options%write (unit)
           write (u, *)
        end if
        call plot_write (obj%p, unit)
@@ -7141,8 +8085,6 @@ details.
 The iterator is used only for elementary analysis objects that contain plot
 data: histograms or plots.  It is invalid for meta-objects (graphs) and
 non-graphical objects (observables).
-<<Analysis: public>>=
-  public :: analysis_iterator_t
 <<Analysis: types>>=
   type :: analysis_iterator_t
     private
@@ -7171,8 +8113,6 @@ non-graphical objects (observables).
 @ %def analysis_iterator_init
 @ The iterator is valid as long as it points to an existing entry.  An
 iterator for a data object without array data (observable) is always invalid.
-<<Analysis: public>>=
-  public :: analysis_iterator_is_valid
 <<Analysis: procedures>>=
   function analysis_iterator_is_valid (iterator) result (valid)
     logical :: valid
@@ -7193,8 +8133,6 @@ iterator for a data object without array data (observable) is always invalid.
 
 @ %def analysis_iterator_is_valid
 @ Advance the iterator.
-<<Analysis: public>>=
-  public :: analysis_iterator_advance
 <<Analysis: procedures>>=
   subroutine analysis_iterator_advance (iterator)
     type(analysis_iterator_t), intent(inout) :: iterator
@@ -7209,8 +8147,6 @@ iterator for a data object without array data (observable) is always invalid.
 
 @ %def analysis_iterator_advance
 @ Retrieve the object type:
-<<Analysis: public>>=
-  public :: analysis_iterator_get_type
 <<Analysis: procedures>>=
   function analysis_iterator_get_type (iterator) result (type)
     integer :: type
@@ -7224,8 +8160,6 @@ takes the data descriptors as optional arguments.  Data which do not occur in
 the selected type trigger to an error condition.
 
 The iterator must point to a valid entry.
-<<Analysis: public>>=
-  public :: analysis_iterator_get_data
 <<Analysis: procedures>>=
   subroutine analysis_iterator_get_data (iterator, &
        x, y, yerr, xerr, width, excess, index, n_total)
@@ -7300,8 +8234,11 @@ identified by their ID strings and types.
 @ Delete the analysis store
 <<Analysis: public>>=
   public :: analysis_final
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_final ()
+    end subroutine analysis_final
 <<Analysis: procedures>>=
-  subroutine analysis_final ()
+  module subroutine analysis_final ()
     type(analysis_object_t), pointer :: current
     do while (associated (analysis_store%first))
        current => analysis_store%first
@@ -7365,8 +8302,13 @@ a new entry.
 @ Get the type of a analysis object
 <<Analysis: public>>=
   public :: analysis_store_get_object_type
+<<Analysis: sub interfaces>>=
+    module function analysis_store_get_object_type (id) result (type)
+      type(string_t), intent(in) :: id
+      integer :: type
+    end function analysis_store_get_object_type
 <<Analysis: procedures>>=
-  function analysis_store_get_object_type (id) result (type)
+  module function analysis_store_get_object_type (id) result (type)
     type(string_t), intent(in) :: id
     integer :: type
     type(analysis_object_t), pointer :: object
@@ -7396,8 +8338,12 @@ a new entry.
 @ Allocate an array and fill it with all existing IDs.
 <<Analysis: public>>=
   public :: analysis_store_get_ids
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_store_get_ids (id)
+      type(string_t), dimension(:), allocatable, intent(out) :: id
+    end subroutine analysis_store_get_ids
 <<Analysis: procedures>>=
-  subroutine analysis_store_get_ids (id)
+  module subroutine analysis_store_get_ids (id)
     type(string_t), dimension(:), allocatable, intent(out) :: id
     type(analysis_object_t), pointer :: current
     integer :: i
@@ -7503,8 +8449,14 @@ Write a driver file for an array of objects.
 The specific versions below:
 <<Analysis: public>>=
   public :: analysis_init_observable
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_init_observable (id, obs_label, obs_unit, graph_options)
+      type(string_t), intent(in) :: id
+      type(string_t), intent(in), optional :: obs_label, obs_unit
+      type(graph_options_t), intent(in), optional :: graph_options
+    end subroutine analysis_init_observable
 <<Analysis: procedures>>=
-  subroutine analysis_init_observable (id, obs_label, obs_unit, graph_options)
+  module subroutine analysis_init_observable (id, obs_label, obs_unit, graph_options)
     type(string_t), intent(in) :: id
     type(string_t), intent(in), optional :: obs_label, obs_unit
     type(graph_options_t), intent(in), optional :: graph_options
@@ -7524,8 +8476,30 @@ The specific versions below:
      module procedure analysis_init_histogram_bin_width
   end interface
 
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_init_histogram_n_bins &
+         (id, lower_bound, upper_bound, n_bins, normalize_bins, &
+          obs_label, obs_unit, graph_options, drawing_options)
+      type(string_t), intent(in) :: id
+      real(default), intent(in) :: lower_bound, upper_bound
+      integer, intent(in) :: n_bins
+      logical, intent(in) :: normalize_bins
+      type(string_t), intent(in), optional :: obs_label, obs_unit
+      type(graph_options_t), intent(in), optional :: graph_options
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine analysis_init_histogram_n_bins
+    module subroutine analysis_init_histogram_bin_width &
+         (id, lower_bound, upper_bound, bin_width, normalize_bins, &
+          obs_label, obs_unit, graph_options, drawing_options)
+      type(string_t), intent(in) :: id
+      real(default), intent(in) :: lower_bound, upper_bound, bin_width
+      logical, intent(in) :: normalize_bins
+      type(string_t), intent(in), optional :: obs_label, obs_unit
+      type(graph_options_t), intent(in), optional :: graph_options
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine analysis_init_histogram_bin_width
 <<Analysis: procedures>>=
-  subroutine analysis_init_histogram_n_bins &
+  module subroutine analysis_init_histogram_n_bins &
        (id, lower_bound, upper_bound, n_bins, normalize_bins, &
         obs_label, obs_unit, graph_options, drawing_options)
     type(string_t), intent(in) :: id
@@ -7544,7 +8518,7 @@ The specific versions below:
          obs_label, obs_unit, graph_options, drawing_options)
   end subroutine analysis_init_histogram_n_bins
 
-  subroutine analysis_init_histogram_bin_width &
+  module subroutine analysis_init_histogram_bin_width &
        (id, lower_bound, upper_bound, bin_width, normalize_bins, &
         obs_label, obs_unit, graph_options, drawing_options)
     type(string_t), intent(in) :: id
@@ -7566,8 +8540,14 @@ The specific versions below:
 @ %def analysis_init_histogram_bin_width
 <<Analysis: public>>=
   public :: analysis_init_plot
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_init_plot (id, graph_options, drawing_options)
+      type(string_t), intent(in) :: id
+      type(graph_options_t), intent(in), optional :: graph_options
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine analysis_init_plot
 <<Analysis: procedures>>=
-  subroutine analysis_init_plot (id, graph_options, drawing_options)
+  module subroutine analysis_init_plot (id, graph_options, drawing_options)
     type(string_t), intent(in) :: id
     type(graph_options_t), intent(in), optional :: graph_options
     type(drawing_options_t), intent(in), optional :: drawing_options
@@ -7581,8 +8561,14 @@ The specific versions below:
 @ %def analysis_init_plot
 <<Analysis: public>>=
   public :: analysis_init_graph
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_init_graph (id, n_elements, graph_options)
+      type(string_t), intent(in) :: id
+      integer, intent(in) :: n_elements
+      type(graph_options_t), intent(in), optional :: graph_options
+    end subroutine analysis_init_graph
 <<Analysis: procedures>>=
-  subroutine analysis_init_graph (id, n_elements, graph_options)
+  module subroutine analysis_init_graph (id, n_elements, graph_options)
     type(string_t), intent(in) :: id
     integer, intent(in) :: n_elements
     type(graph_options_t), intent(in), optional :: graph_options
@@ -7606,8 +8592,14 @@ state.
      module procedure analysis_store_clear_all
   end interface
 
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_store_clear_obj (id)
+      type(string_t), intent(in) :: id
+    end subroutine analysis_store_clear_obj
+    module subroutine analysis_store_clear_all ()
+    end subroutine analysis_store_clear_all
 <<Analysis: procedures>>=
-  subroutine analysis_store_clear_obj (id)
+  module subroutine analysis_store_clear_obj (id)
     type(string_t), intent(in) :: id
     type(analysis_object_t), pointer :: obj
     obj => analysis_store_get_object_ptr (id)
@@ -7616,7 +8608,7 @@ state.
     end if
   end subroutine analysis_store_clear_obj
 
-  subroutine analysis_store_clear_all ()
+  module subroutine analysis_store_clear_all ()
     type(analysis_object_t), pointer :: obj
     obj => analysis_store%first
     do while (associated (obj))
@@ -7631,8 +8623,16 @@ There is one generic recording function whose behavior depends on the
 type of analysis object.
 <<Analysis: public>>=
   public :: analysis_record_data
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_record_data (id, x, y, yerr, xerr, &
+         weight, excess, success, exist)
+      type(string_t), intent(in) :: id
+      real(default), intent(in) :: x
+      real(default), intent(in), optional :: y, yerr, xerr, weight, excess
+      logical, intent(out), optional :: success, exist
+    end subroutine analysis_record_data
 <<Analysis: procedures>>=
-  subroutine analysis_record_data (id, x, y, yerr, xerr, &
+  module subroutine analysis_record_data (id, x, y, yerr, xerr, &
        weight, excess, success, exist)
     type(string_t), intent(in) :: id
     real(default), intent(in) :: x
@@ -7657,8 +8657,15 @@ This routine sets up the array of graph elements by copying the graph elements
 given as input.  The object must exist and already be initialized as a graph.
 <<Analysis: public>>=
   public :: analysis_fill_graph
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_fill_graph (id, i, id_in, drawing_options)
+      type(string_t), intent(in) :: id
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: id_in
+      type(drawing_options_t), intent(in), optional :: drawing_options
+    end subroutine analysis_fill_graph
 <<Analysis: procedures>>=
-  subroutine analysis_fill_graph (id, i, id_in, drawing_options)
+  module subroutine analysis_fill_graph (id, i, id_in, drawing_options)
     type(string_t), intent(in) :: id
     integer, intent(in) :: i
     type(string_t), intent(in) :: id_in
@@ -7694,8 +8701,13 @@ given as input.  The object must exist and already be initialized as a graph.
 Check if a named object exists.
 <<Analysis: public>>=
   public :: analysis_exists
+<<Analysis: sub interfaces>>=
+    module function analysis_exists (id) result (flag)
+      type(string_t), intent(in) :: id
+      logical :: flag
+    end function analysis_exists
 <<Analysis: procedures>>=
-  function analysis_exists (id) result (flag)
+  module function analysis_exists (id) result (flag)
     type(string_t), intent(in) :: id
     logical :: flag
     type(analysis_object_t), pointer :: obj
@@ -7715,8 +8727,29 @@ Check if a named object exists.
   public :: analysis_get_n_entries
   public :: analysis_get_average
   public :: analysis_get_error
+
+<<Analysis: sub interfaces>>=
+    module function analysis_get_n_elements (id) result (n)
+      integer :: n
+      type(string_t), intent(in) :: id
+    end function analysis_get_n_elements
+    module function analysis_get_n_entries (id, within_bounds) result (n)
+      integer :: n
+      type(string_t), intent(in) :: id
+      logical, intent(in), optional :: within_bounds
+    end function analysis_get_n_entries
+    module function analysis_get_average (id, within_bounds) result (avg)
+      real(default) :: avg
+      type(string_t), intent(in) :: id
+      logical, intent(in), optional :: within_bounds
+    end function analysis_get_average
+    module function analysis_get_error (id, within_bounds) result (err)
+      real(default) :: err
+      type(string_t), intent(in) :: id
+      logical, intent(in), optional :: within_bounds
+    end function analysis_get_error
 <<Analysis: procedures>>=
-  function analysis_get_n_elements (id) result (n)
+  module function analysis_get_n_elements (id) result (n)
     integer :: n
     type(string_t), intent(in) :: id
     type(analysis_object_t), pointer :: obj
@@ -7728,7 +8761,7 @@ Check if a named object exists.
     end if
   end function analysis_get_n_elements
 
-  function analysis_get_n_entries (id, within_bounds) result (n)
+  module function analysis_get_n_entries (id, within_bounds) result (n)
     integer :: n
     type(string_t), intent(in) :: id
     logical, intent(in), optional :: within_bounds
@@ -7741,7 +8774,7 @@ Check if a named object exists.
     end if
   end function analysis_get_n_entries
 
-  function analysis_get_average (id, within_bounds) result (avg)
+  module function analysis_get_average (id, within_bounds) result (avg)
     real(default) :: avg
     type(string_t), intent(in) :: id
     type(analysis_object_t), pointer :: obj
@@ -7754,7 +8787,7 @@ Check if a named object exists.
     end if
   end function analysis_get_average
 
-  function analysis_get_error (id, within_bounds) result (err)
+  module function analysis_get_error (id, within_bounds) result (err)
     real(default) :: err
     type(string_t), intent(in) :: id
     type(analysis_object_t), pointer :: obj
@@ -7780,8 +8813,16 @@ Check if a named object exists.
      module procedure analysis_has_plots_obj
   end interface
 
+<<Analysis: sub interfaces>>=
+    module function analysis_has_plots_any () result (flag)
+      logical :: flag
+    end function analysis_has_plots_any
+    module function analysis_has_plots_obj (id) result (flag)
+      logical :: flag
+      type(string_t), dimension(:), intent(in) :: id
+    end function analysis_has_plots_obj
 <<Analysis: procedures>>=
-  function analysis_has_plots_any () result (flag)
+  module function analysis_has_plots_any () result (flag)
     logical :: flag
     type(analysis_object_t), pointer :: obj
     flag = .false.
@@ -7792,7 +8833,7 @@ Check if a named object exists.
     end do
   end function analysis_has_plots_any
 
-  function analysis_has_plots_obj (id) result (flag)
+  module function analysis_has_plots_obj (id) result (flag)
     logical :: flag
     type(string_t), dimension(:), intent(in) :: id
     type(analysis_object_t), pointer :: obj
@@ -7812,8 +8853,6 @@ Check if a named object exists.
 \subsubsection{Iterators}
 Initialize an iterator for the given object.  If the object does not exist or
 has wrong type, the iterator will be invalid.
-<<Analysis: public>>=
-  public :: analysis_init_iterator
 <<Analysis: procedures>>=
   subroutine analysis_init_iterator (id, iterator)
     type(string_t), intent(in) :: id
@@ -7835,8 +8874,18 @@ has wrong type, the iterator will be invalid.
   end interface
 
 @ %def interface
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_write_object (id, unit, verbose)
+      type(string_t), intent(in) :: id
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: verbose
+    end subroutine analysis_write_object
+    module subroutine analysis_write_all (unit, verbose)
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: verbose
+    end subroutine analysis_write_all
 <<Analysis: procedures>>=
-  subroutine analysis_write_object (id, unit, verbose)
+  module subroutine analysis_write_object (id, unit, verbose)
     type(string_t), intent(in) :: id
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -7849,7 +8898,7 @@ has wrong type, the iterator will be invalid.
     end if
   end subroutine analysis_write_object
 
-  subroutine analysis_write_all (unit, verbose)
+  module subroutine analysis_write_all (unit, verbose)
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     type(analysis_object_t), pointer :: obj
@@ -7866,8 +8915,14 @@ has wrong type, the iterator will be invalid.
 @ %def analysis_write_all
 <<Analysis: public>>=
   public :: analysis_write_driver
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_write_driver (filename_data, id, unit)
+      type(string_t), intent(in) :: filename_data
+      type(string_t), dimension(:), intent(in), optional :: id
+      integer, intent(in), optional :: unit
+    end subroutine analysis_write_driver
 <<Analysis: procedures>>=
-  subroutine analysis_write_driver (filename_data, id, unit)
+  module subroutine analysis_write_driver (filename_data, id, unit)
     type(string_t), intent(in) :: filename_data
     type(string_t), dimension(:), intent(in), optional :: id
     integer, intent(in), optional :: unit
@@ -7881,8 +8936,14 @@ has wrong type, the iterator will be invalid.
 @ %def analysis_write_driver
 <<Analysis: public>>=
   public :: analysis_compile_tex
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_compile_tex (file, has_gmlcode, os_data)
+      type(string_t), intent(in) :: file
+      logical, intent(in) :: has_gmlcode
+      type(os_data_t), intent(in) :: os_data
+    end subroutine analysis_compile_tex
 <<Analysis: procedures>>=
-  subroutine analysis_compile_tex (file, has_gmlcode, os_data)
+  module subroutine analysis_compile_tex (file, has_gmlcode, os_data)
     type(string_t), intent(in) :: file
     logical, intent(in) :: has_gmlcode
     type(os_data_t), intent(in) :: os_data
@@ -7901,8 +8962,6 @@ has wrong type, the iterator will be invalid.
 
 @ %def analysis_compile_tex
 @ Write header for generic data output to an ifile.
-<<Analysis: public>>=
-  public :: analysis_get_header
 <<Analysis: procedures>>=
   subroutine analysis_get_header (id, header, comment)
     type(string_t), intent(in) :: id
@@ -7919,8 +8978,15 @@ has wrong type, the iterator will be invalid.
 @ Write a makefile in order to do the compile steps.
 <<Analysis: public>>=
   public :: analysis_write_makefile
+<<Analysis: sub interfaces>>=
+    module subroutine analysis_write_makefile (filename, unit, has_gmlcode, os_data)
+      type(string_t), intent(in) :: filename
+      integer, intent(in) :: unit
+      logical, intent(in) :: has_gmlcode
+      type(os_data_t), intent(in) :: os_data
+    end subroutine analysis_write_makefile
 <<Analysis: procedures>>=
-  subroutine analysis_write_makefile (filename, unit, has_gmlcode, os_data)
+  module subroutine analysis_write_makefile (filename, unit, has_gmlcode, os_data)
     type(string_t), intent(in) :: filename
     integer, intent(in) :: unit
     logical, intent(in) :: has_gmlcode

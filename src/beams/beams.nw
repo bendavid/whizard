@@ -11008,7 +11008,7 @@ but we set its mass artificially to zero.
     integer, intent(in), optional :: mode
     data%model => model
     if (present (mode))  data%mode = mode
-    if (pdg_array_get (pdg_in, 1) /= 25) then
+    if (pdg_in%get (1) /= 25) then
        call msg_fatal ("Test spectrum function: input flavor must be 's'")
     end if
     call data%flv_in%init (25, model)
@@ -11303,7 +11303,7 @@ We have two versions, one with radiated particles, one without.
     logical, intent(in) :: with_radiation
     data%model => model
     data%with_radiation = with_radiation
-    if (pdg_array_get (pdg_in, 1) /= 25) then
+    if (pdg_in%get (1) /= 25) then
        call msg_fatal ("Test structure function: input flavor must be 's'")
     end if
     call data%flv_in%init (25, model)
@@ -11597,7 +11597,7 @@ We have two versions, one with radiated particles, one without.
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
     data%model => model
-    if (pdg_array_get (pdg_in, 1) /= 25) then
+    if (pdg_in%get (1) /= 25) then
        call msg_fatal ("Test generator: input flavor must be 's'")
     end if
     call data%flv_in%init (25, model)
@@ -14157,10 +14157,10 @@ singularity which should in principle be resummed.
     integer :: i, n_flv
     real(default) :: charge
     data%model => model
-    n_flv = pdg_array_get_length (pdg_in)
+    n_flv = pdg_in%get_length ()
     allocate (data%flv_in (n_flv))
     do i = 1, n_flv
-       call data%flv_in(i)%init (pdg_array_get (pdg_in, i), model)
+       call data%flv_in(i)%init (pdg_in%get (i), model)
     end do
     data%alpha = alpha
     data%q_max = q_max
@@ -15575,10 +15575,10 @@ particle mass.
     integer :: n_flv, i
     data%model => model
     data%mode = mode
-    n_flv = pdg_array_get_length (pdg_in)
+    n_flv = pdg_in%get_length ()
     allocate (data%flv_in (n_flv))
     do i = 1, n_flv
-       call data%flv_in(i)%init (pdg_array_get (pdg_in, i), model)
+       call data%flv_in(i)%init (pdg_in%get (i), model)
     end do
     data%alpha = alpha
     data%E_max = q_max / 2
@@ -16910,11 +16910,11 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
          [1,2,3,4,5,6,11,13,15,-1,-2,-3,-4,-5,-6,-11,-13,-15])) then
        data%error = WRONG_PRT;  return
     end if
-    n_flv = pdg_array_get_length (pdg_in)
+    n_flv = pdg_in%get_length ()
     allocate (data%flv_in (n_flv))
     allocate (data%flv_out(n_flv))
     do i = 1, n_flv
-       call data%flv_in(i)%init (pdg_array_get (pdg_in, i), model)
+       call data%flv_in(i)%init (pdg_in%get (i), model)
     end do
     data%pt_max = pt_max
     data%sqrts = sqrts
@@ -18291,11 +18291,11 @@ $\hat\sigma$ as a function of $\sqrt{\hat s}$.
     real(default), intent(in), optional :: norm
     real(default), dimension(2) :: m2
     integer :: i, j
-    data%n_flv = pdg_array_get_length (pdg_in)
+    data%n_flv = pdg_in%get_length ()
     allocate (data%flv_in (maxval (data%n_flv), 2))
     do i = 1, 2
        do j = 1, data%n_flv(i)
-          call data%flv_in(j, i)%init (pdg_array_get (pdg_in(i), j), model)
+          call data%flv_in(j, i)%init (pdg_in(i)%get (j), model)
        end do
     end do
     m2 = data%flv_in(1,:)%get_mass ()
@@ -18895,8 +18895,8 @@ generator factory.
     if (any (spread < 0)) then
        call msg_fatal ("Gaussian beam spread: must not be negative")
     end if
-    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
-    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    call data%flv_in(1)%init (pdg_in(1)%get (1), model)
+    call data%flv_in(2)%init (pdg_in(2)%get (1), model)
     data%spread = spread
     call move_alloc (from = rng_factory, to = data%rng_factory)
   end subroutine gaussian_data_init
@@ -19518,11 +19518,11 @@ This is public only for the unit tests.
     type(string_t), intent(in) :: dir
     type(string_t), intent(in) :: file
     logical, intent(in), optional :: warn_eof
-    if (any (pdg_array_get_length (pdg_in) /= 1)) then
+    if (any (pdg_in%get_length () /= 1)) then
        call msg_fatal ("Beam events: incoming beam particles must be unique")
     end if
-    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
-    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    call data%flv_in(1)%init (pdg_in(1)%get (1), model)
+    call data%flv_in(2)%init (pdg_in(2)%get (1), model)
     data%dir = dir
     data%file = file
     if (present (warn_eof))  data%warn_eof = warn_eof
@@ -20342,11 +20342,11 @@ generator is used instead.
     integer, intent(in) :: ver, rev, chat
     logical, intent(in) :: with_radiation
     data%model => model
-    if (any (pdg_array_get_length (pdg_in) /= 1)) then
+    if (any (pdg_in%get_length () /= 1)) then
        call msg_fatal ("CIRCE1: incoming beam particles must be unique")
     end if
-    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
-    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    call data%flv_in(1)%init (pdg_in(1)%get (1), model)
+    call data%flv_in(2)%init (pdg_in(2)%get (1), model)
     data%pdg_in = data%flv_in%get_pdg ()
     data%m_in = data%flv_in%get_mass ()
     data%sqrts = sqrts
@@ -21436,11 +21436,11 @@ The CIRCE2 parameters are: file and collider specification, incoming
     type(string_t), intent(in) :: file, design
     integer :: h
     data%model => model
-    if (any (pdg_array_get_length (pdg_in) /= 1)) then
+    if (any (pdg_in%get_length () /= 1)) then
        call msg_fatal ("CIRCE2: incoming beam particles must be unique")
     end if
-    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
-    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    call data%flv_in(1)%init (pdg_in(1)%get (1), model)
+    call data%flv_in(2)%init (pdg_in(2)%get (1), model)
     data%pdg_in = data%flv_in%get_pdg ()
     data%sqrts = sqrts
     data%polarized = polarized
@@ -22458,12 +22458,12 @@ needed.
     type(string_t), intent(in) :: path
     logical, intent(in), optional :: hoppet_b_matching
     data%model => model
-    if (pdg_array_get_length (pdg_in) /= 1) &
+    if (pdg_in%get_length () /= 1) &
          call msg_fatal ("PDF: incoming particle must be unique")
-    call data%flv_in%init (pdg_array_get (pdg_in, 1), model)
+    call data%flv_in%init (pdg_in%get (1), model)
     data%mask = .true.
     data%mask_photon = .true.
-    select case (pdg_array_get (pdg_in, 1))
+    select case (pdg_in%get (1))
     case (PROTON)
        data%name = var_str (PDF_BUILTIN_DEFAULT_PROTON)
        data%invert = .false.
@@ -23735,10 +23735,10 @@ extended or quadruple, we use auxiliary variables for type casting.
        return
     end if
     data%model => model
-    if (pdg_array_get_length (pdg_in) /= 1) &
+    if (pdg_in%get_length () /= 1) &
          call msg_fatal ("PDF: incoming particle must be unique")
-    call data%flv_in%init (pdg_array_get (pdg_in, 1), model)
-    select case (pdg_array_get (pdg_in, 1))
+    call data%flv_in%init (pdg_in%get (1), model)
+    select case (pdg_in%get (1))
     case (PROTON)
        data%set = 1
     case (-PROTON)
@@ -24907,7 +24907,7 @@ flavors (beam index, component index) for the hard process.
              var_str ("the 'lhapdf_photon' structure function.")])
     case ("lhapdf")
        allocate (lhapdf_data_t :: data)
-       if (pdg_array_get (pdg_in(i_beam(1)), 1) == PHOTON) then
+       if (pdg_in(i_beam(1))%get (1) == PHOTON) then
           call msg_fatal ("The 'lhapdf' structure is intended only for protons and", &
                [var_str ("pions, please use 'lhapdf_photon' for photon beams.")])
        end if
@@ -24930,8 +24930,8 @@ flavors (beam index, component index) for the hard process.
        end select
     case ("lhapdf_photon")
        allocate (lhapdf_data_t :: data)
-       if (pdg_array_get_length (pdg_in(i_beam(1))) /= 1 .or. &
-            pdg_array_get (pdg_in(i_beam(1)), 1) /= PHOTON) then
+       if (pdg_in(i_beam(1))%get_length () /= 1 .or. &
+            pdg_in(i_beam(1))%get (1) /= PHOTON) then
           call msg_fatal ("The 'lhapdf_photon' structure function is exclusively for", &
                [var_str ("photon PDFs, i.e. for photons as beam particles")])
        end if
@@ -25029,12 +25029,12 @@ flavors (beam index, component index) for the hard process.
        allocate (ewa_data_t :: data)
        allocate (pdg_prc1 (size (pdg_prc, 2)))
        pdg_prc1 = pdg_prc(i_beam(1),:)
-       if (any (pdg_array_get_length (pdg_prc1) /= 1) &
+       if (any (pdg_prc1%get_length () /= 1) &
             .or. any (pdg_prc1 /= pdg_prc1(1))) then
           call msg_fatal &
                ("EWA: process incoming particle (W/Z) must be unique")
        end if
-       ewa_id = abs (pdg_array_get (pdg_prc1(1), 1))
+       ewa_id = abs (pdg_prc1(1)%get (1))
        ewa_x_min = var_list%get_rval (var_str ("ewa_x_min"))
        ewa_pt_max = var_list%get_rval (var_str ("ewa_pt_max"))
        if (vanishes (ewa_pt_max)) then

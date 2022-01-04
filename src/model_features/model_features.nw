@@ -1945,6 +1945,7 @@ module radiation_generator
 <<Use strings>>
   use diagnostics
   use io_units
+  use sorting, only: sort_abs
   use physics_defs, only: PHOTON, GLUON
   use pdg_arrays
   use flavors
@@ -4716,14 +4717,13 @@ pseudo-observable is always known when it is referred to.
        if (char (node%tag) == "@evt") then
           write (u, "(1x,A)") "[event subevent]"
        else if (node%value_is_known) then
-          call subevt_write &
-               (node%pval, unit, prefix = repeat ("|  ", ind + 1))
+          call node%pval%write (unit, prefix = repeat ("|  ", ind + 1))
        else
           write (u, "(1x,A)") "[unknown subevent]"
        end if
     case (V_PDG)
        write (u, "(1x)", advance="no")
-       call pdg_array_write (node%aval, u);  write (u, *)
+       call node%aval%write (u);  write (u, *)
     case (V_STR)
        if (node%value_is_known) then
           write (u, "(A)")  '"' // char (node%sval) // '"'
@@ -5903,12 +5903,12 @@ test.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))
     if (present (en0)) then
        do i = 1, n
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval
        end do
@@ -5933,12 +5933,12 @@ test.
     type(jet_definition_t) :: jet_def
     logical :: keep_jets, exclusive
     call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))
     if (present (en0)) then
        do i = 1, n
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval
        end do
@@ -5977,10 +5977,10 @@ create a mask which is true only for those particles that pass the test.
     real(default) :: reco_r0
     logical :: keep_flv
     reco_r0 = en1%photon_rec_r0
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (prt (n))
     do i = 1, n
-       prt(i) = subevt_get_prt (en1%pval, i)
+       prt(i) = en1%pval%get_prt (i)
        if (.not. prt_is_recombinable (prt (i))) then
           call msg_fatal ("Only charged leptons, quarks, and " //&
                "photons can be included in photon recombination.")
@@ -5993,7 +5993,7 @@ create a mask which is true only for those particles that pass the test.
     if (present (en0)) then
        do i = 1, n
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval
        end do
@@ -6021,12 +6021,12 @@ test.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))
     if (present (en0)) then
-       do i = 1, subevt_get_length (en1%pval)
+       do i = 1, n
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval
        end do
@@ -6049,13 +6049,13 @@ jets, respectively.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))    
-    do i = 1, subevt_get_length (en1%pval)
-       mask1(i) = prt_is_b_jet (subevt_get_prt (en1%pval, i))
+    do i = 1, n
+       mask1(i) = prt_is_b_jet (en1%pval%get_prt (i))
        if (present (en0)) then
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval .and. mask1(i)
         end if
@@ -6071,13 +6071,13 @@ jets, respectively.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))    
-    do i = 1, subevt_get_length (en1%pval)
-       mask1(i) = .not. prt_is_b_jet (subevt_get_prt (en1%pval, i))
+    do i = 1, n
+       mask1(i) = .not. prt_is_b_jet (en1%pval%get_prt (i))
        if (present (en0)) then
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval .and. mask1(i)
         end if
@@ -6093,14 +6093,14 @@ jets, respectively.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))    
-    do i = 1, subevt_get_length (en1%pval)
-       mask1(i) = .not. prt_is_b_jet (subevt_get_prt (en1%pval, i)) &
-            .and. prt_is_c_jet (subevt_get_prt (en1%pval, i))
+    do i = 1, n
+       mask1(i) = .not. prt_is_b_jet (en1%pval%get_prt (i)) &
+            .and. prt_is_c_jet (en1%pval%get_prt (i))
        if (present (en0)) then
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval .and. mask1(i)
         end if
@@ -6116,14 +6116,14 @@ jets, respectively.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     allocate (mask1 (n))    
-    do i = 1, subevt_get_length (en1%pval)
-       mask1(i) = .not. prt_is_b_jet (subevt_get_prt (en1%pval, i)) &
-            .and. .not. prt_is_c_jet (subevt_get_prt (en1%pval, i))
+    do i = 1, n
+       mask1(i) = .not. prt_is_b_jet (en1%pval%get_prt (i)) &
+            .and. .not. prt_is_c_jet (en1%pval%get_prt (i))
        if (present (en0)) then
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval .and. mask1(i)
         end if
@@ -6171,7 +6171,7 @@ particles before antiparticles).
     integer, dimension(:), allocatable :: ival
     real(default), dimension(:), allocatable :: rval
     integer :: i, n
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     if (present (en0)) then
        select case (en0%result_type)
        case (V_INT);  allocate (ival (n))
@@ -6179,7 +6179,7 @@ particles before antiparticles).
        end select
        do i = 1, n
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           select case (en0%result_type)
           case (V_INT);  ival(i) = en0%ival
@@ -6205,11 +6205,11 @@ subevent.  [[any]] and [[no]] are analogous.
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     lval = .true.
     do i = 1, n
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        call eval_node_evaluate (en0)
        lval = en0%lval
        if (.not. lval)  exit
@@ -6221,11 +6221,11 @@ subevent.  [[any]] and [[no]] are analogous.
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     lval = .false.
     do i = 1, n
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        call eval_node_evaluate (en0)
        lval = en0%lval
        if (lval)  exit
@@ -6237,11 +6237,11 @@ subevent.  [[any]] and [[no]] are analogous.
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     lval = .true.
     do i = 1, n
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        call eval_node_evaluate (en0)
        lval = .not. en0%lval
        if (lval)  exit
@@ -6258,12 +6258,12 @@ condition, it returns simply the length of the subevent.
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout), optional :: en0
     integer :: i, n, count
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     if (present (en0)) then
        count = 0
        do i = 1, n
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           call eval_node_evaluate (en0)
           if (en0%lval)  count = count + 1
        end do
@@ -6283,11 +6283,11 @@ corresponding expression.
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     rval = 0._default
     do i = 1, n
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        call eval_node_evaluate (en0)
        rval = rval + en0%rval
     end do
@@ -6298,11 +6298,11 @@ corresponding expression.
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = subevt_get_length (en1%pval)
+    n = en1%pval%get_length ()
     rval = 1._default
     do i = 1, n
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        call eval_node_evaluate (en0)
        rval = rval * en0%rval
     end do
@@ -6322,16 +6322,16 @@ particles of the first list.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask2
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     allocate (mask2 (n2))
     mask2 = .true.
     if (present (en0)) then
        do i = 1, n1
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           do j = 1, n2
-             en0%prt2 = subevt_get_prt (en2%pval, j)
+             en0%prt2 = en2%pval%get_prt (j)
              call eval_node_evaluate (en0)
              mask2(j) = mask2(j) .and. en0%lval
           end do
@@ -6352,15 +6352,15 @@ the test.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:,:), allocatable :: mask12
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     if (present (en0)) then
        allocate (mask12 (n1, n2))
        do i = 1, n1
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           do j = 1, n2
-             en0%prt2 = subevt_get_prt (en2%pval, j)
+             en0%prt2 = en2%pval%get_prt (j)
              call eval_node_evaluate (en0)
              mask12(i,j) = en0%lval
           end do
@@ -6383,16 +6383,16 @@ absent, the second argument is ignored.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     allocate (mask1 (n1))
     mask1 = .true.
     if (present (en0)) then
        do i = 1, n1
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           do j = 1, n2
-             en0%prt2 = subevt_get_prt (en2%pval, j)
+             en0%prt2 = en2%pval%get_prt (j)
              call eval_node_evaluate (en0)
              mask1(i) = mask1(i) .and. en0%lval
           end do
@@ -6414,16 +6414,16 @@ transferred unchanged.  (This case is not very useful, of course.)
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     allocate (mask1 (n1))
     mask1 = .true.
     if (present (en0)) then
        do i = 1, n1
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           do j = 1, n2
-             en0%prt2 = subevt_get_prt (en2%pval, j)
+             en0%prt2 = en2%pval%get_prt (j)
              call eval_node_evaluate (en0)
              mask1(i) = mask1(i) .and. en0%lval
           end do
@@ -6445,7 +6445,7 @@ taken as reference.  If [[en0]] is absent, we sort by default method
     integer, dimension(:), allocatable :: ival
     real(default), dimension(:), allocatable :: rval
     integer :: i, n1
-    n1 = subevt_get_length (en1%pval)
+    n1 = en1%pval%get_length ()
     if (present (en0)) then
        select case (en0%result_type)
        case (V_INT);  allocate (ival (n1))
@@ -6453,8 +6453,8 @@ taken as reference.  If [[en0]] is absent, we sort by default method
        end select
        do i = 1, n1
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
-          en0%prt2 = subevt_get_prt (en2%pval, 1)
+          en0%prt1 = en1%pval%get_prt (i)
+          en0%prt2 = en2%pval%get_prt (1)
           call eval_node_evaluate (en0)
           select case (en0%result_type)
           case (V_INT);  ival(i) = en0%ival
@@ -6483,14 +6483,14 @@ ignored.
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     lval = .true.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        do j = 1, n2
-          en0%prt2 = subevt_get_prt (en2%pval, j)
+          en0%prt2 = en2%pval%get_prt (j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              lval = en0%lval
@@ -6505,14 +6505,14 @@ ignored.
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     lval = .false.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        do j = 1, n2
-          en0%prt2 = subevt_get_prt (en2%pval, j)
+          en0%prt2 = en2%pval%get_prt (j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              lval = en0%lval
@@ -6527,14 +6527,14 @@ ignored.
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     lval = .true.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        do j = 1, n2
-          en0%prt2 = subevt_get_prt (en2%pval, j)
+          en0%prt2 = en2%pval%get_prt (j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              lval = .not. en0%lval
@@ -6562,8 +6562,8 @@ isolated from in [[en2]].
     integer, dimension(:), allocatable :: index
     real(default) :: eps, iso_n, r0, pt_gam
     logical, dimension(:,:), allocatable :: photon_mask
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     allocate (p_gam0 (n1), prt_gam0 (n1))
     eps = en1%photon_iso_eps
     iso_n = en1%photon_iso_n
@@ -6571,7 +6571,7 @@ isolated from in [[en2]].
     lval = .true.
     do i = 1, n1
        en0%index = i
-       prt = subevt_get_prt (en1%pval, i)
+       prt = en1%pval%get_prt (i)
        prt_gam0(i) = prt
        if (.not. prt_is_photon (prt_gam0(i))) &
             call msg_fatal ("Photon isolation can only " // &
@@ -6589,7 +6589,7 @@ isolated from in [[en2]].
     n_lep = 0
     n_gam = 0
     do i = 1, n2
-       prt = subevt_get_prt (en2%pval, i)
+       prt = en2%pval%get_prt (i)
        if (prt_is_parton (prt) .or. prt_is_clustered (prt)) then
           n_par = n_par + 1
        end if
@@ -6612,7 +6612,7 @@ isolated from in [[en2]].
     n_par = 0
     n_lep = 0
     do i = 1, n2
-       prt = subevt_get_prt (en2%pval, i)
+       prt = en2%pval%get_prt (i)
        if (prt_is_parton (prt) .or. prt_is_clustered (prt)) then
           n_par = n_par + 1
           p_par(n_par) = prt_get_momentum (prt)
@@ -6693,15 +6693,15 @@ no valid pair, we revert the status of the value to unknown.
     real(default), intent(out) :: rval
     logical, intent(out) :: is_known
     integer :: i, j, n1, n2
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     rval = 0
     is_known = .false.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = subevt_get_prt (en1%pval, i)
+       en0%prt1 = en1%pval%get_prt (i)
        do j = 1, n2
-          en0%prt2 = subevt_get_prt (en2%pval, j)
+          en0%prt2 = en2%pval%get_prt (j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              rval = en0%rval
@@ -6723,15 +6723,15 @@ there is no condition, it returns the number of valid particle pairs.
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     integer :: i, j, n1, n2, count
-    n1 = subevt_get_length (en1%pval)
-    n2 = subevt_get_length (en2%pval)
+    n1 = en1%pval%get_length ()
+    n2 = en2%pval%get_length ()
     if (present (en0)) then
        count = 0
        do i = 1, n1
           en0%index = i
-          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt1 = en1%pval%get_prt (i)
           do j = 1, n2
-             en0%prt2 = subevt_get_prt (en2%pval, j)
+             en0%prt2 = en2%pval%get_prt (j)
              if (are_disjoint (en0%prt1, en0%prt2)) then
                 call eval_node_evaluate (en0)
                 if (en0%lval)  count = count + 1
@@ -6742,8 +6742,8 @@ there is no condition, it returns the number of valid particle pairs.
        count = 0
        do i = 1, n1
           do j = 1, n2
-             if (are_disjoint (subevt_get_prt (en1%pval, i), &
-                               subevt_get_prt (en2%pval, j))) then
+             if (are_disjoint (en1%pval%get_prt (i), &
+                               en2%pval%get_prt (j))) then
                 count = count + 1
              end if
           end do
@@ -10437,12 +10437,12 @@ determine the result.
        end if
     case (EN_EVAL_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
-       en%value_is_known = subevt_is_nonempty (en%arg1%pval)
+       en%value_is_known = en%arg1%pval%is_nonempty ()
        if (en%value_is_known) then
           en%arg0%index => en%index
           en%index = 1
           en%arg0%prt1 => en%prt1
-          en%prt1 = subevt_get_prt (en%arg1%pval, 1)
+          en%prt1 = en%arg1%pval%get_prt (1)
           call eval_node_evaluate (en%arg0)
           en%rval = en%arg0%rval
        end if
@@ -10450,8 +10450,7 @@ determine the result.
        call eval_node_evaluate (en%arg1)
        call eval_node_evaluate (en%arg2)
        en%value_is_known = &
-            subevt_is_nonempty (en%arg1%pval) .and. &
-            subevt_is_nonempty (en%arg2%pval)
+            en%arg1%pval%is_nonempty () .and. en%arg2%pval%is_nonempty ()
        if (en%value_is_known) then
           en%arg0%index => en%index
           en%arg0%prt1 => en%prt1
@@ -12207,24 +12206,21 @@ observable and the node evaluation.
     write (u, "(A)")
 
     call subevt_init (subevt)
-    call subevt_reset (subevt, 1)
-    call subevt_set_incoming (subevt, 1, &
-         22, vector4_moving (1.e3_default, 1.e3_default, 1), &
-         0._default, [2])
-    call subevt_write (subevt, u)
-    call subevt_reset (subevt, 4)
-    call subevt_reset (subevt, 3)
-    call subevt_set_incoming (subevt, 1, &
-         21, vector4_moving (1.e3_default, 1.e3_default, 3), &
-         0._default, [1])
+    call subevt%reset (1)
+    call subevt%set_incoming (1, 22, &
+         vector4_moving (1.e3_default, 1.e3_default, 1), 0._default, [2])
+    call subevt%write (u)
+    call subevt%reset (4)
+    call subevt%reset (3)
+    call subevt%set_incoming (1, 21, &
+         vector4_moving (1.e3_default, 1.e3_default, 3), 0._default, [1])
     call subevt_polarize (subevt, 1, -1)
-    call subevt_set_outgoing (subevt, 2, &
-         1, vector4_moving (0._default, 1.e3_default, 3), &
+    call subevt%set_outgoing (2, 1, &
+         vector4_moving (0._default, 1.e3_default, 3), &
          -1.e6_default, [7])
-    call subevt_set_composite (subevt, 3, &
-         vector4_moving (-1.e3_default, 0._default, 3), &
-         [2, 7])
-    call subevt_write (subevt, u)
+    call subevt%set_composite (3, &
+         vector4_moving (-1.e3_default, 0._default, 3), [2, 7])
+    call subevt%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: expressions_3"
@@ -12270,19 +12266,19 @@ observable and the node evaluation.
     aval = 1
     call var_list_append_pdg_array (var_list, var_str ("u"), aval)
     call subevt_init (subevt)
-    call subevt_reset (subevt, 6)
-    call subevt_set_incoming (subevt, 1, &
-         1, vector4_moving (1._default, 1._default, 1), 0._default)
-    call subevt_set_incoming (subevt, 2, &
-         -1, vector4_moving (2._default, 2._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 3, &
-         22, vector4_moving (3._default, 3._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 4, &
-         22, vector4_moving (4._default, 4._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 5, &
-         11, vector4_moving (5._default, 5._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 6, &
-         -11, vector4_moving (6._default, 6._default, 1), 0._default)
+    call subevt%reset (6)
+    call subevt%set_incoming (1, 1, &
+         vector4_moving (1._default, 1._default, 1), 0._default)
+    call subevt%set_incoming (2, -1, &
+         vector4_moving (2._default, 2._default, 1), 0._default)
+    call subevt%set_outgoing (3, 22, &
+         vector4_moving (3._default, 3._default, 1), 0._default)
+    call subevt%set_outgoing (4, 22, &
+         vector4_moving (4._default, 4._default, 1), 0._default)
+    call subevt%set_outgoing (5, 11, &
+         vector4_moving (5._default, 5._default, 1), 0._default)
+    call subevt%set_outgoing (6, -11, &
+         vector4_moving (6._default, 6._default, 1), 0._default)
     write (u, "(A)")
     write (u, "(A)")  "* Expression:"
     expr_text = &

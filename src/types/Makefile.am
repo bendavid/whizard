@@ -33,11 +33,21 @@ noinst_LTLIBRARIES = libtypes.la
 check_LTLIBRARIES = libtypes_ut.la
 
 libtypes_la_SOURCES = \
+  $(TYPES_MODULES) \
+  $(TYPES_SUBMODULES)
+
+TYPES_MODULES = \
   particle_specifiers.f90 \
   analysis.f90 \
   pdg_arrays.f90 \
   jets.f90 \
   subevents.f90
+
+TYPES_SUBMODULES = \
+  particle_specifiers_sub.f90 \
+  analysis_sub.f90 \
+  pdg_arrays_sub.f90 \
+  subevents_sub.f90
 
 libtypes_ut_la_SOURCES = \
   particle_specifiers_uti.f90 particle_specifiers_ut.f90 \
@@ -52,9 +62,10 @@ dist_noinst_DATA = types.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libtypes_la_SOURCES:.f90=.$(FCMOD)}
+  ${TYPES_MODULES:.f90=.$(FCMOD)}
 
-libtypes_Modules = ${libtypes_la_SOURCES:.f90=} ${libtypes_ut_la_SOURCES:.f90=}
+# Submodules must not be included here
+libtypes_Modules = ${TYPES_MODULES:.f90=} ${libtypes_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libtypes_Modules); do \
           echo $$module >> $@.new; \
@@ -121,6 +132,12 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../fastjet
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+particle_specifiers_sub.lo: particle_specifiers.lo
+analysis_sub.lo: analysis.lo
+pdg_arrays_sub.lo: pdg_arrays.lo
+subevents_sub.lo: subevents.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -192,7 +209,7 @@ clean-local: clean-noweb
 	-rm -f types.stamp types.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

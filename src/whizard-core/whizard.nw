@@ -16520,15 +16520,15 @@ end subroutine subevt_expr_test
 
     call expr%reset_contents ()
     do i = 1, 2
-       call subevt_set_beam (expr%subevt_t, i, pdg, p(i), m**2)
+       call expr%set_beam (i, pdg, p(i), m**2)
     end do
     do i = 3, 4
-       call subevt_set_incoming (expr%subevt_t, i, pdg, p(i), m**2)
+       call expr%set_incoming (i, pdg, p(i), m**2)
     end do
     do i = 5, 6
-       call subevt_set_outgoing (expr%subevt_t, i, pdg, p(i), m**2)
+       call expr%set_outgoing (i, pdg, p(i), m**2)
     end do
-    expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
+    expr%sqrts_hat = expr%get_sqrts_hat ()
     expr%n_in = 2
     expr%n_out = 2
     expr%n_tot = 4
@@ -16671,15 +16671,15 @@ end subroutine subevt_expr_test
 
     call expr%reset_contents ()
     do i = 1, 2
-       call subevt_set_beam (expr%subevt_t, i, pdg, p(i), m**2)
+       call expr%set_beam (i, pdg, p(i), m**2)
     end do
     do i = 3, 4
-       call subevt_set_incoming (expr%subevt_t, i, pdg, p(i), m**2)
+       call expr%set_incoming (i, pdg, p(i), m**2)
     end do
     do i = 5, 6
-       call subevt_set_outgoing (expr%subevt_t, i, pdg, p(i), m**2)
+       call expr%set_outgoing (i, pdg, p(i), m**2)
     end do
-    expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
+    expr%sqrts_hat = expr%get_sqrts_hat ()
     expr%n_in = 2
     expr%n_out = 2
     expr%n_tot = 4
@@ -18206,12 +18206,12 @@ determines [[n_components]].
            exit
          end if
        end do
-       call pdg_array_init (pdg, n - 1)
+       call pdg%init (n - 1)
        do j = 1, n - 1
          call pdg%set (j, i_particle(j))
        end do
        call pl%set (i, pdg)
-       call pdg_array_delete (pdg)
+       call pdg%delete ()
     end do
   end subroutine split_prt
 
@@ -21020,7 +21020,7 @@ the analysis store.
     var_list => cmd%local%get_var_list_ptr ()
     label = var_list%get_sval (var_str ("$obs_label"))
     unit = var_list%get_sval (var_str ("$obs_unit"))
-    call graph_options_init (graph_options)
+    call graph_options%init ()
     call set_graph_options (graph_options, var_list)
     call analysis_init_observable (cmd%id, label, unit, graph_options)
   end subroutine cmd_observable_execute
@@ -21127,9 +21127,9 @@ the analysis store.
     obs_unit = &
          var_list%get_sval (var_str ("$obs_unit"))
 
-    call graph_options_init (graph_options)
+    call graph_options%init ()
     call set_graph_options (graph_options, var_list)
-    call drawing_options_init_histogram (drawing_options)
+    call drawing_options%init_histogram ()
     call set_drawing_options (drawing_options, var_list)
 
     if (bin_width_is_used) then
@@ -21153,38 +21153,24 @@ the analysis store.
   subroutine set_graph_options (gro, var_list)
     type(graph_options_t), intent(inout) :: gro
     type(var_list_t), intent(in) :: var_list
-    call graph_options_set (gro, title = &
-         var_list%get_sval (var_str ("$title")))
-    call graph_options_set (gro, description = &
-         var_list%get_sval (var_str ("$description")))
-    call graph_options_set (gro, x_label = &
-         var_list%get_sval (var_str ("$x_label")))
-    call graph_options_set (gro, y_label = &
-         var_list%get_sval (var_str ("$y_label")))
-    call graph_options_set (gro, width_mm = &
-         var_list%get_ival (var_str ("graph_width_mm")))
-    call graph_options_set (gro, height_mm = &
-         var_list%get_ival (var_str ("graph_height_mm")))
-    call graph_options_set (gro, x_log = &
-         var_list%get_lval (var_str ("?x_log")))
-    call graph_options_set (gro, y_log = &
-         var_list%get_lval (var_str ("?y_log")))
+    call gro%set (title = var_list%get_sval (var_str ("$title")))
+    call gro%set (description = var_list%get_sval (var_str ("$description")))
+    call gro%set (x_label = var_list%get_sval (var_str ("$x_label")))
+    call gro%set (y_label = var_list%get_sval (var_str ("$y_label")))
+    call gro%set (width_mm = var_list%get_ival (var_str ("graph_width_mm")))
+    call gro%set (height_mm = var_list%get_ival (var_str ("graph_height_mm")))
+    call gro%set (x_log = var_list%get_lval (var_str ("?x_log")))
+    call gro%set (y_log = var_list%get_lval (var_str ("?y_log")))
     if (var_list%is_known (var_str ("x_min"))) &
-         call graph_options_set (gro, x_min = &
-         var_list%get_rval (var_str ("x_min")))
+         call gro%set (x_min = var_list%get_rval (var_str ("x_min")))
     if (var_list%is_known (var_str ("x_max"))) &
-         call graph_options_set (gro, x_max = &
-         var_list%get_rval (var_str ("x_max")))
+         call gro%set (x_max = var_list%get_rval (var_str ("x_max")))
     if (var_list%is_known (var_str ("y_min"))) &
-         call graph_options_set (gro, y_min = &
-         var_list%get_rval (var_str ("y_min")))
+         call gro%set (y_min = var_list%get_rval (var_str ("y_min")))
     if (var_list%is_known (var_str ("y_max"))) &
-         call graph_options_set (gro, y_max = &
-         var_list%get_rval (var_str ("y_max")))
-    call graph_options_set (gro, gmlcode_bg = &
-         var_list%get_sval (var_str ("$gmlcode_bg")))
-    call graph_options_set (gro, gmlcode_fg = &
-         var_list%get_sval (var_str ("$gmlcode_fg")))
+         call gro%set (y_max = var_list%get_rval (var_str ("y_max")))
+    call gro%set (gmlcode_bg = var_list%get_sval (var_str ("$gmlcode_bg")))
+    call gro%set (gmlcode_fg = var_list%get_sval (var_str ("$gmlcode_fg")))
   end subroutine set_graph_options
 
 @ %def set_graph_options
@@ -21195,76 +21181,76 @@ the analysis store.
     type(var_list_t), intent(in) :: var_list
     if (var_list%is_known (var_str ("?draw_histogram"))) then
        if (var_list%get_lval (var_str ("?draw_histogram"))) then
-          call drawing_options_set (dro, with_hbars = .true.)
+          call dro%set (with_hbars = .true.)
        else
-          call drawing_options_set (dro, with_hbars = .false., &
+          call dro%set (with_hbars = .false., &
                with_base = .false., fill = .false., piecewise = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("?draw_base"))) then
        if (var_list%get_lval (var_str ("?draw_base"))) then
-          call drawing_options_set (dro, with_base = .true.)
+          call dro%set (with_base = .true.)
        else
-          call drawing_options_set (dro, with_base = .false., fill = .false.)
+          call dro%set (with_base = .false., fill = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("?draw_piecewise"))) then
        if (var_list%get_lval (var_str ("?draw_piecewise"))) then
-          call drawing_options_set (dro, piecewise = .true.)
+          call dro%set (piecewise = .true.)
        else
-          call drawing_options_set (dro, piecewise = .false.)
+          call dro%set (piecewise = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("?fill_curve"))) then
        if (var_list%get_lval (var_str ("?fill_curve"))) then
-          call drawing_options_set (dro, fill = .true., with_base = .true.)
+          call dro%set (fill = .true., with_base = .true.)
        else
-          call drawing_options_set (dro, fill = .false.)
+          call dro%set (fill = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("?draw_curve"))) then
        if (var_list%get_lval (var_str ("?draw_curve"))) then
-          call drawing_options_set (dro, draw = .true.)
+          call dro%set (draw = .true.)
        else
-          call drawing_options_set (dro, draw = .false.)
+          call dro%set (draw = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("?draw_errors"))) then
        if (var_list%get_lval (var_str ("?draw_errors"))) then
-          call drawing_options_set (dro, err = .true.)
+          call dro%set (err = .true.)
        else
-          call drawing_options_set (dro, err = .false.)
+          call dro%set (err = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("?draw_symbols"))) then
        if (var_list%get_lval (var_str ("?draw_symbols"))) then
-          call drawing_options_set (dro, symbols = .true.)
+          call dro%set (symbols = .true.)
        else
-          call drawing_options_set (dro, symbols = .false.)
+          call dro%set (symbols = .false.)
        end if
     end if
     if (var_list%is_known (var_str ("$fill_options"))) then
-       call drawing_options_set (dro, fill_options = &
+       call dro%set (fill_options = &
             var_list%get_sval (var_str ("$fill_options")))
     end if
     if (var_list%is_known (var_str ("$draw_options"))) then
-       call drawing_options_set (dro, draw_options = &
+       call dro%set (draw_options = &
             var_list%get_sval (var_str ("$draw_options")))
     end if
     if (var_list%is_known (var_str ("$err_options"))) then
-       call drawing_options_set (dro, err_options = &
+       call dro%set (err_options = &
             var_list%get_sval (var_str ("$err_options")))
     end if
     if (var_list%is_known (var_str ("$symbol"))) then
-       call drawing_options_set (dro, symbol = &
+       call dro%set (symbol = &
             var_list%get_sval (var_str ("$symbol")))
     end if
     if (var_list%is_known (var_str ("$gmlcode_bg"))) then
-       call drawing_options_set (dro, gmlcode_bg = &
+       call dro%set (gmlcode_bg = &
             var_list%get_sval (var_str ("$gmlcode_bg")))
     end if
     if (var_list%is_known (var_str ("$gmlcode_fg"))) then
-       call drawing_options_set (dro, gmlcode_fg = &
+       call dro%set (gmlcode_fg = &
             var_list%get_sval (var_str ("$gmlcode_fg")))
     end if
   end subroutine set_drawing_options
@@ -21343,9 +21329,9 @@ the analysis store.
     type(drawing_options_t) :: drawing_options
 
     var_list => cmd%local%get_var_list_ptr ()
-    call graph_options_init (graph_options)
+    call graph_options%init ()
     call set_graph_options (graph_options, var_list)
-    call drawing_options_init_plot (drawing_options)
+    call drawing_options%init_plot ()
     call set_drawing_options (drawing_options, var_list)
 
     call analysis_init_plot (cmd%id, graph_options, drawing_options)
@@ -21453,7 +21439,7 @@ rewritten using proper type extension.
     integer :: i, type
 
     var_list => cmd%local%get_var_list_ptr ()
-    call graph_options_init (graph_options)
+    call graph_options%init ()
     call set_graph_options (graph_options, var_list)
     call analysis_init_graph (cmd%id, cmd%n_elements, graph_options)
 
@@ -21464,9 +21450,9 @@ rewritten using proper type extension.
        type = analysis_store_get_object_type (cmd%element_id(i))
        select case (type)
        case (AN_HISTOGRAM)
-          call drawing_options_init_histogram (drawing_options)
+          call drawing_options%init_histogram ()
        case (AN_PLOT)
-          call drawing_options_init_plot (drawing_options)
+          call drawing_options%init_plot ()
        end select
        call set_drawing_options (drawing_options, var_list)
        if (associated (cmd%el(i)%options)) then
@@ -22251,9 +22237,9 @@ the current model object.
        end if
     end if
     pa_in = eval_pdg_array (cmd%pn_prt_in, var_list)
-    if (pdg_array_get_length (pa_in) /= 1) &
+    if (pa_in%get_length () /= 1) &
          call msg_fatal ("Unstable: decaying particle must be unique")
-    pdg_in = pdg_array_get (pa_in, 1)
+    pdg_in = pa_in%get (1)
     n_proc_user = cmd%n_proc
     if (auto_decays) then
        call create_auto_decays (pdg_in, &
@@ -22568,9 +22554,9 @@ Revert the unstable declaration for a list of particles.
     var_list => cmd%local%get_var_list_ptr ()
     do i = 1, size (cmd%pn_pdg)
        pa = eval_pdg_array (cmd%pn_pdg(i)%ptr, var_list)
-       if (pdg_array_get_length (pa) /= 1) &
+       if (pa%get_length () /= 1) &
             call msg_fatal ("Stable: listed particles must be unique")
-       pdg = pdg_array_get (pa, 1)
+       pdg = pa%get (1)
        call global%modify_particle (pdg, stable = .true., &
          isotropic_decay = .false., &
          diagonal_decay = .false., &
@@ -22646,9 +22632,9 @@ Execute: apply the modifications to the current model.
     var_list => cmd%local%get_var_list_ptr ()
     do i = 1, size (cmd%pn_pdg)
        pa = eval_pdg_array (cmd%pn_pdg(i)%ptr, var_list)
-       if (pdg_array_get_length (pa) /= 1) &
+       if (pa%get_length () /= 1) &
             call msg_fatal ("Polarized: listed particles must be unique")
-       pdg = pdg_array_get (pa, 1)
+       pdg = pa%get (1)
        call global%modify_particle (pdg, polarized = .true., &
             stable = .true., &
             isotropic_decay = .false., &
@@ -22671,9 +22657,9 @@ Execute: apply the modifications to the current model.
     var_list => cmd%local%get_var_list_ptr ()
     do i = 1, size (cmd%pn_pdg)
        pa = eval_pdg_array (cmd%pn_pdg(i)%ptr, var_list)
-       if (pdg_array_get_length (pa) /= 1) &
+       if (pa%get_length () /= 1) &
             call msg_fatal ("Unpolarized: listed particles must be unique")
-       pdg = pdg_array_get (pa, 1)
+       pdg = pa%get (1)
        call global%modify_particle (pdg, polarized = .false., &
             stable = .true., &
             isotropic_decay = .false., &
@@ -27240,9 +27226,8 @@ Write accumulated analysis data to file and compile.
     call syntax_cmd_list_init ()
     call global%global_init ()
 
-    call graph_options_init (graph_options)
-    call graph_options_set (graph_options, &
-         title = var_str ("Histogram for test: commands 23"), &
+    call graph_options%init ()
+    call graph_options%set (title = var_str ("Histogram for test: commands 23"), &
          description = var_str ("This is a test."), &
          width_mm = 125, height_mm = 85)
     call analysis_init_histogram (var_str ("h"), &

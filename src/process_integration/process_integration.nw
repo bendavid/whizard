@@ -525,12 +525,12 @@ in this initialization step.
     expr%i_out = i_out
     call interaction_to_subevt (int, &
          expr%i_beam, expr%i_in, expr%i_out, expr%subevt_t)
-    call subevt_set_pdg_beam     (expr%subevt_t, f_beam%get_pdg ())
-    call subevt_set_pdg_incoming (expr%subevt_t, f_in%get_pdg ())
-    call subevt_set_pdg_outgoing (expr%subevt_t, f_out%get_pdg ())
-    call subevt_set_p2_beam     (expr%subevt_t, f_beam%get_mass () ** 2)
-    call subevt_set_p2_incoming (expr%subevt_t, f_in%get_mass ()   ** 2)
-    call subevt_set_p2_outgoing (expr%subevt_t, f_out%get_mass ()  ** 2)
+    call expr%set_pdg_beam (f_beam%get_pdg ())
+    call expr%set_pdg_incoming (f_in%get_pdg ())
+    call expr%set_pdg_outgoing (f_out%get_pdg ())
+    call expr%set_p2_beam     (f_beam%get_mass () ** 2)
+    call expr%set_p2_incoming (f_in%get_mass ()   ** 2)
+    call expr%set_p2_outgoing (f_out%get_mass ()  ** 2)
     expr%n_in  = size (i_in)
     expr%n_out = size (i_out)
     expr%n_tot = expr%n_in + expr%n_out
@@ -563,23 +563,18 @@ particles.
     call subevt_init (subevt, n_beam + n_in + n_out)
     do i = 1, n_beam
        j = j_beam(i)
-       call subevt_set_beam (subevt, i, &
-            flv(j)%get_pdg (), &
-            vector4_null, &
-            flv(j)%get_mass () ** 2)
+       call subevt%set_beam (i, flv(j)%get_pdg (), &
+            vector4_null, flv(j)%get_mass () ** 2)
     end do
     do i = 1, n_in
        j = j_in(i)
-       call subevt_set_incoming (subevt, n_beam + i, &
-            flv(j)%get_pdg (), &
-            vector4_null, &
-            flv(j)%get_mass () ** 2)
+       call subevt%set_incoming (n_beam + i, flv(j)%get_pdg (), &
+            vector4_null, flv(j)%get_mass () ** 2)
     end do
     do i = 1, n_out
        j = j_out(i)
-       call subevt_set_outgoing (subevt, n_beam + n_in + i, &
-            flv(j)%get_pdg (), &
-            vector4_null, &
+       call subevt%set_outgoing (n_beam + n_in + i, &
+            flv(j)%get_pdg (), vector4_null, &
             flv(j)%get_mass () ** 2)
     end do
   end subroutine interaction_to_subevt
@@ -588,9 +583,9 @@ particles.
     type(interaction_t), intent(in) :: int
     integer, dimension(:), intent(in) :: j_beam, j_in, j_out
     type(subevt_t), intent(inout) :: subevt
-    call subevt_set_p_beam (subevt, - int%get_momenta (j_beam))
-    call subevt_set_p_incoming (subevt, - int%get_momenta (j_in))
-    call subevt_set_p_outgoing (subevt, int%get_momenta (j_out))
+    call subevt%set_p_beam (- int%get_momenta (j_beam))
+    call subevt%set_p_incoming (- int%get_momenta (j_in))
+    call subevt%set_p_outgoing (int%get_momenta (j_out))
   end subroutine interaction_momenta_to_subevt_id
 
   subroutine interaction_momenta_to_subevt_tr &
@@ -599,12 +594,9 @@ particles.
     integer, dimension(:), intent(in) :: j_beam, j_in, j_out
     type(subevt_t), intent(inout) :: subevt
     type(lorentz_transformation_t), intent(in) :: lt
-    call subevt_set_p_beam &
-         (subevt, - lt * int%get_momenta (j_beam))
-    call subevt_set_p_incoming &
-         (subevt, - lt * int%get_momenta (j_in))
-    call subevt_set_p_outgoing &
-         (subevt, lt * int%get_momenta (j_out))
+    call subevt%set_p_beam (- lt * int%get_momenta (j_beam))
+    call subevt%set_p_incoming (- lt * int%get_momenta (j_in))
+    call subevt%set_p_outgoing (lt * int%get_momenta (j_out))
   end subroutine interaction_momenta_to_subevt_tr
 
 @ %def interaction_momenta_to_subevt
@@ -618,7 +610,7 @@ completes the subevt.  The partonic energy can then be computed.
     type(interaction_t), intent(in), target :: int
     call interaction_momenta_to_subevt (int, &
          expr%i_beam, expr%i_in, expr%i_out, expr%subevt_t)
-    expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
+    expr%sqrts_hat = expr%get_sqrts_hat ()
     expr%subevt_filled = .true.
   end subroutine parton_expr_fill_subevt
 
@@ -1060,9 +1052,9 @@ Also increment the event index; initialize it if necessary.
     class(event_expr_t), intent(inout) :: expr
     type(particle_set_t), intent(in) :: particle_set
     call particle_set%to_subevt (expr%subevt_t, expr%colorize_subevt)
-    expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
-    expr%n_in  = subevt_get_n_in  (expr%subevt_t)
-    expr%n_out = subevt_get_n_out (expr%subevt_t)
+    expr%sqrts_hat = expr%get_sqrts_hat ()
+    expr%n_in  = expr%get_n_in  ()
+    expr%n_out = expr%get_n_out ()
     expr%n_tot = expr%n_in + expr%n_out
     expr%subevt_filled = .true.
   end subroutine event_expr_fill_subevt
@@ -3941,10 +3933,10 @@ This restriction could be removed by extending the code in the
           pdg_in(:,i) = pdg_in(:,i0)
        end if
     end do
-    if (all (pdg_array_get_length (pdg_in) == 1) .and. &
+    if (all (pdg_in%get_length () == 1) .and. &
          all (pdg_in(1,:) == pdg_in(1,i0)) .and. &
          all (pdg_in(2,:) == pdg_in(2,i0))) then
-       pdg_scattering = pdg_array_get (pdg_in(:,i0), 1)
+       pdg_scattering(:) = pdg_in(:,i0)%get (1)
        call flv_in%init (pdg_scattering, process%config%model)
        call process%beam_config%init_scattering (flv_in, sqrts, beam_structure)
     else
@@ -3993,9 +3985,9 @@ particle mass, hence no extra argument.
           pdg_in(:,i) = pdg_in(:,i0)
        end if
     end do
-    if (all (pdg_array_get_length (pdg_in) == 1) &
+    if (all (pdg_in%get_length () == 1) &
          .and. all (pdg_in(1,:) == pdg_in(1,i0))) then
-       pdg_decay = pdg_array_get (pdg_in(:,i0), 1)
+       pdg_decay(:) = pdg_in(:,i0)%get (1)
        call flv_in%init (pdg_decay, process%config%model)
        call process%beam_config%init_decay (flv_in, rest_frame, beam_structure)
     else

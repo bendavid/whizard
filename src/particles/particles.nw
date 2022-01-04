@@ -7254,21 +7254,21 @@ consistency.
          select case (particle_get_status (prt))
          case (PRT_BEAM)
             k = k + 1
-            call subevt_set_beam (subevt, k, &
+            call subevt%set_beam (k, &
                  particle_get_pdg (prt), &
                  particle_get_momentum (prt), &
                  particle_get_p2 (prt))
             keep = .true.
          case (PRT_INCOMING)
             k = k + 1
-            call subevt_set_incoming (subevt, k, &
+            call subevt%set_incoming (k, &
                  particle_get_pdg (prt), &
                  particle_get_momentum (prt), &
                  particle_get_p2 (prt))
             keep = .true.
          case (PRT_OUTGOING)
             k = k + 1
-            call subevt_set_outgoing (subevt, k, &
+            call subevt%set_outgoing (k, &
                  particle_get_pdg (prt), &
                  particle_get_momentum (prt), &
                  particle_get_p2 (prt))
@@ -7276,7 +7276,7 @@ consistency.
          case (PRT_BEAM_REMNANT)
             if (particle_get_n_children (prt) == 0) then
                k = k + 1
-               call subevt_set_outgoing (subevt, k, &
+               call subevt%set_outgoing (k, &
                     particle_get_pdg (prt), &
                     particle_get_momentum (prt), &
                     particle_get_p2 (prt))
@@ -7300,7 +7300,7 @@ consistency.
        end associate
        n_active = k
     end do
-    call subevt_reset (subevt, n_active)
+    call subevt%reset (n_active)
   end subroutine particle_set_to_subevt
 
 @ %def particle_set_to_subevt
@@ -7652,7 +7652,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     write (u, "(A)")
 
     call particle_set4%to_subevt (subevt)
-    call subevt_write (subevt, u)
+    call subevt%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
