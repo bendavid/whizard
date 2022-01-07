@@ -10226,10 +10226,10 @@ matrix element structure.
           mask = int%get_mask ()
           if (size (chain%sf) /= 0) then
              do i = 1, size (chain%sf) - 1
-                call interaction_exchange_mask (chain%sf(i)%int%interaction_t)
+                call chain%sf(i)%int%exchange_mask ()
              end do
              do i = size (chain%sf), 1, -1
-                call interaction_exchange_mask (chain%sf(i)%int%interaction_t)
+                call chain%sf(i)%int%exchange_mask ()
              end do
              if (any (mask .neqv. int%get_mask ())) then
                 chain%status = SF_FAILED_MASK
@@ -10574,7 +10574,7 @@ independent of this.
           do i = size (chain%sf), 1, -1
              associate (sf => chain%sf(i))
                if (.not. sf%eval%is_empty ()) then
-                  call interaction_send_momenta (sf%eval%interaction_t)
+                  call sf%eval%send_momenta ()
                end if
              end associate
           end do
@@ -10632,7 +10632,7 @@ kinematics recovery.  Obviously, this works as a side effect.
     type(interaction_t), pointer :: int
     if (chain%status >= SF_DONE_KINEMATICS) then
        int => beam_get_int_ptr (chain%beam_t)
-       call interaction_send_momenta (int)
+       call int%send_momenta ()
     end if
   end subroutine sf_chain_instance_return_beam_momenta
 
@@ -14681,7 +14681,7 @@ module sf_isr_uti
   use pdg_arrays
   use flavors
   use interactions, only: reset_interaction_counter
-  use interactions, only: interaction_pacify_momenta
+  use interactions, only: interaction_t
   use model_data
   use sf_aux, only: KEEP_ENERGY
   use sf_mappings
@@ -15111,7 +15111,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
     call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
+    call sf_int%pacify_momenta (1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
     write (u, "(A,9(1x,F10.7))")  "xb=", xb
@@ -15143,7 +15143,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     write (u, "(A)")
 
     call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
+    call sf_int%pacify_momenta (1e-10_default)
     call sf_int%apply (scale = 10._default)
     u_scratch = free_unit ()
     open (u_scratch, status="scratch", action = "readwrite")
@@ -16135,7 +16135,6 @@ module sf_epa_uti
   use pdg_arrays
   use flavors
   use interactions, only: reset_interaction_counter
-  use interactions, only: interaction_pacify_momenta
   use model_data
   use sf_aux
   use sf_base
@@ -16546,7 +16545,7 @@ structure function.
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
     call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
+    call sf_int%pacify_momenta (1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
@@ -16572,7 +16571,7 @@ structure function.
     call sf_int%recover_x (x, xb)
     call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
+    call sf_int%pacify_momenta (1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
@@ -17603,7 +17602,6 @@ module sf_ewa_uti
   use pdg_arrays
   use flavors
   use interactions, only: reset_interaction_counter
-  use interactions, only: interaction_pacify_momenta
   use model_data
   use sf_aux
   use sf_base
@@ -18045,7 +18043,7 @@ structure function.
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
     call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
+    call sf_int%pacify_momenta (1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
@@ -18071,7 +18069,7 @@ structure function.
     call sf_int%recover_x (x, xb)
     call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
-    call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
+    call sf_int%pacify_momenta (1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb

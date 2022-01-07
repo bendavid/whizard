@@ -6577,7 +6577,7 @@ values for decay processes.
        if (present (process_instance)) then
           connected_state => process_instance%get_connected_state_ptr (i)
           int => connected_state%get_matrix_int_ptr ()
-          call interaction_get_flv_out (int, flv)
+          call int%get_flv_out (flv)
        else
           call process%get_term_flv_out (i, flv)
        end if

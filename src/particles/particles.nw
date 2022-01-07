@@ -4948,10 +4948,8 @@ possible, in particular if the squared matrix element is zero.
                (int%get_momentum (i), on_shell = .true.)
        end if
        if (keep_virtual) then
-          call particle_set%prt(j)%set_children &
-               (interaction_get_children (int, i))
-          call particle_set%prt(j)%set_parents &
-               (interaction_get_parents (int, i))
+          call particle_set%prt(j)%set_children (int%get_children (i))
+          call particle_set%prt(j)%set_parents (int%get_parents (i))
        end if
        j = j + 1
     end do
@@ -6824,14 +6822,14 @@ parent.
       integer :: n_in_i
       integer :: i
       i = int%get_n_tot ()
-      n_in_i = interaction_get_n_parents (int, i)
+      n_in_i = int%get_n_parents (i)
       if (n_in_i /= n_in)  call err_int_n_in
       allocate (i_in (n_in))
-      i_in = interaction_get_parents (int, i)
+      i_in = int%get_parents (i)
       i = i_in(1)
-      n_out = interaction_get_n_children (int, i)
+      n_out = int%get_n_children (i)
       allocate (i_out (n_out))
-      i_out = interaction_get_children (int, i)
+      i_out = int%get_children (i)
     end subroutine find_hard_process_in_int
     subroutine find_hard_process_in_pset (p_in, p_out, state_flv, success)
       integer, dimension(:), allocatable, intent(out) :: p_in, p_out
@@ -6848,18 +6846,18 @@ parent.
       if (size (p_in) == 0)  call err_pset_hard
       i = p_in(1)
       allocate (p_out (n_out))
-      n_out_p = particle_get_n_children (pset%prt(i))
+      n_out_p = pset%prt(i)%get_n_children ()
       p_out(1:n_out_p) = particle_get_children (pset%prt(i))
       do k = 1, size (p_out)
          i = p_out(k)
          if (present (state_flv)) then
             do while (pset%prt(i)%get_status () == PRT_RESONANT)
                if (state_flv%contains (pset%prt(i)%get_pdg ()))  exit
-               n_child = particle_get_n_children (pset%prt(i))
+               n_child = pset%prt(i)%get_n_children ()
                p_child(1:n_child) = particle_get_children (pset%prt(i))
                n_shift = -1
                do c = 1, n_child
-                  if (particle_get_n_parents (pset%prt(p_child(c))) == 1) then
+                  if (pset%prt(p_child(c))%get_n_parents () == 1) then
                      n_shift = n_shift + 1
                   else
                      p_child(c) = 0
@@ -6985,7 +6983,7 @@ parent.
       do b = 1, n_in
          i = i_cur(b)
          p = p_cur(b)
-         i_par = interaction_get_parents (int, i)
+         i_par = int%get_parents (i)
          p_par = pset%prt(p)%get_parents ()
          if (size (i_par) == 0 .or. size (p_par) == 0)  cycle
          if (size (p_par) == 1) then
@@ -6993,7 +6991,7 @@ parent.
                p_par = pset%prt(p_par(1))%get_parents ()  ! copy of entry
             end if
          end if
-         i_rad = interaction_get_children (int, i_par(1))
+         i_rad = int%get_children (i_par(1))
          p_rad = pset%prt(p_par(1))%get_children ()
          do r = 1, size (i_rad)
             if (any (map == i_rad(r)))  i_rad(r) = 0
@@ -7033,9 +7031,9 @@ parent.
          i_set(k_in) = .true.
          if (n_in == 2) then
             k_pre = k_in
-            i_child = interaction_get_children (int, k_pre)
+            i_child = int%get_children (k_pre)
             do i = 1, 2
-               is_final(i) = interaction_get_n_children (int, i_child(i)) == 0
+               is_final(i) = int%get_n_children (i_child(i)) == 0
             end do
             if (all (.not. is_final)) then
                k_in = i_child(k);  k_rad = 0
@@ -7063,12 +7061,12 @@ parent.
       logical, dimension(:), intent(inout) :: i_set
       integer, dimension(:), allocatable :: i_child, i_parent, i_sibling
       integer :: s
-      i_child = interaction_get_children (int, i)
-      i_parent = interaction_get_parents (int, i)
+      i_child = int%get_children (i)
+      i_parent = int%get_parents (i)
       if (size (i_child) > 0 .and. all (i_set(i_child))) then
          call int%set_momentum (sum (int%get_momenta (i_child)), i)
       else if (size (i_parent) > 0 .and. all (i_set(i_parent))) then
-         i_sibling = interaction_get_children (int, i_parent(1))
+         i_sibling = int%get_children (i_parent(1))
          call int%set_momentum (sum (int%get_momenta (i_parent)), i)
          do s = 1, size (i_sibling)
             if (i_sibling(s) == i)  cycle
@@ -7274,7 +7272,7 @@ consistency.
                  particle_get_p2 (prt))
             keep = .true.
          case (PRT_BEAM_REMNANT)
-            if (particle_get_n_children (prt) == 0) then
+            if (prt%get_n_children () == 0) then
                k = k + 1
                call subevt%set_outgoing (k, &
                     particle_get_pdg (prt), &

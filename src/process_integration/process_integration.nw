@@ -1711,8 +1711,7 @@ requested flavor information.
   subroutine connected_state_setup_state_flv (state, n_out_hard)
     class(connected_state_t), intent(inout), target :: state
     integer, intent(in) :: n_out_hard
-    call interaction_get_flv_content &
-         (state%matrix%interaction_t, state%state_flv, n_out_hard)
+    call state%matrix%get_flv_content (state%state_flv, n_out_hard)
   end subroutine connected_state_setup_state_flv
 
 @ %def connected_state_setup_state_flv
@@ -1871,7 +1870,7 @@ Instead, we reconstruct the beam (and ISR) momentum configuration.
   subroutine parton_state_send_kinematics (state)
     class(parton_state_t), intent(inout), target :: state
     if (state%has_trace) then
-       call interaction_send_momenta (state%trace%interaction_t)
+       call state%trace%send_momenta ()
        select type (state)
        class is (connected_state_t)
           call state%expr%fill_subevt (state%trace%interaction_t)
@@ -5911,7 +5910,7 @@ term. We deduce this from the effective interaction.
     type(interaction_t), pointer :: int
     int => process%term(i_term)%int_eff
     if (.not. associated (int))  int => process%term(i_term)%int
-    call interaction_get_flv_out (int, flv)
+    call int%get_flv_out (flv)
   end subroutine process_get_term_flv_out
 
 @ %def process_get_term_flv_out

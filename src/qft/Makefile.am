@@ -33,6 +33,10 @@ noinst_LTLIBRARIES = libqft.la
 check_LTLIBRARIES = libqft_ut.la
 
 libqft_la_SOURCES = \
+  $(QFT_MODULES) \
+  $(QFT_SUBMODULES)
+
+QFT_MODULES = \
   model_data.f90 \
   helicities.f90 \
   colors.f90 \
@@ -41,6 +45,16 @@ libqft_la_SOURCES = \
   state_matrices.f90 \
   interactions.f90 \
   evaluators.f90
+
+QFT_SUBMODULES = \
+  model_data_sub.f90 \
+  helicities_sub.f90 \
+  colors_sub.f90 \
+  flavors_sub.f90 \
+  quantum_numbers_sub.f90 \
+  state_matrices_sub.f90 \
+  interactions_sub.f90 \
+  evaluators_sub.f90
 
 libqft_ut_la_SOURCES = \
   model_testbed.f90 \
@@ -56,10 +70,10 @@ dist_noinst_DATA = qft.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libqft_la_SOURCES:.f90=.$(FCMOD)}
+  ${QFT_MODULES:.f90=.$(FCMOD)}
 
-# Dump module names into file Modules
-libqft_Modules = ${libqft_la_SOURCES:.f90=} ${libqft_ut_la_SOURCES:.f90=}
+# Submodules must not be included here
+libqft_Modules = ${QFT_MODULES:.f90=} ${libqft_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libqft_Modules); do \
           echo $$module >> $@.new; \
@@ -128,6 +142,16 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../expr_base -I../physics -I../types
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+model_data_sub.lo: model_data.lo
+helicities_sub.lo: helicities.lo
+colors_sub.lo: colors.lo
+flavors_sub.lo: flavors.lo
+quantum_numbers_sub.lo: quantum_numbers.lo
+state_matrices_sub.lo: state_matrices.lo
+interactions_sub.lo: interactions.lo
+evaluators_sub.lo: evaluators.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -195,7 +219,7 @@ clean-local: clean-noweb
 	-rm -f qft.stamp qft.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
