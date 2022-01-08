@@ -8,13 +8,41 @@
 <<File header>>
 
 module interpolation
-  use kinds
-  implicit none
-  save
-  private
+<<Use kinds>>
 
+<<Standard module head>>
+  save
+
+<<Interpolation: public>>
   public :: interpolate_linear, strictly_monotonous
 
+<<Interpolation: interfaces>>
+
+  interface
+<<Interpolation: sub interfaces>>
+  end interface
+
+end module interpolation
+@ %def interpolation
+@
+<<[[interpolation_sub.f90]]>>=
+<<File header>>
+
+submodule (interpolation) interpolation_s
+
+  implicit none
+
+<<Interpolation: parameters>>
+
+contains
+
+<<Interpolation: procedures>>
+
+end submodule interpolation_s
+
+@ %def interpolation_s
+@
+<<Interpolation: interfaces>>=
   interface interpolate_linear
     module  procedure interpolate_linear_1D_complex_array, &
       interpolate_linear_1D_complex_scalar, &
@@ -39,9 +67,15 @@ module interpolation
     module procedure find_nearest_left_loop
   end interface find_nearest_left
 
-contains
-
-  pure subroutine interpolate_linear_1D_complex_scalar (xa, ya, x, y)
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_1D_complex_scalar (xa, ya, x, y)
+      real(default), dimension(:), intent(in) :: xa
+      complex(default), dimension(:), intent(in) :: ya
+      real(default), intent(in) :: x
+      complex(default), intent(out) :: y
+    end subroutine interpolate_linear_1D_complex_scalar
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_1D_complex_scalar (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
     complex(default), dimension(:), intent(in) :: ya
     real(default), intent(in) :: x
@@ -58,7 +92,19 @@ contains
     y = (1.-t)*ya(ixl) + t*ya(ixl+1)
   end subroutine interpolate_linear_1D_complex_scalar
 
-  pure subroutine interpolate_linear_2D_complex_scalar (x1a, x2a, ya, x1, x2, y)
+@ %def interpolate_linear_1D_complex_scalar
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_2D_complex_scalar (x1a, x2a, ya, x1, x2, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      complex(default), dimension(:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      complex(default), intent(out) :: y
+    end subroutine interpolate_linear_2D_complex_scalar
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_2D_complex_scalar (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     complex(default), dimension(:,:), intent(in) :: ya
@@ -83,7 +129,23 @@ contains
         +(1.-t)*    u *ya(ix1l  ,ix2l+1)
   end subroutine interpolate_linear_2D_complex_scalar
 
-  pure subroutine interpolate_linear_3D_complex_scalar (x1a, x2a, x3a, ya, x1, x2, x3, y)
+@ %def interpolate_linear_2D_complex_scalar
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_3D_complex_scalar &
+         (x1a, x2a, x3a, ya, x1, x2, x3, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      real(default), dimension(:), intent(in) :: x3a
+      complex(default), dimension(:,:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      real(default), intent(in) :: x3
+      complex(default), intent(out) :: y
+    end subroutine interpolate_linear_3D_complex_scalar
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_3D_complex_scalar &
+       (x1a, x2a, x3a, ya, x1, x2, x3, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     real(default), dimension(:), intent(in) :: x3a
@@ -117,7 +179,16 @@ contains
         +    t *    u *    v *ya(ix1l+1,ix2l+1,ix3l+1)
   end subroutine interpolate_linear_3D_complex_scalar
 
-  pure subroutine find_nearest_left_loop (xa, x, ixl)
+@ %def interpolate_linear_3D_complex_scalar
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine find_nearest_left_loop (xa, x, ixl)
+      real(default), dimension(:), intent(in) :: xa
+      real(default), intent(in) :: x
+      integer, intent(out) :: ixl
+    end subroutine find_nearest_left_loop
+<<Interpolation: procedures>>=
+  pure module subroutine find_nearest_left_loop (xa, x, ixl)
     real(default), dimension(:), intent(in) :: xa
     real(default), intent(in) :: x
     integer, intent(out) :: ixl
@@ -135,6 +206,9 @@ contains
     end do
   end subroutine find_nearest_left_loop
 
+@ %def find_nearest_left_loop
+@
+<<Interpolation: procedures>>=
   pure recursive subroutine find_nearest_left_rec (xa, x, ixl)
     real(default), dimension(:), intent(in) :: xa
     real(default), intent(in) :: x
@@ -160,7 +234,15 @@ contains
     end if
   end subroutine find_nearest_left_rec
 
-  pure function monotonous (xa) result (flag)
+@ %def find_nearest_left_rec
+@
+<<Interpolation: sub interfaces>>=
+    pure module function monotonous (xa) result (flag)
+      real(default), dimension(:), intent(in) :: xa
+      logical :: flag
+    end function monotonous
+<<Interpolation: procedures>>=
+  pure module function monotonous (xa) result (flag)
     real(default), dimension(:), intent(in) :: xa
     integer :: ix
     logical :: flag
@@ -171,6 +253,9 @@ contains
     end do
   end function monotonous
 
+@ %def monotonous
+@
+<<Interpolation: procedures>>=
   pure function out_of_range (xa, x) result (flag)
     real(default), dimension(:), intent(in) :: xa
     real(default), intent(in) :: x
@@ -178,7 +263,17 @@ contains
     flag = ( x < xa(1) .or. x > xa(size(xa)) )
   end function out_of_range
 
-  pure subroutine interpolate_linear_1D_complex_array (xa, ya, x, y)
+@ %def out_of_range
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_1D_complex_array (xa, ya, x, y)
+      real(default), dimension(:), intent(in) :: xa
+      complex(default), dimension(:,:), intent(in) :: ya
+      real(default), intent(in) :: x
+      complex(default), dimension(size(ya(1,:))), intent(out) :: y
+    end subroutine interpolate_linear_1D_complex_array
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_1D_complex_array (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
     complex(default), dimension(:,:), intent(in) :: ya
     real(default), intent(in) :: x
@@ -189,7 +284,17 @@ contains
     end do
   end subroutine interpolate_linear_1D_complex_array
 
-  pure subroutine interpolate_linear_1D_real_array (xa, ya, x, y)
+@ %def interpolate_linear_1D_complex_array
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_1D_real_array (xa, ya, x, y)
+      real(default), dimension(:), intent(in) :: xa
+      real(default), dimension(:,:), intent(in) :: ya
+      real(default), intent(in) :: x
+      real(default), dimension(:), intent(out) :: y
+    end subroutine interpolate_linear_1D_real_array
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_1D_real_array (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
     real(default), dimension(:,:), intent(in) :: ya
     real(default), intent(in) :: x
@@ -199,7 +304,18 @@ contains
     y = real(y_c,kind=default)
   end subroutine interpolate_linear_1D_real_array
 
-  pure subroutine interpolate_linear_1D_real_scalar (xa, ya, x, y)
+@ %def interpolate_linear_1D_real_array
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_1D_real_scalar (xa, ya, x, y)
+      real(default), dimension(:), intent(in) :: xa
+      real(default), dimension(:), intent(in) :: ya
+      real(default), intent(in) :: x
+      real(default), intent(out) :: y
+      complex(default), dimension(size(ya)) :: ya_c
+    end subroutine interpolate_linear_1D_real_scalar
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_1D_real_scalar (xa, ya, x, y)
     real(default), dimension(:), intent(in) :: xa
     real(default), dimension(:), intent(in) :: ya
     real(default), intent(in) :: x
@@ -211,7 +327,19 @@ contains
     y = real(y_c,kind=default)
   end subroutine interpolate_linear_1D_real_scalar
 
-  pure subroutine interpolate_linear_2D_complex_array (x1a, x2a, ya, x1, x2, y)
+@ %def interpolate_linear_1D_real_scalar
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_2D_complex_array (x1a, x2a, ya, x1, x2, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      complex(default), dimension(:,:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      complex(default), dimension(size(ya(1,1,:))), intent(out) :: y
+    end subroutine interpolate_linear_2D_complex_array
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_2D_complex_array (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     complex(default), dimension(:,:,:), intent(in) :: ya
@@ -224,7 +352,19 @@ contains
     end do
   end subroutine interpolate_linear_2D_complex_array
 
-  pure subroutine interpolate_linear_2D_real_array (x1a, x2a, ya, x1, x2, y)
+@ %def interpolate_linear_2D_complex_array
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_2D_real_array (x1a, x2a, ya, x1, x2, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      real(default), dimension(:,:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      real(default), dimension(:), intent(out) :: y
+    end subroutine interpolate_linear_2D_real_array
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_2D_real_array (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     real(default), dimension(:,:,:), intent(in) :: ya
@@ -236,7 +376,19 @@ contains
     y = real(y_c,kind=default)
   end subroutine interpolate_linear_2D_real_array
 
-  pure subroutine interpolate_linear_2D_real_scalar (x1a, x2a, ya, x1, x2, y)
+@ %def interpolate_linear_2D_real_array
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_2D_real_scalar (x1a, x2a, ya, x1, x2, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      real(default), dimension(:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      real(default), intent(out) :: y
+    end subroutine interpolate_linear_2D_real_scalar
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_2D_real_scalar (x1a, x2a, ya, x1, x2, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     real(default), dimension(:,:), intent(in) :: ya
@@ -251,7 +403,23 @@ contains
     y = real(y_c,kind=default)
   end subroutine interpolate_linear_2D_real_scalar
 
-  pure subroutine interpolate_linear_3D_complex_array (x1a, x2a, x3a, ya, x1, x2, x3, y)
+@  %def interpolate_linear_2D_real_scalar
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_3D_complex_array &
+         (x1a, x2a, x3a, ya, x1, x2, x3, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      real(default), dimension(:), intent(in) :: x3a
+      complex(default), dimension(:,:,:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      real(default), intent(in) :: x3
+    complex(default), dimension(size(ya(1,1,1,:))), intent(out) :: y
+    end subroutine interpolate_linear_3D_complex_array
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_3D_complex_array &
+       (x1a, x2a, x3a, ya, x1, x2, x3, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     real(default), dimension(:), intent(in) :: x3a
@@ -267,7 +435,21 @@ contains
     end do
   end subroutine interpolate_linear_3D_complex_array
 
-  pure subroutine interpolate_linear_3D_real_array (x1a, x2a, x3a, ya, x1, x2, x3, y)
+@ %def interpolate_linear_3D_complex_array
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_3D_real_array (x1a, x2a, x3a, ya, x1, x2, x3, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      real(default), dimension(:), intent(in) :: x3a
+      real(default), dimension(:,:,:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      real(default), intent(in) :: x3
+      real(default), dimension(:), intent(out) :: y
+    end subroutine interpolate_linear_3D_real_array
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_3D_real_array (x1a, x2a, x3a, ya, x1, x2, x3, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     real(default), dimension(:), intent(in) :: x3a
@@ -282,7 +464,21 @@ contains
     y = real(y_c,kind=default)
   end subroutine interpolate_linear_3D_real_array
 
-  pure subroutine interpolate_linear_3D_real_scalar (x1a, x2a, x3a, ya, x1, x2, x3, y)
+@ %def interpolate_linear_3D_real_array
+@
+<<Interpolation: sub interfaces>>=
+    pure module subroutine interpolate_linear_3D_real_scalar (x1a, x2a, x3a, ya, x1, x2, x3, y)
+      real(default), dimension(:), intent(in) :: x1a
+      real(default), dimension(:), intent(in) :: x2a
+      real(default), dimension(:), intent(in) :: x3a
+      real(default), dimension(:,:,:), intent(in) :: ya
+      real(default), intent(in) :: x1
+      real(default), intent(in) :: x2
+      real(default), intent(in) :: x3
+      real(default), intent(out) :: y
+    end subroutine interpolate_linear_3D_real_scalar
+<<Interpolation: procedures>>=
+  pure module subroutine interpolate_linear_3D_real_scalar (x1a, x2a, x3a, ya, x1, x2, x3, y)
     real(default), dimension(:), intent(in) :: x1a
     real(default), dimension(:), intent(in) :: x2a
     real(default), dimension(:), intent(in) :: x3a
@@ -297,7 +493,8 @@ contains
     call interpolate_linear_3D_complex_scalar (x1a, x2a, x3a, ya_c, x1, x2, x3, y_c)
     y = real(y_c,kind=default)
   end subroutine interpolate_linear_3D_real_scalar
-end module interpolation
+
+@ %def interpolate_linear_3D_real_scalar
 @
 <<[[nr_tools.f90]]>>=
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -8940,65 +9137,96 @@ c
 c
 c
 @
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Top threshold form factor code}
+
+This module contains the infrastructure for the resummed form factors
+for the top threshold simulation as well as the calculation of the top
+mass and width etc.
 <<[[ttv_formfactors.f90]]>>=
 <<File header>>
 
 module ttv_formfactors
 
+  use, intrinsic :: iso_fortran_env !NODEP!
+
   use kinds
+<<Use strings>>
 <<Use debug>>
   use constants
-  use numeric_utils
-  use physics_defs, only: CF, CA, TR
   use sm_physics
   use lorentz
   use interpolation
   use nr_tools
-  use io_units, only: free_unit, given_output_unit
-  use string_utils
-  use iso_varying_string, string_t => varying_string
-  use system_dependencies
-  use, intrinsic :: iso_fortran_env !NODEP!
   use diagnostics
+
 <<Standard module head>>
   save
 
-<<ttv formfactors: public>>
+<<TTV formfactors: public>>
 
-<<ttv formfactors: parameters>>
+<<TTV formfactors: public parameters>>
 
-<<ttv formfactors: types>>
+<<TTV formfactors: types>>
 
-<<ttv formfactors: global variables>>
+<<TTV formfactors: global variables>>
 
-<<ttv formfactors: interfaces>>
-
-contains
-
-<<ttv formfactors: procedures>>
+  interface
+<<TTV formfactors: sub interfaces>>
+  end interface
 
 end module ttv_formfactors
 @ %def ttv_formfactors
 @
-<<ttv formfactors: public>>=
+<<[[ttv_formfactors_sub.f90]]>>=
+<<File header>>
+
+submodule (ttv_formfactors) ttv_formfactors_s
+
+  use numeric_utils
+  use string_utils
+  use physics_defs, only: CF, CA, TR
+  use io_units
+  use system_dependencies
+
+  implicit none
+
+<<TTV formfactors: parameters>>
+
+<<TTV formfactors: interfaces>>
+
+contains
+
+<<TTV formfactors: procedures>>
+
+end submodule ttv_formfactors_s
+
+@ %def ttv_formfactors_s
+@
+<<TTV formfactors: public>>=
   public :: onshell_projection_t
-<<ttv formfactors: types>>=
+<<TTV formfactors: types>>=
   type :: onshell_projection_t
      logical :: production
      logical :: decay
      logical :: width
      logical :: boost_decay
   contains
-   <<ttv formfactors: onshell projection: TBP>>
+   <<TTV formfactors: onshell projection: TBP>>
   end type onshell_projection_t
 
 @ %def onshell_projection_t
 @
 
-<<ttv formfactors: onshell projection: TBP>>=
+<<TTV formfactors: onshell projection: TBP>>=
   procedure :: debug_write => onshell_projection_debug_write
-<<ttv formfactors: procedures>>=
-  subroutine onshell_projection_debug_write (onshell_projection)
+<<TTV formfactors: sub interfaces>>=
+    module subroutine onshell_projection_debug_write (onshell_projection)
+      class(onshell_projection_t), intent(in) :: onshell_projection
+    end subroutine onshell_projection_debug_write
+<<TTV formfactors: procedures>>=
+  module subroutine onshell_projection_debug_write (onshell_projection)
     class(onshell_projection_t), intent(in) :: onshell_projection
     if (debug_on) call msg_debug (D_THRESHOLD, "onshell_projection%production", &
          onshell_projection%production)
@@ -9012,10 +9240,15 @@ end module ttv_formfactors
 
 @ %def onshell_projection_debug_write
 @
-<<ttv formfactors: onshell projection: TBP>>=
+<<TTV formfactors: onshell projection: TBP>>=
   procedure :: set_all => onshell_projection_set_all
-<<ttv formfactors: procedures>>=
-  pure subroutine onshell_projection_set_all (onshell_projection, flag)
+<<TTV formfactors: sub interfaces>>=
+    pure module subroutine onshell_projection_set_all (onshell_projection, flag)
+      class(onshell_projection_t), intent(inout) :: onshell_projection
+      logical, intent(in) :: flag
+    end subroutine onshell_projection_set_all
+<<TTV formfactors: procedures>>=
+  pure module subroutine onshell_projection_set_all (onshell_projection, flag)
     class(onshell_projection_t), intent(inout) :: onshell_projection
     logical, intent(in) :: flag
     onshell_projection%production = flag
@@ -9024,10 +9257,15 @@ end module ttv_formfactors
 
 @ %def onshell_projection_set_all
 @
-<<ttv formfactors: onshell projection: TBP>>=
+<<TTV formfactors: onshell projection: TBP>>=
   procedure :: active => onshell_projection_active
-<<ttv formfactors: procedures>>=
-  pure function onshell_projection_active (onshell_projection) result (active)
+<<TTV formfactors: sub interfaces>>=
+    pure module function onshell_projection_active (onshell_projection) result (active)
+      logical :: active
+      class(onshell_projection_t), intent(in) :: onshell_projection
+    end function onshell_projection_active
+<<TTV formfactors: procedures>>=
+  pure module function onshell_projection_active (onshell_projection) result (active)
     logical :: active
     class(onshell_projection_t), intent(in) :: onshell_projection
     active = onshell_projection%production .or. &
@@ -9036,20 +9274,20 @@ end module ttv_formfactors
 
 @ %def onshell_projection_active
 @
-<<ttv formfactors: types>>=
+<<TTV formfactors: types>>=
   type :: helicity_approximation_t
     logical :: simple = .false.
     logical :: extra = .false.
     logical :: ultra = .false.
   contains
-  <<ttv formfactors: helicity approximation: TBP>>
+  <<TTV formfactors: helicity approximation: TBP>>
   end type helicity_approximation_t
 
 @ %def helicity_approximation_t
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: settings_t
-<<ttv formfactors: types>>=
+<<TTV formfactors: types>>=
   type :: settings_t
      ! look what is set by initialized_parameters, bundle them in a class and rename to initialized
      logical :: initialized_parameters
@@ -9072,17 +9310,23 @@ end module ttv_formfactors
      type(onshell_projection_t) :: onshell_projection
      type(helicity_approximation_t) :: helicity_approximation
   contains
-   <<ttv formfactors: settings: TBP>>
+   <<TTV formfactors: settings: TBP>>
   end type settings_t
 
 @ %def settings_t
 @
-<<ttv formfactors: settings: TBP>>=
+<<TTV formfactors: settings: TBP>>=
   procedure :: setup_flags => settings_setup_flags
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: sub interfaces>>=
+    module subroutine settings_setup_flags (settings, ff_in, offshell_strategy_in, &
+             top_helicity_selection)
+      class(settings_t), intent(inout) :: settings
+      integer, intent(in) :: ff_in, offshell_strategy_in, top_helicity_selection
+    end subroutine settings_setup_flags
+<<TTV formfactors: procedures>>=
   ! TODO: (bcn 2016-03-21) break this up into a part regarding the
   ! FF grid and a part regarding the settings
-  subroutine settings_setup_flags (settings, ff_in, offshell_strategy_in, &
+  module subroutine settings_setup_flags (settings, ff_in, offshell_strategy_in, &
            top_helicity_selection)
     class(settings_t), intent(inout) :: settings
     integer, intent(in) :: ff_in, offshell_strategy_in, top_helicity_selection
@@ -9139,10 +9383,15 @@ end module ttv_formfactors
 
 @ %def settings_setup_flags
 @
-<<ttv formfactors: settings: TBP>>=
+<<TTV formfactors: settings: TBP>>=
   procedure :: write => settings_write
-<<ttv formfactors: procedures>>=
-  subroutine settings_write (settings, unit)
+<<TTV formfactors: sub interfaces>>=
+    module subroutine settings_write (settings, unit)
+      class(settings_t), intent(in) :: settings
+      integer, intent(in), optional :: unit
+    end subroutine settings_write
+<<TTV formfactors: procedures>>=
+  module subroutine settings_write (settings, unit)
     class(settings_t), intent(in) :: settings
     integer, intent(in), optional :: unit
     integer :: u
@@ -9180,10 +9429,16 @@ end module ttv_formfactors
 
 @ %def settings_write
 @
-<<ttv formfactors: settings: TBP>>=
+<<TTV formfactors: settings: TBP>>=
   procedure :: use_nlo_width => settings_use_nlo_width
-<<ttv formfactors: procedures>>=
-  pure function settings_use_nlo_width (settings, ff) result (nlo)
+<<TTV formfactors: sub interfaces>>=
+    pure module function settings_use_nlo_width (settings, ff) result (nlo)
+      logical :: nlo
+      class(settings_t), intent(in) :: settings
+      integer, intent(in) :: ff
+    end function settings_use_nlo_width
+<<TTV formfactors: procedures>>=
+  pure module function settings_use_nlo_width (settings, ff) result (nlo)
     logical :: nlo
     class(settings_t), intent(in) :: settings
     integer, intent(in) :: ff
@@ -9192,41 +9447,56 @@ end module ttv_formfactors
 
 @ %def settings_use_nlo_width
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: formfactor_t
-<<ttv formfactors: types>>=
+<<TTV formfactors: types>>=
   type :: formfactor_t
      logical :: active
   contains
-   <<ttv formfactors: formfactor: TBP>>
+   <<TTV formfactors: formfactor: TBP>>
   end type formfactor_t
 
 @ %def formfactor_t
 @
-<<ttv formfactors: formfactor: TBP>>=
+<<TTV formfactors: formfactor: TBP>>=
   procedure :: activate => formfactor_activate
-<<ttv formfactors: procedures>>=
-  pure subroutine formfactor_activate (formfactor)
+<<TTV formfactors: sub interfaces>>=
+    pure module subroutine formfactor_activate (formfactor)
+      class(formfactor_t), intent(inout) :: formfactor
+    end subroutine formfactor_activate
+<<TTV formfactors: procedures>>=
+  pure module subroutine formfactor_activate (formfactor)
     class(formfactor_t), intent(inout) :: formfactor
     formfactor%active = .true.
   end subroutine formfactor_activate
 
 @ %def formfactor_activate
 @
-<<ttv formfactors: formfactor: TBP>>=
+<<TTV formfactors: formfactor: TBP>>=
   procedure :: disable => formfactor_disable
-<<ttv formfactors: procedures>>=
-  pure subroutine formfactor_disable (formfactor)
+<<TTV formfactors: sub interfaces>>=
+    pure module subroutine formfactor_disable (formfactor)
+      class(formfactor_t), intent(inout) :: formfactor
+    end subroutine formfactor_disable
+<<TTV formfactors: procedures>>=
+  pure module subroutine formfactor_disable (formfactor)
     class(formfactor_t), intent(inout) :: formfactor
     formfactor%active = .false.
   end subroutine formfactor_disable
 
 @ %def formfactor_disable
 @ This function actually returns $\tilde{F}$, i.e. $F-1$.
-<<ttv formfactors: formfactor: TBP>>=
+<<TTV formfactors: formfactor: TBP>>=
   procedure :: compute => formfactor_compute
-<<ttv formfactors: procedures>>=
-  function formfactor_compute (formfactor, ps, vec_type, FF_mode) result (FF)
+<<TTV formfactors: sub interfaces>>=
+    module function formfactor_compute (formfactor, ps, vec_type, FF_mode) result (FF)
+      complex(default) :: FF
+      class(formfactor_t), intent(in) :: formfactor
+      type(phase_space_point_t), intent(in) :: ps
+      integer, intent(in) :: vec_type, FF_mode
+    end function formfactor_compute
+<<TTV formfactors: procedures>>=
+  module function formfactor_compute (formfactor, ps, vec_type, FF_mode) result (FF)
     complex(default) :: FF
     class(formfactor_t), intent(in) :: formfactor
     type(phase_space_point_t), intent(in) :: ps
@@ -9270,7 +9540,8 @@ end module ttv_formfactors
     end if
     if (debug2_active (D_THRESHOLD)) then
        call update_global_sqrts_dependent_variables (ps%sqrts)
-       call msg_debug2 (D_THRESHOLD, "threshold%settings%initialized_parameters", threshold%settings%initialized_parameters)
+       call msg_debug2 (D_THRESHOLD, "threshold%settings%initialized_parameters", &
+            threshold%settings%initialized_parameters)
        call msg_debug2 (D_THRESHOLD, "formfactor%active", formfactor%active)
        call msg_debug2 (D_THRESHOLD, "FF_mode", FF_mode)
        call msg_debug2 (D_THRESHOLD, "FF", FF)
@@ -9282,9 +9553,9 @@ end module ttv_formfactors
 
 @ %def formfactor_compute
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: width_t
-<<ttv formfactors: types>>=
+<<TTV formfactors: types>>=
   type :: width_t
     real(default) :: aem
     real(default) :: sw
@@ -9293,15 +9564,20 @@ end module ttv_formfactors
     real(default) :: vtb
     real(default) :: gam_inv
   contains
-   <<ttv formfactors: width: TBP>>
+   <<TTV formfactors: width: TBP>>
   end type width_t
 
 @ %def width_t
 @
-<<ttv formfactors: width: TBP>>=
+<<TTV formfactors: width: TBP>>=
   procedure :: init => width_init
-<<ttv formfactors: procedures>>=
-  pure subroutine width_init (width, aemi, sw, mw, mb, vtb, gam_inv)
+<<TTV formfactors: sub interfaces>>=
+    pure module subroutine width_init (width, aemi, sw, mw, mb, vtb, gam_inv)
+      class(width_t), intent(inout) :: width
+      real(default), intent(in) :: aemi, sw, mw, mb, vtb, gam_inv
+    end subroutine width_init
+<<TTV formfactors: procedures>>=
+  pure module subroutine width_init (width, aemi, sw, mw, mb, vtb, gam_inv)
     class(width_t), intent(inout) :: width
     real(default), intent(in) :: aemi, sw, mw, mb, vtb, gam_inv
     width%aem = one / aemi
@@ -9314,10 +9590,17 @@ end module ttv_formfactors
 
 @ %def width_init
 @
-<<ttv formfactors: width: TBP>>=
+<<TTV formfactors: width: TBP>>=
   procedure :: compute => width_compute
-<<ttv formfactors: procedures>>=
-  pure function width_compute (width, top_mass, sqrts, initial) result (gamma)
+<<TTV formfactors: sub interfaces>>=
+    pure module function width_compute (width, top_mass, sqrts, initial) result (gamma)
+      real(default) :: gamma
+      class(width_t), intent(in) :: width
+      real(default), intent(in) :: top_mass, sqrts
+      logical, intent(in), optional :: initial
+    end function width_compute
+<<TTV formfactors: procedures>>=
+  pure module function width_compute (width, top_mass, sqrts, initial) result (gamma)
     real(default) :: gamma
     class(width_t), intent(in) :: width
     real(default), intent(in) :: top_mass, sqrts
@@ -9342,38 +9625,40 @@ end module ttv_formfactors
 @ %def width_compute
 @ Use singleton pattern instead of global variables. At least shows
 where the variables are from.
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: threshold
-<<ttv formfactors: global variables>>=
-  type(threshold_t) :: threshold
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: threshold_t
-<<ttv formfactors: types>>=
+<<TTV formfactors: global variables>>=
+  type(threshold_t) :: threshold
+<<TTV formfactors: types>>=
   type :: threshold_t
      type(settings_t) :: settings
      type(formfactor_t) :: formfactor
      type(width_t) :: width
   contains
-   <<ttv formfactors: threshold: TBP>>
+   <<TTV formfactors: threshold: TBP>>
   end type threshold_t
 
 @ %def threshold_t
 @
-<<ttv formfactors: parameters>>=
+<<TTV formfactors: public parameters>>=
+  integer, parameter, public :: &
+       MATCHED_EXPANDED_NOTSOHARD = -5, &
+       MATCHED_NOTSOHARD = -4, &
+       MATCHED_EXPANDED = - 3, &
+       RESUMMED_SWITCHOFF = - 2, &
+       MATCHED = -1, &
+       RESUMMED = 1, &
+       EXPANDED_HARD = 4, &
+       EXPANDED_SOFT = 5, &
+       EXPANDED_SOFT_SWITCHOFF = 6, &
+       RESUMMED_ANALYTIC_LL = 7, &
+       EXPANDED_NOTSOHARD = 8, &
+       TREE = 9
+<<TTV formfactors: parameters>>=
   integer, parameter :: VECTOR = 1
   integer, parameter :: AXIAL = 2
-  integer, parameter, public :: MATCHED_EXPANDED_NOTSOHARD = -5, &
-                                MATCHED_NOTSOHARD = -4, &
-                                MATCHED_EXPANDED = - 3, &
-                                RESUMMED_SWITCHOFF = - 2, &
-                                MATCHED = -1, &
-                                RESUMMED = 1, &
-                                EXPANDED_HARD = 4, &
-                                EXPANDED_SOFT = 5, &
-                                EXPANDED_SOFT_SWITCHOFF = 6, &
-                                RESUMMED_ANALYTIC_LL = 7, &
-                                EXPANDED_NOTSOHARD = 8, &
-                                TREE = 9
   real(default), parameter :: NF = 5.0_default
 
   real(default), parameter :: z3 = 1.20205690315959428539973816151_default
@@ -9384,9 +9669,9 @@ where the variables are from.
   complex(default), parameter :: ieps = imago*tiny_10
 
 @ [[gam_m1s]] is only used for the scale nustar
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: GAM, GAM_M1S
-<<ttv formfactors: global variables>>=
+<<TTV formfactors: global variables>>=
   real(default) :: M1S, GAM, GAM_M1S
   integer :: NRQCD_ORDER
   real(default) :: MTPOLE = - one
@@ -9396,14 +9681,14 @@ where the variables are from.
   real(default) :: MU_USOFT, AS_USOFT
 
 @ [[NUSTAR_FIXED]] is normally not used
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: AS_SOFT
   public :: AS_LL_SOFT
   public :: AS_USOFT
   public :: AS_HARD
   public :: SWITCHOFF_RESUMMED
   public :: TOPPIK_RESUMMED
-<<ttv formfactors: global variables>>=
+<<TTV formfactors: global variables>>=
   real(default) :: RESCALE_F, MU_SOFT, AS_SOFT, AS_LL_SOFT, NUSTAR_FIXED
   logical :: NUSTAR_DYNAMIC, SWITCHOFF_RESUMMED, TOPPIK_RESUMMED
   real(default) :: B0
@@ -9420,33 +9705,44 @@ where the variables are from.
   complex(single), dimension(:,:,:,:,:), allocatable :: Vmatrix
 
 @ Explicit range and step size of the sqrts-grid relative to 2*M1S:
-<<ttv formfactors: global variables>>=
+<<TTV formfactors: global variables>>=
   real(default) :: sqrts_min, sqrts_max, sqrts_it
 
 @
-<<ttv formfactors: interfaces>>=
+<<TTV formfactors: interfaces>>=
   interface char
     module procedure int_to_char, real_to_char, complex_to_char, logical_to_char
   end interface char
 
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: m1s_to_mpole
 @
-<<ttv formfactors: types>>=
-  type, public :: phase_space_point_t
+<<TTV formfactors: public>>=
+  public :: phase_space_point_t
+<<TTV formfactors: types>>=
+  type :: phase_space_point_t
     real(default) :: p2 = 0, k2 = 0, q2 = 0
     real(default) :: sqrts = 0, p = 0, p0 = 0
     real(default) :: mpole = 0, en = 0
     logical :: inside_grid = .false., onshell = .false.
   contains
-  <<ttv formfactors: phase space point: TBP>>
+  <<TTV formfactors: phase space point: TBP>>
   end type phase_space_point_t
 
+@ %def phase_space_point_t
 @
-<<ttv formfactors: phase space point: TBP>>=
+<<TTV formfactors: phase space point: TBP>>=
   procedure :: init => phase_space_point_init_rel
-<<ttv formfactors: procedures>>=
-  pure subroutine phase_space_point_init_rel (ps_point, p2, k2, q2, m)
+<<TTV formfactors: sub interfaces>>=
+    pure module subroutine phase_space_point_init_rel (ps_point, p2, k2, q2, m)
+      class(phase_space_point_t), intent(inout) :: ps_point
+      real(default), intent(in) :: p2
+      real(default), intent(in) :: k2
+      real(default), intent(in) :: q2
+      real(default), intent(in), optional :: m
+    end subroutine phase_space_point_init_rel
+<<TTV formfactors: procedures>>=
+  pure module subroutine phase_space_point_init_rel (ps_point, p2, k2, q2, m)
     class(phase_space_point_t), intent(inout) :: ps_point
     real(default), intent(in) :: p2
     real(default), intent(in) :: k2
@@ -9462,11 +9758,20 @@ where the variables are from.
     if ( present(m) ) ps_point%onshell = ps_point%is_onshell (m)
   end subroutine phase_space_point_init_rel
 
+@ %def phase_space_point_init_rel
 @
-<<ttv formfactors: phase space point: TBP>>=
+<<TTV formfactors: phase space point: TBP>>=
   procedure :: init_nonrel => phase_space_point_init_nonrel
-<<ttv formfactors: procedures>>=
-  pure subroutine phase_space_point_init_nonrel (ps_point, sqrts, p, p0, m)
+<<TTV formfactors: sub interfaces>>=
+    pure module subroutine phase_space_point_init_nonrel (ps_point, sqrts, p, p0, m)
+      class(phase_space_point_t), intent(inout) :: ps_point
+      real(default), intent(in) :: sqrts
+      real(default), intent(in) :: p
+      real(default), intent(in) :: p0
+      real(default), intent(in), optional :: m
+    end subroutine phase_space_point_init_nonrel
+<<TTV formfactors: procedures>>=
+  pure module subroutine phase_space_point_init_nonrel (ps_point, sqrts, p, p0, m)
     class(phase_space_point_t), intent(inout) :: ps_point
     real(default), intent(in) :: sqrts
     real(default), intent(in) :: p
@@ -9482,8 +9787,9 @@ where the variables are from.
     if ( present(m) ) ps_point%onshell = ps_point%is_onshell (m)
   end subroutine phase_space_point_init_nonrel
 
+@ %def phase_space_point_init_nonrel
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! convert squared 4-momenta into sqrts, p0 = E_top-sqrts/2 and abs. 3-momentum p
   pure subroutine rel_to_nonrel (p2, k2, q2, sqrts, p, p0)
     real(default), intent(in) :: p2
@@ -9497,8 +9803,9 @@ where the variables are from.
     p = sqrt (0.5_default * (- p2 - k2 + sqrts**2/2. + 2.* p0**2))
   end subroutine rel_to_nonrel
 
+@ %def rel_to_nonrel
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! convert sqrts, p0 = E_top-sqrts/2 and abs. 3-momentum p into squared 4-momenta
   pure subroutine nonrel_to_rel (sqrts, p, p0, p2, k2, q2)
     real(default), intent(in) :: sqrts
@@ -9512,8 +9819,9 @@ where the variables are from.
     q2 = sqrts**2
   end subroutine nonrel_to_rel
 
+@ %def nonrel_to_rel
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function complex_m2 (m, w) result (m2c)
     real(default), intent(in) :: m
     real(default), intent(in) :: w
@@ -9521,11 +9829,18 @@ where the variables are from.
     m2c = m**2 - imago*m*w
   end function complex_m2
 
+@ %def complex_m2
 @
-<<ttv formfactors: phase space point: TBP>>=
+<<TTV formfactors: phase space point: TBP>>=
   procedure :: is_onshell => phase_space_point_is_onshell
-<<ttv formfactors: procedures>>=
-  pure function phase_space_point_is_onshell (ps_point, m) result (flag)
+<<TTV formfactors: sub interfaces>>=
+    pure module function phase_space_point_is_onshell (ps_point, m) result (flag)
+      logical :: flag
+      class(phase_space_point_t), intent(in) :: ps_point
+      real(default), intent(in) :: m
+    end function phase_space_point_is_onshell
+<<TTV formfactors: procedures>>=
+  pure module function phase_space_point_is_onshell (ps_point, m) result (flag)
     logical :: flag
     class(phase_space_point_t), intent(in) :: ps_point
     real(default), intent(in) :: m
@@ -9533,11 +9848,17 @@ where the variables are from.
          nearly_equal (ps_point%k2 , m**2, rel_smallness=1E-5_default)
   end function phase_space_point_is_onshell
 
+@ %def phase_space_point_is_onshell
 @
-<<ttv formfactors: phase space point: TBP>>=
+<<TTV formfactors: phase space point: TBP>>=
   procedure :: write => phase_space_point_write
-<<ttv formfactors: procedures>>=
-  subroutine phase_space_point_write (psp, unit)
+<<TTV formfactors: sub interfaces>>=
+    module subroutine phase_space_point_write (psp, unit)
+      class(phase_space_point_t), intent(in) :: psp
+      integer, intent(in), optional :: unit
+    end subroutine phase_space_point_write
+<<TTV formfactors: procedures>>=
+  module subroutine phase_space_point_write (psp, unit)
     class(phase_space_point_t), intent(in) :: psp
     integer, intent(in), optional :: unit
     integer :: u
@@ -9556,7 +9877,7 @@ where the variables are from.
 
 @ %def phase_space_point_write
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   function set_nrqcd_order (nrqcd_order_in) result (nrqcdorder)
     integer :: nrqcdorder
     real(default), intent(in) :: nrqcd_order_in
@@ -9570,10 +9891,39 @@ where the variables are from.
 
 @ %def set_nrqcd_order
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: init_parameters
-<<ttv formfactors: procedures>>=
-  subroutine init_parameters (mpole_out, gam_out, m1s_in, Vtb, gam_inv, &
+<<TTV formfactors: sub interfaces>>=
+    module subroutine init_parameters (mpole_out, gam_out, m1s_in, Vtb, gam_inv, &
+           aemi, sw, az, mz, mw, mb, h_in, f_in, nrqcd_order_in, ff_in, &
+           offshell_strategy_in, v1_in, v2_in, scan_sqrts_min, &
+           scan_sqrts_max, scan_sqrts_stepsize, mpole_fixed, top_helicity_selection)
+      real(default), intent(out) :: mpole_out
+      real(default), intent(out) :: gam_out
+      real(default), intent(in) :: m1s_in
+      real(default), intent(in) :: Vtb
+      real(default), intent(in) :: gam_inv
+      real(default), intent(in) :: aemi
+      real(default), intent(in) :: sw
+      real(default), intent(in) :: az
+      real(default), intent(in) :: mz
+      real(default), intent(in) :: mw
+      real(default), intent(in) :: mb
+      real(default), intent(in) :: h_in
+      real(default), intent(in) :: f_in
+      real(default), intent(in) :: nrqcd_order_in
+      real(default), intent(in) :: ff_in
+      real(default), intent(in) :: offshell_strategy_in
+      real(default), intent(in) :: v1_in
+      real(default), intent(in) :: v2_in
+      real(default), intent(in) :: scan_sqrts_min
+      real(default), intent(in) :: scan_sqrts_max
+      real(default), intent(in) :: scan_sqrts_stepsize
+      logical, intent(in) :: mpole_fixed
+      real(default), intent(in) :: top_helicity_selection
+    end subroutine init_parameters
+<<TTV formfactors: procedures>>=
+  module subroutine init_parameters (mpole_out, gam_out, m1s_in, Vtb, gam_inv, &
          aemi, sw, az, mz, mw, mb, h_in, f_in, nrqcd_order_in, ff_in, &
          offshell_strategy_in, v1_in, v2_in, scan_sqrts_min, &
          scan_sqrts_max, scan_sqrts_stepsize, mpole_fixed, top_helicity_selection)
@@ -9634,11 +9984,12 @@ where the variables are from.
     gam_out = GAM
     threshold%settings%initialized_parameters = .true.
   contains
-    <<ttv formfactors: init parameters: subroutines>>
+    <<TTV formfactors: init parameters: subroutines>>
   end subroutine init_parameters
 
+@ %def init_parameters
 @
-<<ttv formfactors: init parameters: subroutines>>=
+<<TTV formfactors: init parameters: subroutines>>=
   subroutine show_input()
     if (debug_on) call msg_debug (D_THRESHOLD, "init_parameters")
     if (debug_on) call msg_debug (D_THRESHOLD, "m1s_in", m1s_in)
@@ -9665,7 +10016,7 @@ where the variables are from.
   end subroutine show_input
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine compute_global_auxiliary_numbers ()
     !!! auxiliary numbers needed later
     !!! current coefficients Ai(S,L,J), cf. arXiv:hep-ph/0609151, Eqs. (63)-(64)
@@ -9693,10 +10044,14 @@ where the variables are from.
 
 @ %def compute_global_auxiliary_numbers
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: init_threshold_grids
-<<ttv formfactors: procedures>>=
-  subroutine init_threshold_grids (test)
+<<TTV formfactors: sub interfaces>>=
+    module subroutine init_threshold_grids (test)
+      real(default), intent(in) :: test
+    end subroutine init_threshold_grids
+<<TTV formfactors: procedures>>=
+  module subroutine init_threshold_grids (test)
     real(default), intent(in) :: test
     if (debug_active (D_THRESHOLD)) then
        call msg_debug (D_THRESHOLD, "init_threshold_grids")
@@ -9706,7 +10061,8 @@ where the variables are from.
       call msg_message ("TESTING ONLY: Skip threshold initialization and use tree-level SM.")
       return
     end if
-    if (.not. threshold%settings%initialized_parameters) call msg_fatal ("init_threshold_grid: parameters not initialized!")
+    if (.not. threshold%settings%initialized_parameters) &
+         call msg_fatal ("init_threshold_grid: parameters not initialized!")
     !!! !!! !!! MAC OS X and BSD don't load the global module with parameter values stored
     !!! if (parameters_ref == parameters_string ()) return
     call dealloc_grids ()
@@ -9714,8 +10070,9 @@ where the variables are from.
     parameters_ref = parameters_string ()
   end subroutine init_threshold_grids
 
+@ %def init_threshold_grids
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! LL/NLL resummation of nonrelativistic Coulomb potential
   pure function resummed_formfactor (ps, vec_type) result (c)
     type(phase_space_point_t), intent(in) :: ps
@@ -9731,7 +10088,7 @@ where the variables are from.
   end function resummed_formfactor
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! leading nonrelativistic O(alphas^1) contribution (-> expansion of resummation)
   function expanded_formfactor (alphas_hard, alphas_soft, ps, vec_type) result (FF)
     complex(default) :: FF
@@ -9775,7 +10132,7 @@ where the variables are from.
   end function expanded_formfactor
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine init_formfactor_grid ()
     type(string_t) :: ff_file
     if (debug_on) call msg_debug (D_THRESHOLD, "init_formfactor_grid")
@@ -9803,7 +10160,7 @@ where the variables are from.
   end subroutine init_formfactor_grid
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine read_formfactor_grid (ff_file)
     type(string_t), intent(in) :: ff_file
     complex(single), dimension(:,:,:,:), allocatable :: ff_grid_sp
@@ -9850,8 +10207,9 @@ where the variables are from.
     threshold%settings%initialized_ff = .true.
   end subroutine read_formfactor_grid
 
+@ %def read_formfactor_grid
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine write_formfactor_grid (ff_file)
     type(string_t), intent(in) :: ff_file
     integer :: u, st
@@ -9871,19 +10229,22 @@ where the variables are from.
     if (st > 0)  call msg_fatal ("close " // char(ff_file) // ": iostat = " // char(st))
   end subroutine write_formfactor_grid
 
+@ %def write_formfactor_grid
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function parameters_string () result (str)
     character(len(parameters_ref)) :: str
-    str = char(M1S) // " " // char(GAM_M1S) // " " // char(NRQCD_ORDER) &
-           // " " // char(RESCALE_H) &
-           // " " // char(RESCALE_F) &
-           //  " " // char(sqrts_min) &
-           // " " // char(sqrts_max) // " " // char(sqrts_it)
+    str = char(M1S) // " " // char(GAM_M1S) &
+         // " " // char(NRQCD_ORDER) &
+         // " " // char(RESCALE_H) &
+         // " " // char(RESCALE_F) &
+         //  " " // char(sqrts_min) &
+         // " " // char(sqrts_max) &
+         // " " // char(sqrts_it)
   end function parameters_string
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine update_global_sqrts_dependent_variables (sqrts)
     real(default), intent(in) :: sqrts
     real(default) :: nu_soft, f
@@ -9943,7 +10304,7 @@ where the variables are from.
   end function xc
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   function current_coeff (a_hard, a_soft, a_usoft, i) result (coeff)
     real(default), intent(in) :: a_hard, a_soft, a_usoft
     integer, intent(in) :: i
@@ -9972,21 +10333,32 @@ where the variables are from.
   end function current_coeff
 
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: v_matching
-<<ttv formfactors: procedures>>=
-  pure function v_matching (sqrts, gamma) result (v)
+<<TTV formfactors: sub interfaces>>=
+    pure module function v_matching (sqrts, gamma) result (v)
+      real(default) :: v
+      real(default), intent(in) :: sqrts, gamma
+    end function v_matching
+<<TTV formfactors: procedures>>=
+  pure module function v_matching (sqrts, gamma) result (v)
     real(default) :: v
     real(default), intent(in) :: sqrts, gamma
     v = abs (sqrts_to_v_1S (sqrts, gamma))
   end function v_matching
 
+@  %def v_matching
 @ Smooth transition from [[f1]] to [[f2]] between [[v1]] and [[v2]]
 (simplest polynom).
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: f_switch_off
-<<ttv formfactors: procedures>>=
-  pure function f_switch_off (v) result (fval)
+<<TTV formfactors: sub interfaces>>=
+    pure module function f_switch_off (v) result (fval)
+      real(default), intent(in) :: v
+      real(default) :: fval
+    end function f_switch_off
+<<TTV formfactors: procedures>>=
+  pure module function f_switch_off (v) result (fval)
     real(default), intent(in) :: v
     real(default) :: fval
     real(default) :: vm, f1, f2, x
@@ -10003,8 +10375,9 @@ where the variables are from.
     end if
   end function f_switch_off
 
+@ %def f_switch_off
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   function formfactor_LL_analytic (a_soft, sqrts, p, vec_type) result (c)
     real(default), intent(in) :: a_soft
     real(default), intent(in) :: sqrts
@@ -10027,7 +10400,7 @@ where the variables are from.
   end function formfactor_LL_analytic
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! Max's LL nonrelativistic threshold Green's function
   function G0p (a, en, p, m, w) result (c)
     real(default), intent(in) :: a
@@ -10052,7 +10425,7 @@ where the variables are from.
   end function G0p
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! tree level version: a_soft -> 0
   pure function G0p_tree (en, p, m, w) result (c)
     real(default), intent(in) :: en
@@ -10064,7 +10437,7 @@ where the variables are from.
   end function G0p_tree
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! Peter Poier's LL nonrelativistic axial threshold Green's function
   function G0p_ax (a, en, p, m, w) result (c)
     real(default), intent(in) :: a
@@ -10093,7 +10466,7 @@ where the variables are from.
   end function G0p_ax
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function nustar (sqrts) result (nu)
     real(default), intent(in) :: sqrts
     real(default) :: nu
@@ -10111,7 +10484,7 @@ where the variables are from.
 @ We recompute [[alpha_soft]] for form factors that do not call
 [[update_global_parameters]] (it is called in the scan for the (N)LL
 grid).
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function alphas_soft (sqrts) result (a_soft)
     real(default) :: a_soft
     real(default), intent(in) :: sqrts
@@ -10122,10 +10495,15 @@ grid).
   end function alphas_soft
 
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: alphas_notsohard
-<<ttv formfactors: procedures>>=
-  pure function alphas_notsohard (sqrts) result (a_soft)
+<<TTV formfactors: sub interfaces>>=
+    pure module function alphas_notsohard (sqrts) result (a_soft)
+      real(default) :: a_soft
+      real(default), intent(in) :: sqrts
+    end function alphas_notsohard
+<<TTV formfactors: procedures>>=
+  pure module function alphas_notsohard (sqrts) result (a_soft)
     real(default) :: a_soft
     real(default), intent(in) :: sqrts
     real(default) :: mu_notsohard
@@ -10136,9 +10514,15 @@ grid).
     a_soft = running_as (mu_notsohard, AS_MZ, MASS_Z, 2, NF)
   end function alphas_notsohard
 
+@ %def alphas_notsohard
 @
-<<ttv formfactors: procedures>>=
-  pure function m1s_to_mpole (sqrts) result (mpole)
+<<TTV formfactors: sub interfaces>>=
+    pure module function m1s_to_mpole (sqrts) result (mpole)
+      real(default), intent(in) :: sqrts
+      real(default) :: mpole
+    end function m1s_to_mpole
+<<TTV formfactors: procedures>>=
+  pure module function m1s_to_mpole (sqrts) result (mpole)
     real(default), intent(in) :: sqrts
     real(default) :: mpole
     mpole = mtpole_init
@@ -10149,8 +10533,9 @@ grid).
     end if
   end function m1s_to_mpole
 
+@ %def m1s_to_mpole
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !pure
   !function mpole_to_M1S (mpole, sqrts, nl) result (m)
     !real(default), intent(in) :: mpole
@@ -10161,7 +10546,7 @@ grid).
   !end function mpole_to_M1S
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function deltaM (sqrts) result (del)
     real(default), intent(in) :: sqrts
     real(default) :: del
@@ -10175,7 +10560,7 @@ grid).
   end function deltaM
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function sqrts_within_range (sqrts) result (flag)
     real(default), intent(in) :: sqrts
     logical :: flag
@@ -10183,7 +10568,7 @@ grid).
   end function
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   ! The mapping is such that even for min=max, we get three points:
   ! min - it , min, min + it
   pure function sqrts_iter (i_sq) result (sqrts)
@@ -10199,7 +10584,7 @@ grid).
   end function sqrts_iter
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   function scan_formfactor_over_p_LL_analytic (a_soft, sqrts, vec_type) result (ff_analytic)
     real(default), intent(in) :: a_soft
     real(default), intent(in) :: sqrts
@@ -10210,7 +10595,7 @@ grid).
   end function scan_formfactor_over_p_LL_analytic
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! tttoppik wrapper
   subroutine scan_formfactor_over_p_TOPPIK (a_soft, sqrts, vec_type, p_grid_out, mpole_in, ff_toppik)
     real(default), intent(in) :: a_soft
@@ -10307,7 +10692,7 @@ grid).
   end subroutine scan_formfactor_over_p_TOPPIK
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   function scan_formfactor_over_p (sqrts, vec_type) result (ff)
     real(default), intent(in) :: sqrts
     integer, intent(in) :: vec_type
@@ -10325,7 +10710,7 @@ grid).
   end function scan_formfactor_over_p
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine scan_formfactor_over_phase_space_grid ()
     integer :: i_sq, vec_type, unstable_loop
     logical, dimension(:,:), allocatable :: ff_unstable
@@ -10375,7 +10760,7 @@ grid).
   end subroutine scan_formfactor_over_phase_space_grid
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine init_threshold_phase_space_grid ()
     integer :: i_sq
     if (debug_on) call msg_debug (D_THRESHOLD, "init_threshold_phase_space_grid")
@@ -10398,7 +10783,7 @@ grid).
   end subroutine init_threshold_phase_space_grid
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine init_p0_grid (p_in, n)
     real(default), dimension(:), allocatable, intent(in) :: p_in
     integer, intent(in) :: n
@@ -10413,7 +10798,7 @@ grid).
   end subroutine init_p0_grid
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! Andre's procedure to refine an existing grid
   pure subroutine finer_grid (gr, fgr, n_in)
     real(default), dimension(:), intent(in) :: gr
@@ -10437,7 +10822,7 @@ grid).
   end subroutine finer_grid
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine dealloc_grids ()
     if ( allocated(sq_grid) ) deallocate( sq_grid )
     if ( allocated( p_grid) ) deallocate(  p_grid )
@@ -10448,7 +10833,7 @@ grid).
   end subroutine dealloc_grids
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine trim_p_grid (n_p_new)
     integer, intent(in) :: n_p_new
     real(default), dimension(n_p_new) :: p_save
@@ -10466,7 +10851,7 @@ grid).
   end subroutine trim_p_grid
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! try to repair TOPPIK instabilities by interpolation of adjacent sq_grid points
   subroutine handle_TOPPIK_instabilities (ff, nan)
     complex(default), dimension(:,:,:,:), intent(inout) :: ff
@@ -10494,7 +10879,7 @@ grid).
   end subroutine handle_TOPPIK_instabilities
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function sqrts_to_v (sqrts, gamma) result (v)
     complex(default) :: v
     real(default), intent(in) :: sqrts, gamma
@@ -10504,7 +10889,7 @@ grid).
   end function sqrts_to_v
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function sqrts_to_v_1S (sqrts, gamma) result (v)
     complex(default) :: v
     real(default), intent(in) :: sqrts, gamma
@@ -10512,7 +10897,7 @@ grid).
   end function sqrts_to_v_1S
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function v_to_sqrts (v) result (sqrts)
     real(default), intent(in) :: v
     real(default) :: sqrts
@@ -10522,7 +10907,7 @@ grid).
   end function v_to_sqrts
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! -q^2 times the Coulomb potential V at LO resp. NLO
   function minus_q2_V (a, q, p, p0r, vec_type) result (v)
     real(default), intent(in) :: a
@@ -10555,7 +10940,7 @@ grid).
   end function minus_q2_V
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! compute support points (~> q-grid) for numerical integration: trim p-grid and
   !!! merge with singular points of integrand: q = p, |p-p0|, p+p0, sqrt(mpole*E)
   subroutine compute_support_points (en, i_p, i_p0, n_trim)
@@ -10597,7 +10982,7 @@ grid).
   end subroutine compute_support_points
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   !!! cf. arXiv:hep-ph/9503238, validated against arXiv:hep-ph/0008171
   pure function formfactor_ttv_relativistic_nlo (alphas, ps, J0) result (c)
     real(default), intent(in) :: alphas
@@ -10700,7 +11085,7 @@ grid).
   end function formfactor_ttv_relativistic_nlo
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   pure function sqrts_to_en (sqrts, mpole_in) result (en)
     real(default), intent(in) :: sqrts
     real(default), intent(in), optional :: mpole_in
@@ -10714,7 +11099,7 @@ grid).
   end function sqrts_to_en
 
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   function p_grid_from_TOPPIK (mpole_in) result (p_toppik)
     real(default), intent(in), optional :: mpole_in
     real(default), dimension(POINTS_P) :: p_toppik
@@ -10728,24 +11113,41 @@ grid).
   end function p_grid_from_TOPPIK
 
 @
-<<ttv formfactors: procedures>>=
-  pure function int_to_char (i) result (c)
+<<TTV formfactors: sub interfaces>>=
+    pure module function int_to_char (i) result (c)
+      integer, intent(in) :: i
+      character(len=len(trim(int2fixed(i)))) :: c
+    end function int_to_char
+<<TTV formfactors: procedures>>=
+  pure module function int_to_char (i) result (c)
     integer, intent(in) :: i
     character(len=len(trim(int2fixed(i)))) :: c
     c = int2char (i)
   end function int_to_char
 
+@ %def int_to_char
 @
-<<ttv formfactors: procedures>>=
-  pure function real_to_char (r) result (c)
+<<TTV formfactors: sub interfaces>>=
+    pure module function real_to_char (r) result (c)
+      real(default), intent(in) :: r
+      character(len=len(trim(real2fixed(r)))) :: c
+    end function real_to_char
+<<TTV formfactors: procedures>>=
+  pure module function real_to_char (r) result (c)
     real(default), intent(in) :: r
     character(len=len(trim(real2fixed(r)))) :: c
     c = real2char (r)
   end function real_to_char
 
+@ %def real_to_char
 @
-<<ttv formfactors: procedures>>=
-  pure function complex_to_char (z) result (c)
+<<TTV formfactors: sub interfaces>>=
+    pure module function complex_to_char (z) result (c)
+      complex(default), intent(in) :: z
+      character(len=len(trim(real2fixed(real(z))))+len(trim(real2fixed(aimag(z))))+5) :: c
+    end function complex_to_char
+<<TTV formfactors: procedures>>=
+  pure module function complex_to_char (z) result (c)
     complex(default), intent(in) :: z
     character(len=len(trim(real2fixed(real(z))))+len(trim(real2fixed(aimag(z))))+5) :: c
     character(len=len(trim(real2fixed(real(z))))) :: re
@@ -10759,16 +11161,23 @@ grid).
     end if
   end function complex_to_char
 
+@ %def complex_to_char
 @
-<<ttv formfactors: procedures>>=
-  pure function logical_to_char (l) result (c)
+<<TTV formfactors: sub interfaces>>=
+    pure module function logical_to_char (l) result (c)
+      logical, intent(in) :: l
+      character(len=1) :: c
+    end function logical_to_char
+<<TTV formfactors: procedures>>=
+  pure module function logical_to_char (l) result (c)
     logical, intent(in) :: l
     character(len=1) :: c
     write (c, '(l1)') l
   end function logical_to_char
 
+@ %def logical_to_char
 @
-<<ttv formfactors: procedures>>=
+<<TTV formfactors: procedures>>=
   subroutine get_rest_frame (p1_in, p2_in, p1_out, p2_out)
     type(vector4_t), intent(in) :: p1_in, p2_in
     type(vector4_t), intent(out) :: p1_out, p2_out
@@ -10835,10 +11244,17 @@ grid).
 
 @ %def evaluate_one_to_two_splitting_threshold
 @
-<<ttv formfactors: public>>=
+<<TTV formfactors: public>>=
   public :: generate_on_shell_decay_threshold
-<<ttv formfactors: procedures>>=
-  subroutine generate_on_shell_decay_threshold (p_decay, p_top, p_decay_onshell)
+<<TTV formfactors: sub interfaces>>=
+    module subroutine generate_on_shell_decay_threshold (p_decay, p_top, p_decay_onshell)
+      !!! Gluon must be on first position in this array
+      type(vector4_t), intent(in), dimension(:) :: p_decay
+      type(vector4_t), intent(inout) :: p_top
+      type(vector4_t), intent(inout), dimension(:) :: p_decay_onshell
+    end subroutine generate_on_shell_decay_threshold
+<<TTV formfactors: procedures>>=
+  module subroutine generate_on_shell_decay_threshold (p_decay, p_top, p_decay_onshell)
     !!! Gluon must be on first position in this array
     type(vector4_t), intent(in), dimension(:) :: p_decay
     type(vector4_t), intent(inout) :: p_top
@@ -10862,11 +11278,11 @@ module ttv_formfactors_ut
 
 <<Standard module head>>
 
-<<ttv formfactors: public test>>
+<<TTV formfactors: public test>>
 
 contains
 
-<<ttv formfactors: test driver>>
+<<TTV formfactors: test driver>>
 
 end module ttv_formfactors_ut
 @ %def ttv_formfactors_ut
@@ -10886,33 +11302,33 @@ module ttv_formfactors_uti
 
 <<Standard module head>>
 
-<<ttv formfactors: test declarations>>
+<<TTV formfactors: test declarations>>
 
 contains
 
-<<ttv formfactors: tests>>
+<<TTV formfactors: tests>>
 
 end module ttv_formfactors_uti
 @ %def ttv_formfactors_ut
 @ API: driver for the unit tests below.
-<<ttv formfactors: public test>>=
+<<TTV formfactors: public test>>=
   public ::ttv_formfactors_test
-<<ttv formfactors: test driver>>=
+<<TTV formfactors: test driver>>=
   subroutine ttv_formfactors_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<ttv formfactors: execute tests>>
+  <<TTV formfactors: execute tests>>
   end subroutine ttv_formfactors_test
 
 @  %def ttv_formfactors_test
 @
 \subsubsection{Basic setup}
-<<ttv formfactors: execute tests>>=
+<<TTV formfactors: execute tests>>=
   call test(ttv_formfactors_1, "ttv_formfactors_1", &
             "Basic setup", u, results)
-<<ttv formfactors: test declarations>>=
+<<TTV formfactors: test declarations>>=
   public :: ttv_formfactors_1
-<<ttv formfactors: tests>>=
+<<TTV formfactors: tests>>=
   subroutine ttv_formfactors_1 (u)
     integer, intent(in) :: u
     real(default) :: m1s, Vtb, wt_inv, alphaemi, sw, alphas_mz, mz, &
@@ -10999,7 +11415,8 @@ end module ttv_formfactors_uti
     call assert_equal (u, m1s_to_mpole (550.0_default), m1s, &
          "m1s_to_mpole (550.0_default) == m1s")
     write (u, "(A)") ""
-    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
+    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), &
+         one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
     call formfactor%disable ()
     call assert_equal (u, &
          abs(formfactor%compute (ps, 1, 1)), &
@@ -11027,12 +11444,12 @@ end module ttv_formfactors_uti
 @
 @
 \subsubsection{Test flags}
-<<ttv formfactors: execute tests>>=
+<<TTV formfactors: execute tests>>=
   call test(ttv_formfactors_2, "ttv_formfactors_2", &
             "Test flags", u, results)
-<<ttv formfactors: test declarations>>=
+<<TTV formfactors: test declarations>>=
   public :: ttv_formfactors_2
-<<ttv formfactors: tests>>=
+<<TTV formfactors: tests>>=
   subroutine ttv_formfactors_2 (u)
     integer, intent(in) :: u
     write (u, "(A)")  "* Test output: ttv_formfactors_2"

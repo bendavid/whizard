@@ -36,11 +36,19 @@ EXTRA_DIST = interpolation.f90  nr_tools.f90  \
 	toppik.f  toppik_axial.f  ttv_formfactors.f90
 
 libthreshold_la_SOURCES = \
+  $(THRESHOLD_MODULES) \
+  $(THRESHOLD_SUBMODULES)
+
+THRESHOLD_MODULES = \
   interpolation.f90 \
   nr_tools.f90 \
   toppik.f \
   toppik_axial.f \
   ttv_formfactors.f90
+
+THRESHOLD_SUBMODULES = \
+  interpolation_sub.f90 \
+  ttv_formfactors_sub.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = threshold.nw
@@ -61,9 +69,10 @@ nodist_execmod_HEADERS = \
   hypgeo_info.$(FCMOD) \
   ode_path.$(FCMOD)
 
+# Submodules must not be included here
 # Dump module names into file Modules
 libthreshold_Modules = \
-	${libthreshold_la_SOURCES:.f90=} \
+	${THRESHOLD_MODULES:.f90=} \
 	${libthreshold_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libthreshold_Modules); do \
@@ -134,6 +143,11 @@ SUFFIXES = .lo .$(FCMOD)
 	@:
 
 AM_FCFLAGS = -I../basics -I../testing -I../utilities -I../system -I../physics -I../combinatorics
+
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+interpolation_sub.lo: interpolation.lo
+ttv_formfactors_sub.lo: ttv_formfactors.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -214,7 +228,7 @@ clean-local: clean-noweb
 	-rm -f *.stamp *.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
