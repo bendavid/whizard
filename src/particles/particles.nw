@@ -58,26 +58,47 @@ $N\leq 5$.)
 module su_algebra
 
 <<Use kinds>>
-  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
 
 <<Standard module head>>
 
-<<su algebra: public>>
+<<SU algebra: public>>
 
-contains
-
-<<su algebra: procedures>>
+  interface
+<<SU algebra: sub interfaces>>
+  end interface
 
 end module su_algebra
 @ %def su_algebra
 @
+<<[[su_algebra_sub.f90]]>>=
+<<File header>>
+
+submodule (su_algebra) su_algebra_s
+
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+
+  implicit none
+
+contains
+
+<<SU algebra: procedures>>
+
+end submodule su_algebra_s
+
+@ %def su_algbra_s
+@
 \subsection{$su(N)$ fundamental representation}
 The dimension of the basis for a given spin type.  consecutively, starting at
 [[SCALAR=1]].
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: algebra_dimension
-<<su algebra: procedures>>=
-  function algebra_dimension (s) result (n)
+<<SU algebra: sub interfaces>>=
+    module function algebra_dimension (s) result (n)
+      integer :: n
+      integer, intent(in) :: s
+    end function algebra_dimension
+<<SU algebra: procedures>>=
+  module function algebra_dimension (s) result (n)
     integer :: n
     integer, intent(in) :: s
     n = fundamental_dimension (s) ** 2 - 1
@@ -87,10 +108,15 @@ The dimension of the basis for a given spin type.  consecutively, starting at
 @ The dimension of the fundamental (defining) representation that we
 use.  This implementation assumes that the spin type is numerically
 equal to the fundamental dimension.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: fundamental_dimension
-<<su algebra: procedures>>=
-  function fundamental_dimension (s) result (d)
+<<SU algebra: sub interfaces>>=
+    module function fundamental_dimension (s) result (d)
+      integer :: d
+      integer, intent(in) :: s
+    end function fundamental_dimension
+<<SU algebra: procedures>>=
+  module function fundamental_dimension (s) result (d)
     integer :: d
     integer, intent(in) :: s
     d = s
@@ -103,10 +129,15 @@ Return the helicity that corresponds to a particular entry in the
 polarization matrix representation.  Helicities are counted downwards,
 in integers, and zero helicity is included (omitted) for odd (even)
 spin, respectively.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: helicity_value
-<<su algebra: procedures>>=
-  function helicity_value (s, i) result (h)
+<<SU algebra: sub interfaces>>=
+    module function helicity_value (s, i) result (h)
+      integer :: h
+      integer, intent(in) :: s, i
+    end function helicity_value
+<<SU algebra: procedures>>=
+  module function helicity_value (s, i) result (h)
     integer :: h
     integer, intent(in) :: s, i
     integer, dimension(1), parameter :: hh1 = [0]
@@ -142,10 +173,15 @@ spin, respectively.
 @ %def helicity_value
 @ Inverse: return the index that corresponds to a certain
 helicity value in the chosen representation.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: helicity_index
-<<su algebra: procedures>>=
-  function helicity_index (s, h) result (i)
+<<SU algebra: sub interfaces>>=
+    module function helicity_index (s, h) result (i)
+      integer, intent(in) :: s, h
+      integer :: i
+    end function helicity_index
+<<SU algebra: procedures>>=
+  module function helicity_index (s, h) result (i)
     integer, intent(in) :: s, h
     integer :: i
     integer, dimension(0:0), parameter :: hi1 = [1]
@@ -179,10 +215,15 @@ expressions.
 
 Return true if the generator \#[[i]] is in the Cartan subalgebra,
 i.e., a diagonal matrix for spin type [[s]].
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: is_cartan_generator
-<<su algebra: procedures>>=
-  elemental function is_cartan_generator (s, i) result (cartan)
+<<SU algebra: sub interfaces>>=
+    elemental module function is_cartan_generator (s, i) result (cartan)
+      logical :: cartan
+      integer, intent(in) :: s, i
+    end function is_cartan_generator
+<<SU algebra: procedures>>=
+  elemental module function is_cartan_generator (s, i) result (cartan)
     logical :: cartan
     integer, intent(in) :: s, i
     select case (s)
@@ -219,10 +260,15 @@ i.e., a diagonal matrix for spin type [[s]].
 @ %def is_cartan_generator
 @ Return the index of Cartan generator \#[[k]] in the chosen
 representation.  This has to conform to [[cartan]] above.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: cartan_index
-<<su algebra: procedures>>=
-  elemental function cartan_index (s, k) result (ci)
+<<SU algebra: sub interfaces>>=
+    elemental module function cartan_index (s, k) result (ci)
+      integer :: ci
+      integer, intent(in) :: s, k
+    end function cartan_index
+<<SU algebra: procedures>>=
+  elemental module function cartan_index (s, k) result (ci)
     integer :: ci
     integer, intent(in) :: s, k
     integer, dimension(1), parameter :: ci2 = [3]
@@ -248,10 +294,15 @@ representation.  This has to conform to [[cartan]] above.
 $(h,h)$ diagonal entry of the generator matrix $T^k$.  That is,
 evaluating this for all allowed values of [[h]], we recover the set of
 Cartan generator matrices.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: cartan_element
-<<su algebra: procedures>>=
-  function cartan_element (s, h) result (a)
+<<SU algebra: sub interfaces>>=
+    module function cartan_element (s, h) result (a)
+      real(default), dimension(:), allocatable :: a
+      integer, intent(in) :: s, h
+    end function cartan_element
+<<SU algebra: procedures>>=
+  module function cartan_element (s, h) result (a)
     real(default), dimension(:), allocatable :: a
     integer, intent(in) :: s, h
     real(default), parameter :: sqrt2 = sqrt (2._default)
@@ -325,10 +376,16 @@ The calculation is organized such that the trace of the generator,
 i.e., the sum of [[rd]] values, drops out.  The result array [[a]] has
 coefficients for all basis generators, but only Cartan generators can
 get a nonzero coefficient.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: cartan_coeff
-<<su algebra: procedures>>=
-  function cartan_coeff (s, rd) result (a)
+<<SU algebra: sub interfaces>>=
+    module function cartan_coeff (s, rd) result (a)
+      real(default), dimension(:), allocatable :: a
+      integer, intent(in) :: s
+      real(default), dimension(:), intent(in) :: rd
+    end function cartan_coeff
+<<SU algebra: procedures>>=
+  module function cartan_coeff (s, rd) result (a)
     real(default), dimension(:), allocatable :: a
     integer, intent(in) :: s
     real(default), dimension(:), intent(in) :: rd
@@ -367,10 +424,16 @@ complex-valued one.
 This is separate from the [[cartan_coeff]] function above.  The reason
 is that the off-diagonal generators have only a single nonzero matrix
 element, so there is a one-to-one correspondence of helicity and index.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: root_index
-<<su algebra: procedures>>=
-  function root_index (s, h1, h2, r) result (ai)
+<<SU algebra: sub interfaces>>=
+    module function root_index (s, h1, h2, r) result (ai)
+      integer :: ai
+      integer, intent(in) :: s, h1, h2
+      logical :: r
+    end function root_index
+<<SU algebra: procedures>>=
+  module function root_index (s, h1, h2, r) result (ai)
     integer :: ai
     integer, intent(in) :: s, h1, h2
     logical :: r
@@ -447,10 +510,16 @@ element, so there is a one-to-one correspondence of helicity and index.
 @ Inverse: return the helicity values ($h_2>h_1$) for an off-diagonal
 generator.  The flag [[r]] tells whether this is a real or diagonal
 generator.   The others are Cartan generators.
-<<su algebra: public>>=
+<<SU algebra: public>>=
   public :: root_helicity
-<<su algebra: procedures>>=
-  subroutine root_helicity (s, i, h1, h2, r)
+<<SU algebra: sub interfaces>>=
+    module subroutine root_helicity (s, i, h1, h2, r)
+      integer, intent(in) :: s, i
+      integer, intent(out) :: h1, h2
+      logical, intent(out) :: r
+    end subroutine root_helicity
+<<SU algebra: procedures>>=
+  module subroutine root_helicity (s, i, h1, h2, r)
     integer, intent(in) :: s, i
     integer, intent(out) :: h1, h2
     logical, intent(out) :: r
@@ -507,11 +576,11 @@ module su_algebra_ut
 
 <<Standard module head>>
 
-<<su algebra: public test>>
+<<SU algebra: public test>>
 
 contains
 
-<<su algebra: test driver>>
+<<SU algebra: test driver>>
 
 end module su_algebra_ut
 @ %def su_algebra_ut
@@ -527,35 +596,35 @@ module su_algebra_uti
 
 <<Standard module head>>
 
-<<su algebra: test declarations>>
+<<SU algebra: test declarations>>
 
 contains
 
-<<su algebra: tests>>
+<<SU algebra: tests>>
 
 end module su_algebra_uti
 @ %def su_algebra_ut
 @ API: driver for the unit tests below.
-<<su algebra: public test>>=
+<<SU algebra: public test>>=
   public :: su_algebra_test
-<<su algebra: test driver>>=
+<<SU algebra: test driver>>=
   subroutine su_algebra_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<su algebra: execute tests>>
+  <<SU algebra: execute tests>>
   end subroutine su_algebra_test
 
 @  %def su_algebra_test
 @
 \subsubsection{Generator Ordering}
 Show the position of Cartan generators in the sequence of basis generators.
-<<su algebra: execute tests>>=
+<<SU algebra: execute tests>>=
   call test (su_algebra_1, "su_algebra_1", &
        "generator ordering", &
        u, results)
-<<su algebra: test declarations>>=
+<<SU algebra: test declarations>>=
   public :: su_algebra_1
-<<su algebra: tests>>=
+<<SU algebra: tests>>=
   subroutine su_algebra_1 (u)
     integer, intent(in) :: u
 
@@ -611,13 +680,13 @@ Show the explicit matrix representation for all Cartan generators and
 check their traces and Killing products.
 
 Also test helicity index mappings.
-<<su algebra: execute tests>>=
+<<SU algebra: execute tests>>=
   call test (su_algebra_2, "su_algebra_2", &
        "Cartan generator representation", &
        u, results)
-<<su algebra: test declarations>>=
+<<SU algebra: test declarations>>=
   public :: su_algebra_2
-<<su algebra: tests>>=
+<<SU algebra: tests>>=
   subroutine su_algebra_2 (u)
     integer, intent(in) :: u
 
@@ -715,13 +784,13 @@ Also test helicity index mappings.
 \subsubsection{Bloch Representation: Cartan Generators}
 Transform from Bloch vectors to matrix and back, considering Cartan
 generators only.
-<<su algebra: execute tests>>=
+<<SU algebra: execute tests>>=
   call test (su_algebra_3, "su_algebra_3", &
        "Cartan generator mapping", &
        u, results)
-<<su algebra: test declarations>>=
+<<SU algebra: test declarations>>=
   public :: su_algebra_3
-<<su algebra: tests>>=
+<<SU algebra: tests>>=
   subroutine su_algebra_3 (u)
     integer, intent(in) :: u
 
@@ -803,13 +872,13 @@ generators only.
 \subsubsection{Bloch Representation: Roots}
 List the mapping between helicity transitions and (real) off-diagonal
 generators.
-<<su algebra: execute tests>>=
+<<SU algebra: execute tests>>=
   call test (su_algebra_4, "su_algebra_4", &
        "Root-helicity mapping", &
        u, results)
-<<su algebra: test declarations>>=
+<<SU algebra: test declarations>>=
   public :: su_algebra_4
-<<su algebra: tests>>=
+<<SU algebra: tests>>=
   subroutine su_algebra_4 (u)
     integer, intent(in) :: u
 
@@ -960,8 +1029,7 @@ condition for a pure state.
 module bloch_vectors
 
 <<Use kinds>>
-  use physics_defs, only: UNKNOWN, SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
-  use su_algebra
+  use physics_defs, only: UNKNOWN
 
 <<Standard module head>>
 
@@ -969,12 +1037,30 @@ module bloch_vectors
 
 <<Bloch vectors: types>>
 
+  interface
+<<Bloch vectors: sub interfaces>>
+  end interface
+
+end module bloch_vectors
+@ %def bloch_vectors
+@
+<<[[bloch_vectors_sub.f90]]>>=
+<<File header>>
+
+submodule (bloch_vectors) bloch_vectors_s
+
+  use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+  use su_algebra
+
+  implicit none
+
 contains
 
 <<Bloch vectors: procedures>>
 
-end module bloch_vectors
-@ %def bloch_vectors
+end submodule bloch_vectors_s
+
+@ %def bloch_vectors_s
 @
 \subsection{Preliminaries}
 The normalization factor $\sqrt{2N(N-1)}/N$ that enters the Bloch
@@ -1033,8 +1119,13 @@ This basic initializer just sets the spin type, leaving the Bloch vector
 unallocated.  The object therefore does not support nonzero polarization.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: init_unpolarized => bloch_vector_init_unpolarized
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_init_unpolarized (pol, spin_type)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+    end subroutine bloch_vector_init_unpolarized
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_init_unpolarized (pol, spin_type)
+  module subroutine bloch_vector_init_unpolarized (pol, spin_type)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
     pol%spin_type = spin_type
@@ -1049,8 +1140,13 @@ unpolarized state.
 <<Bloch vectors: bloch vector: TBP>>=
   generic :: init => bloch_vector_init
   procedure, private :: bloch_vector_init
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_init (pol, spin_type)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+    end subroutine bloch_vector_init
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_init (pol, spin_type)
+  module subroutine bloch_vector_init (pol, spin_type)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
     pol%spin_type = spin_type
@@ -1066,8 +1162,13 @@ Fill the Bloch vector from an array, no change of normalization.  No
 initialization and no check, we assume that the shapes do match.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: from_array => bloch_vector_from_array
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_from_array (pol, a)
+      class(bloch_vector_t), intent(inout) :: pol
+      real(default), dimension(:), allocatable, intent(in) :: a
+    end subroutine bloch_vector_from_array
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_from_array (pol, a)
+  module subroutine bloch_vector_from_array (pol, a)
     class(bloch_vector_t), intent(inout) :: pol
     real(default), dimension(:), allocatable, intent(in) :: a
     pol%a(:) = a
@@ -1078,8 +1179,13 @@ initialization and no check, we assume that the shapes do match.
 Transform to an array of reals, i.e., extract the Bloch vector as-is.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: to_array => bloch_vector_to_array
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_to_array (pol, a)
+      class(bloch_vector_t), intent(in) :: pol
+      real(default), dimension(:), allocatable, intent(out) :: a
+    end subroutine bloch_vector_to_array
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_to_array (pol, a)
+  module subroutine bloch_vector_to_array (pol, a)
     class(bloch_vector_t), intent(in) :: pol
     real(default), dimension(:), allocatable, intent(out) :: a
     if (pol%is_defined ())  allocate (a (size (pol%a)), source = pol%a)
@@ -1091,8 +1197,18 @@ Transform to an array of reals, i.e., extract the Bloch vector as-is.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: write_raw => bloch_vector_write_raw
   procedure :: read_raw => bloch_vector_read_raw
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_write_raw (pol, u)
+      class(bloch_vector_t), intent(in) :: pol
+      integer, intent(in) :: u
+    end subroutine bloch_vector_write_raw
+    module subroutine bloch_vector_read_raw (pol, u, iostat)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: u
+      integer, intent(out) :: iostat
+    end subroutine bloch_vector_read_raw
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_write_raw (pol, u)
+  module subroutine bloch_vector_write_raw (pol, u)
     class(bloch_vector_t), intent(in) :: pol
     integer, intent(in) :: u
     write (u) pol%spin_type
@@ -1102,7 +1218,7 @@ Transform to an array of reals, i.e., extract the Bloch vector as-is.
     end if
   end subroutine bloch_vector_write_raw
 
-  subroutine bloch_vector_read_raw (pol, u, iostat)
+  module subroutine bloch_vector_read_raw (pol, u, iostat)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: u
     integer, intent(out) :: iostat
@@ -1131,34 +1247,57 @@ functions do not depend on the Bloch vector being allocated.
   procedure :: hel_index => bv_helicity_index
   procedure :: hel_value => bv_helicity_value
   procedure :: bloch_factor => bv_factor
+<<Bloch vectors: sub interfaces>>=
+    module function get_n_states (pol) result (n)
+      class(bloch_vector_t), intent(in) :: pol
+      integer :: n
+    end function get_n_states
+    module function get_length (pol) result (n)
+      class(bloch_vector_t), intent(in) :: pol
+      integer :: n
+    end function get_length
+    module function bv_helicity_index (pol, h) result (i)
+      class(bloch_vector_t), intent(in) :: pol
+      integer, intent(in) :: h
+      integer :: i
+    end function bv_helicity_index
+    module function bv_helicity_value (pol, i) result (h)
+      class(bloch_vector_t), intent(in) :: pol
+      integer, intent(in) :: i
+      integer :: h
+    end function bv_helicity_value
+    module function bv_factor (pol) result (f)
+      class(bloch_vector_t), intent(in) :: pol
+      real(default) :: f
+    end function bv_factor
 <<Bloch vectors: procedures>>=
-  function get_n_states (pol) result (n)
+  module function get_n_states (pol) result (n)
     class(bloch_vector_t), intent(in) :: pol
     integer :: n
     n = fundamental_dimension (pol%spin_type)
   end function get_n_states
 
-  function get_length (pol) result (n)
+  module function get_length (pol) result (n)
     class(bloch_vector_t), intent(in) :: pol
     integer :: n
     n = algebra_dimension (pol%spin_type)
   end function get_length
 
-  function bv_helicity_index (pol, h) result (i)
+  module function bv_helicity_index (pol, h) result (i)
     class(bloch_vector_t), intent(in) :: pol
     integer, intent(in) :: h
     integer :: i
     i = helicity_index (pol%spin_type, h)
   end function bv_helicity_index
 
-  function bv_helicity_value (pol, i) result (h)
+  module function bv_helicity_value (pol, i) result (h)
     class(bloch_vector_t), intent(in) :: pol
     integer, intent(in) :: i
     integer :: h
     h = helicity_value (pol%spin_type, i)
   end function bv_helicity_value
 
-  function bv_factor (pol) result (f)
+  module function bv_factor (pol) result (f)
     class(bloch_vector_t), intent(in) :: pol
     real(default) :: f
     f = bloch_factor (pol%spin_type)
@@ -1172,8 +1311,13 @@ functions do not depend on the Bloch vector being allocated.
 functions above.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: is_defined => bloch_vector_is_defined
+<<Bloch vectors: sub interfaces>>=
+    module function bloch_vector_is_defined (pol) result (flag)
+      class(bloch_vector_t), intent(in) :: pol
+      logical :: flag
+    end function bloch_vector_is_defined
 <<Bloch vectors: procedures>>=
-  function bloch_vector_is_defined (pol) result (flag)
+  module function bloch_vector_is_defined (pol) result (flag)
     class(bloch_vector_t), intent(in) :: pol
     logical :: flag
     flag = pol%spin_type /= UNKNOWN
@@ -1185,8 +1329,13 @@ defined, and the vector coefficient array has been allocated.
 However, the vector value may be zero.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: is_polarized => bloch_vector_is_polarized
+<<Bloch vectors: sub interfaces>>=
+    module function bloch_vector_is_polarized (pol) result (flag)
+      class(bloch_vector_t), intent(in) :: pol
+      logical :: flag
+    end function bloch_vector_is_polarized
 <<Bloch vectors: procedures>>=
-  function bloch_vector_is_polarized (pol) result (flag)
+  module function bloch_vector_is_polarized (pol) result (flag)
     class(bloch_vector_t), intent(in) :: pol
     logical :: flag
     flag = allocated (pol%a)
@@ -1199,8 +1348,13 @@ requiring that only Cartan generator coefficients are nonzero in the
 Bloch vector.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: is_diagonal => bloch_vector_is_diagonal
+<<Bloch vectors: sub interfaces>>=
+    module function bloch_vector_is_diagonal (pol) result (diagonal)
+      class(bloch_vector_t), intent(in) :: pol
+      logical :: diagonal
+    end function bloch_vector_is_diagonal
 <<Bloch vectors: procedures>>=
-  function bloch_vector_is_diagonal (pol) result (diagonal)
+  module function bloch_vector_is_diagonal (pol) result (diagonal)
     class(bloch_vector_t), intent(in) :: pol
     logical :: diagonal
     integer :: s, i
@@ -1228,8 +1382,13 @@ norm less than unity.  (For $s\geq 1$, this is a necessary but not
 sufficient condition.)
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: get_norm => bloch_vector_get_norm
+<<Bloch vectors: sub interfaces>>=
+    module function bloch_vector_get_norm (pol) result (norm)
+      class(bloch_vector_t), intent(in) :: pol
+      real(default) :: norm
+    end function bloch_vector_get_norm
 <<Bloch vectors: procedures>>=
-  function bloch_vector_get_norm (pol) result (norm)
+  module function bloch_vector_get_norm (pol) result (norm)
     class(bloch_vector_t), intent(in) :: pol
     real(default) :: norm
     select case (pol%spin_type)
@@ -1252,8 +1411,14 @@ state maps to a Bloch vector with unit norm.
 <<Bloch vectors: bloch vector: TBP>>=
   generic :: init => bloch_vector_init_diagonal
   procedure, private :: bloch_vector_init_diagonal
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_init_diagonal (pol, spin_type, rd)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+      real(default), dimension(:), intent(in) :: rd
+    end subroutine bloch_vector_init_diagonal
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_init_diagonal (pol, spin_type, rd)
+  module subroutine bloch_vector_init_diagonal (pol, spin_type, rd)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
     real(default), dimension(:), intent(in) :: rd
@@ -1267,8 +1432,13 @@ The Bloch vector must be initialized with correct characteristics.
 <<Bloch vectors: bloch vector: TBP>>=
   generic :: set => bloch_vector_set_diagonal
   procedure, private :: bloch_vector_set_diagonal
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_set_diagonal (pol, rd)
+      class(bloch_vector_t), intent(inout) :: pol
+      real(default), dimension(:), intent(in) :: rd
+    end subroutine bloch_vector_set_diagonal
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_set_diagonal (pol, rd)
+  module subroutine bloch_vector_set_diagonal (pol, rd)
     class(bloch_vector_t), intent(inout) :: pol
     real(default), dimension(:), intent(in) :: rd
     integer :: s
@@ -1287,8 +1457,13 @@ This is a specific variant which initializes an equipartition for
 the maximum helicity, corresponding to an unpolarized massless particle.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: init_max_weight => bloch_vector_init_max_weight
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_init_max_weight (pol, spin_type)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+    end subroutine bloch_vector_init_max_weight
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_init_max_weight (pol, spin_type)
+  module subroutine bloch_vector_init_max_weight (pol, spin_type)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
     call pol%init (spin_type)
@@ -1310,8 +1485,18 @@ weights from the density matrix.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: init_vector => bloch_vector_init_vector
   procedure :: to_vector => bloch_vector_to_vector
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_init_vector (pol, s, a)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: s
+      real(default), dimension(3), intent(in) :: a
+    end subroutine bloch_vector_init_vector
+    module subroutine bloch_vector_to_vector (pol, a)
+      class(bloch_vector_t), intent(in) :: pol
+      real(default), dimension(3), intent(out) :: a
+    end subroutine bloch_vector_to_vector
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_init_vector (pol, s, a)
+  module subroutine bloch_vector_init_vector (pol, s, a)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: s
     real(default), dimension(3), intent(in) :: a
@@ -1322,7 +1507,7 @@ weights from the density matrix.
     end select
   end subroutine bloch_vector_init_vector
 
-  subroutine bloch_vector_to_vector (pol, a)
+  module subroutine bloch_vector_to_vector (pol, a)
     class(bloch_vector_t), intent(in) :: pol
     real(default), dimension(3), intent(out) :: a
     integer :: s
@@ -1347,8 +1532,14 @@ We first fill the diagonal, then add the off-diagonal parts.
 <<Bloch vectors: bloch vector: TBP>>=
   generic :: init => bloch_vector_init_matrix
   procedure, private :: bloch_vector_init_matrix
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_init_matrix (pol, spin_type, r)
+      class(bloch_vector_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+      complex(default), dimension(:,:), intent(in) :: r
+    end subroutine bloch_vector_init_matrix
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_init_matrix (pol, spin_type, r)
+  module subroutine bloch_vector_init_matrix (pol, spin_type, r)
     class(bloch_vector_t), intent(out) :: pol
     integer, intent(in) :: spin_type
     complex(default), dimension(:,:), intent(in) :: r
@@ -1368,8 +1559,13 @@ characteristics.
 <<Bloch vectors: bloch vector: TBP>>=
   generic :: set => bloch_vector_set_matrix
   procedure, private :: bloch_vector_set_matrix
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_set_matrix (pol, r)
+      class(bloch_vector_t), intent(inout) :: pol
+      complex(default), dimension(:,:), intent(in) :: r
+    end subroutine bloch_vector_set_matrix
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_set_matrix (pol, r)
+  module subroutine bloch_vector_set_matrix (pol, r)
     class(bloch_vector_t), intent(inout) :: pol
     complex(default), dimension(:,:), intent(in) :: r
     real(default), dimension(:), allocatable :: rd
@@ -1406,8 +1602,14 @@ particle (for spin $\geq 1$).  Note that we always add the unit
 matrix, as this is part of the Bloch-vector definition.
 <<Bloch vectors: bloch vector: TBP>>=
   procedure :: to_matrix => bloch_vector_to_matrix
+<<Bloch vectors: sub interfaces>>=
+    module subroutine bloch_vector_to_matrix (pol, r, only_max_weight)
+      class(bloch_vector_t), intent(in) :: pol
+      complex(default), dimension(:,:), intent(out), allocatable :: r
+      logical, intent(in), optional :: only_max_weight
+    end subroutine bloch_vector_to_matrix
 <<Bloch vectors: procedures>>=
-  subroutine bloch_vector_to_matrix (pol, r, only_max_weight)
+  module subroutine bloch_vector_to_matrix (pol, r, only_max_weight)
     class(bloch_vector_t), intent(in) :: pol
     complex(default), dimension(:,:), intent(out), allocatable :: r
     logical, intent(in), optional :: only_max_weight
@@ -2169,12 +2371,8 @@ higher spin, but it should cover practical applications.
 module polarizations
 
 <<Use kinds>>
-  use io_units
-  use format_defs, only: FMT_19
-  use diagnostics
   use physics_defs, only: SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
   use flavors
-  use helicities
   use quantum_numbers
   use state_matrices
   use bloch_vectors
@@ -2187,12 +2385,32 @@ module polarizations
 
 <<Polarizations: interfaces>>
 
+  interface
+<<Polarizations: sub interfaces>>
+  end interface
+
+end module polarizations
+@ %def polarizations
+@
+<<[[polarizations_sub.f90]]>>=
+<<File header>>
+
+submodule (polarizations) polarizations_s
+
+  use io_units
+  use format_defs, only: FMT_19
+  use diagnostics
+  use helicities
+
+  implicit none
+
 contains
 
 <<Polarizations: procedures>>
 
-end module polarizations
-@ %def polarizations
+end submodule polarizations_s
+
+@ %def polarizations_s
 @
 \subsection{The polarization type}
 Polarization is active whenever the coefficient array is allocated.
@@ -2236,8 +2454,22 @@ This is private.
   generic, private :: init => polarization_init, polarization_init_flv
   procedure, private :: polarization_init
   procedure, private :: polarization_init_flv
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init (pol, spin_type, multiplicity, &
+         anti, left_handed, right_handed)
+      class(polarization_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+      integer, intent(in) :: multiplicity
+      logical, intent(in) :: anti
+      logical, intent(in) :: left_handed
+      logical, intent(in) :: right_handed
+    end subroutine polarization_init
+    module subroutine polarization_init_flv (pol, flv)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+    end subroutine polarization_init_flv
 <<Polarizations: procedures>>=
-  subroutine polarization_init (pol, spin_type, multiplicity, &
+  module subroutine polarization_init (pol, spin_type, multiplicity, &
        anti, left_handed, right_handed)
     class(polarization_t), intent(out) :: pol
     integer, intent(in) :: spin_type
@@ -2262,7 +2494,7 @@ This is private.
     end select
   end subroutine polarization_init
 
-  subroutine polarization_init_flv (pol, flv)
+  module subroutine polarization_init_flv (pol, flv)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     call pol%init ( &
@@ -2282,8 +2514,22 @@ This is private.
        polarization_init_generic_flv
   procedure, private :: polarization_init_generic
   procedure, private :: polarization_init_generic_flv
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_generic (pol, spin_type, multiplicity, &
+         anti, left_handed, right_handed)
+      class(polarization_t), intent(out) :: pol
+      integer, intent(in) :: spin_type
+      integer, intent(in) :: multiplicity
+      logical, intent(in) :: anti
+      logical, intent(in) :: left_handed
+      logical, intent(in) :: right_handed
+    end subroutine polarization_init_generic
+    module subroutine polarization_init_generic_flv (pol, flv)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+    end subroutine polarization_init_generic_flv
 <<Polarizations: procedures>>=
-  subroutine polarization_init_generic (pol, spin_type, multiplicity, &
+  module subroutine polarization_init_generic (pol, spin_type, multiplicity, &
        anti, left_handed, right_handed)
     class(polarization_t), intent(out) :: pol
     integer, intent(in) :: spin_type
@@ -2303,7 +2549,7 @@ This is private.
     end select
   end subroutine polarization_init_generic
 
-  subroutine polarization_init_generic_flv (pol, flv)
+  module subroutine polarization_init_generic_flv (pol, flv)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     call pol%init_generic ( &
@@ -2328,8 +2574,15 @@ helicities with zero entry, or absolute value less than [[tolerance]],
 if also given.
 <<Polarizations: polarization: TBP>>=
   procedure :: write => polarization_write
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_write (pol, unit, state_matrix, all_states, tolerance)
+      class(polarization_t), intent(in) :: pol
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: state_matrix, all_states
+      real(default), intent(in), optional :: tolerance
+    end subroutine polarization_write
 <<Polarizations: procedures>>=
-  subroutine polarization_write (pol, unit, state_matrix, all_states, tolerance)
+  module subroutine polarization_write (pol, unit, state_matrix, all_states, tolerance)
     class(polarization_t), intent(in) :: pol
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: state_matrix, all_states
@@ -2372,8 +2625,18 @@ if also given.
 <<Polarizations: polarization: TBP>>=
   procedure :: write_raw => polarization_write_raw
   procedure :: read_raw => polarization_read_raw
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_write_raw (pol, u)
+      class(polarization_t), intent(in) :: pol
+      integer, intent(in) :: u
+    end subroutine polarization_write_raw
+    module subroutine polarization_read_raw (pol, u, iostat)
+      class(polarization_t), intent(out) :: pol
+      integer, intent(in) :: u
+      integer, intent(out), optional :: iostat
+    end subroutine polarization_read_raw
 <<Polarizations: procedures>>=
-  subroutine polarization_write_raw (pol, u)
+  module subroutine polarization_write_raw (pol, u)
     class(polarization_t), intent(in) :: pol
     integer, intent(in) :: u
     write (u) pol%spin_type
@@ -2383,7 +2646,7 @@ if also given.
     call pol%bv%write_raw (u)
   end subroutine polarization_write_raw
 
-  subroutine polarization_read_raw (pol, u, iostat)
+  module subroutine polarization_read_raw (pol, u, iostat)
     class(polarization_t), intent(out) :: pol
     integer, intent(in) :: u
     integer, intent(out), optional :: iostat
@@ -2403,8 +2666,13 @@ function returns true even if the Bloch vector is zero or the particle
 is scalar.
 <<Polarizations: polarization: TBP>>=
   procedure :: is_polarized => polarization_is_polarized
+<<Polarizations: sub interfaces>>=
+    module function polarization_is_polarized (pol) result (polarized)
+      class(polarization_t), intent(in) :: pol
+      logical :: polarized
+    end function polarization_is_polarized
 <<Polarizations: procedures>>=
-  function polarization_is_polarized (pol) result (polarized)
+  module function polarization_is_polarized (pol) result (polarized)
     class(polarization_t), intent(in) :: pol
     logical :: polarized
     polarized = pol%chirality /= 0 .or. pol%bv%is_polarized ()
@@ -2417,8 +2685,13 @@ return [[.true.]] since the density matrix is proportional to the unit
 matrix.
 <<Polarizations: polarization: TBP>>=
   procedure :: is_diagonal => polarization_is_diagonal
+<<Polarizations: sub interfaces>>=
+    module function polarization_is_diagonal (pol) result (diagonal)
+      class(polarization_t), intent(in) :: pol
+      logical :: diagonal
+    end function polarization_is_diagonal
 <<Polarizations: procedures>>=
-  function polarization_is_diagonal (pol) result (diagonal)
+  module function polarization_is_diagonal (pol) result (diagonal)
     class(polarization_t), intent(in) :: pol
     logical :: diagonal
     select case (pol%chirality)
@@ -2444,8 +2717,13 @@ polarization vector, it is implied.
 Therefore, we cannot account for any sign flip and transform as-is.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_state_matrix => polarization_init_state_matrix
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_state_matrix (pol, state)
+      class(polarization_t), intent(out) :: pol
+      type(state_matrix_t), intent(in), target :: state
+    end subroutine polarization_init_state_matrix
 <<Polarizations: procedures>>=
-  subroutine polarization_init_state_matrix (pol, state)
+  module subroutine polarization_init_state_matrix (pol, state)
     class(polarization_t), intent(out) :: pol
     type(state_matrix_t), intent(in), target :: state
     type(state_iterator_t) :: it
@@ -2488,8 +2766,15 @@ use of the polarization iterator as defined below, which should iterate
 according to the canonical helicity ordering.
 <<Polarizations: polarization: TBP>>=
   procedure :: to_state => polarization_to_state_matrix
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_to_state_matrix (pol, state, all_states, tolerance)
+      class(polarization_t), intent(in), target :: pol
+      type(state_matrix_t), intent(out) :: state
+      logical, intent(in), optional :: all_states
+      real(default), intent(in), optional :: tolerance
+    end subroutine polarization_to_state_matrix
 <<Polarizations: procedures>>=
-  subroutine polarization_to_state_matrix (pol, state, all_states, tolerance)
+  module subroutine polarization_to_state_matrix (pol, state, all_states, tolerance)
     class(polarization_t), intent(in), target :: pol
     type(state_matrix_t), intent(out) :: state
     logical, intent(in), optional :: all_states
@@ -2515,8 +2800,13 @@ Unpolarized particle, no nontrivial entries in the density matrix.  This
 is the default initialization mode.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_unpolarized => polarization_init_unpolarized
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_unpolarized (pol, flv)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+    end subroutine polarization_init_unpolarized
 <<Polarizations: procedures>>=
-  subroutine polarization_init_unpolarized (pol, flv)
+  module subroutine polarization_init_unpolarized (pol, flv)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     call pol%init (flv)
@@ -2544,8 +2834,14 @@ generator only, regardless of the spin representation.
 A chiral particle is not affected.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_circular => polarization_init_circular
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_circular (pol, flv, f)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+      real(default), intent(in) :: f
+    end subroutine polarization_init_circular
 <<Polarizations: procedures>>=
-  subroutine polarization_init_circular (pol, flv, f)
+  module subroutine polarization_init_circular (pol, flv, f)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), intent(in) :: f
@@ -2576,8 +2872,14 @@ off-diagonal elements switch sign.
 A chiral particle is not affected.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_transversal => polarization_init_transversal
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_transversal (pol, flv, phi, f)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+      real(default), intent(in) :: phi, f
+    end subroutine polarization_init_transversal
 <<Polarizations: procedures>>=
-  subroutine polarization_init_transversal (pol, flv, phi, f)
+  module subroutine polarization_init_transversal (pol, flv, phi, f)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), intent(in) :: phi, f
@@ -2611,8 +2913,14 @@ In the generalized Bloch representation, this translates into coefficients for
 $T^{1,2,3}$, all others stay zero.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_axis => polarization_init_axis
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_axis (pol, flv, alpha)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+      real(default), dimension(3), intent(in) :: alpha
+    end subroutine polarization_init_axis
 <<Polarizations: procedures>>=
-  subroutine polarization_init_axis (pol, flv, alpha)
+  module subroutine polarization_init_axis (pol, flv, alpha)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), dimension(3), intent(in) :: alpha
@@ -2638,8 +2946,14 @@ typically will result in tiny contributions to unwanted components.
 Therefore, include a catch for small numbers.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_angles => polarization_init_angles
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_angles (pol, flv, r, theta, phi)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+      real(default), intent(in) :: r, theta, phi
+    end subroutine polarization_init_angles
 <<Polarizations: procedures>>=
-  subroutine polarization_init_angles (pol, flv, r, theta, phi)
+  module subroutine polarization_init_angles (pol, flv, r, theta, phi)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), intent(in) :: r, theta, phi
@@ -2661,8 +2975,14 @@ In the generalized Bloch representation, the zero component corresponds to a
 linear combination of all diagonal (Cartan) generators.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_longitudinal => polarization_init_longitudinal
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_longitudinal (pol, flv, f)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+      real(default), intent(in) :: f
+    end subroutine polarization_init_longitudinal
 <<Polarizations: procedures>>=
-  subroutine polarization_init_longitudinal (pol, flv, f)
+  module subroutine polarization_init_longitudinal (pol, flv, f)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), intent(in) :: f
@@ -2690,8 +3010,14 @@ assume that the length of [[rd]] is equal to the particle
 multiplicity.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_diagonal => polarization_init_diagonal
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_diagonal (pol, flv, rd)
+      class(polarization_t), intent(out) :: pol
+      type(flavor_t), intent(in) :: flv
+      real(default), dimension(:), intent(in) :: rd
+    end subroutine polarization_init_diagonal
 <<Polarizations: procedures>>=
-  subroutine polarization_init_diagonal (pol, flv, rd)
+  module subroutine polarization_init_diagonal (pol, flv, rd)
     class(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
     real(default), dimension(:), intent(in) :: rd
@@ -2710,8 +3036,13 @@ Combine polarization states by computing the outer product of the
 state matrices.
 <<Polarizations: public>>=
   public :: combine_polarization_states
+<<Polarizations: sub interfaces>>=
+    module subroutine combine_polarization_states (pol, state)
+      type(polarization_t), dimension(:), intent(in), target :: pol
+      type(state_matrix_t), intent(out) :: state
+    end subroutine combine_polarization_states
 <<Polarizations: procedures>>=
-  subroutine combine_polarization_states (pol, state)
+  module subroutine combine_polarization_states (pol, state)
     type(polarization_t), dimension(:), intent(in), target :: pol
     type(state_matrix_t), intent(out) :: state
     type(state_matrix_t), dimension(size(pol)), target :: pol_state
@@ -2741,8 +3072,13 @@ where the polarization fraction is set to unity.
 For an antiparticle, the [[alpha(2)]] coefficient flips sign.
 <<Polarizations: polarization: TBP>>=
   procedure :: get_axis => polarization_get_axis
+<<Polarizations: sub interfaces>>=
+    module function polarization_get_axis (pol) result (alpha)
+      class(polarization_t), intent(in), target :: pol
+      real(default), dimension(3) :: alpha
+    end function polarization_get_axis
 <<Polarizations: procedures>>=
-  function polarization_get_axis (pol) result (alpha)
+  module function polarization_get_axis (pol) result (alpha)
     class(polarization_t), intent(in), target :: pol
     real(default), dimension(3) :: alpha
     select case (pol%chirality)
@@ -2765,8 +3101,13 @@ Since we call the [[get_axis]] method, the phase flips sign for an
 antiparticle.
 <<Polarizations: polarization: TBP>>=
   procedure :: to_angles => polarization_to_angles
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_to_angles (pol, r, theta, phi)
+      class(polarization_t), intent(in) :: pol
+      real(default), intent(out) :: r, theta, phi
+    end subroutine polarization_to_angles
 <<Polarizations: procedures>>=
-  subroutine polarization_to_angles (pol, r, theta, phi)
+  module subroutine polarization_to_angles (pol, r, theta, phi)
     class(polarization_t), intent(in) :: pol
     real(default), intent(out) :: r, theta, phi
     real(default), dimension(3) :: alpha
@@ -2825,8 +3166,13 @@ matrix element, $1/n$ where $n$ is the multiplicity.
 @ Output for debugging purposes only, therefore no format for real/complex.
 <<Polarizations: polarization iterator: TBP>>=
   procedure :: write => polarization_iterator_write
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_iterator_write (it, unit)
+      class(polarization_iterator_t), intent(in) :: it
+      integer, intent(in), optional :: unit
+    end subroutine polarization_iterator_write
 <<Polarizations: procedures>>=
-  subroutine polarization_iterator_write (it, unit)
+  module subroutine polarization_iterator_write (it, unit)
     class(polarization_iterator_t), intent(in) :: it
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -2866,8 +3212,15 @@ be treated as zero, causing the iterator to skip an entry.  By
 default, the value is negative, so no entry is skipped.
 <<Polarizations: polarization iterator: TBP>>=
   procedure :: init => polarization_iterator_init
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_iterator_init (it, pol, all_states, tolerance)
+      class(polarization_iterator_t), intent(out) :: it
+      type(polarization_t), intent(in), target :: pol
+      logical, intent(in), optional :: all_states
+      real(default), intent(in), optional :: tolerance
+    end subroutine polarization_iterator_init
 <<Polarizations: procedures>>=
-  subroutine polarization_iterator_init (it, pol, all_states, tolerance)
+  module subroutine polarization_iterator_init (it, pol, all_states, tolerance)
     class(polarization_iterator_t), intent(out) :: it
     type(polarization_t), intent(in), target :: pol
     logical, intent(in), optional :: all_states
@@ -2922,8 +3275,12 @@ For an unpolarized object, we iterate through the diagonal helicity
 states with a constant value.
 <<Polarizations: polarization iterator: TBP>>=
   procedure :: advance => polarization_iterator_advance
+<<Polarizations: sub interfaces>>=
+    recursive module subroutine polarization_iterator_advance (it)
+      class(polarization_iterator_t), intent(inout) :: it
+    end subroutine polarization_iterator_advance
 <<Polarizations: procedures>>=
-  recursive subroutine polarization_iterator_advance (it)
+  recursive module subroutine polarization_iterator_advance (it)
     class(polarization_iterator_t), intent(inout) :: it
     if (it%valid) then
        select case (it%pol%chirality)
@@ -2956,8 +3313,13 @@ states with a constant value.
 @ This is true as long as the iterator points to a valid helicity state.
 <<Polarizations: polarization iterator: TBP>>=
   procedure :: is_valid => polarization_iterator_is_valid
+<<Polarizations: sub interfaces>>=
+    module function polarization_iterator_is_valid (it) result (is_valid)
+      logical :: is_valid
+      class(polarization_iterator_t), intent(in) :: it
+    end function polarization_iterator_is_valid
 <<Polarizations: procedures>>=
-  function polarization_iterator_is_valid (it) result (is_valid)
+  module function polarization_iterator_is_valid (it) result (is_valid)
     logical :: is_valid
     class(polarization_iterator_t), intent(in) :: it
     is_valid = it%valid
@@ -2968,8 +3330,13 @@ states with a constant value.
 pointing at.
 <<Polarizations: polarization iterator: TBP>>=
   procedure :: get_value => polarization_iterator_get_value
+<<Polarizations: sub interfaces>>=
+    module function polarization_iterator_get_value (it) result (value)
+      complex(default) :: value
+      class(polarization_iterator_t), intent(in) :: it
+    end function polarization_iterator_get_value
 <<Polarizations: procedures>>=
-  function polarization_iterator_get_value (it) result (value)
+  module function polarization_iterator_get_value (it) result (value)
     complex(default) :: value
     class(polarization_iterator_t), intent(in) :: it
     if (it%valid) then
@@ -2986,8 +3353,13 @@ pointing at.  This is a single quantum number object, not an array.
 Note that the [[init]] method of the helicity object has the order reversed.
 <<Polarizations: polarization iterator: TBP>>=
   procedure :: get_quantum_numbers => polarization_iterator_get_quantum_numbers
+<<Polarizations: sub interfaces>>=
+    module function polarization_iterator_get_quantum_numbers (it) result (qn)
+      class(polarization_iterator_t), intent(in) :: it
+      type(quantum_numbers_t) :: qn
+    end function polarization_iterator_get_quantum_numbers
 <<Polarizations: procedures>>=
-  function polarization_iterator_get_quantum_numbers (it) result (qn)
+  module function polarization_iterator_get_quantum_numbers (it) result (qn)
     class(polarization_iterator_t), intent(in) :: it
     type(helicity_t) :: hel
     type(quantum_numbers_t) :: qn
@@ -3025,8 +3397,13 @@ Here is a base type without the special properties of a spin-density matrix.
 @ Output.
 <<Polarizations: smatrix: TBP>>=
   procedure :: write => smatrix_write
+<<Polarizations: sub interfaces>>=
+    module subroutine smatrix_write (object, unit, indent)
+      class(smatrix_t), intent(in) :: object
+      integer, intent(in), optional :: unit, indent
+    end subroutine smatrix_write
 <<Polarizations: procedures>>=
-  subroutine smatrix_write (object, unit, indent)
+  module subroutine smatrix_write (object, unit, indent)
     class(smatrix_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
     integer :: u, i, ind
@@ -3057,8 +3434,14 @@ dimension of the matrix (if different from two, this is rather a generic
 tensor) and the number of nonvanishing entries.
 <<Polarizations: smatrix: TBP>>=
   procedure :: init => smatrix_init
+<<Polarizations: sub interfaces>>=
+    module subroutine smatrix_init (smatrix, dim, n_entry)
+      class(smatrix_t), intent(out) :: smatrix
+      integer, intent(in) :: dim
+      integer, intent(in) :: n_entry
+    end subroutine smatrix_init
 <<Polarizations: procedures>>=
-  subroutine smatrix_init (smatrix, dim, n_entry)
+  module subroutine smatrix_init (smatrix, dim, n_entry)
     class(smatrix_t), intent(out) :: smatrix
     integer, intent(in) :: dim
     integer, intent(in) :: n_entry
@@ -3072,8 +3455,15 @@ tensor) and the number of nonvanishing entries.
 @ Fill: one entry at a time.
 <<Polarizations: smatrix: TBP>>=
   procedure :: set_entry => smatrix_set_entry
+<<Polarizations: sub interfaces>>=
+    module subroutine smatrix_set_entry (smatrix, i, index, value)
+      class(smatrix_t), intent(inout) :: smatrix
+      integer, intent(in) :: i
+      integer, dimension(:), intent(in) :: index
+      complex(default), intent(in) :: value
+    end subroutine smatrix_set_entry
 <<Polarizations: procedures>>=
-  subroutine smatrix_set_entry (smatrix, i, index, value)
+  module subroutine smatrix_set_entry (smatrix, i, index, value)
     class(smatrix_t), intent(inout) :: smatrix
     integer, intent(in) :: i
     integer, dimension(:), intent(in) :: index
@@ -3086,8 +3476,13 @@ tensor) and the number of nonvanishing entries.
 @
 <<Polarizations: smatrix: TBP>>=
   procedure :: exists => smatrix_exists
+<<Polarizations: sub interfaces>>=
+    elemental module function smatrix_exists (smatrix) result (exist)
+      logical :: exist
+      class(smatrix_t), intent(in) :: smatrix
+    end function smatrix_exists
 <<Polarizations: procedures>>=
-  elemental function smatrix_exists (smatrix) result (exist)
+  elemental module function smatrix_exists (smatrix) result (exist)
     logical :: exist
     class(smatrix_t), intent(in) :: smatrix
     exist = .not. all (smatrix%value == 0)
@@ -3127,8 +3522,13 @@ We may either check purity for all spins or drop this.
 @ Output, including extra data.  (The [[indent]] argument is ignored.)
 <<Polarizations: pmatrix: TBP>>=
   procedure :: write => pmatrix_write
+<<Polarizations: sub interfaces>>=
+    module subroutine pmatrix_write (object, unit, indent)
+      class(pmatrix_t), intent(in) :: object
+      integer, intent(in), optional :: unit, indent
+    end subroutine pmatrix_write
 <<Polarizations: procedures>>=
-  subroutine pmatrix_write (object, unit, indent)
+  module subroutine pmatrix_write (object, unit, indent)
     class(pmatrix_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent
     integer :: u
@@ -3148,8 +3548,13 @@ We may either check purity for all spins or drop this.
 <<Polarizations: pmatrix: TBP>>=
   generic :: assignment(=) => pmatrix_assign_from_smatrix
   procedure, private :: pmatrix_assign_from_smatrix
+<<Polarizations: sub interfaces>>=
+    module subroutine pmatrix_assign_from_smatrix (pmatrix, smatrix)
+      class(pmatrix_t), intent(out) :: pmatrix
+      type(smatrix_t), intent(in) :: smatrix
+    end subroutine pmatrix_assign_from_smatrix
 <<Polarizations: procedures>>=
-  subroutine pmatrix_assign_from_smatrix (pmatrix, smatrix)
+  module subroutine pmatrix_assign_from_smatrix (pmatrix, smatrix)
     class(pmatrix_t), intent(out) :: pmatrix
     type(smatrix_t), intent(in) :: smatrix
     pmatrix%smatrix_t = smatrix
@@ -3175,8 +3580,15 @@ The required properties are:
 \end{enumerate}
 <<Polarizations: pmatrix: TBP>>=
   procedure :: normalize => pmatrix_normalize
+<<Polarizations: sub interfaces>>=
+    module subroutine pmatrix_normalize (pmatrix, flv, degree, tolerance)
+      class(pmatrix_t), intent(inout) :: pmatrix
+      type(flavor_t), intent(in) :: flv
+      real(default), intent(in), optional :: degree
+      real(default), intent(in), optional :: tolerance
+    end subroutine pmatrix_normalize
 <<Polarizations: procedures>>=
-  subroutine pmatrix_normalize (pmatrix, flv, degree, tolerance)
+  module subroutine pmatrix_normalize (pmatrix, flv, degree, tolerance)
     class(pmatrix_t), intent(inout) :: pmatrix
     type(flavor_t), intent(in) :: flv
     real(default), intent(in), optional :: degree
@@ -3289,8 +3701,13 @@ A polarized matrix is defined as one with a positive polarization degree, even
 if the actual matrix is trivial.
 <<Polarizations: pmatrix: TBP>>=
   procedure :: is_polarized => pmatrix_is_polarized
+<<Polarizations: sub interfaces>>=
+    elemental module function pmatrix_is_polarized (pmatrix) result (flag)
+      class(pmatrix_t), intent(in) :: pmatrix
+      logical :: flag
+    end function pmatrix_is_polarized
 <<Polarizations: procedures>>=
-  elemental function pmatrix_is_polarized (pmatrix) result (flag)
+  elemental module function pmatrix_is_polarized (pmatrix) result (flag)
     class(pmatrix_t), intent(in) :: pmatrix
     logical :: flag
     flag = pmatrix%degree > 0
@@ -3301,8 +3718,13 @@ if the actual matrix is trivial.
 Check if there are only diagonal entries.
 <<Polarizations: pmatrix: TBP>>=
   procedure :: is_diagonal => pmatrix_is_diagonal
+<<Polarizations: sub interfaces>>=
+    elemental module function pmatrix_is_diagonal (pmatrix) result (flag)
+      class(pmatrix_t), intent(in) :: pmatrix
+      logical :: flag
+    end function pmatrix_is_diagonal
 <<Polarizations: procedures>>=
-  elemental function pmatrix_is_diagonal (pmatrix) result (flag)
+  elemental module function pmatrix_is_diagonal (pmatrix) result (flag)
     class(pmatrix_t), intent(in) :: pmatrix
     logical :: flag
     flag = all (pmatrix%index(1,:) == pmatrix%index(2,:))
@@ -3313,8 +3735,13 @@ Check if there are only diagonal entries.
 Check if there are only diagonal entries.
 <<Polarizations: pmatrix: TBP>>=
   procedure :: get_simple_pol => pmatrix_get_simple_pol
+<<Polarizations: sub interfaces>>=
+    elemental module function pmatrix_get_simple_pol (pmatrix) result (pol)
+      class(pmatrix_t), intent(in) :: pmatrix
+      real(default) :: pol
+    end function pmatrix_get_simple_pol
 <<Polarizations: procedures>>=
-  elemental function pmatrix_get_simple_pol (pmatrix) result (pol)
+  elemental module function pmatrix_get_simple_pol (pmatrix) result (pol)
     class(pmatrix_t), intent(in) :: pmatrix
     real(default) :: pol
     if (pmatrix%is_polarized ()) then
@@ -3352,8 +3779,13 @@ As mentioned above, [[pmatrix_t]] does not support an
 antiparticle flag.
 <<Polarizations: polarization: TBP>>=
   procedure :: init_pmatrix => polarization_init_pmatrix
+<<Polarizations: sub interfaces>>=
+    module subroutine polarization_init_pmatrix (pol, pmatrix)
+      class(polarization_t), intent(out) :: pol
+      type(pmatrix_t), intent(in) :: pmatrix
+    end subroutine polarization_init_pmatrix
 <<Polarizations: procedures>>=
-  subroutine polarization_init_pmatrix (pol, pmatrix)
+  module subroutine polarization_init_pmatrix (pol, pmatrix)
     class(polarization_t), intent(out) :: pol
     type(pmatrix_t), intent(in) :: pmatrix
     integer :: d, i, j, k, h1, h2
@@ -3883,12 +4315,6 @@ module particles
 <<Use kinds with double>>
 <<Use strings>>
 <<Use debug>>
-  use io_units
-  use format_utils, only: write_compressed_integer_array, write_separator
-  use format_utils, only: pac_fmt
-  use format_defs, only: FMT_16, FMT_19
-  use numeric_utils
-  use diagnostics
   use lorentz
   use phs_points, only: phs_point_t, assignment(=)
   use model_data
@@ -3900,7 +4326,6 @@ module particles
   use interactions
   use subevents
   use polarizations
-  use pdg_arrays, only: is_quark, is_gluon
 
 <<Standard module head>>
 
@@ -3912,12 +4337,35 @@ module particles
 
 <<Particles: interfaces>>
 
+  interface
+<<Particles: sub interfaces>>
+  end interface
+
+end module particles
+@ %def particles
+@
+<<[[particles_sub.f90]]>>=
+<<File header>>
+
+submodule (particles) particles_s
+
+  use io_units
+  use format_utils, only: write_compressed_integer_array, write_separator
+  use format_utils, only: pac_fmt
+  use format_defs, only: FMT_16, FMT_19
+  use numeric_utils
+  use diagnostics
+  use pdg_arrays, only: is_quark, is_gluon
+
+  implicit none
+
 contains
 
 <<Particles: procedures>>
 
-end module particles
-@ %def particles
+end submodule particles_s
+
+@ %def particles_s
 @
 \subsection{The particle type}
 \subsubsection{Particle status codes}
@@ -3977,8 +4425,13 @@ relations.
 <<Particles: particle: TBP>>=
   generic :: init => init_particle
   procedure :: init_particle => particle_init_particle
+<<Particles: sub interfaces>>=
+    module subroutine particle_init_particle (prt_out, prt_in)
+      class(particle_t), intent(out) :: prt_out
+      type(particle_t), intent(in) :: prt_in
+    end subroutine particle_init_particle
 <<Particles: procedures>>=
-  subroutine particle_init_particle (prt_out, prt_in)
+  module subroutine particle_init_particle (prt_out, prt_in)
     class(particle_t), intent(out) :: prt_out
     type(particle_t), intent(in) :: prt_in
     prt_out%status = prt_in%status
@@ -4000,8 +4453,16 @@ relations.
 <<Particles: particle: TBP>>=
   generic :: init => init_external
   procedure :: init_external => particle_init_external
+<<Particles: sub interfaces>>=
+    module subroutine particle_init_external &
+           (particle, status, pdg, model, col, anti_col, mom)
+      class(particle_t), intent(out) :: particle
+      integer, intent(in) :: status, pdg, col, anti_col
+      class(model_data_t), pointer, intent(in) :: model
+      type(vector4_t), intent(in) :: mom
+    end subroutine particle_init_external
 <<Particles: procedures>>=
-  subroutine particle_init_external &
+  module subroutine particle_init_external &
          (particle, status, pdg, model, col, anti_col, mom)
     class(particle_t), intent(out) :: particle
     integer, intent(in) :: status, pdg, col, anti_col
@@ -4026,8 +4487,14 @@ polarization.  This mode is translated into the polarization status.
 <<Particles: particle: TBP>>=
   generic :: init => init_state
   procedure :: init_state => particle_init_state
+<<Particles: sub interfaces>>=
+    module subroutine particle_init_state (prt, state, status, mode)
+      class(particle_t), intent(out) :: prt
+      type(state_matrix_t), intent(in), target :: state
+      integer, intent(in) :: status, mode
+    end subroutine particle_init_state
 <<Particles: procedures>>=
-  subroutine particle_init_state (prt, state, status, mode)
+  module subroutine particle_init_state (prt, state, status, mode)
     class(particle_t), intent(out) :: prt
     type(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: status, mode
@@ -4053,8 +4520,12 @@ polarization.  This mode is translated into the polarization status.
 @ Finalizer.
 <<Particles: particle: TBP>>=
   procedure :: final => particle_final
+<<Particles: sub interfaces>>=
+    module subroutine particle_final (prt)
+      class(particle_t), intent(inout) :: prt
+    end subroutine particle_final
 <<Particles: procedures>>=
-  subroutine particle_final (prt)
+  module subroutine particle_final (prt)
     class(particle_t), intent(inout) :: prt
     if (allocated (prt%vertex))  deallocate (prt%vertex)
     if (allocated (prt%lifetime))  deallocate (prt%lifetime)
@@ -4065,8 +4536,14 @@ polarization.  This mode is translated into the polarization status.
 \subsubsection{I/O}
 <<Particles: particle: TBP>>=
   procedure :: write => particle_write
+<<Particles: sub interfaces>>=
+    module subroutine particle_write (prt, unit, testflag, compressed, polarization)
+      class(particle_t), intent(in) :: prt
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag, compressed, polarization
+    end subroutine particle_write
 <<Particles: procedures>>=
-  subroutine particle_write (prt, unit, testflag, compressed, polarization)
+  module subroutine particle_write (prt, unit, testflag, compressed, polarization)
     class(particle_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag, compressed, polarization
@@ -4165,8 +4642,18 @@ polarization.  This mode is translated into the polarization status.
 <<Particles: particle: TBP>>=
   procedure :: write_raw => particle_write_raw
   procedure :: read_raw => particle_read_raw
+<<Particles: sub interfaces>>=
+    module subroutine particle_write_raw (prt, u)
+      class(particle_t), intent(in) :: prt
+      integer, intent(in) :: u
+    end subroutine particle_write_raw
+    module subroutine particle_read_raw (prt, u, iostat)
+      class(particle_t), intent(out) :: prt
+      integer, intent(in) :: u
+      integer, intent(out) :: iostat
+    end subroutine particle_read_raw
 <<Particles: procedures>>=
-  subroutine particle_write_raw (prt, u)
+  module subroutine particle_write_raw (prt, u)
     class(particle_t), intent(in) :: prt
     integer, intent(in) :: u
     write (u) prt%status, prt%polarization
@@ -4200,7 +4687,7 @@ polarization.  This mode is translated into the polarization status.
     end if
   end subroutine particle_write_raw
 
-  subroutine particle_read_raw (prt, u, iostat)
+  module subroutine particle_read_raw (prt, u, iostat)
     class(particle_t), intent(out) :: prt
     integer, intent(in) :: u
     integer, intent(out) :: iostat
@@ -4249,8 +4736,13 @@ Reset the status code.  Where applicable, set $p^2$ assuming that the
 particle is on-shell.
 <<Particles: particle: TBP>>=
   procedure :: reset_status => particle_reset_status
+<<Particles: sub interfaces>>=
+    elemental module subroutine particle_reset_status (prt, status)
+      class(particle_t), intent(inout) :: prt
+      integer, intent(in) :: status
+    end subroutine particle_reset_status
 <<Particles: procedures>>=
-  elemental subroutine particle_reset_status (prt, status)
+  elemental module subroutine particle_reset_status (prt, status)
     class(particle_t), intent(inout) :: prt
     integer, intent(in) :: status
     prt%status = status
@@ -4264,8 +4756,13 @@ particle is on-shell.
 @ The color can be given explicitly.
 <<Particles: particle: TBP>>=
   procedure :: set_color => particle_set_color
+<<Particles: sub interfaces>>=
+    elemental module subroutine particle_set_color (prt, col)
+      class(particle_t), intent(inout) :: prt
+      type(color_t), intent(in) :: col
+    end subroutine particle_set_color
 <<Particles: procedures>>=
-  elemental subroutine particle_set_color (prt, col)
+  elemental module subroutine particle_set_color (prt, col)
     class(particle_t), intent(inout) :: prt
     type(color_t), intent(in) :: col
     prt%col = col
@@ -4275,8 +4772,13 @@ particle is on-shell.
 @ The flavor can be given explicitly.
 <<Particles: particle: TBP>>=
   procedure :: set_flavor => particle_set_flavor
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_flavor (prt, flv)
+      class(particle_t), intent(inout) :: prt
+      type(flavor_t), intent(in) :: flv
+    end subroutine particle_set_flavor
 <<Particles: procedures>>=
-  subroutine particle_set_flavor (prt, flv)
+  module subroutine particle_set_flavor (prt, flv)
     class(particle_t), intent(inout) :: prt
     type(flavor_t), intent(in) :: flv
     prt%flv = flv
@@ -4286,8 +4788,13 @@ particle is on-shell.
 @ As can the helicity.
 <<Particles: particle: TBP>>=
   procedure :: set_helicity => particle_set_helicity
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_helicity (prt, hel)
+      class(particle_t), intent(inout) :: prt
+      type(helicity_t), intent(in) :: hel
+    end subroutine particle_set_helicity
 <<Particles: procedures>>=
-  subroutine particle_set_helicity (prt, hel)
+  module subroutine particle_set_helicity (prt, hel)
     class(particle_t), intent(inout) :: prt
     type(helicity_t), intent(in) :: hel
     prt%hel = hel
@@ -4297,8 +4804,13 @@ particle is on-shell.
 @ And the polarization.
 <<Particles: particle: TBP>>=
   procedure :: set_pol => particle_set_pol
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_pol (prt, pol)
+      class(particle_t), intent(inout) :: prt
+      type(polarization_t), intent(in) :: pol
+    end subroutine particle_set_pol
 <<Particles: procedures>>=
-  subroutine particle_set_pol (prt, pol)
+  module subroutine particle_set_pol (prt, pol)
     class(particle_t), intent(inout) :: prt
     type(polarization_t), intent(in) :: pol
     prt%pol = pol
@@ -4309,8 +4821,13 @@ particle is on-shell.
 the particle has been read from file.
 <<Particles: particle: TBP>>=
   procedure :: set_model => particle_set_model
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_model (prt, model)
+      class(particle_t), intent(inout) :: prt
+      class(model_data_t), intent(in), target :: model
+    end subroutine particle_set_model
 <<Particles: procedures>>=
-  subroutine particle_set_model (prt, model)
+  module subroutine particle_set_model (prt, model)
     class(particle_t), intent(inout) :: prt
     class(model_data_t), intent(in), target :: model
     call prt%flv%set_model (model)
@@ -4320,8 +4837,15 @@ the particle has been read from file.
 @ The momentum is set independent of the quantum numbers.
 <<Particles: particle: TBP>>=
   procedure :: set_momentum => particle_set_momentum
+<<Particles: sub interfaces>>=
+    elemental module subroutine particle_set_momentum (prt, p, p2, on_shell)
+      class(particle_t), intent(inout) :: prt
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in), optional :: p2
+      logical, intent(in), optional :: on_shell
+    end subroutine particle_set_momentum
 <<Particles: procedures>>=
-  elemental subroutine particle_set_momentum (prt, p, p2, on_shell)
+  elemental module subroutine particle_set_momentum (prt, p, p2, on_shell)
     class(particle_t), intent(inout) :: prt
     type(vector4_t), intent(in) :: p
     real(default), intent(in), optional :: p2
@@ -4364,8 +4888,17 @@ particles.
 <<Particles: particle: TBP>>=
   procedure :: set_children => particle_set_children
   procedure :: set_parents => particle_set_parents
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_children (prt, idx)
+      class(particle_t), intent(inout) :: prt
+      integer, dimension(:), intent(in) :: idx
+    end subroutine particle_set_children
+    module subroutine particle_set_parents (prt, idx)
+      class(particle_t), intent(inout) :: prt
+      integer, dimension(:), intent(in) :: idx
+    end subroutine particle_set_parents
 <<Particles: procedures>>=
-  subroutine particle_set_children (prt, idx)
+  module subroutine particle_set_children (prt, idx)
     class(particle_t), intent(inout) :: prt
     integer, dimension(:), intent(in) :: idx
     if (allocated (prt%child))  deallocate (prt%child)
@@ -4373,7 +4906,7 @@ particles.
     prt%child = pack (idx, idx /= 0)
   end subroutine particle_set_children
 
-  subroutine particle_set_parents (prt, idx)
+  module subroutine particle_set_parents (prt, idx)
     class(particle_t), intent(inout) :: prt
     integer, dimension(:), intent(in) :: idx
     if (allocated (prt%parent))  deallocate (prt%parent)
@@ -4385,8 +4918,13 @@ particles.
 @
 <<Particles: particle: TBP>>=
   procedure :: add_child => particle_add_child
+<<Particles: sub interfaces>>=
+    module subroutine particle_add_child (prt, new_child)
+      class(particle_t), intent(inout) :: prt
+      integer, intent(in) :: new_child
+    end subroutine particle_add_child
 <<Particles: procedures>>=
-  subroutine particle_add_child (prt, new_child)
+  module subroutine particle_add_child (prt, new_child)
     class(particle_t), intent(inout) :: prt
     integer, intent(in) :: new_child
     integer, dimension(:), allocatable :: idx
@@ -4411,8 +4949,13 @@ particles.
 @
 <<Particles: particle: TBP>>=
   procedure :: add_children => particle_add_children
+<<Particles: sub interfaces>>=
+    module subroutine particle_add_children (prt, new_child)
+      class(particle_t), intent(inout) :: prt
+      integer, dimension(:), intent(in) :: new_child
+    end subroutine particle_add_children
 <<Particles: procedures>>=
-  subroutine particle_add_children (prt, new_child)
+  module subroutine particle_add_children (prt, new_child)
     class(particle_t), intent(inout) :: prt
     integer, dimension(:), intent(in) :: new_child
     integer, dimension(:), allocatable :: idx
@@ -4432,8 +4975,13 @@ particles.
 @
 <<Particles: particle: TBP>>=
   procedure :: set_status => particle_set_status
+<<Particles: sub interfaces>>=
+    elemental module subroutine particle_set_status (prt, status)
+      class(particle_t), intent(inout) :: prt
+      integer, intent(in) :: status
+    end subroutine particle_set_status
 <<Particles: procedures>>=
-  elemental subroutine particle_set_status (prt, status)
+  elemental module subroutine particle_set_status (prt, status)
     class(particle_t), intent(inout) :: prt
     integer, intent(in) :: status
     prt%status = status
@@ -4443,8 +4991,13 @@ particles.
 @
 <<Particles: particle: TBP>>=
   procedure :: set_polarization => particle_set_polarization
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_polarization (prt, polarization)
+      class(particle_t), intent(inout) :: prt
+      integer, intent(in) :: polarization
+    end subroutine particle_set_polarization
 <<Particles: procedures>>=
-  subroutine particle_set_polarization (prt, polarization)
+  module subroutine particle_set_polarization (prt, polarization)
     class(particle_t), intent(inout) :: prt
     integer, intent(in) :: polarization
     prt%polarization = polarization
@@ -4459,15 +5012,32 @@ particles.
   procedure :: set_vertex_from_vector3 => particle_set_vertex_from_vector3
   procedure :: set_vertex_from_xyzt => particle_set_vertex_from_xyzt
   procedure :: set_vertex_from_xyz => particle_set_vertex_from_xyz
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_vertex_from_vector4 (prt, vertex)
+      class(particle_t), intent(inout) :: prt
+      type(vector4_t), intent(in) :: vertex
+    end subroutine particle_set_vertex_from_vector4
+    module subroutine particle_set_vertex_from_vector3 (prt, vertex)
+      class(particle_t), intent(inout) :: prt
+      type(vector3_t), intent(in) :: vertex
+    end subroutine particle_set_vertex_from_vector3
+    module subroutine particle_set_vertex_from_xyzt (prt, vx, vy, vz, t)
+      class(particle_t), intent(inout) :: prt
+      real(default), intent(in) :: vx, vy, vz, t
+    end subroutine particle_set_vertex_from_xyzt
+    module subroutine particle_set_vertex_from_xyz (prt, vx, vy, vz)
+      class(particle_t), intent(inout) :: prt
+      real(default), intent(in) :: vx, vy, vz
+    end subroutine particle_set_vertex_from_xyz
 <<Particles: procedures>>=
-  subroutine particle_set_vertex_from_vector4 (prt, vertex)
+  module subroutine particle_set_vertex_from_vector4 (prt, vertex)
     class(particle_t), intent(inout) :: prt
     type(vector4_t), intent(in) :: vertex
     if (allocated (prt%vertex)) deallocate (prt%vertex)
     allocate (prt%vertex, source=vertex)
   end subroutine particle_set_vertex_from_vector4
 
-  subroutine particle_set_vertex_from_vector3 (prt, vertex)
+  module subroutine particle_set_vertex_from_vector3 (prt, vertex)
     class(particle_t), intent(inout) :: prt
     type(vector3_t), intent(in) :: vertex
     type(vector4_t) :: vtx
@@ -4476,7 +5046,7 @@ particles.
     allocate (prt%vertex, source=vtx)
   end subroutine particle_set_vertex_from_vector3
 
-  subroutine particle_set_vertex_from_xyzt (prt, vx, vy, vz, t)
+  module subroutine particle_set_vertex_from_xyzt (prt, vx, vy, vz, t)
     class(particle_t), intent(inout) :: prt
     real(default), intent(in) :: vx, vy, vz, t
     type(vector4_t) :: vertex
@@ -4485,7 +5055,7 @@ particles.
     allocate (prt%vertex, source=vertex)
   end subroutine particle_set_vertex_from_xyzt
 
-  subroutine particle_set_vertex_from_xyz (prt, vx, vy, vz)
+  module subroutine particle_set_vertex_from_xyz (prt, vx, vy, vz)
     class(particle_t), intent(inout) :: prt
     real(default), intent(in) :: vx, vy, vz
     type(vector4_t) :: vertex
@@ -4501,8 +5071,13 @@ particles.
 @ Set the lifetime of a particle.
 <<Particles: particle: TBP>>=
   procedure :: set_lifetime => particle_set_lifetime
+<<Particles: sub interfaces>>=
+    elemental module subroutine particle_set_lifetime (prt, lifetime)
+      class(particle_t), intent(inout) :: prt
+      real(default), intent(in) :: lifetime
+    end subroutine particle_set_lifetime
 <<Particles: procedures>>=
-  elemental subroutine particle_set_lifetime (prt, lifetime)
+  elemental module subroutine particle_set_lifetime (prt, lifetime)
     class(particle_t), intent(inout) :: prt
     real(default), intent(in) :: lifetime
     if (allocated (prt%lifetime))  deallocate (prt%lifetime)
@@ -4515,8 +5090,13 @@ particles.
 The status code.
 <<Particles: particle: TBP>>=
   procedure :: get_status => particle_get_status
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_status (prt) result (status)
+      integer :: status
+      class(particle_t), intent(in) :: prt
+    end function particle_get_status
 <<Particles: procedures>>=
-  elemental function particle_get_status (prt) result (status)
+  elemental module function particle_get_status (prt) result (status)
     integer :: status
     class(particle_t), intent(in) :: prt
     status = prt%status
@@ -4528,8 +5108,14 @@ The status code.
 [[keep_beams]] is set true.
 <<Particles: particle: TBP>>=
   procedure :: is_real => particle_is_real
+<<Particles: sub interfaces>>=
+    elemental module function particle_is_real (prt, keep_beams) result (flag)
+      logical :: flag, kb
+      class(particle_t), intent(in) :: prt
+      logical, intent(in), optional :: keep_beams
+    end function particle_is_real
 <<Particles: procedures>>=
-  elemental function particle_is_real (prt, keep_beams) result (flag)
+  elemental module function particle_is_real (prt, keep_beams) result (flag)
     logical :: flag, kb
     class(particle_t), intent(in) :: prt
     logical, intent(in), optional :: keep_beams
@@ -4549,8 +5135,13 @@ The status code.
 @
 <<Particles: particle: TBP>>=
   procedure :: is_colored => particle_is_colored
+<<Particles: sub interfaces>>=
+    elemental module function particle_is_colored (particle) result (flag)
+      logical :: flag
+      class(particle_t), intent(in) :: particle
+    end function particle_is_colored
 <<Particles: procedures>>=
-  elemental function particle_is_colored (particle) result (flag)
+  elemental module function particle_is_colored (particle) result (flag)
     logical :: flag
     class(particle_t), intent(in) :: particle
     flag = particle%col%is_nonzero ()
@@ -4560,8 +5151,13 @@ The status code.
 @ $[90,100]$ hopefully catches all of them and not too many.
 <<Particles: particle: TBP>>=
   procedure :: is_hadronic_beam_remnant => particle_is_hadronic_beam_remnant
+<<Particles: sub interfaces>>=
+    elemental module function particle_is_hadronic_beam_remnant (particle) result (flag)
+      class(particle_t), intent(in) :: particle
+      logical :: flag
+    end function particle_is_hadronic_beam_remnant
 <<Particles: procedures>>=
-  elemental function particle_is_hadronic_beam_remnant (particle) result (flag)
+  elemental module function particle_is_hadronic_beam_remnant (particle) result (flag)
     class(particle_t), intent(in) :: particle
     logical :: flag
     integer :: pdg
@@ -4574,8 +5170,13 @@ The status code.
 @
 <<Particles: particle: TBP>>=
   procedure :: is_beam_remnant => particle_is_beam_remnant
+<<Particles: sub interfaces>>=
+    elemental module function particle_is_beam_remnant (particle) result (flag)
+      class(particle_t), intent(in) :: particle
+      logical :: flag
+    end function particle_is_beam_remnant
 <<Particles: procedures>>=
-  elemental function particle_is_beam_remnant (particle) result (flag)
+  elemental module function particle_is_beam_remnant (particle) result (flag)
     class(particle_t), intent(in) :: particle
     logical :: flag
     flag = particle%status == PRT_BEAM_REMNANT
@@ -4585,8 +5186,13 @@ The status code.
 @ Polarization status.
 <<Particles: particle: TBP>>=
   procedure :: get_polarization_status => particle_get_polarization_status
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_polarization_status (prt) result (status)
+      integer :: status
+      class(particle_t), intent(in) :: prt
+    end function particle_get_polarization_status
 <<Particles: procedures>>=
-  elemental function particle_get_polarization_status (prt) result (status)
+  elemental module function particle_get_polarization_status (prt) result (status)
     integer :: status
     class(particle_t), intent(in) :: prt
     status = prt%polarization
@@ -4596,8 +5202,13 @@ The status code.
 @ Return the PDG code from the flavor component directly.
 <<Particles: particle: TBP>>=
   procedure :: get_pdg => particle_get_pdg
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_pdg (prt) result (pdg)
+      integer :: pdg
+      class(particle_t), intent(in) :: prt
+    end function particle_get_pdg
 <<Particles: procedures>>=
-  elemental function particle_get_pdg (prt) result (pdg)
+  elemental module function particle_get_pdg (prt) result (pdg)
     integer :: pdg
     class(particle_t), intent(in) :: prt
     pdg = prt%flv%get_pdg ()
@@ -4607,8 +5218,13 @@ The status code.
 @ Return the color and anticolor quantum numbers.
 <<Particles: particle: TBP>>=
   procedure :: get_color => particle_get_color
+<<Particles: sub interfaces>>=
+    pure module function particle_get_color (prt) result (col)
+      integer, dimension(2) :: col
+      class(particle_t), intent(in) :: prt
+    end function particle_get_color
 <<Particles: procedures>>=
-  pure function particle_get_color (prt) result (col)
+  pure module function particle_get_color (prt) result (col)
     integer, dimension(2) :: col
     class(particle_t), intent(in) :: prt
     col(1) = prt%col%get_col ()
@@ -4619,8 +5235,13 @@ The status code.
 @ Return a copy of the polarization density matrix.
 <<Particles: particle: TBP>>=
   procedure :: get_polarization => particle_get_polarization
+<<Particles: sub interfaces>>=
+    module function particle_get_polarization (prt) result (pol)
+      class(particle_t), intent(in) :: prt
+      type(polarization_t) :: pol
+    end function particle_get_polarization
 <<Particles: procedures>>=
-  function particle_get_polarization (prt) result (pol)
+  module function particle_get_polarization (prt) result (pol)
     class(particle_t), intent(in) :: prt
     type(polarization_t) :: pol
     pol = prt%pol
@@ -4632,20 +5253,33 @@ The status code.
   procedure :: get_flv => particle_get_flv
   procedure :: get_col => particle_get_col
   procedure :: get_hel => particle_get_hel
+<<Particles: sub interfaces>>=
+    module function particle_get_flv (prt) result (flv)
+      class(particle_t), intent(in) :: prt
+      type(flavor_t) :: flv
+    end function particle_get_flv
+    module function particle_get_col (prt) result (col)
+      class(particle_t), intent(in) :: prt
+      type(color_t) :: col
+    end function particle_get_col
+    module function particle_get_hel (prt) result (hel)
+      class(particle_t), intent(in) :: prt
+      type(helicity_t) :: hel
+    end function particle_get_hel
 <<Particles: procedures>>=
-  function particle_get_flv (prt) result (flv)
+  module function particle_get_flv (prt) result (flv)
     class(particle_t), intent(in) :: prt
     type(flavor_t) :: flv
     flv = prt%flv
   end function particle_get_flv
 
-  function particle_get_col (prt) result (col)
+  module function particle_get_col (prt) result (col)
     class(particle_t), intent(in) :: prt
     type(color_t) :: col
     col = prt%col
   end function particle_get_col
 
-  function particle_get_hel (prt) result (hel)
+  module function particle_get_hel (prt) result (hel)
     class(particle_t), intent(in) :: prt
     type(helicity_t) :: hel
     hel = prt%hel
@@ -4655,8 +5289,13 @@ The status code.
 @ Return the helicity (if defined and diagonal).
 <<Particles: particle: TBP>>=
   procedure :: get_helicity => particle_get_helicity
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_helicity (prt) result (hel)
+      integer :: hel
+      class(particle_t), intent(in) :: prt
+    end function particle_get_helicity
 <<Particles: procedures>>=
-  elemental function particle_get_helicity (prt) result (hel)
+  elemental module function particle_get_helicity (prt) result (hel)
     integer :: hel
     integer, dimension(2) :: hel_arr
     class(particle_t), intent(in) :: prt
@@ -4672,8 +5311,17 @@ The status code.
 <<Particles: particle: TBP>>=
   procedure :: get_n_parents => particle_get_n_parents
   procedure :: get_n_children => particle_get_n_children
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_n_parents (prt) result (n)
+      integer :: n
+      class(particle_t), intent(in) :: prt
+    end function particle_get_n_parents
+    elemental module function particle_get_n_children (prt) result (n)
+      integer :: n
+      class(particle_t), intent(in) :: prt
+    end function particle_get_n_children
 <<Particles: procedures>>=
-  elemental function particle_get_n_parents (prt) result (n)
+  elemental module function particle_get_n_parents (prt) result (n)
     integer :: n
     class(particle_t), intent(in) :: prt
     if (allocated (prt%parent)) then
@@ -4683,7 +5331,7 @@ The status code.
     end if
   end function particle_get_n_parents
 
-  elemental function particle_get_n_children (prt) result (n)
+  elemental module function particle_get_n_children (prt) result (n)
     integer :: n
     class(particle_t), intent(in) :: prt
     if (allocated (prt%child)) then
@@ -4698,8 +5346,17 @@ The status code.
 <<Particles: particle: TBP>>=
   procedure :: get_parents => particle_get_parents
   procedure :: get_children => particle_get_children
+<<Particles: sub interfaces>>=
+    module function particle_get_parents (prt) result (parent)
+      class(particle_t), intent(in) :: prt
+      integer, dimension(:), allocatable :: parent
+    end function particle_get_parents
+    module function particle_get_children (prt) result (child)
+      class(particle_t), intent(in) :: prt
+      integer, dimension(:), allocatable :: child
+    end function particle_get_children
 <<Particles: procedures>>=
-  function particle_get_parents (prt) result (parent)
+  module function particle_get_parents (prt) result (parent)
     class(particle_t), intent(in) :: prt
     integer, dimension(:), allocatable :: parent
     if (allocated (prt%parent)) then
@@ -4710,7 +5367,7 @@ The status code.
     end if
   end function particle_get_parents
 
-  function particle_get_children (prt) result (child)
+  module function particle_get_children (prt) result (child)
     class(particle_t), intent(in) :: prt
     integer, dimension(:), allocatable :: child
     if (allocated (prt%child)) then
@@ -4725,8 +5382,13 @@ The status code.
 @
 <<Particles: particle: TBP>>=
   procedure :: has_children => particle_has_children
+<<Particles: sub interfaces>>=
+    elemental module function particle_has_children (prt) result (has_children)
+      logical :: has_children
+      class(particle_t), intent(in) :: prt
+    end function particle_has_children
 <<Particles: procedures>>=
-  elemental function particle_has_children (prt) result (has_children)
+  elemental module function particle_has_children (prt) result (has_children)
     logical :: has_children
     class(particle_t), intent(in) :: prt
     has_children = .false.
@@ -4739,8 +5401,13 @@ The status code.
 @
 <<Particles: particle: TBP>>=
   procedure :: has_parents => particle_has_parents
+<<Particles: sub interfaces>>=
+    elemental module function particle_has_parents (prt) result (has_parents)
+      logical :: has_parents
+      class(particle_t), intent(in) :: prt
+    end function particle_has_parents
 <<Particles: procedures>>=
-  elemental function particle_has_parents (prt) result (has_parents)
+  elemental module function particle_has_parents (prt) result (has_parents)
     logical :: has_parents
     class(particle_t), intent(in) :: prt
     has_parents = .false.
@@ -4754,14 +5421,23 @@ The status code.
 <<Particles: particle: TBP>>=
   procedure :: get_momentum => particle_get_momentum
   procedure :: get_p2 => particle_get_p2
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_momentum (prt) result (p)
+      type(vector4_t) :: p
+      class(particle_t), intent(in) :: prt
+    end function particle_get_momentum
+    elemental module function particle_get_p2 (prt) result (p2)
+      real(default) :: p2
+      class(particle_t), intent(in) :: prt
+    end function particle_get_p2
 <<Particles: procedures>>=
-  elemental function particle_get_momentum (prt) result (p)
+  elemental module function particle_get_momentum (prt) result (p)
     type(vector4_t) :: p
     class(particle_t), intent(in) :: prt
     p = prt%p
   end function particle_get_momentum
 
-  elemental function particle_get_p2 (prt) result (p2)
+  elemental module function particle_get_p2 (prt) result (p2)
     real(default) :: p2
     class(particle_t), intent(in) :: prt
     p2 = prt%p2
@@ -4771,8 +5447,13 @@ The status code.
 @ Return the particle vertex, if allocated.
 <<Particles: particle: TBP>>=
   procedure :: get_vertex => particle_get_vertex
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_vertex (prt) result (vtx)
+      type(vector4_t) :: vtx
+      class(particle_t), intent(in) :: prt
+    end function particle_get_vertex
 <<Particles: procedures>>=
-  elemental function particle_get_vertex (prt) result (vtx)
+  elemental module function particle_get_vertex (prt) result (vtx)
     type(vector4_t) :: vtx
     class(particle_t), intent(in) :: prt
     if (allocated (prt%vertex)) then
@@ -4786,8 +5467,13 @@ The status code.
 @ Return the lifetime of a particle.
 <<Particles: particle: TBP>>=
   procedure :: get_lifetime => particle_get_lifetime
+<<Particles: sub interfaces>>=
+    elemental module function particle_get_lifetime (prt) result (lifetime)
+      real(default) :: lifetime
+      class(particle_t), intent(in) :: prt
+    end function particle_get_lifetime
 <<Particles: procedures>>=
-  elemental function particle_get_lifetime (prt) result (lifetime)
+  elemental module function particle_get_lifetime (prt) result (lifetime)
     real(default) :: lifetime
     class(particle_t), intent(in) :: prt
     if (allocated (prt%lifetime)) then
@@ -4801,8 +5487,13 @@ The status code.
 @
 <<Particles: particle: TBP>>=
   procedure :: momentum_to_pythia6 => particle_momentum_to_pythia6
+<<Particles: sub interfaces>>=
+    pure module function particle_momentum_to_pythia6 (prt) result (p)
+      real(double), dimension(1:5) :: p
+      class(particle_t), intent(in) :: prt
+    end function particle_momentum_to_pythia6
 <<Particles: procedures>>=
-  pure function particle_momentum_to_pythia6 (prt) result (p)
+  pure module function particle_momentum_to_pythia6 (prt) result (p)
     real(double), dimension(1:5) :: p
     class(particle_t), intent(in) :: prt
     p = prt%p%to_pythia6 (sqrt (prt%p2))
@@ -4872,8 +5563,21 @@ can be used to perform this correction.
 
 The flag [[is_valid]] is false if factorization of the state is not
 possible, in particular if the squared matrix element is zero.
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_init_interaction &
+         (particle_set, is_valid, int, int_flows, mode, x, &
+          keep_correlations, keep_virtual, n_incoming, qn_select)
+      class(particle_set_t), intent(out) :: particle_set
+      logical, intent(out) :: is_valid
+      type(interaction_t), intent(in), target :: int, int_flows
+      integer, intent(in) :: mode
+      real(default), dimension(2), intent(in) :: x
+      logical, intent(in) :: keep_correlations, keep_virtual
+      integer, intent(in), optional :: n_incoming
+      type(quantum_numbers_t), dimension(:), intent(in), optional :: qn_select
+    end subroutine particle_set_init_interaction
 <<Particles: procedures>>=
-  subroutine particle_set_init_interaction &
+  module subroutine particle_set_init_interaction &
        (particle_set, is_valid, int, int_flows, mode, x, &
         keep_correlations, keep_virtual, n_incoming, qn_select)
     class(particle_set_t), intent(out) :: particle_set
@@ -4973,8 +5677,13 @@ possible, in particular if the squared matrix element is zero.
   generic :: assignment(=) => init_particle_set
   generic :: init => init_particle_set
   procedure :: init_particle_set => particle_set_init_particle_set
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_init_particle_set (pset_out, pset_in)
+      class(particle_set_t), intent(out) :: pset_out
+      type(particle_set_t), intent(in) :: pset_in
+    end subroutine particle_set_init_particle_set
 <<Particles: procedures>>=
-  subroutine particle_set_init_particle_set (pset_out, pset_in)
+  module subroutine particle_set_init_particle_set (pset_out, pset_in)
     class(particle_set_t), intent(out) :: pset_out
     type(particle_set_t), intent(in) :: pset_in
     integer :: i
@@ -4997,8 +5706,13 @@ possible, in particular if the squared matrix element is zero.
 @ Manually set the model for the stored particles.
 <<Particles: particle set: TBP>>=
   procedure :: set_model => particle_set_set_model
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_set_model (particle_set, model)
+      class(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model
+    end subroutine particle_set_set_model
 <<Particles: procedures>>=
-  subroutine particle_set_set_model (particle_set, model)
+  module subroutine particle_set_set_model (particle_set, model)
     class(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
     integer :: i
@@ -5013,8 +5727,12 @@ possible, in particular if the squared matrix element is zero.
 in the correlated state matrix.
 <<Particles: particle set: TBP>>=
   procedure :: final => particle_set_final
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_final (particle_set)
+      class(particle_set_t), intent(inout) :: particle_set
+    end subroutine particle_set_final
 <<Particles: procedures>>=
-  subroutine particle_set_final (particle_set)
+  module subroutine particle_set_final (particle_set)
     class(particle_set_t), intent(inout) :: particle_set
     integer :: i
     if (allocated (particle_set%prt)) then
@@ -5033,8 +5751,13 @@ Basic initialization.  Just allocate with a given number of beam, incoming,
 virtual, and outgoing particles.
 <<Particles: particle set: TBP>>=
   procedure :: basic_init => particle_set_basic_init
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_basic_init (particle_set, n_beam, n_in, n_vir, n_out)
+      class(particle_set_t), intent(out) :: particle_set
+      integer, intent(in) :: n_beam, n_in, n_vir, n_out
+    end subroutine particle_set_basic_init
 <<Particles: procedures>>=
-  subroutine particle_set_basic_init (particle_set, n_beam, n_in, n_vir, n_out)
+  module subroutine particle_set_basic_init (particle_set, n_beam, n_in, n_vir, n_out)
     class(particle_set_t), intent(out) :: particle_set
     integer, intent(in) :: n_beam, n_in, n_vir, n_out
     particle_set%n_beam = n_beam
@@ -5068,8 +5791,20 @@ status code.
 We assume that the [[pdg]] array has the correct size.
 <<Particles: particle set: TBP>>=
   procedure :: init_direct => particle_set_init_direct
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_init_direct (particle_set, &
+         n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
+      class(particle_set_t), intent(out) :: particle_set
+      integer, intent(in) :: n_beam
+      integer, intent(in) :: n_in
+      integer, intent(in) :: n_rem
+      integer, intent(in) :: n_vir
+      integer, intent(in) :: n_out
+      integer, dimension(:), intent(in) :: pdg
+      class(model_data_t), intent(in), target :: model
+    end subroutine particle_set_init_direct
 <<Particles: procedures>>=
-  subroutine particle_set_init_direct (particle_set, &
+  module subroutine particle_set_init_direct (particle_set, &
        n_beam, n_in, n_rem, n_vir, n_out, pdg, model)
     class(particle_set_t), intent(out) :: particle_set
     integer, intent(in) :: n_beam
@@ -5135,8 +5870,15 @@ additional entries.  Count the new, undefined particles as
 virtual.
 <<Particles: particle set: TBP>>=
   procedure :: transfer => particle_set_transfer
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_transfer (pset, source, n_new, map)
+      class(particle_set_t), intent(out) :: pset
+      class(particle_set_t), intent(in) :: source
+      integer, intent(in) :: n_new
+      integer, dimension(:), intent(in) :: map
+    end subroutine particle_set_transfer
 <<Particles: procedures>>=
-  subroutine particle_set_transfer (pset, source, n_new, map)
+  module subroutine particle_set_transfer (pset, source, n_new, map)
     class(particle_set_t), intent(out) :: pset
     class(particle_set_t), intent(in) :: source
     integer, intent(in) :: n_new
@@ -5182,8 +5924,16 @@ When this is done, the new particle is registered as the (only) parent of its
 children.
 <<Particles: particle set: TBP>>=
   procedure :: insert => particle_set_insert
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_insert (pset, i, status, flv, child)
+      class(particle_set_t), intent(inout) :: pset
+      integer, intent(in) :: i
+      integer, intent(in) :: status
+      type(flavor_t), intent(in) :: flv
+      integer, dimension(:), intent(in) :: child
+    end subroutine particle_set_insert
 <<Particles: procedures>>=
-  subroutine particle_set_insert (pset, i, status, flv, child)
+  module subroutine particle_set_insert (pset, i, status, flv, child)
     class(particle_set_t), intent(inout) :: pset
     integer, intent(in) :: i
     integer, intent(in) :: status
@@ -5235,8 +5985,13 @@ children to parents.  A single call to the routine recovers the color
 and anticolor line indices for a single particle.
 <<Particles: particle set: TBP>>=
   procedure :: recover_color => particle_set_recover_color
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_recover_color (pset, i)
+      class(particle_set_t), intent(inout) :: pset
+      integer, intent(in) :: i
+    end subroutine particle_set_recover_color
 <<Particles: procedures>>=
-  subroutine particle_set_recover_color (pset, i)
+  module subroutine particle_set_recover_color (pset, i)
     class(particle_set_t), intent(inout) :: pset
     integer, intent(in) :: i
     type(color_t) :: col
@@ -5260,8 +6015,13 @@ and anticolor line indices for a single particle.
   generic :: get_color => get_color_indices
   procedure :: get_color_all => particle_set_get_color_all
   procedure :: get_color_indices => particle_set_get_color_indices
+<<Particles: sub interfaces>>=
+    module function particle_set_get_color_all (particle_set) result (col)
+      class(particle_set_t), intent(in) :: particle_set
+      type(color_t), dimension(:), allocatable :: col
+    end function particle_set_get_color_all
 <<Particles: procedures>>=
-  function particle_set_get_color_all (particle_set) result (col)
+  module function particle_set_get_color_all (particle_set) result (col)
     class(particle_set_t), intent(in) :: particle_set
     type(color_t), dimension(:), allocatable :: col
     allocate (col (size (particle_set%prt)))
@@ -5270,16 +6030,22 @@ and anticolor line indices for a single particle.
 
 @ %def particle_set_get_color_all
 @
+<<Particles: sub interfaces>>=
+    module function particle_set_get_color_indices (particle_set, indices) result (col)
+      type(color_t), dimension(:), allocatable :: col
+      class(particle_set_t), intent(in) :: particle_set
+      integer, intent(in), dimension(:), allocatable :: indices
+    end function particle_set_get_color_indices
 <<Particles: procedures>>=
-  function particle_set_get_color_indices (particle_set, indices) result (col)
-     type(color_t), dimension(:), allocatable :: col
-     class(particle_set_t), intent(in) :: particle_set
-     integer, intent(in), dimension(:), allocatable :: indices
-     integer :: i
-     allocate (col (size (indices)))
-     do i = 1, size (indices)
-        col(i) = particle_set%prt(indices(i))%col
-     end do
+  module function particle_set_get_color_indices (particle_set, indices) result (col)
+    type(color_t), dimension(:), allocatable :: col
+    class(particle_set_t), intent(in) :: particle_set
+    integer, intent(in), dimension(:), allocatable :: indices
+    integer :: i
+    allocate (col (size (indices)))
+    do i = 1, size (indices)
+       col(i) = particle_set%prt(indices(i))%col
+    end do
   end function particle_set_get_color_indices
 
 @ %def particle_set_get_color_indices
@@ -5293,15 +6059,30 @@ that the particle array is allocated.
   procedure :: set_color_single => particle_set_set_color_single
   procedure :: set_color_indices => particle_set_set_color_indices
   procedure :: set_color_all => particle_set_set_color_all
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_set_color_single (particle_set, i, col)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, intent(in) :: i
+      type(color_t), intent(in) :: col
+    end subroutine particle_set_set_color_single
+    module subroutine particle_set_set_color_indices (particle_set, indices, col)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, dimension(:), intent(in) :: indices
+      type(color_t), dimension(:), intent(in) :: col
+    end subroutine particle_set_set_color_indices
+    module subroutine particle_set_set_color_all (particle_set, col)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(color_t), dimension(:), intent(in) :: col
+    end subroutine particle_set_set_color_all
 <<Particles: procedures>>=
-  subroutine particle_set_set_color_single (particle_set, i, col)
+  module subroutine particle_set_set_color_single (particle_set, i, col)
     class(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: i
     type(color_t), intent(in) :: col
     call particle_set%prt(i)%set_color (col)
   end subroutine particle_set_set_color_single
 
-  subroutine particle_set_set_color_indices (particle_set, indices, col)
+  module subroutine particle_set_set_color_indices (particle_set, indices, col)
     class(particle_set_t), intent(inout) :: particle_set
     integer, dimension(:), intent(in) :: indices
     type(color_t), dimension(:), intent(in) :: col
@@ -5311,7 +6092,7 @@ that the particle array is allocated.
     end do
   end subroutine particle_set_set_color_indices
 
-  subroutine particle_set_set_color_all (particle_set, col)
+  module subroutine particle_set_set_color_all (particle_set, col)
     class(particle_set_t), intent(inout) :: particle_set
     type(color_t), dimension(:), intent(in) :: col
     call particle_set%prt%set_color (col)
@@ -5325,8 +6106,14 @@ The return value is an allocatable array which consists of the particles
 with invalid color assignments.  If the array size is zero, all is fine.
 <<Particles: particle set: TBP>>=
   procedure :: find_prt_invalid_color => particle_set_find_prt_invalid_color
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_find_prt_invalid_color (particle_set, index, prt)
+      class(particle_set_t), intent(in) :: particle_set
+      integer, dimension(:), allocatable, intent(out) :: index
+      type(particle_t), dimension(:), allocatable, intent(out), optional :: prt
+    end subroutine particle_set_find_prt_invalid_color
 <<Particles: procedures>>=
-  subroutine particle_set_find_prt_invalid_color (particle_set, index, prt)
+  module subroutine particle_set_find_prt_invalid_color (particle_set, index, prt)
     class(particle_set_t), intent(in) :: particle_set
     integer, dimension(:), allocatable, intent(out) :: index
     type(particle_t), dimension(:), allocatable, intent(out), optional :: prt
@@ -5354,8 +6141,13 @@ with invalid color assignments.  If the array size is zero, all is fine.
   generic :: get_momenta => get_momenta_indices
   procedure :: get_momenta_all => particle_set_get_momenta_all
   procedure :: get_momenta_indices => particle_set_get_momenta_indices
+<<Particles: sub interfaces>>=
+    module function particle_set_get_momenta_all (particle_set) result (p)
+      class(particle_set_t), intent(in) :: particle_set
+      type(vector4_t), dimension(:), allocatable :: p
+    end function particle_set_get_momenta_all
 <<Particles: procedures>>=
-  function particle_set_get_momenta_all (particle_set) result (p)
+  module function particle_set_get_momenta_all (particle_set) result (p)
     class(particle_set_t), intent(in) :: particle_set
     type(vector4_t), dimension(:), allocatable :: p
     allocate (p (size (particle_set%prt)))
@@ -5364,8 +6156,14 @@ with invalid color assignments.  If the array size is zero, all is fine.
 
 @ %def particle_set_get_momenta_all
 @
+<<Particles: sub interfaces>>=
+    module function particle_set_get_momenta_indices (particle_set, indices) result (p)
+       type(vector4_t), dimension(:), allocatable :: p
+       class(particle_set_t), intent(in) :: particle_set
+       integer, intent(in), dimension(:), allocatable :: indices
+    end function particle_set_get_momenta_indices
 <<Particles: procedures>>=
-  function particle_set_get_momenta_indices (particle_set, indices) result (p)
+  module function particle_set_get_momenta_indices (particle_set, indices) result (p)
      type(vector4_t), dimension(:), allocatable :: p
      class(particle_set_t), intent(in) :: particle_set
      integer, intent(in), dimension(:), allocatable :: indices
@@ -5387,8 +6185,31 @@ that the particle array is allocated.
   procedure :: set_momentum_single => particle_set_set_momentum_single
   procedure :: set_momentum_indices => particle_set_set_momentum_indices
   procedure :: set_momentum_all => particle_set_set_momentum_all
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_set_momentum_single &
+         (particle_set, i, p, p2, on_shell)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, intent(in) :: i
+      type(vector4_t), intent(in) :: p
+      real(default), intent(in), optional :: p2
+      logical, intent(in), optional :: on_shell
+    end subroutine particle_set_set_momentum_single
+    module subroutine particle_set_set_momentum_indices &
+         (particle_set, indices, p, p2, on_shell)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, dimension(:), intent(in) :: indices
+      type(vector4_t), dimension(:), intent(in) :: p
+      real(default), dimension(:), intent(in), optional :: p2
+      logical, intent(in), optional :: on_shell
+    end subroutine particle_set_set_momentum_indices
+    module subroutine particle_set_set_momentum_all (particle_set, p, p2, on_shell)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(vector4_t), dimension(:), intent(in) :: p
+      real(default), dimension(:), intent(in), optional :: p2
+      logical, intent(in), optional :: on_shell
+    end subroutine particle_set_set_momentum_all
 <<Particles: procedures>>=
-  subroutine particle_set_set_momentum_single &
+  module subroutine particle_set_set_momentum_single &
        (particle_set, i, p, p2, on_shell)
     class(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: i
@@ -5398,7 +6219,7 @@ that the particle array is allocated.
     call particle_set%prt(i)%set_momentum (p, p2, on_shell)
   end subroutine particle_set_set_momentum_single
 
-  subroutine particle_set_set_momentum_indices &
+  module subroutine particle_set_set_momentum_indices &
        (particle_set, indices, p, p2, on_shell)
     class(particle_set_t), intent(inout) :: particle_set
     integer, dimension(:), intent(in) :: indices
@@ -5418,7 +6239,7 @@ that the particle array is allocated.
     end if
   end subroutine particle_set_set_momentum_indices
 
-  subroutine particle_set_set_momentum_all (particle_set, p, p2, on_shell)
+  module subroutine particle_set_set_momentum_all (particle_set, p, p2, on_shell)
     class(particle_set_t), intent(inout) :: particle_set
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), dimension(:), intent(in), optional :: p2
@@ -5431,8 +6252,13 @@ that the particle array is allocated.
 is possible.  The reconstructed momentum is not projected on-shell.
 <<Particles: particle set: TBP>>=
   procedure :: recover_momentum => particle_set_recover_momentum
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_recover_momentum (particle_set, i)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, intent(in) :: i
+    end subroutine particle_set_recover_momentum
 <<Particles: procedures>>=
-  subroutine particle_set_recover_momentum (particle_set, i)
+  module subroutine particle_set_recover_momentum (particle_set, i)
     class(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: i
     type(vector4_t), dimension(:), allocatable :: p
@@ -5446,8 +6272,13 @@ is possible.  The reconstructed momentum is not projected on-shell.
 @
 <<Particles: particle set: TBP>>=
   procedure :: replace_incoming_momenta => particle_set_replace_incoming_momenta
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_replace_incoming_momenta (particle_set, p)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(vector4_t), intent(in), dimension(:) :: p
+    end subroutine particle_set_replace_incoming_momenta
 <<Particles: procedures>>=
-  subroutine particle_set_replace_incoming_momenta (particle_set, p)
+  module subroutine particle_set_replace_incoming_momenta (particle_set, p)
     class(particle_set_t), intent(inout) :: particle_set
     type(vector4_t), intent(in), dimension(:) :: p
     integer :: i, j
@@ -5465,8 +6296,13 @@ is possible.  The reconstructed momentum is not projected on-shell.
 @
 <<Particles: particle set: TBP>>=
   procedure :: replace_outgoing_momenta => particle_set_replace_outgoing_momenta
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_replace_outgoing_momenta (particle_set, p)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(vector4_t), intent(in), dimension(:) :: p
+    end subroutine particle_set_replace_outgoing_momenta
 <<Particles: procedures>>=
-  subroutine particle_set_replace_outgoing_momenta (particle_set, p)
+  module subroutine particle_set_replace_outgoing_momenta (particle_set, p)
     class(particle_set_t), intent(inout) :: particle_set
     type(vector4_t), intent(in), dimension(:) :: p
     integer :: i, j
@@ -5483,8 +6319,13 @@ is possible.  The reconstructed momentum is not projected on-shell.
 @
 <<Particles: particle set: TBP>>=
   procedure :: get_outgoing_momenta => particle_set_get_outgoing_momenta
+<<Particles: sub interfaces>>=
+    module function particle_set_get_outgoing_momenta (particle_set) result (p)
+      class(particle_set_t), intent(in) :: particle_set
+      type(vector4_t), dimension(:), allocatable :: p
+    end function particle_set_get_outgoing_momenta
 <<Particles: procedures>>=
-  function particle_set_get_outgoing_momenta (particle_set) result (p)
+  module function particle_set_get_outgoing_momenta (particle_set) result (p)
     class(particle_set_t), intent(in) :: particle_set
     type(vector4_t), dimension(:), allocatable :: p
     integer :: i, k
@@ -5502,8 +6343,13 @@ is possible.  The reconstructed momentum is not projected on-shell.
 @
 <<Particles: particle set: TBP>>=
   procedure :: parent_add_child => particle_set_parent_add_child
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_parent_add_child (particle_set, parent, child)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, intent(in) :: parent, child
+    end subroutine particle_set_parent_add_child
 <<Particles: procedures>>=
-  subroutine particle_set_parent_add_child (particle_set, parent, child)
+  module subroutine particle_set_parent_add_child (particle_set, parent, child)
     class(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: parent, child
     call particle_set%prt(child)%set_parents ([parent])
@@ -5517,138 +6363,148 @@ is possible.  The reconstructed momentum is not projected on-shell.
 the [[particle_set]].
 <<Particles: particle set: TBP>>=
   procedure :: build_radiation => particle_set_build_radiation
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_build_radiation (particle_set, p_radiated, &
+         emitter, flv_radiated, model, r_color)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(vector4_t), intent(in), dimension(:) :: p_radiated
+      integer, intent(in) :: emitter
+      integer, intent(in), dimension(:) :: flv_radiated
+      class(model_data_t), intent(in), target :: model
+      real(default), intent(in) :: r_color
+    end subroutine particle_set_build_radiation
 <<Particles: procedures>>=
-  subroutine particle_set_build_radiation (particle_set, p_radiated, &
-     emitter, flv_radiated, model, r_color)
-     class(particle_set_t), intent(inout) :: particle_set
-     type(vector4_t), intent(in), dimension(:) :: p_radiated
-     integer, intent(in) :: emitter
-     integer, intent(in), dimension(:) :: flv_radiated
-     class(model_data_t), intent(in), target :: model
-     real(default), intent(in) :: r_color
-     type(particle_set_t) :: new_particle_set
-     type(particle_t) :: new_particle
-     integer :: i
-     integer :: pdg_index_emitter, pdg_index_radiation
-     integer, dimension(:), allocatable :: parents, children
-     type(flavor_t) :: new_flv
-     logical, dimension(:), allocatable :: status_mask
-     integer, dimension(:), allocatable :: &
-          i_in1, i_beam1, i_remnant1, i_virt1, i_out1
-     integer, dimension(:), allocatable :: &
-          i_in2, i_beam2, i_remnant2, i_virt2, i_out2
-     integer :: n_in1, n_beam1, n_remnant1, n_virt1, n_out1
-     integer :: n_in2, n_beam2, n_remnant2, n_virt2, n_out2
-     integer :: n, n_tot
-     integer :: i_emitter
+  module subroutine particle_set_build_radiation (particle_set, p_radiated, &
+       emitter, flv_radiated, model, r_color)
+    class(particle_set_t), intent(inout) :: particle_set
+    type(vector4_t), intent(in), dimension(:) :: p_radiated
+    integer, intent(in) :: emitter
+    integer, intent(in), dimension(:) :: flv_radiated
+    class(model_data_t), intent(in), target :: model
+    real(default), intent(in) :: r_color
+    type(particle_set_t) :: new_particle_set
+    type(particle_t) :: new_particle
+    integer :: i
+    integer :: pdg_index_emitter, pdg_index_radiation
+    integer, dimension(:), allocatable :: parents, children
+    type(flavor_t) :: new_flv
+    logical, dimension(:), allocatable :: status_mask
+    integer, dimension(:), allocatable :: &
+         i_in1, i_beam1, i_remnant1, i_virt1, i_out1
+    integer, dimension(:), allocatable :: &
+         i_in2, i_beam2, i_remnant2, i_virt2, i_out2
+    integer :: n_in1, n_beam1, n_remnant1, n_virt1, n_out1
+    integer :: n_in2, n_beam2, n_remnant2, n_virt2, n_out2
+    integer :: n, n_tot
+    integer :: i_emitter
 
-     n = particle_set%get_n_tot ()
-     allocate (status_mask (n))
-     do i = 1, n
-        status_mask(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
-     end do
-     n_in1 = count (status_mask)
-     allocate (i_in1 (n_in1))
-     i_in1 = particle_set%get_indices (status_mask)
-     do i = 1, n
-        status_mask(i) = particle_set%prt(i)%get_status () == PRT_BEAM
-     end do
-     n_beam1 = count (status_mask)
-     allocate (i_beam1 (n_beam1))
-     i_beam1 = particle_set%get_indices (status_mask)
-     do i = 1, n
-        status_mask(i) = particle_set%prt(i)%get_status () == PRT_BEAM_REMNANT
-     end do
-     n_remnant1 = count (status_mask)
-     allocate (i_remnant1 (n_remnant1))
-     i_remnant1 = particle_set%get_indices (status_mask)
-     do i = 1, n
-        status_mask(i) = particle_set%prt(i)%get_status () == PRT_VIRTUAL
-     end do
-     n_virt1 = count (status_mask)
-     allocate (i_virt1 (n_virt1))
-     i_virt1 = particle_set%get_indices (status_mask)
-     do i = 1, n
-        status_mask(i) = particle_set%prt(i)%get_status () == PRT_OUTGOING
-     end do
-     n_out1 = count (status_mask)
-     allocate (i_out1 (n_out1))
-     i_out1 = particle_set%get_indices (status_mask)
+    n = particle_set%get_n_tot ()
+    allocate (status_mask (n))
+    do i = 1, n
+       status_mask(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
+    end do
+    n_in1 = count (status_mask)
+    allocate (i_in1 (n_in1))
+    i_in1 = particle_set%get_indices (status_mask)
+    do i = 1, n
+       status_mask(i) = particle_set%prt(i)%get_status () == PRT_BEAM
+    end do
+    n_beam1 = count (status_mask)
+    allocate (i_beam1 (n_beam1))
+    i_beam1 = particle_set%get_indices (status_mask)
+    do i = 1, n
+       status_mask(i) = particle_set%prt(i)%get_status () == PRT_BEAM_REMNANT
+    end do
+    n_remnant1 = count (status_mask)
+    allocate (i_remnant1 (n_remnant1))
+    i_remnant1 = particle_set%get_indices (status_mask)
+    do i = 1, n
+       status_mask(i) = particle_set%prt(i)%get_status () == PRT_VIRTUAL
+    end do
+    n_virt1 = count (status_mask)
+    allocate (i_virt1 (n_virt1))
+    i_virt1 = particle_set%get_indices (status_mask)
+    do i = 1, n
+       status_mask(i) = particle_set%prt(i)%get_status () == PRT_OUTGOING
+    end do
+    n_out1 = count (status_mask)
+    allocate (i_out1 (n_out1))
+    i_out1 = particle_set%get_indices (status_mask)
 
-     n_in2 = n_in1; n_beam2 = n_beam1; n_remnant2 = n_remnant1
-     n_virt2 = n_virt1 + n_out1
-     n_out2 = n_out1 + 1
-     n_tot = n_in2 + n_beam2 + n_remnant2 + n_virt2 + n_out2
+    n_in2 = n_in1; n_beam2 = n_beam1; n_remnant2 = n_remnant1
+    n_virt2 = n_virt1 + n_out1
+    n_out2 = n_out1 + 1
+    n_tot = n_in2 + n_beam2 + n_remnant2 + n_virt2 + n_out2
 
-     allocate (i_in2 (n_in2), i_beam2 (n_beam2), i_remnant2 (n_remnant2))
-     i_in2 = i_in1; i_beam2 = i_beam1; i_remnant2 = i_remnant1
+    allocate (i_in2 (n_in2), i_beam2 (n_beam2), i_remnant2 (n_remnant2))
+    i_in2 = i_in1; i_beam2 = i_beam1; i_remnant2 = i_remnant1
 
-     allocate (i_virt2 (n_virt2))
-     i_virt2(1 : n_virt1) = i_virt1
-     i_virt2(n_virt1 + 1 : n_virt2) = i_out1
+    allocate (i_virt2 (n_virt2))
+    i_virt2(1 : n_virt1) = i_virt1
+    i_virt2(n_virt1 + 1 : n_virt2) = i_out1
 
-     allocate (i_out2 (n_out2))
-     i_out2(1 : n_out1) = i_out1(1 : n_out1) + n_out1
-     i_out2(n_out2) = n_tot
+    allocate (i_out2 (n_out2))
+    i_out2(1 : n_out1) = i_out1(1 : n_out1) + n_out1
+    i_out2(n_out2) = n_tot
 
-     new_particle_set%n_beam = n_beam2
-     new_particle_set%n_in = n_in2
-     new_particle_set%n_vir = n_virt2
-     new_particle_set%n_out = n_out2
-     new_particle_set%n_tot = n_tot
-     new_particle_set%correlated_state = particle_set%correlated_state
-     allocate (new_particle_set%prt (n_tot))
-     if (size (i_beam1) > 0) new_particle_set%prt(i_beam2) = particle_set%prt(i_beam1)
-     if (size (i_remnant1) > 0) new_particle_set%prt(i_remnant2) = particle_set%prt(i_remnant1)
-     do i = 1, n_virt1
-        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_virt1(i))
-     end do
+    new_particle_set%n_beam = n_beam2
+    new_particle_set%n_in = n_in2
+    new_particle_set%n_vir = n_virt2
+    new_particle_set%n_out = n_out2
+    new_particle_set%n_tot = n_tot
+    new_particle_set%correlated_state = particle_set%correlated_state
+    allocate (new_particle_set%prt (n_tot))
+    if (size (i_beam1) > 0) new_particle_set%prt(i_beam2) = particle_set%prt(i_beam1)
+    if (size (i_remnant1) > 0) new_particle_set%prt(i_remnant2) = particle_set%prt(i_remnant1)
+    do i = 1, n_virt1
+       new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_virt1(i))
+    end do
 
-     do i = n_virt1 + 1, n_virt2
-        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_out1(i - n_virt1))
-        call new_particle_set%prt(i_virt2(i))%reset_status (PRT_VIRTUAL)
-     end do
+    do i = n_virt1 + 1, n_virt2
+       new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_out1(i - n_virt1))
+       call new_particle_set%prt(i_virt2(i))%reset_status (PRT_VIRTUAL)
+    end do
 
-     do i = 1, n_in2
-        new_particle_set%prt(i_in2(i)) = particle_set%prt(i_in1(i))
-        new_particle_set%prt(i_in2(i))%p = p_radiated (i)
-     end do
+    do i = 1, n_in2
+       new_particle_set%prt(i_in2(i)) = particle_set%prt(i_in1(i))
+       new_particle_set%prt(i_in2(i))%p = p_radiated (i)
+    end do
 
-     do i = 1, n_out2 - 1
-        new_particle_set%prt(i_out2(i)) = particle_set%prt(i_out1(i))
-        new_particle_set%prt(i_out2(i))%p = p_radiated(i + n_in2)
-        call new_particle_set%prt(i_out2(i))%reset_status (PRT_OUTGOING)
-     end do
+    do i = 1, n_out2 - 1
+       new_particle_set%prt(i_out2(i)) = particle_set%prt(i_out1(i))
+       new_particle_set%prt(i_out2(i))%p = p_radiated(i + n_in2)
+       call new_particle_set%prt(i_out2(i))%reset_status (PRT_OUTGOING)
+    end do
 
-     call new_particle%reset_status (PRT_OUTGOING)
-     call new_particle%set_momentum (p_radiated (n_in2 + n_out2))
+    call new_particle%reset_status (PRT_OUTGOING)
+    call new_particle%set_momentum (p_radiated (n_in2 + n_out2))
 
-     !!! Helicity and polarization handling is missing at this point
-     !!! Also, no helicities or polarizations yet
-     pdg_index_emitter = flv_radiated (emitter)
-     pdg_index_radiation = flv_radiated (n_in2 + n_out2)
-     call new_flv%init (pdg_index_radiation, model)
-     i_emitter = emitter + n_virt2 + n_remnant2 + n_beam2
+    !!! Helicity and polarization handling is missing at this point
+    !!! Also, no helicities or polarizations yet
+    pdg_index_emitter = flv_radiated (emitter)
+    pdg_index_radiation = flv_radiated (n_in2 + n_out2)
+    call new_flv%init (pdg_index_radiation, model)
+    i_emitter = emitter + n_virt2 + n_remnant2 + n_beam2
 
-     call reassign_colors (new_particle, new_particle_set%prt(i_emitter), &
-        pdg_index_radiation, pdg_index_emitter, r_color)
+    call reassign_colors (new_particle, new_particle_set%prt(i_emitter), &
+         pdg_index_radiation, pdg_index_emitter, r_color)
+    
+    call new_particle%set_flavor (new_flv)
+    new_particle_set%prt(n_tot) = new_particle
 
-     call new_particle%set_flavor (new_flv)
-     new_particle_set%prt(n_tot) = new_particle
+    allocate (children (n_out2))
+    children = i_out2
+    do i = n_in2 + n_beam2 + n_remnant2 + n_virt1 + 1, n_in2 + n_beam2 + n_remnant2 + n_virt2
+       call new_particle_set%prt(i)%set_children (children)
+    end do
 
-     allocate (children (n_out2))
-     children = i_out2
-     do i = n_in2 + n_beam2 + n_remnant2 + n_virt1 + 1, n_in2 + n_beam2 + n_remnant2 + n_virt2
-        call new_particle_set%prt(i)%set_children (children)
-     end do
-
-     !!! Set proper parents for outgoing particles
-     allocate (parents (n_out1))
-     parents = i_out1
-     do i = n_in2 + n_beam2 + n_remnant2 + n_virt2 + 1, n_tot
-        call new_particle_set%prt(i)%set_parents (parents)
-     end do
-     call particle_set%init (new_particle_set)
+    !!! Set proper parents for outgoing particles
+    allocate (parents (n_out1))
+    parents = i_out1
+    do i = n_in2 + n_beam2 + n_remnant2 + n_virt2 + 1, n_tot
+       call new_particle_set%prt(i)%set_parents (parents)
+    end do
+    call particle_set%init (new_particle_set)
   contains
 
     <<build radiation: set color offset>>
@@ -5772,8 +6628,15 @@ from the record-keeping Born particles in the LHE-output if the virtual entries 
 @ Output (default format)
 <<Particles: particle set: TBP>>=
   procedure :: write => particle_set_write
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_write &
+      (particle_set, unit, testflag, summary, compressed)
+      class(particle_set_t), intent(in) :: particle_set
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag, summary, compressed
+    end subroutine particle_set_write
 <<Particles: procedures>>=
-  subroutine particle_set_write &
+  module subroutine particle_set_write &
     (particle_set, unit, testflag, summary, compressed)
     class(particle_set_t), intent(in) :: particle_set
     integer, intent(in), optional :: unit
@@ -5865,8 +6728,18 @@ flavor values read from file.
 <<Particles: particle set: TBP>>=
   procedure :: write_raw => particle_set_write_raw
   procedure :: read_raw => particle_set_read_raw
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_write_raw (particle_set, u)
+      class(particle_set_t), intent(in) :: particle_set
+      integer, intent(in) :: u
+    end subroutine particle_set_write_raw
+    module subroutine particle_set_read_raw (particle_set, u, iostat)
+      class(particle_set_t), intent(out) :: particle_set
+      integer, intent(in) :: u
+      integer, intent(out) :: iostat
+    end subroutine particle_set_read_raw
 <<Particles: procedures>>=
-  subroutine particle_set_write_raw (particle_set, u)
+  module subroutine particle_set_write_raw (particle_set, u)
     class(particle_set_t), intent(in) :: particle_set
     integer, intent(in) :: u
     integer :: i
@@ -5881,7 +6754,7 @@ flavor values read from file.
     call particle_set%correlated_state%write_raw (u)
   end subroutine particle_set_write_raw
 
-  subroutine particle_set_read_raw (particle_set, u, iostat)
+  module subroutine particle_set_read_raw (particle_set, u, iostat)
     class(particle_set_t), intent(out) :: particle_set
     integer, intent(in) :: u
     integer, intent(out) :: iostat
@@ -5907,8 +6780,21 @@ search terminates if a parent/child has status [[BEAM]], [[INCOMING]],
 <<Particles: particle set: TBP>>=
   procedure :: get_real_parents => particle_set_get_real_parents
   procedure :: get_real_children => particle_set_get_real_children
+<<Particles: sub interfaces>>=
+    module function particle_set_get_real_parents (pset, i, keep_beams) result (parent)
+      integer, dimension(:), allocatable :: parent
+      class(particle_set_t), intent(in) :: pset
+      integer, intent(in) :: i
+      logical, intent(in), optional :: keep_beams
+    end function particle_set_get_real_parents
+    module function particle_set_get_real_children (pset, i, keep_beams) result (child)
+      integer, dimension(:), allocatable :: child
+      class(particle_set_t), intent(in) :: pset
+      integer, intent(in) :: i
+      logical, intent(in), optional :: keep_beams
+    end function particle_set_get_real_children
 <<Particles: procedures>>=
-  function particle_set_get_real_parents (pset, i, keep_beams) result (parent)
+  module function particle_set_get_real_parents (pset, i, keep_beams) result (parent)
     integer, dimension(:), allocatable :: parent
     class(particle_set_t), intent(in) :: pset
     integer, intent(in) :: i
@@ -5948,7 +6834,7 @@ search terminates if a parent/child has status [[BEAM]], [[INCOMING]],
     end do
   end function particle_set_get_real_parents
 
-  function particle_set_get_real_children (pset, i, keep_beams) result (child)
+  module function particle_set_get_real_children (pset, i, keep_beams) result (child)
     integer, dimension(:), allocatable :: child
     class(particle_set_t), intent(in) :: pset
     integer, intent(in) :: i
@@ -6000,38 +6886,63 @@ particle set.
   procedure :: get_n_out => particle_set_get_n_out
   procedure :: get_n_tot => particle_set_get_n_tot
   procedure :: get_n_remnants => particle_set_get_n_remnants
+<<Particles: sub interfaces>>=
+    module function particle_set_get_n_beam (pset) result (n_beam)
+       class(particle_set_t), intent(in) :: pset
+       integer :: n_beam
+    end function particle_set_get_n_beam
+    module function particle_set_get_n_in (pset) result (n_in)
+       class(particle_set_t), intent(in) :: pset
+       integer :: n_in
+    end function particle_set_get_n_in
+    module function particle_set_get_n_vir (pset) result (n_vir)
+       class(particle_set_t), intent(in) :: pset
+       integer :: n_vir
+     end function particle_set_get_n_vir
+    module function particle_set_get_n_out (pset) result (n_out)
+       class(particle_set_t), intent(in) :: pset
+       integer :: n_out
+    end function particle_set_get_n_out
+    module function particle_set_get_n_tot (pset) result (n_tot)
+       class(particle_set_t), intent(in) :: pset
+       integer :: n_tot
+    end function particle_set_get_n_tot
+    module function particle_set_get_n_remnants (pset) result (n_remn)
+      class(particle_set_t), intent(in) :: pset
+      integer :: n_remn
+    end function particle_set_get_n_remnants
 <<Particles: procedures>>=
-  function particle_set_get_n_beam (pset) result (n_beam)
+  module function particle_set_get_n_beam (pset) result (n_beam)
      class(particle_set_t), intent(in) :: pset
      integer :: n_beam
      n_beam = pset%n_beam
   end function particle_set_get_n_beam
 
-  function particle_set_get_n_in (pset) result (n_in)
+  module function particle_set_get_n_in (pset) result (n_in)
      class(particle_set_t), intent(in) :: pset
      integer :: n_in
      n_in = pset%n_in
   end function particle_set_get_n_in
 
-  function particle_set_get_n_vir (pset) result (n_vir)
+  module function particle_set_get_n_vir (pset) result (n_vir)
      class(particle_set_t), intent(in) :: pset
      integer :: n_vir
      n_vir = pset%n_vir
    end function particle_set_get_n_vir
 
-  function particle_set_get_n_out (pset) result (n_out)
+  module function particle_set_get_n_out (pset) result (n_out)
      class(particle_set_t), intent(in) :: pset
      integer :: n_out
      n_out = pset%n_out
   end function particle_set_get_n_out
 
-  function particle_set_get_n_tot (pset) result (n_tot)
+  module function particle_set_get_n_tot (pset) result (n_tot)
      class(particle_set_t), intent(in) :: pset
      integer :: n_tot
      n_tot = pset%n_tot
   end function particle_set_get_n_tot
 
-  function particle_set_get_n_remnants (pset) result (n_remn)
+  module function particle_set_get_n_remnants (pset) result (n_remn)
     class(particle_set_t), intent(in) :: pset
     integer :: n_remn
     if (allocated (pset%prt)) then
@@ -6050,8 +6961,14 @@ particle set.
 @ Return a pointer to the particle corresponding to the number
 <<Particles: particle set: TBP>>=
   procedure :: get_particle => particle_set_get_particle
+<<Particles: sub interfaces>>=
+    module function particle_set_get_particle (pset, index) result (particle)
+      class(particle_set_t), intent(in) :: pset
+      integer, intent(in) :: index
+      type(particle_t) :: particle
+    end function particle_set_get_particle
 <<Particles: procedures>>=
-  function particle_set_get_particle (pset, index) result (particle)
+  module function particle_set_get_particle (pset, index) result (particle)
     class(particle_set_t), intent(in) :: pset
     integer, intent(in) :: index
     type(particle_t) :: particle
@@ -6062,8 +6979,14 @@ particle set.
 @
 <<Particles: particle set: TBP>>=
   procedure :: get_indices => particle_set_get_indices
+<<Particles: sub interfaces>>=
+    pure module function particle_set_get_indices (pset, mask) result (finals)
+      integer, dimension(:), allocatable :: finals
+      class(particle_set_t), intent(in) :: pset
+      logical, dimension(:), intent(in) :: mask
+    end function particle_set_get_indices
 <<Particles: procedures>>=
-  pure function particle_set_get_indices (pset, mask) result (finals)
+  pure module function particle_set_get_indices (pset, mask) result (finals)
     integer, dimension(:), allocatable :: finals
     class(particle_set_t), intent(in) :: pset
     logical, dimension(:), intent(in) :: mask
@@ -6078,8 +7001,13 @@ particle set.
 @ Copy the subset of physical momenta to a [[phs_point]] container.
 <<Particles: particle set: TBP>>=
   procedure :: get_in_and_out_momenta => particle_set_get_in_and_out_momenta
+<<Particles: sub interfaces>>=
+    module function particle_set_get_in_and_out_momenta (pset) result (phs_point)
+      type(phs_point_t) :: phs_point
+      class(particle_set_t), intent(in) :: pset
+    end function particle_set_get_in_and_out_momenta
 <<Particles: procedures>>=
-  function particle_set_get_in_and_out_momenta (pset) result (phs_point)
+  module function particle_set_get_in_and_out_momenta (pset) result (phs_point)
     type(phs_point_t) :: phs_point
     class(particle_set_t), intent(in) :: pset
     logical, dimension(:), allocatable :: mask
@@ -6103,8 +7031,16 @@ relations assuming the ordering [[b]], [[i]], [[r]], [[x]], [[o]].
 <<Particles: particle set: TBP>>=
   procedure :: without_hadronic_remnants => &
        particle_set_without_hadronic_remnants
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_without_hadronic_remnants &
+           (particle_set, particles, n_particles, n_extra)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(particle_t), dimension(:), allocatable, intent(out) :: particles
+      integer, intent(out) :: n_particles
+      integer, intent(in) :: n_extra
+    end subroutine particle_set_without_hadronic_remnants
 <<Particles: procedures>>=
-  subroutine particle_set_without_hadronic_remnants &
+  module subroutine particle_set_without_hadronic_remnants &
          (particle_set, particles, n_particles, n_extra)
     class(particle_set_t), intent(inout) :: particle_set
     type(particle_t), dimension(:), allocatable, intent(out) :: particles
@@ -6175,8 +7111,16 @@ Build a new particles array without remnants but with
 relations assuming the ordering [[b]], [[i]], [[r]], [[x]], [[o]].
 <<Particles: particle set: TBP>>=
   procedure :: without_remnants => particle_set_without_remnants
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_without_remnants &
+           (particle_set, particles, n_particles, n_extra)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(particle_t), dimension(:), allocatable, intent(out) :: particles
+      integer, intent(in) :: n_extra
+      integer, intent(out) :: n_particles
+    end subroutine particle_set_without_remnants
 <<Particles: procedures>>=
-  subroutine particle_set_without_remnants &
+  module subroutine particle_set_without_remnants &
          (particle_set, particles, n_particles, n_extra)
     class(particle_set_t), intent(inout) :: particle_set
     type(particle_t), dimension(:), allocatable, intent(out) :: particles
@@ -6230,8 +7174,17 @@ relations assuming the ordering [[b]], [[i]], [[r]], [[x]], [[o]].
 @
 <<Particles: particle set: TBP>>=
   procedure :: find_particle => particle_set_find_particle
+<<Particles: sub interfaces>>=
+    pure module function particle_set_find_particle (particle_set, pdg, &
+         momentum, abs_smallness, rel_smallness) result (idx)
+      integer :: idx
+      class(particle_set_t), intent(in) :: particle_set
+      integer, intent(in) :: pdg
+      type(vector4_t), intent(in) :: momentum
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+    end function particle_set_find_particle
 <<Particles: procedures>>=
-  pure function particle_set_find_particle (particle_set, pdg, &
+  pure module function particle_set_find_particle (particle_set, pdg, &
        momentum, abs_smallness, rel_smallness) result (idx)
     integer :: idx
     class(particle_set_t), intent(in) :: particle_set
@@ -6256,9 +7209,18 @@ relations assuming the ordering [[b]], [[i]], [[r]], [[x]], [[o]].
 @ %def particle_set_find_particle
 <<Particles: particle set: TBP>>=
   procedure :: reverse_find_particle => particle_set_reverse_find_particle
-<<Particles: procedures>>=
-  pure function particle_set_reverse_find_particle &
+<<Particles: sub interfaces>>=
+    pure module function particle_set_reverse_find_particle &
          (particle_set, pdg, momentum, abs_smallness, rel_smallness) result (idx)
+      integer :: idx
+      class(particle_set_t), intent(in) :: particle_set
+      integer, intent(in) :: pdg
+      type(vector4_t), intent(in) :: momentum
+      real(default), intent(in), optional :: abs_smallness, rel_smallness
+    end function particle_set_reverse_find_particle
+<<Particles: procedures>>=
+  pure module function particle_set_reverse_find_particle &
+       (particle_set, pdg, momentum, abs_smallness, rel_smallness) result (idx)
     integer :: idx
     class(particle_set_t), intent(in) :: particle_set
     integer, intent(in) :: pdg
@@ -6286,8 +7248,13 @@ removes duplicates.  We are removing $j$ and connect the possible
 daughters to $i$.
 <<Particles: particle set: TBP>>=
   procedure :: remove_duplicates => particle_set_remove_duplicates
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_remove_duplicates (particle_set, smallness)
+      class(particle_set_t), intent(inout) :: particle_set
+      real(default), intent(in) :: smallness
+    end subroutine particle_set_remove_duplicates
 <<Particles: procedures>>=
-  subroutine particle_set_remove_duplicates (particle_set, smallness)
+  module subroutine particle_set_remove_duplicates (particle_set, smallness)
     class(particle_set_t), intent(inout) :: particle_set
     real(default), intent(in) :: smallness
     integer :: n_removals
@@ -6424,8 +7391,14 @@ incoming, or outgoing, we also make sure that the stored $p^2$ value
 is equal to the on-shell mass squared.
 <<Particles: particle set: TBP>>=
   procedure :: reset_status => particle_set_reset_status
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_reset_status (particle_set, index, status)
+      class(particle_set_t), intent(inout) :: particle_set
+      integer, dimension(:), intent(in) :: index
+      integer, intent(in) :: status
+    end subroutine particle_set_reset_status
 <<Particles: procedures>>=
-  subroutine particle_set_reset_status (particle_set, index, status)
+  module subroutine particle_set_reset_status (particle_set, index, status)
     class(particle_set_t), intent(inout) :: particle_set
     integer, dimension(:), intent(in) :: index
     integer, intent(in) :: status
@@ -6453,8 +7426,14 @@ entries are skipped. The correlated state matrix, if any, is also
 ignored.
 <<Particles: particle set: TBP>>=
   procedure :: reduce => particle_set_reduce
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_reduce (pset_in, pset_out, keep_beams)
+      class(particle_set_t), intent(in) :: pset_in
+      type(particle_set_t), intent(out) :: pset_out
+      logical, intent(in), optional :: keep_beams
+    end subroutine particle_set_reduce
 <<Particles: procedures>>=
-  subroutine particle_set_reduce (pset_in, pset_out, keep_beams)
+  module subroutine particle_set_reduce (pset_in, pset_out, keep_beams)
     class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
     logical, intent(in), optional :: keep_beams
@@ -6511,8 +7490,15 @@ and the beam remnants are removed.
 The correlated state matrix, if any, is also ignored.
 <<Particles: particle set: TBP>>=
   procedure :: filter_particles => particle_set_filter_particles
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_filter_particles &
+         (pset_in, pset_out, keep_beams, real_parents, keep_virtuals)
+      class(particle_set_t), intent(in) :: pset_in
+      type(particle_set_t), intent(out) :: pset_out
+      logical, intent(in), optional :: keep_beams, real_parents, keep_virtuals
+    end subroutine particle_set_filter_particles
 <<Particles: procedures>>=
-  subroutine particle_set_filter_particles &
+  module subroutine particle_set_filter_particles &
        (pset_in, pset_out, keep_beams, real_parents, keep_virtuals)
     class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
@@ -6607,18 +7593,25 @@ Usually, this requires to clone some particles.
 
 We do not know in advance how many particles the canonical form will have.
 To be on the safe side, allocate four times the original size.
+<<Particles: types>>=
+  type :: particle_entry_t
+     integer :: src = 0
+     integer :: status = 0
+     integer :: orig = 0
+     integer :: copy = 0
+  end type particle_entry_t
+
 <<Particles: particle set: TBP>>=
   procedure :: to_hepevt_form => particle_set_to_hepevt_form
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_to_hepevt_form (pset_in, pset_out)
+      class(particle_set_t), intent(in) :: pset_in
+      type(particle_set_t), intent(out) :: pset_out
+    end subroutine particle_set_to_hepevt_form
 <<Particles: procedures>>=
-  subroutine particle_set_to_hepevt_form (pset_in, pset_out)
+  module subroutine particle_set_to_hepevt_form (pset_in, pset_out)
     class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
-    type :: particle_entry_t
-       integer :: src = 0
-       integer :: status = 0
-       integer :: orig = 0
-       integer :: copy = 0
-    end type particle_entry_t
     type(particle_entry_t), dimension(:), allocatable :: prt
     integer, dimension(:), allocatable :: map1, map2
     integer, dimension(:), allocatable :: parent, child
@@ -6745,8 +7738,18 @@ resonance child particle objects are ignored if they have more than one
 parent.
 <<Particles: particle set: TBP>>=
   procedure :: fill_interaction => particle_set_fill_interaction
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_fill_interaction &
+         (pset, int, n_in, recover_beams, check_match, state_flv, success)
+      class(particle_set_t), intent(in) :: pset
+      type(interaction_t), intent(inout) :: int
+      integer, intent(in) :: n_in
+      logical, intent(in), optional :: recover_beams, check_match
+      type(state_flv_content_t), intent(in), optional :: state_flv
+      logical, intent(out), optional :: success
+    end subroutine particle_set_fill_interaction
 <<Particles: procedures>>=
-  subroutine particle_set_fill_interaction &
+  module subroutine particle_set_fill_interaction &
        (pset, int, n_in, recover_beams, check_match, state_flv, success)
     class(particle_set_t), intent(in) :: pset
     type(interaction_t), intent(inout) :: int
@@ -7161,8 +8164,15 @@ parent(s). We check that these vertex positions coincide, and if not
 return a null vector.
 <<Particles: particle set: TBP>>=
   procedure :: assign_vertices => particle_set_assign_vertices
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_assign_vertices &
+         (particle_set, v_from, v_to, n_vertices)
+      class(particle_set_t), intent(in) :: particle_set
+      integer, dimension(:), intent(out) :: v_from, v_to
+      integer, intent(out) :: n_vertices
+    end subroutine particle_set_assign_vertices
 <<Particles: procedures>>=
-  subroutine particle_set_assign_vertices &
+  module subroutine particle_set_assign_vertices &
        (particle_set, v_from, v_to, n_vertices)
     class(particle_set_t), intent(in) :: particle_set
     integer, dimension(:), intent(out) :: v_from, v_to
@@ -7230,8 +8240,14 @@ Colorless particles do not get indices but are still marked as colorized, for
 consistency.
 <<Particles: particle set: TBP>>=
   procedure :: to_subevt => particle_set_to_subevt
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_to_subevt (particle_set, subevt, colorize)
+      class(particle_set_t), intent(in) :: particle_set
+      type(subevt_t), intent(out) :: subevt
+      logical, intent(in), optional :: colorize
+    end subroutine particle_set_to_subevt
 <<Particles: procedures>>=
-  subroutine particle_set_to_subevt (particle_set, subevt, colorize)
+  module subroutine particle_set_to_subevt (particle_set, subevt, colorize)
     class(particle_set_t), intent(in) :: particle_set
     type(subevt_t), intent(out) :: subevt
     logical, intent(in), optional :: colorize
@@ -7306,8 +8322,13 @@ consistency.
 This replaces the [[particle\_set\%prt array]] with a given array of particles
 <<Particles: particle set: TBP>>=
   procedure :: replace => particle_set_replace
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_replace (particle_set, newprt)
+      class(particle_set_t), intent(inout) :: particle_set
+      type(particle_t), intent(in), dimension(:), allocatable :: newprt
+    end subroutine particle_set_replace
 <<Particles: procedures>>=
-  subroutine particle_set_replace (particle_set, newprt)
+  module subroutine particle_set_replace (particle_set, newprt)
     class(particle_set_t), intent(inout) :: particle_set
     type(particle_t), intent(in), dimension(:), allocatable :: newprt
     if (allocated (particle_set%prt))  deallocate (particle_set%prt)
@@ -7332,8 +8353,13 @@ Lund string system is always continued from the anticolor of one
 particle to the identical color index of another particle.
 <<Particles: particle set: TBP>>=
   procedure :: order_color_lines => particle_set_order_color_lines
+<<Particles: sub interfaces>>=
+    module subroutine particle_set_order_color_lines (pset_out, pset_in)
+      class(particle_set_t), intent(inout) :: pset_out
+      type(particle_set_t), intent(in) :: pset_in
+    end subroutine particle_set_order_color_lines
 <<Particles: procedures>>=
-  subroutine particle_set_order_color_lines (pset_out, pset_in)
+  module subroutine particle_set_order_color_lines (pset_out, pset_in)
     class(particle_set_t), intent(inout) :: pset_out
     type(particle_set_t), intent(in) :: pset_in
     integer :: i, n, n_col_rem
@@ -7386,8 +8412,15 @@ Eliminate numerical noise
      module procedure pacify_particle_set
   end interface pacify
 
+<<Particles: sub interfaces>>=
+    module subroutine pacify_particle (prt)
+      class(particle_t), intent(inout) :: prt
+    end subroutine pacify_particle
+    module subroutine pacify_particle_set (pset)
+      class(particle_set_t), intent(inout) :: pset
+    end subroutine pacify_particle_set
 <<Particles: procedures>>=
-  subroutine pacify_particle (prt)
+  module subroutine pacify_particle (prt)
     class(particle_t), intent(inout) :: prt
     real(default) :: e
     e = epsilon (1._default) * energy (prt%p)
@@ -7395,7 +8428,7 @@ Eliminate numerical noise
     call pacify (prt%p2, 1e4 * e)
   end subroutine pacify_particle
 
-  subroutine pacify_particle_set (pset)
+  module subroutine pacify_particle_set (pset)
     class(particle_set_t), intent(inout) :: pset
     integer :: i
     do i = 1, pset%n_tot

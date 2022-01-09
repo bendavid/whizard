@@ -33,10 +33,20 @@ noinst_LTLIBRARIES = libparticles.la
 check_LTLIBRARIES = libparticles_ut.la
 
 libparticles_la_SOURCES = \
+  $(PARTICLES_MODULES) \
+  $(PARTICLES_SUBMODULES)
+
+PARTICLES_MODULES = \
   su_algebra.f90 \
   bloch_vectors.f90 \
   polarizations.f90 \
   particles.f90
+
+PARTICLES_SUBMODULES = \
+  su_algebra_sub.f90 \
+  bloch_vectors_sub.f90 \
+  polarizations_sub.f90 \
+  particles_sub.f90
 
 libparticles_ut_la_SOURCES = \
   su_algebra_uti.f90 su_algebra_ut.f90 \
@@ -51,10 +61,11 @@ dist_noinst_DATA = particles.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libparticles_la_SOURCES:.f90=.$(FCMOD)}
+  ${PARTICLES_MODULES:.f90=.$(FCMOD)}
 
+# Submodules must not be included here
 libparticles_Modules = \
-  ${libparticles_la_SOURCES:.f90=} \
+  ${PARTICLES_MODULES:.f90=} \
   ${libparticles_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libparticles_Modules); do \
@@ -123,6 +134,12 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../physics -I../fastjet -I../qft -I../types
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+su_algebra_sub.lo: su_algebra.lo
+bloch_vectors_sub.lo: bloch_vectors.lo
+polarizations_sub.lo: polarizations.lo
+particles_sub.lo: particles.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -192,7 +209,7 @@ clean-local: clean-noweb
 	-rm -f particles.stamp particles.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
