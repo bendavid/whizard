@@ -63,31 +63,45 @@ module process_constants
 
 <<Use kinds>>
 <<Use strings>>
+  use pdg_arrays
+
+<<Standard module head>>
+
+<<Process constants: public>>
+
+<<Process constants: types>>
+
+  interface
+<<Process constants: sub interfaces>>
+  end interface
+
+end module process_constants
+@ %def process_constants
+@
+<<[[process_constants_sub.f90]]>>=
+<<File header>>
+
+submodule (process_constants) process_constants_s
 
   use io_units, only: given_output_unit, free_unit
   use format_utils, only: write_integer_array
   use md5, only: md5sum
 
-  use pdg_arrays
-
-<<Standard module head>>
-
-<<Process Constants: public>>
-
-<<Process Constants: types>>
+  implicit none
 
 contains
 
-<<Process Constants: procedures>>
+<<Process constants: procedures>>
 
-end module process_constants
-@ %def process_constants
+end submodule process_constants_s
+
+@ %def process_constants_s
 @
 The data type is just a block of public objects, only elementary
 types, no type-bound procedures.
-<<Process Constants: public>>=
+<<Process constants: public>>=
   public :: process_constants_t
-<<Process Constants: types>>=
+<<Process constants: types>>=
   type :: process_constants_t
      type(string_t) :: id
      type(string_t) :: model_name
@@ -109,15 +123,20 @@ types, no type-bound procedures.
      integer, dimension(:), allocatable :: eqv_flv_index
      integer, dimension(:), allocatable :: eqv_hel_index
   contains
-  <<Process Constants: process constants: TBP>>
+  <<Process constants: process constants: TBP>>
   end type process_constants_t
 
 @ %def process_constants_t
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_n_tot => process_constants_get_n_tot
-<<Process Constants: procedures>>=
-  elemental function process_constants_get_n_tot (prc_const) result (n_tot)
+<<Process constants: sub interfaces>>=
+    elemental module function process_constants_get_n_tot (prc_const) result (n_tot)
+      integer :: n_tot
+      class(process_constants_t), intent(in) :: prc_const
+    end function process_constants_get_n_tot
+<<Process constants: procedures>>=
+  elemental module function process_constants_get_n_tot (prc_const) result (n_tot)
     integer :: n_tot
     class(process_constants_t), intent(in) :: prc_const
     n_tot = prc_const%n_in + prc_const%n_out
@@ -125,10 +144,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_n_tot
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_flv_state => process_constants_get_flv_state
-<<Process Constants: procedures>>=
-  subroutine process_constants_get_flv_state (prc_const, flv_state)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_get_flv_state (prc_const, flv_state)
+      class(process_constants_t), intent(in) :: prc_const
+      integer, dimension(:,:), allocatable, intent(out) :: flv_state
+    end subroutine process_constants_get_flv_state
+<<Process constants: procedures>>=
+  module subroutine process_constants_get_flv_state (prc_const, flv_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable, intent(out) :: flv_state
     allocate (flv_state (size (prc_const%flv_state, 1), &
@@ -138,10 +162,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_flv_state
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_n_flv => process_constants_get_n_flv
-<<Process Constants: procedures>>=
-  function process_constants_get_n_flv (data) result (n_flv)
+<<Process constants: sub interfaces>>=
+    module function process_constants_get_n_flv (data) result (n_flv)
+      integer :: n_flv
+      class(process_constants_t), intent(in) :: data
+    end function process_constants_get_n_flv
+<<Process constants: procedures>>=
+  module function process_constants_get_n_flv (data) result (n_flv)
     integer :: n_flv
     class(process_constants_t), intent(in) :: data
     n_flv = data%n_flv
@@ -149,10 +178,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_n_flv
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_n_hel => process_constants_get_n_hel
-<<Process Constants: procedures>>=
-  function process_constants_get_n_hel (data) result (n_hel)
+<<Process constants: sub interfaces>>=
+    module function process_constants_get_n_hel (data) result (n_hel)
+      integer :: n_hel
+      class(process_constants_t), intent(in) :: data
+    end function process_constants_get_n_hel
+<<Process constants: procedures>>=
+  module function process_constants_get_n_hel (data) result (n_hel)
     integer :: n_hel
     class(process_constants_t), intent(in) :: data
     n_hel = data%n_hel
@@ -160,10 +194,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_n_flv
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_hel_state => process_constants_get_hel_state
-<<Process Constants: procedures>>=
-  subroutine process_constants_get_hel_state (prc_const, hel_state)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_get_hel_state (prc_const, hel_state)
+      class(process_constants_t), intent(in) :: prc_const
+      integer, dimension(:,:), allocatable, intent(out) :: hel_state
+    end subroutine process_constants_get_hel_state
+<<Process constants: procedures>>=
+  module subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable, intent(out) :: hel_state
     allocate (hel_state (size (prc_const%hel_state, 1), &
@@ -173,10 +212,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_hel_state
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_col_state => process_constants_get_col_state
-<<Process Constants: procedures>>=
-  subroutine process_constants_get_col_state (prc_const, col_state)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_get_col_state (prc_const, col_state)
+      class(process_constants_t), intent(in) :: prc_const
+      integer, dimension(:,:,:), allocatable, intent(out) :: col_state
+    end subroutine process_constants_get_col_state
+<<Process constants: procedures>>=
+  module subroutine process_constants_get_col_state (prc_const, col_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:,:), allocatable, intent(out) :: col_state
     allocate (col_state (size (prc_const%col_state, 1), &
@@ -186,10 +230,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_col_state
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_ghost_flag => process_constants_get_ghost_flag
-<<Process Constants: procedures>>=
-  subroutine process_constants_get_ghost_flag (prc_const, ghost_flag)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_get_ghost_flag (prc_const, ghost_flag)
+      class(process_constants_t), intent(in) :: prc_const
+      logical, dimension(:,:), allocatable, intent(out) :: ghost_flag
+    end subroutine process_constants_get_ghost_flag
+<<Process constants: procedures>>=
+  module subroutine process_constants_get_ghost_flag (prc_const, ghost_flag)
     class(process_constants_t), intent(in) :: prc_const
     logical, dimension(:,:), allocatable, intent(out) :: ghost_flag
     allocate (ghost_flag (size (prc_const%ghost_flag, 1), &
@@ -199,10 +248,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_ghost_flag
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_color_factors => process_constants_get_color_factors
-<<Process Constants: procedures>>=
-  subroutine process_constants_get_color_factors (prc_const, col_facts)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_get_color_factors (prc_const, col_facts)
+      class(process_constants_t), intent(in) :: prc_const
+      complex(default), dimension(:), allocatable, intent(out) :: col_facts
+    end subroutine process_constants_get_color_factors
+<<Process constants: procedures>>=
+  module subroutine process_constants_get_color_factors (prc_const, col_facts)
     class(process_constants_t), intent(in) :: prc_const
     complex(default), dimension(:), allocatable, intent(out) :: col_facts
     allocate (col_facts (size (prc_const%color_factors)))
@@ -211,10 +265,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_color_factors
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_cf_index => process_constants_get_cf_index
-<<Process Constants: procedures>>=
-  subroutine process_constants_get_cf_index (prc_const, cf_index)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_get_cf_index (prc_const, cf_index)
+      class(process_constants_t), intent(in) :: prc_const
+      integer, intent(out), dimension(:,:), allocatable :: cf_index
+    end subroutine process_constants_get_cf_index
+<<Process constants: procedures>>=
+  module subroutine process_constants_get_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(in) :: prc_const
     integer, intent(out), dimension(:,:), allocatable :: cf_index
     allocate (cf_index (size (prc_const%cf_index, 1), &
@@ -224,10 +283,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_cf_index
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: set_flv_state => process_constants_set_flv_state
-<<Process Constants: procedures>>=
-  subroutine process_constants_set_flv_state (prc_const, flv_state)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_set_flv_state (prc_const, flv_state)
+      class(process_constants_t), intent(inout) :: prc_const
+      integer, intent(in), dimension(:,:), allocatable :: flv_state
+    end subroutine process_constants_set_flv_state
+<<Process constants: procedures>>=
+  module subroutine process_constants_set_flv_state (prc_const, flv_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:), allocatable :: flv_state
     if (allocated (prc_const%flv_state)) deallocate (prc_const%flv_state)
@@ -239,10 +303,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_set_flv_state
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: set_col_state => process_constants_set_col_state
-<<Process Constants: procedures>>=
-  subroutine process_constants_set_col_state (prc_const, col_state)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_set_col_state (prc_const, col_state)
+      class(process_constants_t), intent(inout) :: prc_const
+      integer, intent(in), dimension(:,:,:), allocatable :: col_state
+    end subroutine process_constants_set_col_state
+<<Process constants: procedures>>=
+  module subroutine process_constants_set_col_state (prc_const, col_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:,:), allocatable :: col_state
     allocate (prc_const%col_state (size (col_state, 1), &
@@ -252,10 +321,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_set_col_state
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: set_cf_index => process_constants_set_cf_index
-<<Process Constants: procedures>>=
-  subroutine process_constants_set_cf_index (prc_const, cf_index)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_set_cf_index (prc_const, cf_index)
+      class(process_constants_t), intent(inout) :: prc_const
+      integer, dimension(:,:), intent(in), allocatable :: cf_index
+    end subroutine process_constants_set_cf_index
+<<Process constants: procedures>>=
+  module subroutine process_constants_set_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(inout) :: prc_const
     integer, dimension(:,:), intent(in), allocatable :: cf_index
     allocate (prc_const%cf_index (size (cf_index, 1), &
@@ -265,10 +339,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_set_cf_index
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: set_color_factors => process_constants_set_color_factors
-<<Process Constants: procedures>>=
-  subroutine process_constants_set_color_factors (prc_const, color_factors)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_set_color_factors (prc_const, color_factors)
+      class(process_constants_t), intent(inout) :: prc_const
+      complex(default), dimension(:), intent(in), allocatable :: color_factors
+    end subroutine process_constants_set_color_factors
+<<Process constants: procedures>>=
+  module subroutine process_constants_set_color_factors (prc_const, color_factors)
     class(process_constants_t), intent(inout) :: prc_const
     complex(default), dimension(:), intent(in), allocatable :: color_factors
     allocate (prc_const%color_factors (size (color_factors)))
@@ -277,10 +356,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_set_color_factors
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: set_ghost_flag => process_constants_set_ghost_flag
-<<Process Constants: procedures>>=
-  subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
+      class(process_constants_t), intent(inout) :: prc_const
+      logical, dimension(:,:), allocatable, intent(in) :: ghost_flag
+    end subroutine process_constants_set_ghost_flag
+<<Process constants: procedures>>=
+  module subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
     class(process_constants_t), intent(inout) :: prc_const
     logical, dimension(:,:), allocatable, intent(in) :: ghost_flag
     allocate (prc_const%ghost_flag (size (ghost_flag, 1), &
@@ -289,10 +373,15 @@ types, no type-bound procedures.
   end subroutine process_constants_set_ghost_flag
 @ %def process_constants_set_ghost_flag
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: get_pdg_in => process_constants_get_pdg_in
-<<Process Constants: procedures>>=
-  function process_constants_get_pdg_in (prc_const) result (pdg_in)
+<<Process constants: sub interfaces>>=
+    module function process_constants_get_pdg_in (prc_const) result (pdg_in)
+      type(pdg_array_t), dimension(:), allocatable :: pdg_in
+      class(process_constants_t), intent(in) :: prc_const
+    end function process_constants_get_pdg_in
+<<Process constants: procedures>>=
+  module function process_constants_get_pdg_in (prc_const) result (pdg_in)
     type(pdg_array_t), dimension(:), allocatable :: pdg_in
     class(process_constants_t), intent(in) :: prc_const
     type(pdg_array_t) :: pdg_tmp
@@ -306,10 +395,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_get_pdg_in
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: compute_md5sum => process_constants_compute_md5sum
-<<Process Constants: procedures>>=
-  subroutine process_constants_compute_md5sum (prc_const, include_id)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_compute_md5sum (prc_const, include_id)
+      class(process_constants_t), intent(inout) :: prc_const
+      logical, intent(in) :: include_id
+    end subroutine process_constants_compute_md5sum
+<<Process constants: procedures>>=
+  module subroutine process_constants_compute_md5sum (prc_const, include_id)
     class(process_constants_t), intent(inout) :: prc_const
     logical, intent(in) :: include_id
     integer :: unit
@@ -321,10 +415,18 @@ types, no type-bound procedures.
 
 @ %process_constants_compute_md5sum
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: fill_unit_for_md5sum => process_constants_fill_unit_for_md5sum
-<<Process Constants: procedures>>=
-  function process_constants_fill_unit_for_md5sum (prc_const, include_id) result (unit)
+<<Process constants: sub interfaces>>=
+    module function process_constants_fill_unit_for_md5sum &
+         (prc_const, include_id) result (unit)
+      integer :: unit
+      class(process_constants_t), intent(in) :: prc_const
+      logical, intent(in) :: include_id
+    end function process_constants_fill_unit_for_md5sum
+<<Process constants: procedures>>=
+  module function process_constants_fill_unit_for_md5sum &
+       (prc_const, include_id) result (unit)
     integer :: unit
     class(process_constants_t), intent(in) :: prc_const
     logical, intent(in) :: include_id
@@ -376,10 +478,15 @@ types, no type-bound procedures.
 
 @ %def process_constants_fill_unit_for_md5sum
 @
-<<Process Constants: process constants: TBP>>=
+<<Process constants: process constants: TBP>>=
   procedure :: write => process_constants_write
-<<Process Constants: procedures>>=
-  subroutine process_constants_write (prc_const, unit)
+<<Process constants: sub interfaces>>=
+    module subroutine process_constants_write (prc_const, unit)
+      class(process_constants_t), intent(in) :: prc_const
+      integer, intent(in), optional :: unit
+    end subroutine process_constants_write
+<<Process constants: procedures>>=
+  module subroutine process_constants_write (prc_const, unit)
     class(process_constants_t), intent(in) :: prc_const
     integer, intent(in), optional :: unit
     integer :: u, i
@@ -496,10 +603,6 @@ module prclib_interfaces
 
   use kinds
 <<Use strings>>
-  use io_units
-  use system_defs, only: TAB
-  use string_utils, only: lower_case
-  use diagnostics
   use os_interface
 
 <<Standard module head>>
@@ -510,12 +613,36 @@ module prclib_interfaces
 
 <<Prclib interfaces: interfaces>>
 
+  interface
+<<Prclib interfaces: sub interfaces>>
+  end interface
+
+contains
+
+<<Prclib interfaces: main procedures>>
+
+end module prclib_interfaces
+@ %def prclib_interfaces
+@
+<<[[prclib_interfaces_sub.f90]]>>=
+<<File header>>
+
+submodule (prclib_interfaces) prclib_interfaces_s
+
+  use io_units
+  use system_defs, only: TAB
+  use string_utils, only: lower_case
+  use diagnostics
+
+  implicit none
+
 contains
 
 <<Prclib interfaces: procedures>>
 
-end module prclib_interfaces
-@ %def prclib_interfaces
+end submodule prclib_interfaces_s
+
+@ %def prclib_interfaces_s
 @
 \subsection{Writers}
 External matrix element code provides externally visible procedures,
@@ -567,10 +694,12 @@ writer type.  This must be implemented by all extensions.
 @ %def get_const_string
 @ Return the name of a procedure that implements a given feature, as
 it is provided by the external matrix-element code.  For a reasonable
-default, we take the feature name unchanged.
+default, we take the feature name unchanged. Due to a bug of bind(C)
+features with submodules in gfortran 7/8/9 (and maybe together with
+MPI) this needs to be in the module, not the submodule.
 <<Prclib interfaces: prc writer: TBP>>=
   procedure, nopass :: get_procname => prc_writer_get_procname
-<<Prclib interfaces: procedures>>=
+<<Prclib interfaces: main procedures>>=
   function prc_writer_get_procname (feature) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: feature
@@ -583,10 +712,12 @@ the bind(C) property, so it can be accessed via a C procedure pointer and
 handled by dlopen.  We need this for all special features of a matrix
 element, since the interface has to return a C function pointer for it.
 For a default implementation, we prefix the external procedure name by
-the process ID.
+the process ID. Due to a bug of bind(C) features with submodules in
+gfortran 7/8/9 (and maybe together with MPI) this needs to be in the
+module, not the submodule.
 <<Prclib interfaces: prc writer: TBP>>=
   procedure :: get_c_procname => prc_writer_get_c_procname
-<<Prclib interfaces: procedures>>=
+<<Prclib interfaces: main procedures>>=
   function prc_writer_get_c_procname (writer, id, feature) result (name)
     class(prc_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id, feature
@@ -682,11 +813,13 @@ for a specific matrix-element variant.
   end type prc_writer_f_module_t
 
 @ %def prc_writer_f_module_t
-@ Return the name of the Fortran module.  As a default
-implementation, we take the process ID unchanged.
+@ Return the name of the Fortran module.  As a default implementation,
+we take the process ID unchanged. Due to a bug of bind(C) features
+with submodules in gfortran 7/8/9 (and maybe together with MPI) this
+needs to be in the module, not the submodule.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure, nopass :: get_module_name => prc_writer_get_module_name
-<<Prclib interfaces: procedures>>=
+<<Prclib interfaces: main procedures>>=
   function prc_writer_get_module_name (id) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: id
@@ -699,8 +832,14 @@ the procedure in the matrix element code.  By default, we use the C
 name for this.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure :: write_use_line => prc_writer_write_use_line
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_write_use_line (writer, unit, id, feature)
+      class(prc_writer_f_module_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t) :: id, feature
+    end subroutine prc_writer_write_use_line
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_write_use_line (writer, unit, id, feature)
+  module subroutine prc_writer_write_use_line (writer, unit, id, feature)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t) :: id, feature
@@ -729,8 +868,12 @@ name the module procedure.  The details depend on the writer variant.
 string.
 <<Prclib interfaces: prc writer: TBP>>=
   procedure :: init_test => prc_writer_init_test
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_init_test (writer)
+      class(prc_writer_t), intent(out) :: writer
+    end subroutine prc_writer_init_test
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_init_test (writer)
+  module subroutine prc_writer_init_test (writer)
     class(prc_writer_t), intent(out) :: writer
     writer%md5sum = "1234567890abcdef1234567890abcdef"
   end subroutine prc_writer_init_test
@@ -780,8 +923,13 @@ Note: the pointer [[writer]] is introduced as a workaround for a NAG compiler
 bug.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write => prclib_driver_record_write
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write (object, unit)
+      class(prclib_driver_record_t), intent(in) :: object
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_record_write
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write (object, unit)
+  module subroutine prclib_driver_record_write (object, unit)
     class(prclib_driver_record_t), intent(in) :: object
     integer, intent(in) :: unit
     integer :: j
@@ -801,10 +949,12 @@ bug.
   end subroutine prclib_driver_record_write
 
 @ %def prclib_driver_record_write
-@ Get the C procedure name for a feature.
+@ Get the C procedure name for a feature. Due to a bug of bind(C)
+features with submodules in gfortran 7/8/9 (and maybe together with
+MPI) this needs to be in the module, not the submodule.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: get_c_procname => prclib_driver_record_get_c_procname
-<<Prclib interfaces: procedures>>=
+<<Prclib interfaces: main procedures>>=
   function prclib_driver_record_get_c_procname (record, feature) result (name)
     type(string_t) :: name
     class(prclib_driver_record_t), intent(in) :: record
@@ -817,8 +967,14 @@ bug.
 record corresponds to a Fortran module.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_use_line => prclib_driver_record_write_use_line
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_use_line (record, unit, feature)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: feature
+    end subroutine prclib_driver_record_write_use_line
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_use_line (record, unit, feature)
+  module subroutine prclib_driver_record_write_use_line (record, unit, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     type(string_t), intent(in) :: feature
@@ -833,8 +989,14 @@ record corresponds to a Fortran module.
 unless the record corresponds to a Fortran module.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_interface => prclib_driver_record_write_interface
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_interface (record, unit, feature)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: feature
+    end subroutine prclib_driver_record_write_interface
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_interface (record, unit, feature)
+  module subroutine prclib_driver_record_write_interface (record, unit, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     type(string_t), intent(in) :: feature
@@ -850,8 +1012,13 @@ unless the record corresponds to a Fortran module.
 this for all process variants.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_interfaces => prclib_driver_record_write_interfaces
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_interfaces (record, unit)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_record_write_interfaces
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_interfaces (record, unit)
+  module subroutine prclib_driver_record_write_interfaces (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     integer :: i
@@ -865,8 +1032,13 @@ this for all process variants.
 Fortran module.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_wrappers => prclib_driver_record_write_wrappers
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_wrappers (record, unit)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_record_write_wrappers
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_wrappers (record, unit)
+  module subroutine prclib_driver_record_write_wrappers (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     integer :: i
@@ -882,8 +1054,17 @@ Fortran module.
 @ Write the Makefile code for this record.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_makefile_code => prclib_driver_record_write_makefile_code
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_makefile_code &
+         (record, unit, os_data, verbose, testflag)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in) :: verbose
+      logical, intent(in), optional :: testflag
+    end subroutine prclib_driver_record_write_makefile_code
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_makefile_code &
+  module subroutine prclib_driver_record_write_makefile_code &
        (record, unit, os_data, verbose, testflag)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
@@ -900,8 +1081,12 @@ to handling source code via Makefile.  In fact, this procedure is executed
 before [[make]] [[source]] is called.  Usually, does nothing.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_source_code => prclib_driver_record_write_source_code
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_source_code (record)
+      class(prclib_driver_record_t), intent(in) :: record
+    end subroutine prclib_driver_record_write_source_code
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_source_code (record)
+  module subroutine prclib_driver_record_write_source_code (record)
     class(prclib_driver_record_t), intent(in) :: record
     call record%writer%write_source_code (record%id)
   end subroutine prclib_driver_record_write_source_code
@@ -914,13 +1099,20 @@ Usually, does nothing.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: before_compile => prclib_driver_record_before_compile
   procedure :: after_compile => prclib_driver_record_after_compile
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_before_compile (record)
+      class(prclib_driver_record_t), intent(in) :: record
+    end subroutine prclib_driver_record_before_compile
+    module subroutine prclib_driver_record_after_compile (record)
+      class(prclib_driver_record_t), intent(in) :: record
+    end subroutine prclib_driver_record_after_compile
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_before_compile (record)
+  module subroutine prclib_driver_record_before_compile (record)
     class(prclib_driver_record_t), intent(in) :: record
     call record%writer%before_compile (record%id)
   end subroutine prclib_driver_record_before_compile
 
-  subroutine prclib_driver_record_after_compile (record)
+  module subroutine prclib_driver_record_after_compile (record)
     class(prclib_driver_record_t), intent(in) :: record
     call record%writer%after_compile (record%id)
   end subroutine prclib_driver_record_after_compile
@@ -1022,8 +1214,14 @@ communicating with the OS.
 @ Print just the metadata.  Procedure pointers cannot be printed.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write => prclib_driver_write
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_write (object, unit, libpath)
+      class(prclib_driver_t), intent(in) :: object
+      integer, intent(in) :: unit
+      logical, intent(in), optional :: libpath
+    end subroutine prclib_driver_write
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_write (object, unit, libpath)
+  module subroutine prclib_driver_write (object, unit, libpath)
     class(prclib_driver_t), intent(in) :: object
     integer, intent(in) :: unit
     logical, intent(in), optional :: libpath
@@ -1074,9 +1272,12 @@ The default version of [[dispatch_prclib_static]] resides in the
 [[prebuilt]] section of the \whizard\ tree, in a separate
 library.  It does nothing, but can be replaced by a different
 procedure that allocates a static library driver if requested by name.
+Due to a bug of bind(C) features with submodules in gfortran 7/8/9
+(and maybe together with MPI) this needs to be in the module, not the
+submodule.
 <<Prclib interfaces: public>>=
   public :: dispatch_prclib_driver
-<<Prclib interfaces: procedures>>=
+<<Prclib interfaces: main procedures>>=
   subroutine dispatch_prclib_driver &
        (driver, basename, modellibs_ldflags)
     class(prclib_driver_t), intent(out), allocatable :: driver
@@ -1096,8 +1297,13 @@ procedure that allocates a static library driver if requested by name.
 @ Initialize the ID array and set [[n_processes]] accordingly.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: init => prclib_driver_init
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_init (driver, n_processes)
+      class(prclib_driver_t), intent(inout) :: driver
+      integer, intent(in) :: n_processes
+    end subroutine prclib_driver_init
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_init (driver, n_processes)
+  module subroutine prclib_driver_init (driver, n_processes)
     class(prclib_driver_t), intent(inout) :: driver
     integer, intent(in) :: n_processes
     driver%n_processes = n_processes
@@ -1109,8 +1315,13 @@ procedure that allocates a static library driver if requested by name.
 after initialization.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: set_md5sum => prclib_driver_set_md5sum
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_set_md5sum (driver, md5sum)
+      class(prclib_driver_t), intent(inout) :: driver
+      character(32), intent(in) :: md5sum
+    end subroutine prclib_driver_set_md5sum
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_set_md5sum (driver, md5sum)
+  module subroutine prclib_driver_set_md5sum (driver, md5sum)
     class(prclib_driver_t), intent(inout) :: driver
     character(32), intent(in) :: md5sum
     driver%md5sum = md5sum
@@ -1122,8 +1333,18 @@ is zero, we do nothing.
 
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: set_record => prclib_driver_set_record
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_set_record (driver, i, &
+         id, model_name, features, writer)
+      class(prclib_driver_t), intent(inout) :: driver
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: id
+      type(string_t), intent(in) :: model_name
+      type(string_t), dimension(:), intent(in) :: features
+      class(prc_writer_t), intent(in), pointer :: writer
+    end subroutine prclib_driver_set_record
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_set_record (driver, i, &
+  module subroutine prclib_driver_set_record (driver, i, &
        id, model_name, features, writer)
     class(prclib_driver_t), intent(inout) :: driver
     integer, intent(in) :: i
@@ -1150,8 +1371,14 @@ interface blocks for the remaining processes.
 The [[implicit none]] statement must go in-between.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_interfaces => prclib_driver_write_interfaces
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_write_interfaces (driver, unit, feature)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: feature
+    end subroutine prclib_driver_write_interfaces
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_write_interfaces (driver, unit, feature)
+  module subroutine prclib_driver_write_interfaces (driver, unit, feature)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: feature
@@ -1172,8 +1399,16 @@ The makefile contains constant parts, parts that depend on the library
 name, and parts that depend on the specific processes and their types.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: generate_makefile => prclib_driver_generate_makefile
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_generate_makefile (driver, unit, os_data, verbose, testflag)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in) :: verbose
+      logical, intent(in), optional :: testflag
+    end subroutine prclib_driver_generate_makefile
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_generate_makefile (driver, unit, os_data, verbose, testflag)
+  module subroutine prclib_driver_generate_makefile (driver, unit, os_data, verbose, testflag)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(os_data_t), intent(in) :: os_data
@@ -1325,8 +1560,13 @@ specified output unit.  The individual routines for writing
 source-code procedures are given below.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: generate_driver_code => prclib_driver_generate_code
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_generate_code (driver, unit)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_generate_code
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_generate_code (driver, unit)
+  module subroutine prclib_driver_generate_code (driver, unit)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t) :: prefix
@@ -1375,8 +1615,13 @@ However, compiling this together with the rest in any case should not
 do any harm.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure, nopass :: write_module => prclib_driver_write_module
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_write_module (unit, prefix)
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine prclib_driver_write_module
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_write_module (unit, prefix)
+  module subroutine prclib_driver_write_module (unit, prefix)
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
     write (unit, "(A)")  ""
@@ -1481,8 +1726,14 @@ internal use (therefore not bind(C)), the external interface is via the
 [[get_md5sum_ptr]] procedure with index 0.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_lib_md5sum_fun => prclib_driver_write_lib_md5sum_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_write_lib_md5sum_fun (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine prclib_driver_write_lib_md5sum_fun
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_write_lib_md5sum_fun (driver, unit, prefix)
+  module subroutine prclib_driver_write_lib_md5sum_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1524,8 +1775,14 @@ Return the number of processes contained in the library.
 @ Here is the code.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_n_processes_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_n_processes_fun (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_get_n_processes_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_n_processes_fun (driver, unit, prefix)
+  module subroutine write_get_n_processes_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1606,8 +1863,13 @@ convert them.  This is the necessary auxiliary routine.  The routine
 is not BIND(C), it is not accessed from outside.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure, nopass :: write_string_to_array_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_string_to_array_fun (unit, prefix)
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_string_to_array_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_string_to_array_fun (unit, prefix)
+  module subroutine write_string_to_array_fun (unit, prefix)
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
     write (unit, "(A)")  ""
@@ -1657,8 +1919,14 @@ Here are the info functions which return strings, implementing the interface
 Return the process ID for each process.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_process_id_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_process_id_fun (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_get_process_id_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_process_id_fun (driver, unit, prefix)
+  module subroutine write_get_process_id_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1699,8 +1967,14 @@ Return the process ID for each process.
 @ Return the model name, given explicitly.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_model_name_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_model_name_fun (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_get_model_name_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_model_name_fun (driver, unit, prefix)
+  module subroutine write_get_model_name_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1744,8 +2018,14 @@ corresponding function of the matrix-element code, and it returns the
 C address of a character array with length 32.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_md5sum_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_md5sum_fun (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_get_md5sum_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_md5sum_fun (driver, unit, prefix)
+  module subroutine write_get_md5sum_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1794,8 +2074,13 @@ C address of a character array with length 32.
 @ The actual call depends on the type of matrix element.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_md5sum_call => prclib_driver_record_write_md5sum_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_md5sum_call (record, unit)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_record_write_md5sum_call
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_md5sum_call (record, unit)
+  module subroutine prclib_driver_record_write_md5sum_call (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     call record%writer%write_md5sum_call (unit, record%id)
@@ -1812,8 +2097,14 @@ routine is an internal subroutine of [[get_md5sum_ptr]].  We
 return the C address of the target array.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure :: write_md5sum_call => prc_writer_f_module_write_md5sum_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_f_module_write_md5sum_call (writer, unit, id)
+      class(prc_writer_f_module_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id
+    end subroutine prc_writer_f_module_write_md5sum_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_f_module_write_md5sum_call (writer, unit, id)
+  module subroutine prc_writer_f_module_write_md5sum_call (writer, unit, id)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -1827,8 +2118,14 @@ return the C address of the target array.
 which we can just copy.
 <<Prclib interfaces: prc writer c lib: TBP>>=
   procedure :: write_md5sum_call => prc_writer_c_lib_write_md5sum_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_c_lib_write_md5sum_call (writer, unit, id)
+      class(prc_writer_c_lib_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id
+    end subroutine prc_writer_c_lib_write_md5sum_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_c_lib_write_md5sum_call (writer, unit, id)
+  module subroutine prc_writer_c_lib_write_md5sum_call (writer, unit, id)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -1847,22 +2144,38 @@ API of the library driver, we provide convenience functions which
   procedure :: get_process_id => prclib_driver_get_process_id
   procedure :: get_model_name => prclib_driver_get_model_name
   procedure :: get_md5sum => prclib_driver_get_md5sum
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_get_process_id (driver, i) result (string)
+      type(string_t) :: string
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+    end function prclib_driver_get_process_id
+    module function prclib_driver_get_model_name (driver, i) result (string)
+      type(string_t) :: string
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+    end function prclib_driver_get_model_name
+    module function prclib_driver_get_md5sum (driver, i) result (string)
+      type(string_t) :: string
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+    end function prclib_driver_get_md5sum
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_process_id (driver, i) result (string)
+  module function prclib_driver_get_process_id (driver, i) result (string)
     type(string_t) :: string
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     call get_string_via_cptr (string, i, driver%get_process_id_ptr)
   end function prclib_driver_get_process_id
 
-  function prclib_driver_get_model_name (driver, i) result (string)
+  module function prclib_driver_get_model_name (driver, i) result (string)
     type(string_t) :: string
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     call get_string_via_cptr (string, i, driver%get_model_name_ptr)
   end function prclib_driver_get_model_name
 
-  function prclib_driver_get_md5sum (driver, i) result (string)
+  module function prclib_driver_get_md5sum (driver, i) result (string)
     type(string_t) :: string
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -1891,8 +2204,14 @@ may differ from Fortran.
 specific process code.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_openmp_status_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_openmp_status_fun (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_get_openmp_status_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_openmp_status_fun (driver, unit, prefix)
+  module subroutine write_get_openmp_status_fun (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1936,8 +2255,15 @@ interface for all of them.
 @ This function returns any data of type integer, for each process.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_int_fun
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_int_fun (driver, unit, prefix, feature)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+      type(string_t), intent(in) :: feature
+    end subroutine write_get_int_fun
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_int_fun (driver, unit, prefix, feature)
+  module subroutine write_get_int_fun (driver, unit, prefix, feature)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -1996,8 +2322,15 @@ Transferring tables is more complicated.  First, a two-dimensional array.
 @ This subroutine returns a table of integers.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_set_int_sub
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_set_int_sub (driver, unit, prefix, feature)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+      type(string_t), intent(in) :: feature
+    end subroutine write_set_int_sub
 <<Prclib interfaces: procedures>>=
-  subroutine write_set_int_sub (driver, unit, prefix, feature)
+  module subroutine write_set_int_sub (driver, unit, prefix, feature)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -2031,8 +2364,14 @@ Transferring tables is more complicated.  First, a two-dimensional array.
 @ The actual call depends on the type of matrix element.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_int_sub_call => prclib_driver_record_write_int_sub_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_int_sub_call (record, unit, feature)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: feature
+    end subroutine prclib_driver_record_write_int_sub_call
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_int_sub_call (record, unit, feature)
+  module subroutine prclib_driver_record_write_int_sub_call (record, unit, feature)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     type(string_t), intent(in) :: feature
@@ -2050,8 +2389,14 @@ Otherwise, we just associate a Fortran array with the C pointer and
 let the matrix-element subroutine fill the array.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure :: write_int_sub_call => prc_writer_f_module_write_int_sub_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_f_module_write_int_sub_call (writer, unit, id, feature)
+      class(prc_writer_f_module_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id, feature
+    end subroutine prc_writer_f_module_write_int_sub_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_f_module_write_int_sub_call (writer, unit, id, feature)
+  module subroutine prc_writer_f_module_write_int_sub_call (writer, unit, id, feature)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id, feature
@@ -2071,8 +2416,14 @@ let the matrix-element subroutine fill the array.
 function.
 <<Prclib interfaces: prc writer c lib: TBP>>=
   procedure :: write_int_sub_call => prc_writer_c_lib_write_int_sub_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_c_lib_write_int_sub_call (writer, unit, id, feature)
+      class(prc_writer_c_lib_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id, feature
+    end subroutine prc_writer_c_lib_write_int_sub_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_c_lib_write_int_sub_call (writer, unit, id, feature)
+  module subroutine prc_writer_c_lib_write_int_sub_call (writer, unit, id, feature)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id, feature
@@ -2101,8 +2452,14 @@ color flow) and a corresponding array of color-ghost flags.
 @
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_set_col_state_sub
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_set_col_state_sub (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_set_col_state_sub
 <<Prclib interfaces: procedures>>=
-  subroutine write_set_col_state_sub (driver, unit, prefix)
+  module subroutine write_set_col_state_sub (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -2141,8 +2498,13 @@ color flow) and a corresponding array of color-ghost flags.
 @ The actual call depends on the type of matrix element.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_col_state_call => prclib_driver_record_write_col_state_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_col_state_call (record, unit)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_record_write_col_state_call
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_col_state_call (record, unit)
+  module subroutine prclib_driver_record_write_col_state_call (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     call record%writer%write_col_state_call (unit, record%id)
@@ -2159,8 +2521,14 @@ Otherwise, we just associate a Fortran array with the C pointer and
 let the matrix-element subroutine fill the array.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure :: write_col_state_call => prc_writer_f_module_write_col_state_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_f_module_write_col_state_call (writer, unit, id)
+      class(prc_writer_f_module_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id
+    end subroutine prc_writer_f_module_write_col_state_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_f_module_write_col_state_call (writer, unit, id)
+  module subroutine prc_writer_f_module_write_col_state_call (writer, unit, id)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -2187,8 +2555,14 @@ let the matrix-element subroutine fill the array.
 function.
 <<Prclib interfaces: prc writer c lib: TBP>>=
   procedure :: write_col_state_call => prc_writer_c_lib_write_col_state_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_c_lib_write_col_state_call (writer, unit, id)
+      class(prc_writer_c_lib_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id
+    end subroutine prc_writer_c_lib_write_col_state_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_c_lib_write_col_state_call (writer, unit, id)
+  module subroutine prc_writer_c_lib_write_col_state_call (writer, unit, id)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -2220,8 +2594,14 @@ complex array.
 @ This subroutine returns the color-flavor factor table.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_set_color_factors_sub
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_set_color_factors_sub (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_set_color_factors_sub
 <<Prclib interfaces: procedures>>=
-  subroutine write_set_color_factors_sub (driver, unit, prefix)
+  module subroutine write_set_color_factors_sub (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -2259,8 +2639,13 @@ complex array.
 @ The actual call depends on the type of matrix element.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: write_color_factors_call => prclib_driver_record_write_color_factors_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_record_write_color_factors_call (record, unit)
+      class(prclib_driver_record_t), intent(in) :: record
+      integer, intent(in) :: unit
+    end subroutine prclib_driver_record_write_color_factors_call
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_record_write_color_factors_call (record, unit)
+  module subroutine prclib_driver_record_write_color_factors_call (record, unit)
     class(prclib_driver_record_t), intent(in) :: record
     integer, intent(in) :: unit
     call record%writer%write_color_factors_call (unit, record%id)
@@ -2277,8 +2662,14 @@ among two integer arrays and one complex-valued array, for which we
 have the C pointers.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure :: write_color_factors_call => prc_writer_f_module_write_color_factors_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_f_module_write_color_factors_call (writer, unit, id)
+      class(prc_writer_f_module_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id
+    end subroutine prc_writer_f_module_write_color_factors_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_f_module_write_color_factors_call (writer, unit, id)
+  module subroutine prc_writer_f_module_write_color_factors_call (writer, unit, id)
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -2296,8 +2687,14 @@ function.  There are three arrays.
 <<Prclib interfaces: prc writer c lib: TBP>>=
   procedure :: write_color_factors_call => &
        prc_writer_c_lib_write_color_factors_call
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_c_lib_write_color_factors_call (writer, unit, id)
+      class(prc_writer_c_lib_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id
+    end subroutine prc_writer_c_lib_write_color_factors_call
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_c_lib_write_color_factors_call (writer, unit, id)
+  module subroutine prc_writer_c_lib_write_color_factors_call (writer, unit, id)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
@@ -2324,8 +2721,14 @@ Otherwise we could not call the method because the writer type is
 abstract.
 <<Prclib interfaces: prc writer c lib: TBP>>=
   procedure :: write_standard_interface => prc_writer_c_lib_write_interface
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prc_writer_c_lib_write_interface (writer, unit, id, feature)
+      class(prc_writer_c_lib_t), intent(in) :: writer
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: id, feature
+    end subroutine prc_writer_c_lib_write_interface
 <<Prclib interfaces: procedures>>=
-  subroutine prc_writer_c_lib_write_interface (writer, unit, id, feature)
+  module subroutine prc_writer_c_lib_write_interface (writer, unit, id, feature)
     class(prc_writer_c_lib_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id, feature
@@ -2422,8 +2825,19 @@ types.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: set_flv_state => prclib_driver_set_flv_state
   procedure :: set_hel_state => prclib_driver_set_hel_state
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_set_flv_state (driver, i, flv_state)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+      integer, dimension(:,:), allocatable, intent(out) :: flv_state
+    end subroutine prclib_driver_set_flv_state
+    module subroutine prclib_driver_set_hel_state (driver, i, hel_state)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+      integer, dimension(:,:), allocatable, intent(out) :: hel_state
+    end subroutine prclib_driver_set_hel_state
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_set_flv_state (driver, i, flv_state)
+  module subroutine prclib_driver_set_flv_state (driver, i, flv_state)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     integer, dimension(:,:), allocatable, intent(out) :: flv_state
@@ -2440,7 +2854,7 @@ types.
     flv_state = c_flv_state
   end subroutine prclib_driver_set_flv_state
 
-  subroutine prclib_driver_set_hel_state (driver, i, hel_state)
+  module subroutine prclib_driver_set_hel_state (driver, i, hel_state)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     integer, dimension(:,:), allocatable, intent(out) :: hel_state
@@ -2464,8 +2878,15 @@ simultaneously set the ghost-flag table, which consists of logical
 entries.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: set_col_state => prclib_driver_set_col_state
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_set_col_state (driver, i, col_state, ghost_flag)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+      integer, dimension(:,:,:), allocatable, intent(out) :: col_state
+      logical, dimension(:,:), allocatable, intent(out) :: ghost_flag
+    end subroutine prclib_driver_set_col_state
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_set_col_state (driver, i, col_state, ghost_flag)
+  module subroutine prclib_driver_set_col_state (driver, i, col_state, ghost_flag)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     integer, dimension(:,:,:), allocatable, intent(out) :: col_state
@@ -2493,8 +2914,15 @@ entries.
 one array which contains the corresponding factors.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: set_color_factors => prclib_driver_set_color_factors
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_set_color_factors (driver, i, color_factors, cf_index)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+      complex(default), dimension(:), allocatable, intent(out) :: color_factors
+      integer, dimension(:,:), allocatable, intent(out) :: cf_index
+    end subroutine prclib_driver_set_color_factors
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_set_color_factors (driver, i, color_factors, cf_index)
+  module subroutine prclib_driver_set_color_factors (driver, i, color_factors, cf_index)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     complex(default), dimension(:), allocatable, intent(out) :: color_factors
@@ -2547,8 +2975,14 @@ specific process are handled here.  The selection consists of a double
 layered [[select]] [[case]] construct.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: write_get_fptr_sub
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine write_get_fptr_sub (driver, unit, prefix)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: prefix
+    end subroutine write_get_fptr_sub
 <<Prclib interfaces: procedures>>=
-  subroutine write_get_fptr_sub (driver, unit, prefix)
+  module subroutine write_get_fptr_sub (driver, unit, prefix)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: unit
     type(string_t), intent(in) :: prefix
@@ -2650,8 +3084,21 @@ slash, so the default is [[.]].
 <<Prclib interfaces: public>>=
   public :: workspace_prefix
   public :: workspace_path
+<<Prclib interfaces: sub interfaces>>=
+    module function workspace_prefix (workspace) result (prefix)
+      type(string_t), intent(in), optional :: workspace
+      type(string_t) :: prefix
+    end function workspace_prefix
+    module function workspace_path (workspace) result (path)
+      type(string_t), intent(in), optional :: workspace
+      type(string_t) :: path
+    end function workspace_path
+    module function workspace_cmd (workspace) result (cmd)
+      type(string_t), intent(in), optional :: workspace
+      type(string_t) :: cmd
+    end function workspace_cmd
 <<Prclib interfaces: procedures>>=
-  function workspace_prefix (workspace) result (prefix)
+  module function workspace_prefix (workspace) result (prefix)
     type(string_t), intent(in), optional :: workspace
     type(string_t) :: prefix
     if (present (workspace)) then
@@ -2665,7 +3112,7 @@ slash, so the default is [[.]].
     end if
   end function workspace_prefix
 
-  function workspace_path (workspace) result (path)
+  module function workspace_path (workspace) result (path)
     type(string_t), intent(in), optional :: workspace
     type(string_t) :: path
     if (present (workspace)) then
@@ -2679,7 +3126,7 @@ slash, so the default is [[.]].
     end if
   end function workspace_path
 
-  function workspace_cmd (workspace) result (cmd)
+  module function workspace_cmd (workspace) result (cmd)
     type(string_t), intent(in), optional :: workspace
     type(string_t) :: cmd
     if (present (workspace)) then
@@ -2703,8 +3150,14 @@ post-process the files, or it may do the complete work, e.g., calling
 an external program the generates the files.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: make_source => prclib_driver_make_source
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_make_source (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_make_source
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_make_source (driver, os_data, workspace)
+  module subroutine prclib_driver_make_source (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2725,8 +3178,14 @@ usually empty, but can execute code that depends on [[make_source]] already
 completed.  Similarly, [[after_compile]] scans all processes again.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: make_compile => prclib_driver_make_compile
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_make_compile (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_make_compile
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_make_compile (driver, os_data, workspace)
+  module subroutine prclib_driver_make_compile (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2748,8 +3207,14 @@ completed.  Similarly, [[after_compile]] scans all processes again.
 process library on disk.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: make_link => prclib_driver_make_link
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_make_link (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_make_link
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_make_link (driver, os_data, workspace)
+  module subroutine prclib_driver_make_link (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2777,8 +3242,44 @@ If there is no makefile, do nothing.
   procedure :: clean_makefile => prclib_driver_clean_makefile
   procedure :: clean => prclib_driver_clean
   procedure :: distclean => prclib_driver_distclean
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_clean_library (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean_library
+    module subroutine prclib_driver_clean_objects (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean_objects
+    module subroutine prclib_driver_clean_source (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean_source
+    module subroutine prclib_driver_clean_driver (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean_driver
+    module subroutine prclib_driver_clean_makefile (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean_makefile
+    module subroutine prclib_driver_clean (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean
+    module subroutine prclib_driver_distclean (driver, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_distclean
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_clean_library (driver, os_data, workspace)
+  module subroutine prclib_driver_clean_library (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2790,7 +3291,7 @@ If there is no makefile, do nothing.
     end if
   end subroutine prclib_driver_clean_library
 
-  subroutine prclib_driver_clean_objects (driver, os_data, workspace)
+  module subroutine prclib_driver_clean_objects (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2802,7 +3303,7 @@ If there is no makefile, do nothing.
     end if
   end subroutine prclib_driver_clean_objects
 
-  subroutine prclib_driver_clean_source (driver, os_data, workspace)
+  module subroutine prclib_driver_clean_source (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2814,7 +3315,7 @@ If there is no makefile, do nothing.
     end if
   end subroutine prclib_driver_clean_source
 
-  subroutine prclib_driver_clean_driver (driver, os_data, workspace)
+  module subroutine prclib_driver_clean_driver (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2826,7 +3327,7 @@ If there is no makefile, do nothing.
     end if
   end subroutine prclib_driver_clean_driver
 
-  subroutine prclib_driver_clean_makefile (driver, os_data, workspace)
+  module subroutine prclib_driver_clean_makefile (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2838,7 +3339,7 @@ If there is no makefile, do nothing.
     end if
   end subroutine prclib_driver_clean_makefile
 
-  subroutine prclib_driver_clean (driver, os_data, workspace)
+  module subroutine prclib_driver_clean (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2850,7 +3351,7 @@ If there is no makefile, do nothing.
     end if
   end subroutine prclib_driver_clean
 
-  subroutine prclib_driver_distclean (driver, os_data, workspace)
+  module subroutine prclib_driver_distclean (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -2875,8 +3376,15 @@ targets need not have prerequisites, so just calling [[make_source]] would not
 do anything if the files exist.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: clean_proc => prclib_driver_clean_proc
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_clean_proc (driver, i, os_data, workspace)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_clean_proc
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_clean_proc (driver, i, os_data, workspace)
+  module subroutine prclib_driver_clean_proc (driver, i, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     type(os_data_t), intent(in) :: os_data
@@ -2898,8 +3406,14 @@ do anything if the files exist.
 Check for the appropriate makefile.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: makefile_exists => prclib_driver_makefile_exists
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_makefile_exists (driver, workspace) result (flag)
+      class(prclib_driver_t), intent(in) :: driver
+      type(string_t), intent(in), optional :: workspace
+      logical :: flag
+    end function prclib_driver_makefile_exists
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_makefile_exists (driver, workspace) result (flag)
+  module function prclib_driver_makefile_exists (driver, workspace) result (flag)
     class(prclib_driver_t), intent(in) :: driver
     type(string_t), intent(in), optional :: workspace
     logical :: flag
@@ -2917,8 +3431,15 @@ object.  The [[loaded]] flag is set only if all required pointers
 have become assigned.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: load => prclib_driver_load
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_load (driver, os_data, noerror, workspace)
+      class(prclib_driver_t), intent(inout) :: driver
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in), optional :: noerror
+      type(string_t), intent(in), optional :: workspace
+    end subroutine prclib_driver_load
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_load (driver, os_data, noerror, workspace)
+  module subroutine prclib_driver_load (driver, os_data, noerror, workspace)
     class(prclib_driver_t), intent(inout) :: driver
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: noerror
@@ -3020,8 +3541,12 @@ have become assigned.
 @ Unload.  To be sure, nullify the procedure pointers.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: unload => prclib_driver_unload
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_unload (driver)
+      class(prclib_driver_t), intent(inout) :: driver
+    end subroutine prclib_driver_unload
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_unload (driver)
+  module subroutine prclib_driver_unload (driver)
     class(prclib_driver_t), intent(inout) :: driver
     select type (driver)
     type is (prclib_driver_dynamic_t)
@@ -3055,8 +3580,12 @@ have become assigned.
 error if it finds an error there.
 <<Prclib interfaces: prclib driver dynamic: TBP>>=
   procedure :: check_dlerror => prclib_driver_check_dlerror
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine prclib_driver_check_dlerror (driver)
+      class(prclib_driver_dynamic_t), intent(in) :: driver
+    end subroutine prclib_driver_check_dlerror
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_check_dlerror (driver)
+  module subroutine prclib_driver_check_dlerror (driver)
     class(prclib_driver_dynamic_t), intent(in) :: driver
     if (dlaccess_has_error (driver%dlaccess)) then
        call msg_fatal (char (dlaccess_get_error (driver%dlaccess)))
@@ -3086,8 +3615,16 @@ implementation.
 pointer to a named procedure.
 <<Prclib interfaces: prclib driver dynamic: TBP>>=
   procedure :: get_c_funptr => prclib_driver_dynamic_get_c_funptr
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_dynamic_get_c_funptr &
+         (driver, feature) result (c_fptr)
+      class(prclib_driver_dynamic_t), intent(inout) :: driver
+      type(string_t), intent(in) :: feature
+      type(c_funptr) :: c_fptr
+    end function prclib_driver_dynamic_get_c_funptr
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_dynamic_get_c_funptr (driver, feature) result (c_fptr)
+  module function prclib_driver_dynamic_get_c_funptr &
+       (driver, feature) result (c_fptr)
     class(prclib_driver_dynamic_t), intent(inout) :: driver
     type(string_t), intent(in) :: feature
     type(c_funptr) :: c_fptr
@@ -3104,8 +3641,16 @@ pointer to a named procedure.
 Recall the MD5 sum written in the Makefile
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: get_md5sum_makefile => prclib_driver_get_md5sum_makefile
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_get_md5sum_makefile &
+         (driver, workspace) result (md5sum)
+      class(prclib_driver_t), intent(in) :: driver
+      type(string_t), intent(in), optional :: workspace
+      character(32) :: md5sum
+    end function prclib_driver_get_md5sum_makefile
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_md5sum_makefile (driver, workspace) result (md5sum)
+  module function prclib_driver_get_md5sum_makefile &
+       (driver, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
@@ -3138,8 +3683,14 @@ Recall the MD5 sum written in the Makefile
 @ Recall the MD5 sum written in the driver source code.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: get_md5sum_driver => prclib_driver_get_md5sum_driver
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_get_md5sum_driver (driver, workspace) result (md5sum)
+      class(prclib_driver_t), intent(in) :: driver
+      type(string_t), intent(in), optional :: workspace
+      character(32) :: md5sum
+    end function prclib_driver_get_md5sum_driver
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_md5sum_driver (driver, workspace) result (md5sum)
+  module function prclib_driver_get_md5sum_driver (driver, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
@@ -3172,8 +3723,16 @@ Recall the MD5 sum written in the Makefile
 @ Recall the MD5 sum written in the matrix element source code.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: get_md5sum_source => prclib_driver_get_md5sum_source
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_get_md5sum_source &
+         (driver, i, workspace) result (md5sum)
+      class(prclib_driver_t), intent(in) :: driver
+      integer, intent(in) :: i
+      type(string_t), intent(in), optional :: workspace
+      character(32) :: md5sum
+    end function prclib_driver_get_md5sum_source
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_md5sum_source &
+  module function prclib_driver_get_md5sum_source &
        (driver, i, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
@@ -4856,9 +5415,6 @@ module below.
 module prc_core_def
 
 <<Use strings>>
-  use io_units
-  use diagnostics
-
   use process_constants
   use prclib_interfaces
 
@@ -4870,12 +5426,30 @@ module prc_core_def
 
 <<Prc core def: interfaces>>
 
+  interface
+<<Prc core def: sub interfaces>>
+  end interface
+
+end module prc_core_def
+@ %def prc_core_def
+@
+<<[[prc_core_def_sub.f90]]>>=
+<<File header>>
+
+submodule (prc_core_def) prc_core_def_s
+
+  use io_units
+  use diagnostics
+
+  implicit none
+
 contains
 
 <<Prc core def: procedures>>
 
-end module prc_core_def
-@ %def prc_core_def
+end submodule prc_core_def_s
+
+@ %def prc_core_def_s
 @
 \subsection{Process core definition type}
 For storing configuration data that depend on the specific process
@@ -4948,8 +5522,13 @@ object, if there is any.  Usually, this checksum is not yet known at the time
 when the writer is initialized.
 <<Prc core def: process core def: TBP>>=
   procedure :: set_md5sum => prc_core_def_set_md5sum
+<<Prc core def: sub interfaces>>=
+    module subroutine prc_core_def_set_md5sum (core_def, md5sum)
+      class(prc_core_def_t), intent(inout) :: core_def
+      character(32) :: md5sum
+    end subroutine prc_core_def_set_md5sum
 <<Prc core def: procedures>>=
-  subroutine prc_core_def_set_md5sum (core_def, md5sum)
+  module subroutine prc_core_def_set_md5sum (core_def, md5sum)
     class(prc_core_def_t), intent(inout) :: core_def
     character(32) :: md5sum
     if (allocated (core_def%writer))  core_def%writer%md5sum = md5sum
@@ -4983,8 +5562,12 @@ We implement a default function which returns false.  The flag
 depends only on the type, therefore we implement it as [[nopass]].
 <<Prc core def: process core def: TBP>>=
   procedure, nopass :: needs_code => prc_core_def_needs_code
+<<Prc core def: sub interfaces>>=
+    module function prc_core_def_needs_code () result (flag)
+      logical :: flag
+    end function prc_core_def_needs_code
 <<Prc core def: procedures>>=
-  function prc_core_def_needs_code () result (flag)
+  module function prc_core_def_needs_code () result (flag)
     logical :: flag
     flag = .false.
   end function prc_core_def_needs_code
@@ -5054,8 +5637,14 @@ statement.   The [[mold]] option would probably more appropriate, but is a
 F2008 feature.
 <<Prc core def: public>>=
   public :: allocate_core_def
+<<Prc core def: sub interfaces>>=
+    module subroutine allocate_core_def (template, name, core_def)
+      type(prc_template_t), dimension(:), intent(in) :: template
+      type(string_t), intent(in) :: name
+      class(prc_core_def_t), allocatable :: core_def
+    end subroutine allocate_core_def
 <<Prc core def: procedures>>=
-  subroutine allocate_core_def (template, name, core_def)
+  module subroutine allocate_core_def (template, name, core_def)
     type(prc_template_t), dimension(:), intent(in) :: template
     type(string_t), intent(in) :: name
     class(prc_core_def_t), allocatable :: core_def
@@ -5162,9 +5751,6 @@ module process_libraries
   use, intrinsic :: iso_c_binding !NODEP!
 
 <<Use strings>>
-  use io_units
-  use diagnostics
-  use md5
   use physics_defs
   use os_interface
   use model_data
@@ -5181,20 +5767,44 @@ module process_libraries
 
 <<Process libraries: types>>
 
+  interface
+<<Process libraries: sub interfaces>>
+  end interface
+
+end module process_libraries
+
+@ %def process_libraries
+@
+<<[[process_libraries_sub.f90]]>>=
+<<File header>>
+
+submodule (process_libraries) process_libraries_s
+
+  use io_units
+  use diagnostics
+  use md5
+
+  implicit none
+
 contains
 
 <<Process libraries: procedures>>
 
-end module process_libraries
-@ %def process_libraries
+end submodule process_libraries_s
+
+@ %def process_libraries_s
 @
 \subsection{Auxiliary stuff}
 Here is a small subroutine that strips the left-hand side and the
 equals sign off an equation.
 <<Process libraries: public>>=
   public :: strip_equation_lhs
+<<Process libraries: sub interfaces>>=
+    module subroutine strip_equation_lhs (buffer)
+      character(*), intent(inout) :: buffer
+    end subroutine strip_equation_lhs
 <<Process libraries: procedures>>=
-  subroutine strip_equation_lhs (buffer)
+  module subroutine strip_equation_lhs (buffer)
     character(*), intent(inout) :: buffer
     type(string_t) :: string, prefix
     string = buffer
@@ -5281,8 +5891,13 @@ We assume that no finalizer is needed.
 @ Display the complete content.
 <<Process libraries: process component def: TBP>>=
   procedure :: write => process_component_def_write
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_write (object, unit)
+      class(process_component_def_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine process_component_def_write
 <<Process libraries: procedures>>=
-  subroutine process_component_def_write (object, unit)
+  module subroutine process_component_def_write (object, unit)
     class(process_component_def_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -5326,8 +5941,14 @@ definition with appropriate type, matching the type name on file with
 the provided templates.
 <<Process libraries: process component def: TBP>>=
   procedure :: read => process_component_def_read
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_read (component, unit, core_def_templates)
+      class(process_component_def_t), intent(out) :: component
+      integer, intent(in) :: unit
+      type(prc_template_t), dimension(:), intent(in) :: core_def_templates
+    end subroutine process_component_def_read
 <<Process libraries: procedures>>=
-  subroutine process_component_def_read (component, unit, core_def_templates)
+  module subroutine process_component_def_read (component, unit, core_def_templates)
     class(process_component_def_t), intent(out) :: component
     integer, intent(in) :: unit
     type(prc_template_t), dimension(:), intent(in) :: core_def_templates
@@ -5386,8 +6007,13 @@ the provided templates.
 @ Short account.
 <<Process libraries: process component def: TBP>>=
   procedure :: show => process_component_def_show
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_show (object, unit)
+      class(process_component_def_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine process_component_def_show
 <<Process libraries: procedures>>=
-  subroutine process_component_def_show (object, unit)
+  module subroutine process_component_def_show (object, unit)
     class(process_component_def_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -5434,8 +6060,13 @@ types are abstract, the MD5-related features are valid for the abstract
 types.
 <<Process libraries: process component def: TBP>>=
   procedure :: compute_md5sum => process_component_def_compute_md5sum
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_compute_md5sum (component, model)
+      class(process_component_def_t), intent(inout) :: component
+      class(model_data_t), intent(in), optional, target :: model
+    end subroutine process_component_def_compute_md5sum
 <<Process libraries: procedures>>=
-  subroutine process_component_def_compute_md5sum (component, model)
+  module subroutine process_component_def_compute_md5sum (component, model)
     class(process_component_def_t), intent(inout) :: component
     class(model_data_t), intent(in), optional, target :: model
     integer :: u
@@ -5456,8 +6087,13 @@ types.
 @
 <<Process libraries: process component def: TBP>>=
   procedure :: get_def_type_string => process_component_def_get_def_type_string
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_get_def_type_string (component) result (type_string)
+      type(string_t) :: type_string
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_def_type_string
 <<Process libraries: procedures>>=
-  function process_component_def_get_def_type_string (component) result (type_string)
+  module function process_component_def_get_def_type_string (component) result (type_string)
     type(string_t) :: type_string
     class(process_component_def_t), intent(in) :: component
     type_string = component%core_def%type_string ()
@@ -5469,8 +6105,13 @@ component.  For internal processes, we may set all data already at
 this stage.
 <<Process libraries: process component def: TBP>>=
   procedure :: allocate_driver => process_component_def_allocate_driver
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_allocate_driver (component, driver)
+      class(process_component_def_t), intent(in) :: component
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+    end subroutine process_component_def_allocate_driver
 <<Process libraries: procedures>>=
-  subroutine process_component_def_allocate_driver (component, driver)
+  module subroutine process_component_def_allocate_driver (component, driver)
     class(process_component_def_t), intent(in) :: component
     class(prc_core_driver_t), intent(out), allocatable :: driver
     if (allocated (component%core_def)) then
@@ -5482,8 +6123,13 @@ this stage.
 @ Tell whether the process core needs external code.
 <<Process libraries: process component def: TBP>>=
   procedure :: needs_code => process_component_def_needs_code
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_needs_code (component) result (flag)
+      class(process_component_def_t), intent(in) :: component
+      logical :: flag
+    end function process_component_def_needs_code
 <<Process libraries: procedures>>=
-  function process_component_def_needs_code (component) result (flag)
+  module function process_component_def_needs_code (component) result (flag)
     class(process_component_def_t), intent(in) :: component
     logical :: flag
     flag = component%core_def%needs_code ()
@@ -5494,8 +6140,13 @@ this stage.
 provide a writer object.  This method returns a pointer to the writer.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_writer_ptr => process_component_def_get_writer_ptr
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_get_writer_ptr (component) result (writer)
+      class(process_component_def_t), intent(in), target :: component
+      class(prc_writer_t), pointer :: writer
+    end function process_component_def_get_writer_ptr
 <<Process libraries: procedures>>=
-  function process_component_def_get_writer_ptr (component) result (writer)
+  module function process_component_def_get_writer_ptr (component) result (writer)
     class(process_component_def_t), intent(in), target :: component
     class(prc_writer_t), pointer :: writer
     writer => component%core_def%writer
@@ -5506,8 +6157,13 @@ provide a writer object.  This method returns a pointer to the writer.
 process component implements.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_features => process_component_def_get_features
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_get_features (component) result (features)
+      class(process_component_def_t), intent(in) :: component
+      type(string_t), dimension(:), allocatable :: features
+    end function process_component_def_get_features
 <<Process libraries: procedures>>=
-  function process_component_def_get_features (component) result (features)
+  module function process_component_def_get_features (component) result (features)
     class(process_component_def_t), intent(in) :: component
     type(string_t), dimension(:), allocatable :: features
     call component%core_def%get_features (features)
@@ -5518,8 +6174,16 @@ process component implements.
 processes).  For internal processes, this is meaningless.
 <<Process libraries: process component def: TBP>>=
   procedure :: connect => process_component_def_connect
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_connect &
+         (component, lib_driver, i, proc_driver)
+      class(process_component_def_t), intent(in) :: component
+      class(prclib_driver_t), intent(in) :: lib_driver
+      integer, intent(in) :: i
+      class(prc_core_driver_t), intent(inout) :: proc_driver
+    end subroutine process_component_def_connect
 <<Process libraries: procedures>>=
-  subroutine process_component_def_connect &
+  module subroutine process_component_def_connect &
        (component, lib_driver, i, proc_driver)
     class(process_component_def_t), intent(in) :: component
     class(prclib_driver_t), intent(in) :: lib_driver
@@ -5538,8 +6202,13 @@ processes).  For internal processes, this is meaningless.
 abstract type.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_core_def_ptr => process_component_get_core_def_ptr
+<<Process libraries: sub interfaces>>=
+    module function process_component_get_core_def_ptr (component) result (ptr)
+      class(process_component_def_t), intent(in), target :: component
+      class(prc_core_def_t), pointer :: ptr
+    end function process_component_get_core_def_ptr
 <<Process libraries: procedures>>=
-  function process_component_get_core_def_ptr (component) result (ptr)
+  module function process_component_get_core_def_ptr (component) result (ptr)
     class(process_component_def_t), intent(in), target :: component
     class(prc_core_def_t), pointer :: ptr
     ptr => component%core_def
@@ -5551,20 +6220,33 @@ abstract type.
   procedure :: get_n_in  => process_component_def_get_n_in
   procedure :: get_n_out => process_component_def_get_n_out
   procedure :: get_n_tot => process_component_def_get_n_tot
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_get_n_in (component) result (n_in)
+      class(process_component_def_t), intent(in) :: component
+      integer :: n_in
+    end function process_component_def_get_n_in
+    module function process_component_def_get_n_out (component) result (n_out)
+      class(process_component_def_t), intent(in) :: component
+      integer :: n_out
+    end function process_component_def_get_n_out
+    module function process_component_def_get_n_tot (component) result (n_tot)
+      class(process_component_def_t), intent(in) :: component
+      integer :: n_tot
+    end function process_component_def_get_n_tot
 <<Process libraries: procedures>>=
-  function process_component_def_get_n_in (component) result (n_in)
+  module function process_component_def_get_n_in (component) result (n_in)
     class(process_component_def_t), intent(in) :: component
     integer :: n_in
     n_in = component%n_in
   end function process_component_def_get_n_in
 
-  function process_component_def_get_n_out (component) result (n_out)
+  module function process_component_def_get_n_out (component) result (n_out)
     class(process_component_def_t), intent(in) :: component
     integer :: n_out
     n_out = component%n_out
   end function process_component_def_get_n_out
 
-  function process_component_def_get_n_tot (component) result (n_tot)
+  module function process_component_def_get_n_tot (component) result (n_tot)
     class(process_component_def_t), intent(in) :: component
     integer :: n_tot
     n_tot = component%n_tot
@@ -5577,8 +6259,17 @@ abstract type.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_prt_in => process_component_def_get_prt_in
   procedure :: get_prt_out => process_component_def_get_prt_out
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_get_prt_in (component, prt)
+      class(process_component_def_t), intent(in) :: component
+      type(string_t), dimension(:), intent(out), allocatable :: prt
+    end subroutine process_component_def_get_prt_in
+    module subroutine process_component_def_get_prt_out (component, prt)
+      class(process_component_def_t), intent(in) :: component
+      type(string_t), dimension(:), intent(out), allocatable :: prt
+    end subroutine process_component_def_get_prt_out
 <<Process libraries: procedures>>=
-  subroutine process_component_def_get_prt_in (component, prt)
+  module subroutine process_component_def_get_prt_in (component, prt)
     class(process_component_def_t), intent(in) :: component
     type(string_t), dimension(:), intent(out), allocatable :: prt
     integer :: i
@@ -5588,7 +6279,7 @@ abstract type.
     end do
   end subroutine process_component_def_get_prt_in
 
-  subroutine process_component_def_get_prt_out (component, prt)
+  module subroutine process_component_def_get_prt_out (component, prt)
     class(process_component_def_t), intent(in) :: component
     type(string_t), dimension(:), intent(out), allocatable :: prt
     integer :: i
@@ -5604,15 +6295,24 @@ abstract type.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_prt_spec_in => process_component_def_get_prt_spec_in
   procedure :: get_prt_spec_out => process_component_def_get_prt_spec_out
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_get_prt_spec_in (component) result (prt)
+      class(process_component_def_t), intent(in) :: component
+      type(prt_spec_t), dimension(:), allocatable :: prt
+    end function process_component_def_get_prt_spec_in
+    module function process_component_def_get_prt_spec_out (component) result (prt)
+      class(process_component_def_t), intent(in) :: component
+      type(prt_spec_t), dimension(:), allocatable :: prt
+    end function process_component_def_get_prt_spec_out
 <<Process libraries: procedures>>=
-  function process_component_def_get_prt_spec_in (component) result (prt)
+  module function process_component_def_get_prt_spec_in (component) result (prt)
     class(process_component_def_t), intent(in) :: component
     type(prt_spec_t), dimension(:), allocatable :: prt
     allocate (prt (component%n_in))
     prt(:) = component%prt_in(:)
   end function process_component_def_get_prt_spec_in
 
-  function process_component_def_get_prt_spec_out (component) result (prt)
+  module function process_component_def_get_prt_spec_out (component) result (prt)
     class(process_component_def_t), intent(in) :: component
     type(prt_spec_t), dimension(:), allocatable :: prt
     allocate (prt (component%n_out))
@@ -5624,8 +6324,14 @@ abstract type.
 @ Return the combination of incoming particles as a PDG code
 <<Process libraries: process component def: TBP>>=
   procedure :: get_pdg_in => process_component_def_get_pdg_in
+<<Process libraries: sub interfaces>>=
+    module subroutine process_component_def_get_pdg_in (component, model, pdg)
+      class(process_component_def_t), intent(in) :: component
+      class(model_data_t), intent(in), target :: model
+      integer, intent(out), dimension(:) :: pdg
+    end subroutine process_component_def_get_pdg_in
 <<Process libraries: procedures>>=
-  subroutine process_component_def_get_pdg_in (component, model, pdg)
+  module subroutine process_component_def_get_pdg_in (component, model, pdg)
     class(process_component_def_t), intent(in) :: component
     class(model_data_t), intent(in), target :: model
     integer, intent(out), dimension(:) :: pdg
@@ -5639,8 +6345,13 @@ abstract type.
 @ Return the MD5 sum.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_md5sum => process_component_def_get_md5sum
+<<Process libraries: sub interfaces>>=
+    pure module function process_component_def_get_md5sum (component) result (md5sum)
+      class(process_component_def_t), intent(in) :: component
+      character(32) :: md5sum
+    end function process_component_def_get_md5sum
 <<Process libraries: procedures>>=
-  pure function process_component_def_get_md5sum (component) result (md5sum)
+  pure module function process_component_def_get_md5sum (component) result (md5sum)
     class(process_component_def_t), intent(in) :: component
     character(32) :: md5sum
     md5sum = component%md5sum
@@ -5663,44 +6374,93 @@ abstract type.
   procedure :: can_be_integrated &
        => process_component_def_can_be_integrated
   procedure :: get_associated_real => process_component_def_get_associated_real
+<<Process libraries: sub interfaces>>=
+    elemental module function process_component_def_get_nlo_type &
+         (component) result (nlo_type)
+      integer :: nlo_type
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_nlo_type
+    elemental module function process_component_def_get_associated_born &
+         (component) result (i_born)
+      integer :: i_born
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_associated_born
+    elemental module function process_component_def_get_associated_real_fin &
+         (component) result (i_rfin)
+      integer :: i_rfin
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_associated_real_fin
+    elemental module function process_component_def_get_associated_real_sing &
+         (component) result (i_rsing)
+      integer :: i_rsing
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_associated_real_sing
+    elemental module function process_component_def_get_associated_subtraction &
+         (component) result (i_sub)
+      integer :: i_sub
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_associated_subtraction
+    elemental module function process_component_def_can_be_integrated &
+         (component) result (active)
+      logical :: active
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_can_be_integrated
+    module function process_component_def_get_association_list &
+         (component, i_skip_in) result (list)
+      integer, dimension(:), allocatable :: list
+      class(process_component_def_t), intent(in) :: component
+      integer, intent(in), optional :: i_skip_in
+    end function process_component_def_get_association_list
+    module function process_component_def_get_associated_real &
+         (component) result (i_real)
+      integer :: i_real
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_associated_real
 <<Process libraries: procedures>>=
-  elemental function process_component_def_get_nlo_type (component) result (nlo_type)
+  elemental module function process_component_def_get_nlo_type &
+       (component) result (nlo_type)
     integer :: nlo_type
     class(process_component_def_t), intent(in) :: component
     nlo_type = component%nlo_type
   end function process_component_def_get_nlo_type
 
-  elemental function process_component_def_get_associated_born (component) result (i_born)
+  elemental module function process_component_def_get_associated_born &
+       (component) result (i_born)
     integer :: i_born
     class(process_component_def_t), intent(in) :: component
     i_born = component%associated_components(ASSOCIATED_BORN)
   end function process_component_def_get_associated_born
 
-  elemental function process_component_def_get_associated_real_fin (component) result (i_rfin)
+  elemental module function process_component_def_get_associated_real_fin &
+       (component) result (i_rfin)
     integer :: i_rfin
     class(process_component_def_t), intent(in) :: component
     i_rfin = component%associated_components(ASSOCIATED_REAL_FIN)
   end function process_component_def_get_associated_real_fin
 
-  elemental function process_component_def_get_associated_real_sing (component) result (i_rsing)
+  elemental module function process_component_def_get_associated_real_sing &
+       (component) result (i_rsing)
     integer :: i_rsing
     class(process_component_def_t), intent(in) :: component
     i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
   end function process_component_def_get_associated_real_sing
 
-  elemental function process_component_def_get_associated_subtraction (component) result (i_sub)
+  elemental module function process_component_def_get_associated_subtraction &
+       (component) result (i_sub)
     integer :: i_sub
     class(process_component_def_t), intent(in) :: component
     i_sub = component%associated_components(ASSOCIATED_SUB)
   end function process_component_def_get_associated_subtraction
 
-  elemental function process_component_def_can_be_integrated (component) result (active)
+  elemental module function process_component_def_can_be_integrated &
+       (component) result (active)
     logical :: active
     class(process_component_def_t), intent(in) :: component
     active = component%active
   end function process_component_def_can_be_integrated
 
-  function process_component_def_get_association_list (component, i_skip_in) result (list)
+  module function process_component_def_get_association_list &
+       (component, i_skip_in) result (list)
     integer, dimension(:), allocatable :: list
     class(process_component_def_t), intent(in) :: component
     integer, intent(in), optional :: i_skip_in
@@ -5723,7 +6483,8 @@ abstract type.
     end do
   end function process_component_def_get_association_list
 
-  function process_component_def_get_associated_real (component) result (i_real)
+  module function process_component_def_get_associated_real &
+       (component) result (i_real)
     integer :: i_real
     class(process_component_def_t), intent(in) :: component
     i_real = component%associated_components(ASSOCIATED_REAL)
@@ -5738,8 +6499,13 @@ abstract type.
 @
 <<Process libraries: process component def: TBP>>=
   procedure :: get_me_method => process_component_def_get_me_method
+<<Process libraries: sub interfaces>>=
+    elemental module function process_component_def_get_me_method (component) result (method)
+      type(string_t) :: method
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_me_method
 <<Process libraries: procedures>>=
-  elemental function process_component_def_get_me_method (component) result (method)
+  elemental module function process_component_def_get_me_method (component) result (method)
     type(string_t) :: method
     class(process_component_def_t), intent(in) :: component
     method = component%method
@@ -5749,19 +6515,31 @@ abstract type.
 @
 <<Process libraries: process component def: TBP>>=
   procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
+<<Process libraries: sub interfaces>>=
+    module function process_component_def_get_fixed_emitter (component) result (emitter)
+      integer :: emitter
+      class(process_component_def_t), intent(in) :: component
+    end function process_component_def_get_fixed_emitter
 <<Process libraries: procedures>>=
-  function process_component_def_get_fixed_emitter (component) result (emitter)
-     integer :: emitter
-     class(process_component_def_t), intent(in) :: component
-     emitter = component%fixed_emitter
+  module function process_component_def_get_fixed_emitter (component) result (emitter)
+    integer :: emitter
+    class(process_component_def_t), intent(in) :: component
+    emitter = component%fixed_emitter
   end function process_component_def_get_fixed_emitter
 
 @ %def process_component_def_get_fixed_emitter
 @
 <<Process libraries: process component def: TBP>>=
   procedure :: get_coupling_powers => process_component_def_get_coupling_powers
+<<Process libraries: sub interfaces>>=
+    pure module subroutine process_component_def_get_coupling_powers &
+         (component, alpha_power, alphas_power)
+      class(process_component_def_t), intent(in) :: component
+      integer, intent(out) :: alpha_power, alphas_power
+    end subroutine process_component_def_get_coupling_powers
 <<Process libraries: procedures>>=
-  pure subroutine process_component_def_get_coupling_powers (component, alpha_power, alphas_power)
+  pure module subroutine process_component_def_get_coupling_powers &
+       (component, alpha_power, alphas_power)
     class(process_component_def_t), intent(in) :: component
     integer, intent(out) :: alpha_power, alphas_power
     alpha_power = component%alpha_power
@@ -5812,8 +6590,13 @@ The [[md5sum]] is used to verify the integrity of the configuration.
 @ Write the process definition including components:
 <<Process libraries: process def: TBP>>=
   procedure :: write => process_def_write
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_write (object, unit)
+      class(process_def_t), intent(in) :: object
+      integer, intent(in) :: unit
+    end subroutine process_def_write
 <<Process libraries: procedures>>=
-  subroutine process_def_write (object, unit)
+  module subroutine process_def_write (object, unit)
     class(process_def_t), intent(in) :: object
     integer, intent(in) :: unit
     integer :: i
@@ -5859,8 +6642,14 @@ The [[md5sum]] is used to verify the integrity of the configuration.
 @ Read the process definition including components.
 <<Process libraries: process def: TBP>>=
   procedure :: read => process_def_read
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_read (object, unit, core_def_templates)
+      class(process_def_t), intent(out) :: object
+      integer, intent(in) :: unit
+      type(prc_template_t), dimension(:), intent(in) :: core_def_templates
+    end subroutine process_def_read
 <<Process libraries: procedures>>=
-  subroutine process_def_read (object, unit, core_def_templates)
+  module subroutine process_def_read (object, unit, core_def_templates)
     class(process_def_t), intent(out) :: object
     integer, intent(in) :: unit
     type(prc_template_t), dimension(:), intent(in) :: core_def_templates
@@ -5924,8 +6713,13 @@ The [[md5sum]] is used to verify the integrity of the configuration.
 @ Short account.
 <<Process libraries: process def: TBP>>=
   procedure :: show => process_def_show
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_show (object, unit)
+      class(process_def_t), intent(in) :: object
+      integer, intent(in) :: unit
+    end subroutine process_def_show
 <<Process libraries: procedures>>=
-  subroutine process_def_show (object, unit)
+  module subroutine process_def_show (object, unit)
     class(process_def_t), intent(in) :: object
     integer, intent(in) :: unit
     integer :: i
@@ -5963,8 +6757,23 @@ We create the basenames for the process components by appending a
 suffix which we increment for each component.
 <<Process libraries: process def: TBP>>=
   procedure :: init => process_def_init
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_init (def, id, &
+         model, model_name, n_in, n_components, num_id, &
+         nlo_process, negative_sf, requires_resonances)
+      class(process_def_t), intent(out) :: def
+      type(string_t), intent(in), optional :: id
+      class(model_data_t), intent(in), optional, target :: model
+      type(string_t), intent(in), optional :: model_name
+      integer, intent(in), optional :: n_in
+      integer, intent(in), optional :: n_components
+      integer, intent(in), optional :: num_id
+      logical, intent(in), optional :: nlo_process
+      logical, intent(in), optional :: negative_sf
+      logical, intent(in), optional :: requires_resonances
+    end subroutine process_def_init
 <<Process libraries: procedures>>=
-  subroutine process_def_init (def, id, &
+  module subroutine process_def_init (def, id, &
        model, model_name, n_in, n_components, num_id, &
        nlo_process, negative_sf, requires_resonances)
     class(process_def_t), intent(out) :: def
@@ -6025,8 +6834,13 @@ suffix which we increment for each component.
 @ Explicitly set the model name (for unit test).
 <<Process libraries: process def: TBP>>=
   procedure :: set_model_name => process_def_set_model_name
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_set_model_name (def, model_name)
+      class(process_def_t), intent(inout) :: def
+      type(string_t), intent(in) :: model_name
+    end subroutine process_def_set_model_name
 <<Process libraries: procedures>>=
-  subroutine process_def_set_model_name (def, model_name)
+  module subroutine process_def_set_model_name (def, model_name)
     class(process_def_t), intent(inout) :: def
     type(string_t), intent(in) :: model_name
     def%model_name = model_name
@@ -6048,8 +6862,23 @@ and transfer it to the process component definition here.  The
 allocation is moved, so the original allocated object is returned empty.
 <<Process libraries: process def: TBP>>=
   procedure :: import_component => process_def_import_component
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_import_component (def, &
+         i, n_out, prt_in, prt_out, method, variant, &
+         nlo_type, can_be_integrated)
+      class(process_def_t), intent(inout) :: def
+      integer, intent(in) :: i
+      integer, intent(in), optional :: n_out
+      type(prt_spec_t), dimension(:), intent(in), optional :: prt_in
+      type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
+      type(string_t), intent(in), optional :: method
+      integer, intent(in), optional :: nlo_type
+      logical, intent(in), optional :: can_be_integrated
+      class(prc_core_def_t), &
+           intent(inout), allocatable, optional :: variant
+    end subroutine process_def_import_component
 <<Process libraries: procedures>>=
-  subroutine process_def_import_component (def, &
+  module subroutine process_def_import_component (def, &
        i, n_out, prt_in, prt_out, method, variant, &
        nlo_type, can_be_integrated)
     class(process_def_t), intent(inout) :: def
@@ -6123,8 +6952,13 @@ allocation is moved, so the original allocated object is returned empty.
 @
 <<Process libraries: process def: TBP>>=
   procedure :: get_n_components => process_def_get_n_components
+<<Process libraries: sub interfaces>>=
+    module function process_def_get_n_components (def) result (n)
+      class(process_def_t), intent(in) :: def
+      integer :: n
+    end function process_def_get_n_components
 <<Process libraries: procedures>>=
-  function process_def_get_n_components (def) result (n)
+  module function process_def_get_n_components (def) result (n)
     class(process_def_t), intent(in) :: def
     integer :: n
     n = size (def%initial)
@@ -6134,8 +6968,13 @@ allocation is moved, so the original allocated object is returned empty.
 @
 <<Process libraries: process def: TBP>>=
   procedure :: set_fixed_emitter => process_def_set_fixed_emitter
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_set_fixed_emitter (def, i, emitter)
+      class(process_def_t), intent(inout) :: def
+      integer, intent(in) :: i, emitter
+    end subroutine process_def_set_fixed_emitter
 <<Process libraries: procedures>>=
-  subroutine process_def_set_fixed_emitter (def, i, emitter)
+  module subroutine process_def_set_fixed_emitter (def, i, emitter)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i, emitter
     def%initial(i)%fixed_emitter = emitter
@@ -6145,8 +6984,13 @@ allocation is moved, so the original allocated object is returned empty.
 @
 <<Process libraries: process def: TBP>>=
   procedure :: set_coupling_powers => process_def_set_coupling_powers
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_set_coupling_powers (def, alpha_power, alphas_power)
+      class(process_def_t), intent(inout) :: def
+      integer, intent(in) :: alpha_power, alphas_power
+    end subroutine process_def_set_coupling_powers
 <<Process libraries: procedures>>=
-  subroutine process_def_set_coupling_powers (def, alpha_power, alphas_power)
+  module subroutine process_def_set_coupling_powers (def, alpha_power, alphas_power)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: alpha_power, alphas_power
     def%initial(1)%alpha_power = alpha_power
@@ -6158,8 +7002,16 @@ allocation is moved, so the original allocated object is returned empty.
 <<Process libraries: process def: TBP>>=
   procedure :: set_associated_components => &
        process_def_set_associated_components
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_set_associated_components (def, i, &
+         i_list, remnant, real_finite, mismatch)
+      class(process_def_t), intent(inout) :: def
+      logical, intent(in) :: remnant, real_finite, mismatch
+      integer, intent(in) :: i
+      integer, dimension(:), intent(in) :: i_list
+    end subroutine process_def_set_associated_components
 <<Process libraries: procedures>>=
-  subroutine process_def_set_associated_components (def, i, &
+  module subroutine process_def_set_associated_components (def, i, &
        i_list, remnant, real_finite, mismatch)
     class(process_def_t), intent(inout) :: def
     logical, intent(in) :: remnant, real_finite, mismatch
@@ -6194,8 +7046,13 @@ those and compute the MD5 sum of this string.  We also include the
 model name.  All other data part of the component definitions.
 <<Process libraries: process def: TBP>>=
   procedure :: compute_md5sum => process_def_compute_md5sum
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_compute_md5sum (def, model)
+      class(process_def_t), intent(inout) :: def
+      class(model_data_t), intent(in), optional, target :: model
+    end subroutine process_def_compute_md5sum
 <<Process libraries: procedures>>=
-  subroutine process_def_compute_md5sum (def, model)
+  module subroutine process_def_compute_md5sum (def, model)
     class(process_def_t), intent(inout) :: def
     class(model_data_t), intent(in), optional, target :: model
     integer :: i
@@ -6216,8 +7073,14 @@ model name.  All other data part of the component definitions.
 @ Return the MD5 sum of the process or of a process component.
 <<Process libraries: process def: TBP>>=
   procedure :: get_md5sum => process_def_get_md5sum
+<<Process libraries: sub interfaces>>=
+    module function process_def_get_md5sum (def, i_component) result (md5sum)
+      class(process_def_t), intent(in) :: def
+      integer, intent(in), optional :: i_component
+      character(32) :: md5sum
+    end function process_def_get_md5sum
 <<Process libraries: procedures>>=
-  function process_def_get_md5sum (def, i_component) result (md5sum)
+  module function process_def_get_md5sum (def, i_component) result (md5sum)
     class(process_def_t), intent(in) :: def
     integer, intent(in), optional :: i_component
     character(32) :: md5sum
@@ -6233,8 +7096,14 @@ model name.  All other data part of the component definitions.
 test purposes).
 <<Process libraries: process def: TBP>>=
   procedure :: get_core_def_ptr => process_def_get_core_def_ptr
+<<Process libraries: sub interfaces>>=
+    module function process_def_get_core_def_ptr (def, i_component) result (ptr)
+      class(process_def_t), intent(in), target :: def
+      integer, intent(in) :: i_component
+      class(prc_core_def_t), pointer :: ptr
+    end function process_def_get_core_def_ptr
 <<Process libraries: procedures>>=
-  function process_def_get_core_def_ptr (def, i_component) result (ptr)
+  module function process_def_get_core_def_ptr (def, i_component) result (ptr)
     class(process_def_t), intent(in), target :: def
     integer, intent(in) :: i_component
     class(prc_core_def_t), pointer :: ptr
@@ -6253,8 +7122,14 @@ NOTE: Implemented only for initial component.
 The query is passed to the process component.
 <<Process libraries: process def: TBP>>=
   procedure :: needs_code => process_def_needs_code
+<<Process libraries: sub interfaces>>=
+    module function process_def_needs_code (def, i_component) result (flag)
+      class(process_def_t), intent(in) :: def
+      integer, intent(in) :: i_component
+      logical :: flag
+    end function process_def_needs_code
 <<Process libraries: procedures>>=
-  function process_def_needs_code (def, i_component) result (flag)
+  module function process_def_needs_code (def, i_component) result (flag)
     class(process_def_t), intent(in) :: def
     integer, intent(in) :: i_component
     logical :: flag
@@ -6266,8 +7141,13 @@ The query is passed to the process component.
 this process.
 <<Process libraries: process def: TBP>>=
   procedure :: get_pdg_in_1 => process_def_get_pdg_in_1
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_get_pdg_in_1 (def, pdg)
+      class(process_def_t), intent(in), target :: def
+      integer, dimension(:), intent(out) :: pdg
+    end subroutine process_def_get_pdg_in_1
 <<Process libraries: procedures>>=
-  subroutine process_def_get_pdg_in_1 (def, pdg)
+  module subroutine process_def_get_pdg_in_1 (def, pdg)
     class(process_def_t), intent(in), target :: def
     integer, dimension(:), intent(out) :: pdg
     call def%initial(1)%get_pdg_in (def%model, pdg)
@@ -6277,8 +7157,13 @@ this process.
 @
 <<Process libraries: process def: TBP>>=
   procedure :: is_nlo => process_def_is_nlo
+<<Process libraries: sub interfaces>>=
+    elemental module function process_def_is_nlo (def) result (flag)
+      logical :: flag
+      class(process_def_t), intent(in) :: def
+    end function process_def_is_nlo
 <<Process libraries: procedures>>=
-  elemental function process_def_is_nlo (def) result (flag)
+  elemental module function process_def_is_nlo (def) result (flag)
     logical :: flag
     class(process_def_t), intent(in) :: def
     flag = def%nlo_process
@@ -6288,8 +7173,14 @@ this process.
 @
 <<Process libraries: process def: TBP>>=
   procedure :: get_nlo_type => process_def_get_nlo_type
+<<Process libraries: sub interfaces>>=
+    elemental module function process_def_get_nlo_type (def, i_component) result (nlo_type)
+      integer :: nlo_type
+      class(process_def_t), intent(in) :: def
+      integer, intent(in) :: i_component
+    end function process_def_get_nlo_type
 <<Process libraries: procedures>>=
-  elemental function process_def_get_nlo_type (def, i_component) result (nlo_type)
+  elemental module function process_def_get_nlo_type (def, i_component) result (nlo_type)
     integer :: nlo_type
     class(process_def_t), intent(in) :: def
     integer, intent(in) :: i_component
@@ -6300,8 +7191,13 @@ this process.
 @
 <<Process libraries: process def: TBP>>=
   procedure :: get_negative_sf => process_def_get_negative_sf
+<<Process libraries: sub interfaces>>=
+    elemental module function process_def_get_negative_sf (def) result (neg_sf)
+      logical :: neg_sf
+      class(process_def_t), intent(in) :: def
+    end function process_def_get_negative_sf
 <<Process libraries: procedures>>=
-  elemental function process_def_get_negative_sf (def) result (neg_sf)
+  elemental module function process_def_get_negative_sf (def) result (neg_sf)
     logical :: neg_sf
     class(process_def_t), intent(in) :: def
     neg_sf = def%negative_sf
@@ -6311,8 +7207,13 @@ this process.
 @ Number of incoming particles, common to all components.
 <<Process libraries: process def: TBP>>=
   procedure :: get_n_in => process_def_get_n_in
+<<Process libraries: sub interfaces>>=
+    module function process_def_get_n_in (def) result (n_in)
+      class(process_def_t), intent(in) :: def
+      integer :: n_in
+    end function process_def_get_n_in
 <<Process libraries: procedures>>=
-  function process_def_get_n_in (def) result (n_in)
+  module function process_def_get_n_in (def) result (n_in)
     class(process_def_t), intent(in) :: def
     integer :: n_in
     n_in = def%n_in
@@ -6322,8 +7223,14 @@ this process.
 @ Pointer to a particular component definition record.
 <<Process libraries: process def: TBP>>=
   procedure :: get_component_def_ptr => process_def_get_component_def_ptr
+<<Process libraries: sub interfaces>>=
+    module function process_def_get_component_def_ptr (def, i) result (component)
+      type(process_component_def_t), pointer :: component
+      class(process_def_t), intent(in), target :: def
+      integer, intent(in) :: i
+    end function process_def_get_component_def_ptr
 <<Process libraries: procedures>>=
-  function process_def_get_component_def_ptr (def, i) result (component)
+  module function process_def_get_component_def_ptr (def, i) result (component)
     type(process_component_def_t), pointer :: component
     class(process_def_t), intent(in), target :: def
     integer, intent(in) :: i
@@ -6371,8 +7278,12 @@ definition directly.
 entries do not need finalization themselves.
 <<Process libraries: process def list: TBP>>=
   procedure :: final => process_def_list_final
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_final (list)
+      class(process_def_list_t), intent(inout) :: list
+    end subroutine process_def_list_final
 <<Process libraries: procedures>>=
-  subroutine process_def_list_final (list)
+  module subroutine process_def_list_final (list)
     class(process_def_list_t), intent(inout) :: list
     type(process_def_entry_t), pointer :: current
     nullify (list%last)
@@ -6387,8 +7298,14 @@ entries do not need finalization themselves.
 @ Write the complete list.
 <<Process libraries: process def list: TBP>>=
   procedure :: write => process_def_list_write
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_write (object, unit, libpath)
+      class(process_def_list_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: libpath
+    end subroutine process_def_list_write
 <<Process libraries: procedures>>=
-  subroutine process_def_list_write (object, unit, libpath)
+  module subroutine process_def_list_write (object, unit, libpath)
     class(process_def_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: libpath
@@ -6414,8 +7331,13 @@ entries do not need finalization themselves.
 @ Short account.
 <<Process libraries: process def list: TBP>>=
   procedure :: show => process_def_list_show
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_show (object, unit)
+      class(process_def_list_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine process_def_list_show
 <<Process libraries: procedures>>=
-  subroutine process_def_list_show (object, unit)
+  module subroutine process_def_list_show (object, unit)
     class(process_def_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
     type(process_def_entry_t), pointer :: entry
@@ -6442,8 +7364,14 @@ NOTE: Error handling is missing.  Reading will just be aborted on
 error, or an I/O error occurs.
 <<Process libraries: process def list: TBP>>=
   procedure :: read => process_def_list_read
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_read (object, unit, core_def_templates)
+      class(process_def_list_t), intent(out) :: object
+      integer, intent(in) :: unit
+      type(prc_template_t), dimension(:), intent(in) :: core_def_templates
+    end subroutine process_def_list_read
 <<Process libraries: procedures>>=
-  subroutine process_def_list_read (object, unit, core_def_templates)
+  module subroutine process_def_list_read (object, unit, core_def_templates)
     class(process_def_list_t), intent(out) :: object
     integer, intent(in) :: unit
     type(prc_template_t), dimension(:), intent(in) :: core_def_templates
@@ -6473,8 +7401,13 @@ pointer, and the pointer allocation is transferred.  The original
 pointer is returned null.
 <<Process libraries: process def list: TBP>>=
   procedure :: append => process_def_list_append
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_append (list, entry)
+      class(process_def_list_t), intent(inout) :: list
+      type(process_def_entry_t), intent(inout), pointer :: entry
+    end subroutine process_def_list_append
 <<Process libraries: procedures>>=
-  subroutine process_def_list_append (list, entry)
+  module subroutine process_def_list_append (list, entry)
     class(process_def_list_t), intent(inout) :: list
     type(process_def_entry_t), intent(inout), pointer :: entry
     if (list%contains (entry%id)) then
@@ -6496,8 +7429,13 @@ pointer is returned null.
 Return the number of processes supported by the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_n_processes => process_def_list_get_n_processes
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_get_n_processes (list) result (n)
+      integer :: n
+      class(process_def_list_t), intent(in) :: list
+    end function process_def_list_get_n_processes
 <<Process libraries: procedures>>=
-  function process_def_list_get_n_processes (list) result (n)
+  module function process_def_list_get_n_processes (list) result (n)
     integer :: n
     class(process_def_list_t), intent(in) :: list
     type(process_def_entry_t), pointer :: current
@@ -6513,8 +7451,13 @@ Return the number of processes supported by the library.
 @ Allocate an array with the process IDs supported by the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_process_id_list => process_def_list_get_process_id_list
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_get_process_id_list (list, id)
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), dimension(:), allocatable, intent(out) :: id
+    end subroutine process_def_list_get_process_id_list
 <<Process libraries: procedures>>=
-  subroutine process_def_list_get_process_id_list (list, id)
+  module subroutine process_def_list_get_process_id_list (list, id)
     class(process_def_list_t), intent(in) :: list
     type(string_t), dimension(:), allocatable, intent(out) :: id
     type(process_def_entry_t), pointer :: current
@@ -6534,8 +7477,13 @@ Return the number of processes supported by the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_process_id_req_resonant => &
        process_def_list_get_process_id_req_resonant
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_get_process_id_req_resonant (list, id)
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), dimension(:), allocatable, intent(out) :: id
+    end subroutine process_def_list_get_process_id_req_resonant
 <<Process libraries: procedures>>=
-  subroutine process_def_list_get_process_id_req_resonant (list, id)
+  module subroutine process_def_list_get_process_id_req_resonant (list, id)
     class(process_def_list_t), intent(in) :: list
     type(string_t), dimension(:), allocatable, intent(out) :: id
     type(process_def_entry_t), pointer :: current
@@ -6557,8 +7505,14 @@ Return the number of processes supported by the library.
 @ Return a pointer to a particular process entry.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_process_def_ptr => process_def_list_get_process_def_ptr
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_get_process_def_ptr (list, id) result (entry)
+      type(process_def_entry_t), pointer :: entry
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+    end function process_def_list_get_process_def_ptr
 <<Process libraries: procedures>>=
-  function process_def_list_get_process_def_ptr (list, id) result (entry)
+  module function process_def_list_get_process_def_ptr (list, id) result (entry)
     type(process_def_entry_t), pointer :: entry
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6575,8 +7529,14 @@ Return the number of processes supported by the library.
 @ Return true if a given process is in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: contains => process_def_list_contains
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_contains (list, id) result (flag)
+      logical :: flag
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+    end function process_def_list_contains
 <<Process libraries: procedures>>=
-  function process_def_list_contains (list, id) result (flag)
+  module function process_def_list_contains (list, id) result (flag)
     logical :: flag
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6589,8 +7549,14 @@ Return the number of processes supported by the library.
 @ Return the index of the entry that corresponds to a given process.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_entry_index => process_def_list_get_entry_index
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_get_entry_index (list, id) result (n)
+      integer :: n
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+    end function process_def_list_get_entry_index
 <<Process libraries: procedures>>=
-  function process_def_list_get_entry_index (list, id) result (n)
+  module function process_def_list_get_entry_index (list, id) result (n)
     integer :: n
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6611,8 +7577,14 @@ Return the number of processes supported by the library.
 @ Return the numerical ID for a process.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_num_id => process_def_list_get_num_id
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_get_num_id (list, id) result (num_id)
+      integer :: num_id
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+    end function process_def_list_get_num_id
 <<Process libraries: procedures>>=
-  function process_def_list_get_num_id (list, id) result (num_id)
+  module function process_def_list_get_num_id (list, id) result (num_id)
     integer :: num_id
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6629,8 +7601,14 @@ Return the number of processes supported by the library.
 @ Return the model name for a given process in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_model_name => process_def_list_get_model_name
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_get_model_name (list, id) result (model_name)
+      type(string_t) :: model_name
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+    end function process_def_list_get_model_name
 <<Process libraries: procedures>>=
-  function process_def_list_get_model_name (list, id) result (model_name)
+  module function process_def_list_get_model_name (list, id) result (model_name)
     type(string_t) :: model_name
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6648,8 +7626,14 @@ Return the number of processes supported by the library.
 This tells us whether the process is a decay or a scattering.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_n_in => process_def_list_get_n_in
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_get_n_in (list, id) result (n)
+      integer :: n
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+    end function process_def_list_get_n_in
 <<Process libraries: procedures>>=
-  function process_def_list_get_n_in (list, id) result (n)
+  module function process_def_list_get_n_in (list, id) result (n)
     integer :: n
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6669,8 +7653,14 @@ only the first code for each beam.  This serves as a quick way
 for (re)constructing beam properties.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_pdg_in_1 => process_def_list_get_pdg_in_1
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+      integer, dimension(:), intent(out) :: pdg
+    end subroutine process_def_list_get_pdg_in_1
 <<Process libraries: procedures>>=
-  subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
+  module subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     integer, dimension(:), intent(out) :: pdg
@@ -6687,8 +7677,14 @@ for (re)constructing beam properties.
 @ Return the list of component IDs of a given process in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_component_list => process_def_list_get_component_list
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_get_component_list (list, id, cid)
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+      type(string_t), dimension(:), allocatable, intent(out) :: cid
+    end subroutine process_def_list_get_component_list
 <<Process libraries: procedures>>=
-  subroutine process_def_list_get_component_list (list, id, cid)
+  module subroutine process_def_list_get_component_list (list, id, cid)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     type(string_t), dimension(:), allocatable, intent(out) :: cid
@@ -6713,8 +7709,15 @@ in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_component_description_list => &
        process_def_list_get_component_description_list
+<<Process libraries: sub interfaces>>=
+    module subroutine process_def_list_get_component_description_list &
+         (list, id, description)
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+      type(string_t), dimension(:), allocatable, intent(out) :: description
+    end subroutine process_def_list_get_component_description_list
 <<Process libraries: procedures>>=
-  subroutine process_def_list_get_component_description_list &
+  module subroutine process_def_list_get_component_description_list &
        (list, id, description)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
@@ -6739,8 +7742,14 @@ in the library.
 subprocess set.
 <<Process libraries: process def list: TBP>>=
   procedure :: req_resonant => process_def_list_req_resonant
+<<Process libraries: sub interfaces>>=
+    module function process_def_list_req_resonant (list, id) result (flag)
+      class(process_def_list_t), intent(in) :: list
+      type(string_t), intent(in) :: id
+      logical :: flag
+    end function process_def_list_req_resonant
 <<Process libraries: procedures>>=
-  function process_def_list_req_resonant (list, id) result (flag)
+  module function process_def_list_req_resonant (list, id) result (flag)
     class(process_def_list_t), intent(in) :: list
     type(string_t), intent(in) :: id
     logical :: flag
@@ -6839,8 +7848,13 @@ is indicated by a letter in brackets, then the ID and component index
 of the associated process definition, finally the library index, if available.
 <<Process libraries: process library entry: TBP>>=
   procedure :: to_string => process_library_entry_to_string
+<<Process libraries: sub interfaces>>=
+    module function process_library_entry_to_string (object) result (string)
+      type(string_t) :: string
+      class(process_library_entry_t), intent(in) :: object
+    end function process_library_entry_to_string
 <<Process libraries: procedures>>=
-  function process_library_entry_to_string (object) result (string)
+  module function process_library_entry_to_string (object) result (string)
     type(string_t) :: string
     class(process_library_entry_t), intent(in) :: object
     character(32) :: buffer
@@ -6868,8 +7882,19 @@ of the associated process definition, finally the library index, if available.
 @ Initialize with data.  Used for the unit tests.
 <<Process libraries: process library entry: TBP>>=
   procedure :: init => process_library_entry_init
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_entry_init (object, &
+         status, def, i_component, i_external, driver_template)
+      class(process_library_entry_t), intent(out) :: object
+      integer, intent(in) :: status
+      type(process_def_t), target, intent(in) :: def
+      integer, intent(in) :: i_component
+      integer, intent(in) :: i_external
+      class(prc_core_driver_t), intent(inout), allocatable, optional &
+           :: driver_template
+    end subroutine process_library_entry_init
 <<Process libraries: procedures>>=
-  subroutine process_library_entry_init (object, &
+  module subroutine process_library_entry_init (object, &
        status, def, i_component, i_external, driver_template)
     class(process_library_entry_t), intent(out) :: object
     integer, intent(in) :: status
@@ -6894,8 +7919,14 @@ assigned pointers within the library driver, the index within that
 driver, and the process driver which should receive the links.
 <<Process libraries: process library entry: TBP>>=
   procedure :: connect => process_library_entry_connect
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_entry_connect (entry, lib_driver, i)
+      class(process_library_entry_t), intent(inout) :: entry
+      class(prclib_driver_t), intent(in) :: lib_driver
+      integer, intent(in) :: i
+    end subroutine process_library_entry_connect
 <<Process libraries: procedures>>=
-  subroutine process_library_entry_connect (entry, lib_driver, i)
+  module subroutine process_library_entry_connect (entry, lib_driver, i)
     class(process_library_entry_t), intent(inout) :: entry
     class(prclib_driver_t), intent(in) :: lib_driver
     integer, intent(in) :: i
@@ -6953,8 +7984,14 @@ process definition list which is the base object.
 Don't write the MD5 sum since this is used to generate it.
 <<Process libraries: process library: TBP>>=
   procedure :: write => process_library_write
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_write (object, unit, libpath)
+      class(process_library_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: libpath
+    end subroutine process_library_write
 <<Process libraries: procedures>>=
-  subroutine process_library_write (object, unit, libpath)
+  module subroutine process_library_write (object, unit, libpath)
     class(process_library_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: libpath
@@ -6987,8 +8024,13 @@ Don't write the MD5 sum since this is used to generate it.
 @ Condensed version for screen output.
 <<Process libraries: process library: TBP>>=
   procedure :: show => process_library_show
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_show (object, unit)
+      class(process_library_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine process_library_show
 <<Process libraries: procedures>>=
-  subroutine process_library_show (object, unit)
+  module subroutine process_library_show (object, unit)
     class(process_library_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -7020,8 +8062,13 @@ The initializer defines just the basename.  We may now add process definitions
 to the library.
 <<Process libraries: process library: TBP>>=
   procedure :: init => process_library_init
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_init (lib, basename)
+      class(process_library_t), intent(out) :: lib
+      type(string_t), intent(in) :: basename
+    end subroutine process_library_init
 <<Process libraries: procedures>>=
-  subroutine process_library_init (lib, basename)
+  module subroutine process_library_init (lib, basename)
     class(process_library_t), intent(out) :: lib
     type(string_t), intent(in) :: basename
     lib%basename = basename
@@ -7038,8 +8085,13 @@ process code exists already.  We need the driver object, and we should
 check the defined processes against the stored ones.
 <<Process libraries: process library: TBP>>=
   procedure :: init_static => process_library_init_static
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_init_static (lib, basename)
+      class(process_library_t), intent(out) :: lib
+      type(string_t), intent(in) :: basename
+    end subroutine process_library_init_static
 <<Process libraries: procedures>>=
-  subroutine process_library_init_static (lib, basename)
+  module subroutine process_library_init_static (lib, basename)
     class(process_library_t), intent(out) :: lib
     type(string_t), intent(in) :: basename
     lib%basename = basename
@@ -7067,8 +8119,13 @@ NOTE: Currently we handle only [[initial]] process components; [[extra]]
 components are ignored.
 <<Process libraries: process library: TBP>>=
   procedure :: configure => process_library_configure
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_configure (lib, os_data)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+    end subroutine process_library_configure
 <<Process libraries: procedures>>=
-  subroutine process_library_configure (lib, os_data)
+  module subroutine process_library_configure (lib, os_data)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     type(process_def_entry_t), pointer :: def_entry
@@ -7151,8 +8208,13 @@ components are ignored.
 @ Basic setup: allocate the [[entry]] array.
 <<Process libraries: process library: TBP>>=
   procedure :: allocate_entries => process_library_allocate_entries
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_allocate_entries (lib, n_entries)
+      class(process_library_t), intent(inout) :: lib
+      integer, intent(in) :: n_entries
+    end subroutine process_library_allocate_entries
 <<Process libraries: procedures>>=
-  subroutine process_library_allocate_entries (lib, n_entries)
+  module subroutine process_library_allocate_entries (lib, n_entries)
     class(process_library_t), intent(inout) :: lib
     integer, intent(in) :: n_entries
     lib%n_entries = n_entries
@@ -7163,8 +8225,20 @@ components are ignored.
 @ Initialize an entry with data (used by unit tests).
 <<Process libraries: process library: TBP>>=
   procedure :: init_entry => process_library_init_entry
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_init_entry (lib, i, &
+         status, def, i_component, i_external, driver_template)
+      class(process_library_t), intent(inout) :: lib
+      integer, intent(in) :: i
+      integer, intent(in) :: status
+      type(process_def_t), target, intent(in) :: def
+      integer, intent(in) :: i_component
+      integer, intent(in) :: i_external
+      class(prc_core_driver_t), intent(inout), allocatable, optional &
+           :: driver_template
+    end subroutine process_library_init_entry
 <<Process libraries: procedures>>=
-  subroutine process_library_init_entry (lib, i, &
+  module subroutine process_library_init_entry (lib, i, &
        status, def, i_component, i_external, driver_template)
     class(process_library_t), intent(inout) :: lib
     integer, intent(in) :: i
@@ -7188,8 +8262,13 @@ initialized, since otherwise the MD5 sum stored in the driver would be
 overwritten.
 <<Process libraries: process library: TBP>>=
   procedure :: compute_md5sum => process_library_compute_md5sum
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_compute_md5sum (lib, model)
+      class(process_library_t), intent(inout) :: lib
+      class(model_data_t), intent(in), optional, target :: model
+    end subroutine process_library_compute_md5sum
 <<Process libraries: procedures>>=
-  subroutine process_library_compute_md5sum (lib, model)
+  module subroutine process_library_compute_md5sum (lib, model)
     class(process_library_t), intent(inout) :: lib
     class(model_data_t), intent(in), optional, target :: model
     type(process_def_entry_t), pointer :: def_entry
@@ -7213,8 +8292,17 @@ correct MD5 sum.  If yes, do nothing.
 The [[workspace]] optional argument puts any library code in a subdirectory.
 <<Process libraries: process library: TBP>>=
   procedure :: write_makefile => process_library_write_makefile
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_write_makefile &
+         (lib, os_data, force, verbose, testflag, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in) :: force, verbose
+      logical, intent(in), optional :: testflag
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_write_makefile
 <<Process libraries: procedures>>=
-  subroutine process_library_write_makefile &
+  module subroutine process_library_write_makefile &
        (lib, os_data, force, verbose, testflag, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -7255,8 +8343,14 @@ The [[workspace]] optional argument puts any library code in a subdirectory.
 external processes.
 <<Process libraries: process library: TBP>>=
   procedure :: write_driver => process_library_write_driver
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_write_driver (lib, force, workspace)
+      class(process_library_t), intent(inout) :: lib
+      logical, intent(in) :: force
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_write_driver
 <<Process libraries: procedures>>=
-  subroutine process_library_write_driver (lib, force, workspace)
+  module subroutine process_library_write_driver (lib, force, workspace)
     class(process_library_t), intent(inout) :: lib
     logical, intent(in) :: force
     type(string_t), intent(in), optional :: workspace
@@ -7319,8 +8413,14 @@ current compilation.
 \end{enumerate}
 <<Process libraries: process library: TBP>>=
   procedure :: update_status => process_library_update_status
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_update_status (lib, os_data, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_update_status
 <<Process libraries: procedures>>=
-  subroutine process_library_update_status (lib, os_data, workspace)
+  module subroutine process_library_update_status (lib, os_data, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in), optional :: workspace
@@ -7400,8 +8500,16 @@ we remove those files to force a fresh [[make]].
 Finally, if any source code has been generated, we need a driver file.
 <<Process libraries: process library: TBP>>=
   procedure :: make_source => process_library_make_source
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_make_source &
+         (lib, os_data, keep_old_source, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in), optional :: keep_old_source
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_make_source
 <<Process libraries: procedures>>=
-  subroutine process_library_make_source &
+  module subroutine process_library_make_source &
        (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -7449,8 +8557,16 @@ the sources first, just in case. This includes compiling possible \LaTeX
 Feynman diagram files.
 <<Process libraries: process library: TBP>>=
   procedure :: make_compile => process_library_make_compile
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_make_compile &
+         (lib, os_data, keep_old_source, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in), optional :: keep_old_source
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_make_compile
 <<Process libraries: procedures>>=
-  subroutine process_library_make_compile &
+  module subroutine process_library_make_compile &
        (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -7480,8 +8596,16 @@ Feynman diagram files.
 @ Link the process library.  Try to compile first, just in case.
 <<Process libraries: process library: TBP>>=
   procedure :: make_link => process_library_make_link
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_make_link &
+         (lib, os_data, keep_old_source, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in), optional :: keep_old_source
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_make_link
 <<Process libraries: procedures>>=
-  subroutine process_library_make_link &
+  module subroutine process_library_make_link &
        (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
@@ -7509,8 +8633,15 @@ Feynman diagram files.
 functions.
 <<Process libraries: process library: TBP>>=
   procedure :: load => process_library_load
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_load (lib, os_data, keep_old_source, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in), optional :: keep_old_source
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_load
 <<Process libraries: procedures>>=
-  subroutine process_library_load (lib, os_data, keep_old_source, workspace)
+  module subroutine process_library_load (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
@@ -7537,8 +8668,12 @@ functions.
 @ This is the actual loading part for the process methods.
 <<Process libraries: process library: TBP>>=
   procedure :: load_entries => process_library_load_entries
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_load_entries (lib)
+      class(process_library_t), intent(inout) :: lib
+    end subroutine process_library_load_entries
 <<Process libraries: procedures>>=
-  subroutine process_library_load_entries (lib)
+  module subroutine process_library_load_entries (lib)
     class(process_library_t), intent(inout) :: lib
     integer :: i
     do i = 1, size (lib%entry)
@@ -7554,8 +8689,12 @@ functions.
 @ Unload the library, if possible.  This reverts the status to ``linked''.
 <<Process libraries: process library: TBP>>=
   procedure :: unload => process_library_unload
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_unload (lib)
+      class(process_library_t), intent(inout) :: lib
+    end subroutine process_library_unload
 <<Process libraries: procedures>>=
-  subroutine process_library_unload (lib)
+  module subroutine process_library_unload (lib)
     class(process_library_t), intent(inout) :: lib
     select case (lib%status)
     case (STAT_ACTIVE)
@@ -7574,8 +8713,15 @@ functions.
 [[distclean]] is set, also remove the makefile and the driver source.
 <<Process libraries: process library: TBP>>=
   procedure :: clean => process_library_clean
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_clean (lib, os_data, distclean, workspace)
+      class(process_library_t), intent(inout) :: lib
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(in) :: distclean
+      type(string_t), intent(in), optional :: workspace
+    end subroutine process_library_clean
 <<Process libraries: procedures>>=
-  subroutine process_library_clean (lib, os_data, distclean, workspace)
+  module subroutine process_library_clean (lib, os_data, distclean, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: distclean
@@ -7607,8 +8753,12 @@ functions.
 appending new processes.  No files are deleted.
 <<Process libraries: process library: TBP>>=
   procedure :: open => process_library_open
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_open (lib)
+      class(process_library_t), intent(inout) :: lib
+    end subroutine process_library_open
 <<Process libraries: procedures>>=
-  subroutine process_library_open (lib)
+  module subroutine process_library_open (lib)
     class(process_library_t), intent(inout) :: lib
     select case (lib%status)
     case (STAT_OPEN)
@@ -7633,8 +8783,13 @@ appending new processes.  No files are deleted.
 Return the base name of the library
 <<Process libraries: process library: TBP>>=
   procedure :: get_name => process_library_get_name
+<<Process libraries: sub interfaces>>=
+    module function process_library_get_name (lib) result (name)
+      class(process_library_t), intent(in) :: lib
+      type(string_t) :: name
+    end function process_library_get_name
 <<Process libraries: procedures>>=
-  function process_library_get_name (lib) result (name)
+  module function process_library_get_name (lib) result (name)
     class(process_library_t), intent(in) :: lib
     type(string_t) :: name
     name = lib%basename
@@ -7646,8 +8801,13 @@ Once activated, we view the process library object as an interface for
 accessing the matrix elements.
 <<Process libraries: process library: TBP>>=
   procedure :: is_active => process_library_is_active
+<<Process libraries: sub interfaces>>=
+    module function process_library_is_active (lib) result (flag)
+      logical :: flag
+      class(process_library_t), intent(in) :: lib
+    end function process_library_is_active
 <<Process libraries: procedures>>=
-  function process_library_is_active (lib) result (flag)
+  module function process_library_is_active (lib) result (flag)
     logical :: flag
     class(process_library_t), intent(in) :: lib
     flag = lib%status == STAT_ACTIVE
@@ -7658,8 +8818,14 @@ accessing the matrix elements.
 provided, return the status of that entry.
 <<Process libraries: process library: TBP>>=
   procedure :: get_status => process_library_get_status
+<<Process libraries: sub interfaces>>=
+    module function process_library_get_status (lib, i) result (status)
+      class(process_library_t), intent(in) :: lib
+      integer, intent(in), optional :: i
+      integer :: status
+    end function process_library_get_status
 <<Process libraries: procedures>>=
-  function process_library_get_status (lib, i) result (status)
+  module function process_library_get_status (lib, i) result (status)
     class(process_library_t), intent(in) :: lib
     integer, intent(in), optional :: i
     integer :: status
@@ -7676,8 +8842,13 @@ library is re-opened, we can use this to check if existing pointers to
 matrix element code are still valid.
 <<Process libraries: process library: TBP>>=
   procedure :: get_update_counter => process_library_get_update_counter
+<<Process libraries: sub interfaces>>=
+    module function process_library_get_update_counter (lib) result (counter)
+      class(process_library_t), intent(in) :: lib
+      integer :: counter
+    end function process_library_get_update_counter
 <<Process libraries: procedures>>=
-  function process_library_get_update_counter (lib) result (counter)
+  module function process_library_get_update_counter (lib) result (counter)
     class(process_library_t), intent(in) :: lib
     integer :: counter
     counter = lib%update_counter
@@ -7689,8 +8860,14 @@ optional flag is set, set also the entry status codes.  This is used
 for unit tests.
 <<Process libraries: process library: TBP>>=
   procedure :: set_status => process_library_set_status
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_set_status (lib, status, entries)
+      class(process_library_t), intent(inout) :: lib
+      integer, intent(in) :: status
+      logical, intent(in), optional :: entries
+    end subroutine process_library_set_status
 <<Process libraries: procedures>>=
-  subroutine process_library_set_status (lib, status, entries)
+  module subroutine process_library_set_status (lib, status, entries)
     class(process_library_t), intent(inout) :: lib
     integer, intent(in) :: status
     logical, intent(in), optional :: entries
@@ -7704,8 +8881,13 @@ for unit tests.
 @ Return the load status of the associated driver.
 <<Process libraries: process library: TBP>>=
   procedure :: is_loaded => process_library_is_loaded
+<<Process libraries: sub interfaces>>=
+    module function process_library_is_loaded (lib) result (flag)
+      class(process_library_t), intent(in) :: lib
+      logical :: flag
+    end function process_library_is_loaded
 <<Process libraries: procedures>>=
-  function process_library_is_loaded (lib) result (flag)
+  module function process_library_is_loaded (lib) result (flag)
     class(process_library_t), intent(in) :: lib
     logical :: flag
     flag = lib%driver%loaded
@@ -7716,8 +8898,14 @@ for unit tests.
 the process code has been loaded, if external.
 <<Process libraries: process library entry: TBP>>=
   procedure :: fill_constants => process_library_entry_fill_constants
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_entry_fill_constants (entry, driver, data)
+      class(process_library_entry_t), intent(in) :: entry
+      class(prclib_driver_t), intent(in) :: driver
+      type(process_constants_t), intent(out) :: data
+    end subroutine process_library_entry_fill_constants
 <<Process libraries: procedures>>=
-  subroutine process_library_entry_fill_constants (entry, driver, data)
+  module subroutine process_library_entry_fill_constants (entry, driver, data)
     class(process_library_entry_t), intent(in) :: entry
     class(prclib_driver_t), intent(in) :: driver
     type(process_constants_t), intent(out) :: data
@@ -7751,8 +8939,15 @@ the process code has been loaded, if external.
 @ Retrieve the constants for a process
 <<Process libraries: process library: TBP>>=
   procedure :: fill_constants => process_library_fill_constants
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_fill_constants (lib, id, i_component, data)
+      class(process_library_t), intent(in) :: lib
+      type(string_t), intent(in) :: id
+      integer, intent(in) :: i_component
+      type(process_constants_t), intent(out) :: data
+    end subroutine process_library_fill_constants
 <<Process libraries: procedures>>=
-  subroutine process_library_fill_constants (lib, id, i_component, data)
+  module subroutine process_library_fill_constants (lib, id, i_component, data)
     class(process_library_t), intent(in) :: lib
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
@@ -7774,8 +8969,17 @@ identified by a process ID and a subprocess index.  We
 scan the process entries until we have found a match.
 <<Process libraries: process library: TBP>>=
   procedure :: connect_process => process_library_connect_process
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_connect_process &
+         (lib, id, i_component, data, proc_driver)
+      class(process_library_t), intent(in) :: lib
+      type(string_t), intent(in) :: id
+      integer, intent(in) :: i_component
+      type(process_constants_t), intent(out) :: data
+      class(prc_core_driver_t), allocatable, intent(out) :: proc_driver
+    end subroutine process_library_connect_process
 <<Process libraries: procedures>>=
-  subroutine process_library_connect_process &
+  module subroutine process_library_connect_process &
        (lib, id, i_component, data, proc_driver)
     class(process_library_t), intent(in) :: lib
     type(string_t), intent(in) :: id
@@ -7802,8 +9006,13 @@ Shortcut for use in unit tests: fetch the MD5sum from a specific
 library entry and inject it into the writer of a specific record.
 <<Process libraries: process library: TBP>>=
   procedure :: test_transfer_md5sum => process_library_test_transfer_md5sum
+<<Process libraries: sub interfaces>>=
+    module subroutine process_library_test_transfer_md5sum (lib, r, e, c)
+      class(process_library_t), intent(inout) :: lib
+      integer, intent(in) :: r, e, c
+    end subroutine process_library_test_transfer_md5sum
 <<Process libraries: procedures>>=
-  subroutine process_library_test_transfer_md5sum (lib, r, e, c)
+  module subroutine process_library_test_transfer_md5sum (lib, r, e, c)
     class(process_library_t), intent(inout) :: lib
     integer, intent(in) :: r, e, c
     associate (writer => lib%driver%record(r)%writer)
@@ -7815,8 +9024,15 @@ library entry and inject it into the writer of a specific record.
 @
 <<Process libraries: process library: TBP>>=
   procedure :: get_nlo_type => process_library_get_nlo_type
+<<Process libraries: sub interfaces>>=
+    module function process_library_get_nlo_type (lib, id, i_component) result (nlo_type)
+      integer :: nlo_type
+      class(process_library_t), intent(in) :: lib
+      type(string_t), intent(in) :: id
+      integer, intent(in) :: i_component
+    end function process_library_get_nlo_type
 <<Process libraries: procedures>>=
-  function process_library_get_nlo_type (lib, id, i_component) result (nlo_type)
+  module function process_library_get_nlo_type (lib, id, i_component) result (nlo_type)
     integer :: nlo_type
     class(process_library_t), intent(in) :: lib
     type(string_t), intent(in) :: id
@@ -7840,8 +9056,14 @@ appended (again), because functions from that may be reqired.
 Extra models in the local user space need to be treated individually.
 <<Process libraries: process library: TBP>>=
   procedure :: get_modellibs_ldflags => process_library_get_modellibs_ldflags
+<<Process libraries: sub interfaces>>=
+    module function process_library_get_modellibs_ldflags (prc_lib, os_data) result (flags)
+      class(process_library_t), intent(in) :: prc_lib
+      type(os_data_t), intent(in) :: os_data
+      type(string_t) :: flags
+    end function process_library_get_modellibs_ldflags
 <<Process libraries: procedures>>=
-  function process_library_get_modellibs_ldflags (prc_lib, os_data) result (flags)
+  module function process_library_get_modellibs_ldflags (prc_lib, os_data) result (flags)
     class(process_library_t), intent(in) :: prc_lib
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: flags
@@ -7900,8 +9122,14 @@ Extra models in the local user space need to be treated individually.
 @
 <<Process libraries: process library: TBP>>=
   procedure :: get_static_modelname => process_library_get_static_modelname
+<<Process libraries: sub interfaces>>=
+    module function process_library_get_static_modelname (prc_lib, os_data) result (name)
+      class(process_library_t), intent(in) :: prc_lib
+      type(os_data_t), intent(in) :: os_data
+      type(string_t) :: name
+    end function process_library_get_static_modelname
 <<Process libraries: procedures>>=
-  function process_library_get_static_modelname (prc_lib, os_data) result (name)
+  module function process_library_get_static_modelname (prc_lib, os_data) result (name)
     class(process_library_t), intent(in) :: prc_lib
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: name
@@ -9180,8 +10408,6 @@ These are ordinary stacks where new entries are pushed onto the top.
 module prclib_stacks
 
 <<Use strings>>
-  use io_units
-  use format_utils, only: write_separator
   use process_libraries
 
 <<Standard module head>>
@@ -9190,12 +10416,30 @@ module prclib_stacks
 
 <<Prclib stacks: types>>
 
+  interface
+<<Prclib stacks: sub interfaces>>
+  end interface
+
+end module prclib_stacks
+@ %def prclib_stacks
+@
+<<[[prclib_stacks_sub.f90]]>>=
+<<File header>>
+
+submodule (prclib_stacks) prclib_stacks_s
+
+  use io_units
+  use format_utils, only: write_separator
+
+  implicit none
+
 contains
 
 <<Prclib stacks: procedures>>
 
-end module prclib_stacks
-@ %def prclib_stacks
+end submodule prclib_stacks_s
+
+@ %def prclib_stacks_s
 @
 \subsection{The stack entry type}
 A stack entry is a process library object, augmented by a pointer to the
@@ -9230,8 +10474,12 @@ number in the object.  The content is stored as a linked list.
 empty stack can be immediately recycled, if necessary.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: final => prclib_stack_final
+<<Prclib stacks: sub interfaces>>=
+    module subroutine prclib_stack_final (object)
+      class(prclib_stack_t), intent(inout) :: object
+    end subroutine prclib_stack_final
 <<Prclib stacks: procedures>>=
-  subroutine prclib_stack_final (object)
+  module subroutine prclib_stack_final (object)
     class(prclib_stack_t), intent(inout) :: object
     type(prclib_entry_t), pointer :: lib
     do while (associated (object%first))
@@ -9247,8 +10495,14 @@ empty stack can be immediately recycled, if necessary.
 @ Output.  The entries on the stack will be ordered LIFO, i.e., backwards.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: write => prclib_stack_write
+<<Prclib stacks: sub interfaces>>=
+    module subroutine prclib_stack_write (object, unit, libpath)
+      class(prclib_stack_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: libpath
+    end subroutine prclib_stack_write
 <<Prclib stacks: procedures>>=
-  subroutine prclib_stack_write (object, unit, libpath)
+  module subroutine prclib_stack_write (object, unit, libpath)
     class(prclib_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: libpath
@@ -9279,8 +10533,13 @@ pointer is nullified.  Subsequently, the library entry is `owned' by the
 stack and will be finalized when the stack is deleted.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: push => prclib_stack_push
+<<Prclib stacks: sub interfaces>>=
+    module subroutine prclib_stack_push (stack, lib)
+      class(prclib_stack_t), intent(inout) :: stack
+      type(prclib_entry_t), intent(inout), pointer :: lib
+    end subroutine prclib_stack_push
 <<Prclib stacks: procedures>>=
-  subroutine prclib_stack_push (stack, lib)
+  module subroutine prclib_stack_push (stack, lib)
     class(prclib_stack_t), intent(inout) :: stack
     type(prclib_entry_t), intent(inout), pointer :: lib
     lib%next => stack%first
@@ -9297,8 +10556,13 @@ just the bare [[process_library_t]].  There is no [[target]] attribute
 required since the stack elements are allocated via pointers.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: get_first_ptr => prclib_stack_get_first_ptr
+<<Prclib stacks: sub interfaces>>=
+    module function prclib_stack_get_first_ptr (stack) result (ptr)
+      class(prclib_stack_t), intent(in) :: stack
+      type(process_library_t), pointer :: ptr
+    end function prclib_stack_get_first_ptr
 <<Prclib stacks: procedures>>=
-  function prclib_stack_get_first_ptr (stack) result (ptr)
+  module function prclib_stack_get_first_ptr (stack) result (ptr)
     class(prclib_stack_t), intent(in) :: stack
     type(process_library_t), pointer :: ptr
     if (associated (stack%first)) then
@@ -9314,8 +10578,13 @@ in the order in which the elements got pushed onto the stack, so the 'first'
 entry is listed last.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: get_names => prclib_stack_get_names
+<<Prclib stacks: sub interfaces>>=
+    module subroutine prclib_stack_get_names (stack, libname)
+      class(prclib_stack_t), intent(in) :: stack
+      type(string_t), dimension(:), allocatable, intent(out) :: libname
+    end subroutine prclib_stack_get_names
 <<Prclib stacks: procedures>>=
-  subroutine prclib_stack_get_names (stack, libname)
+  module subroutine prclib_stack_get_names (stack, libname)
     class(prclib_stack_t), intent(in) :: stack
     type(string_t), dimension(:), allocatable, intent(out) :: libname
     type(prclib_entry_t), pointer :: lib
@@ -9334,8 +10603,14 @@ entry is listed last.
 @ Return a pointer to the library with given name.
 <<Prclib stacks: prclib stack: TBP>>=
   procedure :: get_library_ptr => prclib_stack_get_library_ptr
+<<Prclib stacks: sub interfaces>>=
+    module function prclib_stack_get_library_ptr (stack, libname) result (ptr)
+      class(prclib_stack_t), intent(in) :: stack
+      type(string_t), intent(in) :: libname
+      type(process_library_t), pointer :: ptr
+    end function prclib_stack_get_library_ptr
 <<Prclib stacks: procedures>>=
-  function prclib_stack_get_library_ptr (stack, libname) result (ptr)
+  module function prclib_stack_get_library_ptr (stack, libname) result (ptr)
     class(prclib_stack_t), intent(in) :: stack
     type(string_t), intent(in) :: libname
     type(process_library_t), pointer :: ptr
@@ -9498,10 +10773,10 @@ module prc_test
 <<Use kinds>>
 <<Use strings>>
   use os_interface
+  use particle_specifiers, only: new_prt_spec
   use process_constants
   use prclib_interfaces
   use prc_core_def
-  use particle_specifiers, only: new_prt_spec
   use process_libraries
 
 <<Standard module head>>
@@ -9510,12 +10785,31 @@ module prc_test
 
 <<Test ME: types>>
 
+  interface
+<<Test ME: sub interfaces>>
+  end interface
+
+contains
+
+<<Test ME: main procedures>>
+
+end module prc_test
+@ %def prc_test
+@
+<<[[prc_test_sub.f90]]>>=
+<<File header>>
+
+submodule (prc_test) prc_test_s
+
+  implicit none
+
 contains
 
 <<Test ME: procedures>>
 
-end module prc_test
-@ %def prc_test
+end submodule prc_test_s
+
+@ %def prc_test_s
 @
 \subsection{Process definition}
 For the process definition we implement an extension of the
@@ -9534,8 +10828,12 @@ For the process definition we implement an extension of the
 @ %def prc_test_def_t
 <<Test ME: test me def: TBP>>=
   procedure, nopass :: type_string => prc_test_def_type_string
+<<Test ME: sub interfaces>>=
+    module function prc_test_def_type_string () result (string)
+      type(string_t) :: string
+    end function prc_test_def_type_string
 <<Test ME: procedures>>=
-  function prc_test_def_type_string () result (string)
+  module function prc_test_def_type_string () result (string)
     type(string_t) :: string
     string = "test_me"
   end function prc_test_def_type_string
@@ -9544,8 +10842,12 @@ For the process definition we implement an extension of the
 @ There is no 'feature' here since there is no external code.
 <<Test ME: test me def: TBP>>=
   procedure, nopass :: get_features => prc_test_def_get_features
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_def_get_features (features)
+      type(string_t), dimension(:), allocatable, intent(out) :: features
+    end subroutine prc_test_def_get_features
 <<Test ME: procedures>>=
-  subroutine prc_test_def_get_features (features)
+  module subroutine prc_test_def_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (0))
   end subroutine prc_test_def_get_features
@@ -9554,8 +10856,15 @@ For the process definition we implement an extension of the
 @ Initialization: set some data (not really useful).
 <<Test ME: test me def: TBP>>=
   procedure :: init => prc_test_def_init
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_def_init (object, model_name, prt_in, prt_out)
+      class(prc_test_def_t), intent(out) :: object
+      type(string_t), intent(in) :: model_name
+      type(string_t), dimension(:), intent(in) :: prt_in
+      type(string_t), dimension(:), intent(in) :: prt_out
+    end subroutine prc_test_def_init
 <<Test ME: procedures>>=
-  subroutine prc_test_def_init (object, model_name, prt_in, prt_out)
+  module subroutine prc_test_def_init (object, model_name, prt_in, prt_out)
     class(prc_test_def_t), intent(out) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -9571,8 +10880,13 @@ For the process definition we implement an extension of the
 @ Write/read process- and method-specific data.  (No-op)
 <<Test ME: test me def: TBP>>=
   procedure :: write => prc_test_def_write
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_def_write (object, unit)
+      class(prc_test_def_t), intent(in) :: object
+      integer, intent(in) :: unit
+    end subroutine prc_test_def_write
 <<Test ME: procedures>>=
-  subroutine prc_test_def_write (object, unit)
+  module subroutine prc_test_def_write (object, unit)
     class(prc_test_def_t), intent(in) :: object
     integer, intent(in) :: unit
   end subroutine prc_test_def_write
@@ -9581,8 +10895,13 @@ For the process definition we implement an extension of the
 @
 <<Test ME: test me def: TBP>>=
   procedure :: read => prc_test_def_read
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_def_read (object, unit)
+      class(prc_test_def_t), intent(out) :: object
+      integer, intent(in) :: unit
+    end subroutine prc_test_def_read
 <<Test ME: procedures>>=
-  subroutine prc_test_def_read (object, unit)
+  module subroutine prc_test_def_read (object, unit)
     class(prc_test_def_t), intent(out) :: object
     integer, intent(in) :: unit
   end subroutine prc_test_def_read
@@ -9590,10 +10909,12 @@ For the process definition we implement an extension of the
 @ %def prc_test_def_read
 @ Allocate the driver for test ME matrix elements.  We get the
 actual component ID (basename), and we can transfer all
-process-specific data from the process definition.
+process-specific data from the process definition.Due to a bug of
+bind(C) features with submodules in gfortran 7/8/9 (and maybe together
+with MPI) this needs to be in the module, not the submodule.
 <<Test ME: test me def: TBP>>=
   procedure :: allocate_driver => prc_test_def_allocate_driver
-<<Test ME: procedures>>=
+<<Test ME: main procedures>>=
   subroutine prc_test_def_allocate_driver (object, driver, basename)
     class(prc_test_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -9614,8 +10935,15 @@ process-specific data from the process definition.
 @ Nothing to connect.  This subroutine will not be called.
 <<Test ME: test me def: TBP>>=
   procedure :: connect => prc_test_def_connect
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_def_connect (def, lib_driver, i, proc_driver)
+      class(prc_test_def_t), intent(in) :: def
+      class(prclib_driver_t), intent(in) :: lib_driver
+      integer, intent(in) :: i
+      class(prc_core_driver_t), intent(inout) :: proc_driver
+    end subroutine prc_test_def_connect
 <<Test ME: procedures>>=
-  subroutine prc_test_def_connect (def, lib_driver, i, proc_driver)
+  module subroutine prc_test_def_connect (def, lib_driver, i, proc_driver)
     class(prc_test_def_t), intent(in) :: def
     class(prclib_driver_t), intent(in) :: lib_driver
     integer, intent(in) :: i
@@ -9641,8 +10969,13 @@ process-specific data from the process definition.
 hard-wire the amplitude method as a type-bound procedure.
 <<Test ME: test me driver: TBP>>=
   procedure, nopass :: get_amplitude => prc_test_get_amplitude
+<<Test ME: sub interfaces>>=
+    module function prc_test_get_amplitude (p) result (amp)
+      complex(default) :: amp
+      real(default), dimension(:,:), intent(in) :: p
+    end function prc_test_get_amplitude
 <<Test ME: procedures>>=
-  function prc_test_get_amplitude (p) result (amp)
+  module function prc_test_get_amplitude (p) result (amp)
     complex(default) :: amp
     real(default), dimension(:,:), intent(in) :: p
     amp = 1
@@ -9652,8 +10985,12 @@ hard-wire the amplitude method as a type-bound procedure.
 @ The reported type is the same as for the [[prc_test_def_t]] type.
 <<Test ME: test me driver: TBP>>=
   procedure, nopass :: type_name => prc_test_type_name
+<<Test ME: sub interfaces>>=
+    module function prc_test_type_name () result (string)
+      type(string_t) :: string
+    end function prc_test_type_name
 <<Test ME: procedures>>=
-  function prc_test_type_name () result (string)
+  module function prc_test_type_name () result (string)
     type(string_t) :: string
     string = "test_me"
   end function prc_test_type_name
@@ -9662,8 +10999,13 @@ hard-wire the amplitude method as a type-bound procedure.
 @ Fill process constants.
 <<Test ME: test me driver: TBP>>=
   procedure :: fill_constants => prc_test_fill_constants
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_fill_constants (driver, data)
+      class(prc_test_t), intent(in) :: driver
+      type(process_constants_t), intent(out) :: data
+    end subroutine prc_test_fill_constants
 <<Test ME: procedures>>=
-  subroutine prc_test_fill_constants (driver, data)
+  module subroutine prc_test_fill_constants (driver, data)
     class(prc_test_t), intent(in) :: driver
     type(process_constants_t), intent(out) :: data
     data%id = driver%id
@@ -9718,10 +11060,12 @@ hard-wire the amplitude method as a type-bound procedure.
 Since this module is there for testing purposes, we set up a
 subroutine that does all the work at once: create a library with the
 two processes (scattering and decay), configure and load, and set up
-the driver.
+the driver. Due to a bug of bind(C) features with submodules in
+gfortran 7/8/9 (and maybe together with MPI) this needs to be in the
+module, not the submodule.
 <<Test ME: public>>=
   public :: prc_test_create_library
-<<Test ME: procedures>>=
+<<Test ME: main procedures>>=
   subroutine prc_test_create_library &
        (libname, lib, scattering, decay, procname1, procname2)
     type(string_t), intent(in) :: libname

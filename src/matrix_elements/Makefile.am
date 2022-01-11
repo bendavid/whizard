@@ -33,12 +33,24 @@ noinst_LTLIBRARIES = libmatrix_elements.la
 check_LTLIBRARIES = libmatrix_elements_ut.la
 
 libmatrix_elements_la_SOURCES = \
+  $(MATRIX_ELEMENTS_MODULES) \
+  $(MATRIX_ELEMENTS_SUBMODULES)
+
+MATRIX_ELEMENTS_MODULES = \
   process_constants.f90 \
   prclib_interfaces.f90 \
   prc_core_def.f90 \
   process_libraries.f90 \
   prclib_stacks.f90 \
   prc_test.f90
+
+MATRIX_ELEMENTS_SUBMODULES = \
+  process_constants_sub.f90 \
+  prclib_interfaces_sub.f90 \
+  prc_core_def_sub.f90 \
+  process_libraries_sub.f90 \
+  prclib_stacks_sub.f90 \
+  prc_test_sub.f90
 
 libmatrix_elements_ut_la_SOURCES = \
   prclib_interfaces_uti.f90 prclib_interfaces_ut.f90 \
@@ -53,11 +65,12 @@ dist_noinst_DATA = matrix_elements.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libmatrix_elements_la_SOURCES:.f90=.$(FCMOD)}
+  ${MATRIX_ELEMENTS_MODULES:.f90=.$(FCMOD)}
 
 # Dump module names into file Modules
+# Submodules must not be included here
 libmatrix_elements_Modules = \
-  ${libmatrix_elements_la_SOURCES:.f90=} \
+  ${MATRIX_ELEMENTS_MODULES:.f90=} \
   ${libmatrix_elements_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libmatrix_elements_Modules); do \
@@ -129,6 +142,14 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../types
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+process_constants_sub.lo: process_constants.lo
+prclib_interfaces_sub.lo: prclib_interfaces.lo
+prc_core_def_sub.lo: prc_core_def.lo
+process_libraries_sub.lo: process_libraries.lo
+prclib_stacks_sub.lo: prclib_stacks.lo
+prc_test_sub.lo: prc_test.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -198,7 +219,7 @@ clean-local: clean-noweb
 	-rm -f matrix_elements.stamp matrix_elements.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
