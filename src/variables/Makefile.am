@@ -32,8 +32,16 @@
 noinst_LTLIBRARIES = libvariables.la
 
 libvariables_la_SOURCES = \
+  $(VARIABLES_MODULES) \
+  $(VARIABLES_SUBMODULES)
+
+VARIABLES_MODULES = \
   variables.f90 \
   observables.f90
+
+VARIABLES_SUBMODULES = \
+  variables_sub.f90 \
+  observables_sub.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = variables.nw
@@ -42,10 +50,11 @@ dist_noinst_DATA = variables.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libvariables_la_SOURCES:.f90=.$(FCMOD)}
+  ${VARIABLES_MODULES:.f90=.$(FCMOD)}
 
 # Dump module names into file Modules
-libvariables_Modules = ${libvariables_la_SOURCES:.f90=}
+# Submodules must not be included here
+libvariables_Modules = ${VARIABLES_MODULES:.f90=}
 Modules: Makefile
 	@for module in $(libvariables_Modules); do \
 		echo $$module >> $@.new; \
@@ -112,6 +121,10 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../physics -I../expr_base -I../fastjet -I../types
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+variables_sub.lo: variables.lo
+observables_sub.lo: observables.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -183,7 +196,7 @@ clean-local: clean-noweb
 	-rm -f variables.stamp variables.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

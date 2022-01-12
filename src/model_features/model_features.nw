@@ -4295,38 +4295,36 @@ for intrinsic variables.  Vice versa, if the variable is not existent, the
     if (var_def%type == EN_CONSTANT) then
        select case (type)
        case (V_LOG)
-          call var_list_append_log  (node%var_list, name, var_def%lval)
+          call node%var_list%append_log (name, var_def%lval)
        case (V_INT)
-          call var_list_append_int  (node%var_list, name, var_def%ival)
+          call node%var_list%append_int (name, var_def%ival)
        case (V_REAL)
-          call var_list_append_real (node%var_list, name, var_def%rval)
+          call node%var_list%append_real (name, var_def%rval)
        case (V_CMPLX)
-          call var_list_append_cmplx (node%var_list, name, var_def%cval)
+          call node%var_list%append_cmplx (name, var_def%cval)
        case (V_PDG)
-          call var_list_append_pdg_array &
-               (node%var_list, name, var_def%aval)
+          call node%var_list%append_pdg_array (name, var_def%aval)
        case (V_SEV)
-          call var_list_append_subevt &
-               (node%var_list, name, var_def%pval)
+          call node%var_list%append_subevt (name, var_def%pval)
        case (V_STR)
-          call var_list_append_string (node%var_list, name, var_def%sval)
+          call node%var_list%append_string (name, var_def%sval)
        end select
     else
        select case (type)
-       case (V_LOG);  call var_list_append_log_ptr &
-            (node%var_list, name, var_def%lval, var_def%value_is_known)
-       case (V_INT);  call var_list_append_int_ptr &
-            (node%var_list, name, var_def%ival, var_def%value_is_known)
-       case (V_REAL); call var_list_append_real_ptr &
-            (node%var_list, name, var_def%rval, var_def%value_is_known)
-       case (V_CMPLX); call var_list_append_cmplx_ptr &
-            (node%var_list, name, var_def%cval, var_def%value_is_known)
-       case (V_PDG);  call var_list_append_pdg_array_ptr &
-            (node%var_list, name, var_def%aval, var_def%value_is_known)
-       case (V_SEV); call var_list_append_subevt_ptr &
-            (node%var_list, name, var_def%pval, var_def%value_is_known)
-       case (V_STR); call var_list_append_string_ptr &
-            (node%var_list, name, var_def%sval, var_def%value_is_known)
+       case (V_LOG);  call node%var_list%append_log_ptr &
+            (name, var_def%lval, var_def%value_is_known)
+       case (V_INT);  call node%var_list%append_int_ptr &
+            (name, var_def%ival, var_def%value_is_known)
+       case (V_REAL); call node%var_list%append_real_ptr &
+            (name, var_def%rval, var_def%value_is_known)
+       case (V_CMPLX); call node%var_list%append_cmplx_ptr &
+            (name, var_def%cval, var_def%value_is_known)
+       case (V_PDG);  call node%var_list%append_pdg_array_ptr &
+            (name, var_def%aval, var_def%value_is_known)
+       case (V_SEV); call node%var_list%append_subevt_ptr &
+            (name, var_def%pval, var_def%value_is_known)
+       case (V_STR); call node%var_list%append_string_ptr &
+            (name, var_def%sval, var_def%value_is_known)
        end select
     end if
   end subroutine eval_node_init_block
@@ -4633,8 +4631,8 @@ pseudo-observable is always known when it is referred to.
     allocate (node%var_list)
     call node%var_list%link (var_list)
     allocate (node%index, source = 0)
-    call var_list_append_int_ptr &
-         (node%var_list, var_str ("Index"), node%index, known, intrinsic=.true.)
+    call node%var_list%append_int_ptr &
+         (var_str ("Index"), node%index, known, intrinsic=.true.)
     if (.not. associated (node%prt2)) then
        call var_list_set_observables_unary &
             (node%var_list, node%prt1)
@@ -8274,7 +8272,7 @@ conversion.
     case (V_SEV);  var_name = "@" // var_name
     case (V_STR);  var_name = "$" // var_name    ! $ sign
     end select
-    call var_list_check_user_var (var_list, var_name, var_type, new)
+    call var_list%check_user_var (var_name, var_type, new)
     call eval_node_compile_genexpr (en1, pn_var_expr, var_list, var_type)
     call insert_conversion_node (en1, var_type)
     allocate (en)
@@ -9665,7 +9663,6 @@ create a logical [[eval_node_t]] with value [[.true.]].
     type(parse_node_t), pointer :: pn_arg0, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1
     type(string_t) :: key
-    type(var_entry_t), pointer :: var
     if (debug_active (D_MODEL_F)) then
        print *, "read numeric_function";  call parse_node_write (pn)
     end if
@@ -11426,9 +11423,8 @@ to this as variable [[@evt]] in the local variable list.
     type(eval_tree_t), intent(inout), target :: eval_tree
     type(subevt_t), intent(in), target :: subevt
     logical, save, target :: known = .true.
-    call var_list_append_subevt_ptr &
-         (eval_tree%var_list, var_str ("@evt"), subevt, known, &
-         intrinsic=.true.)
+    call eval_tree%var_list%append_subevt_ptr &
+         (var_str ("@evt"), subevt, known, intrinsic=.true.)
   end subroutine eval_tree_set_subevt
 
 @ %def eval_tree_set_subevt
@@ -11714,7 +11710,7 @@ safe against real/integer mismatch.
     else
        write (u, "(3x,A)") "[empty]"
     end if
-    if (vl)  call var_list_write (expr%var_list, unit)
+    if (vl)  call expr%var_list%write (unit)
   end subroutine eval_tree_write
 
 @ %def eval_tree_write
@@ -12152,10 +12148,10 @@ observable and the node evaluation.
     call syntax_expr_init ()
     call syntax_write (syntax_expr, u)
     allocate (var_list)
-    call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
-    call var_list_append_real (var_list, var_str ("x"), -5._default)
-    call var_list_append_int  (var_list, var_str ("foo"), -27)
-    call var_list_append_real (var_list, var_str ("mb"), 4._default)
+    call var_list%append_real (var_str ("tolerance"), 0._default)
+    call var_list%append_real (var_str ("x"), -5._default)
+    call var_list%append_int  (var_str ("foo"), -27)
+    call var_list%append_real (var_str ("mb"), 4._default)
     expr_text = &
          "let real twopi = 2 * pi in" // &
          "  twopi * sqrt (25.d0 - mb^2)" // &
@@ -12256,15 +12252,15 @@ observable and the node evaluation.
     call syntax_pexpr_init ()
     call syntax_write (syntax_pexpr, u)
     allocate (var_list)
-    call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
+    call var_list%append_real (var_str ("tolerance"), 0._default)
     aval = 0
-    call var_list_append_pdg_array (var_list, var_str ("particle"), aval)
+    call var_list%append_pdg_array (var_str ("particle"), aval)
     aval = [11,-11]
-    call var_list_append_pdg_array (var_list, var_str ("lepton"), aval)
+    call var_list%append_pdg_array (var_str ("lepton"), aval)
     aval = 22
-    call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
+    call var_list%append_pdg_array (var_str ("photon"), aval)
     aval = 1
-    call var_list_append_pdg_array (var_list, var_str ("u"), aval)
+    call var_list%append_pdg_array (var_str ("u"), aval)
     call subevt_init (subevt)
     call subevt%reset (6)
     call subevt%set_incoming (1, 1, &
@@ -12852,7 +12848,7 @@ tree) is displayed, and the vertex hash table is shown.
          show_scheme=show_scheme)
     if (show_var) then
        write (u, "(A)")
-       call var_list_write (model%var_list, unit, follow_link=.false.)
+       call model%var_list%write (unit, follow_link=.false.)
     end if
   end subroutine model_write
 
@@ -13051,8 +13047,7 @@ arbitrary.
     par_data => model%get_par_real_ptr (i)
     call model%par(i)%init_independent_value (par_data, name, value)
     value_ptr => par_data%get_real_ptr ()
-    call var_list_append_real_ptr (model%var_list, &
-         name, value_ptr, &
+    call model%var_list%append_real_ptr (name, value_ptr, &
          is_known=known, intrinsic=.true.)
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_constant
@@ -13073,8 +13068,7 @@ arbitrary.
        call model%par(i)%init_derived (par_data, name, pn, model%var_list)
     end if
     value_ptr => par_data%get_real_ptr ()
-    call var_list_append_real_ptr (model%var_list, &
-         name, value_ptr, &
+    call model%var_list%append_real_ptr (name, value_ptr, &
          is_known=known, locked=.not.constant, intrinsic=.true.)
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_parse_node
@@ -13089,8 +13083,7 @@ arbitrary.
     par_data => model%get_par_real_ptr (i)
     call model%par(i)%init_external (par_data, name)
     value_ptr => par_data%get_real_ptr ()
-    call var_list_append_real_ptr (model%var_list, &
-         name, value_ptr, &
+    call model%var_list%append_real_ptr (name, value_ptr, &
          is_known=known, locked=.true., intrinsic=.true.)
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_external
@@ -13102,8 +13095,7 @@ arbitrary.
     class(modelpar_data_t), pointer :: par_data
     par_data => model%get_par_real_ptr (i)
     call model%par(i)%init_unused (par_data, name)
-    call var_list_append_real (model%var_list, &
-         name, locked=.true., intrinsic=.true.)
+    call model%var_list%append_real (name, locked=.true., intrinsic=.true.)
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_unused
 
@@ -13226,7 +13218,7 @@ Write the model variable list.
     class(model_t), intent(in) :: model
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: follow_link
-    call var_list_write (model%var_list, unit, follow_link)
+    call model%var_list%write (unit, follow_link)
   end subroutine model_write_var_list
 
 @ %def model_write_var_list
@@ -14501,18 +14493,16 @@ the field content.
     integer :: i, j
     field_array => model%get_field_array_ptr ()
     aval = UNDEFINED
-    call var_list_append_pdg_array &
-         (model%var_list, var_str ("particle"), &
-          aval, locked = .true., intrinsic=.true.)
+    call model%var_list%append_pdg_array (var_str ("particle"), &
+         aval, locked = .true., intrinsic=.true.)
     do i = 1, size (field_array)
        aval = field_array(i)%get_pdg ()
        name = field_array(i)%get_longname ()
-       call var_list_append_pdg_array &
-            (model%var_list, name, aval, locked=.true., intrinsic=.true.)
+       call model%var_list%append_pdg_array &
+            (name, aval, locked=.true., intrinsic=.true.)
        call field_array(i)%get_name_array (.false., name_array)
        do j = 1, size (name_array)
-          call var_list_append_pdg_array &
-               (model%var_list, name_array(j), &
+          call model%var_list%append_pdg_array (name_array(j), &
                aval, locked=.true., intrinsic=.true.)
        end do
        model%max_field_name_length = &
@@ -14520,8 +14510,7 @@ the field content.
        aval = - field_array(i)%get_pdg ()
        call field_array(i)%get_name_array (.true., name_array)
        do j = 1, size (name_array)
-          call var_list_append_pdg_array &
-               (model%var_list, name_array(j), &
+          call model%var_list%append_pdg_array (name_array(j), &
                aval, locked=.true., intrinsic=.true.)
        end do
        if (size (name_array) > 0) then
@@ -14536,25 +14525,22 @@ the field content.
        mask(i) = field%get_charge_type () /= 1
     end do
     aval = pack (pdg, mask)
-    call var_list_append_pdg_array &
-         (model%var_list, var_str ("charged"), &
-          aval, locked = .true., intrinsic=.true.)
+    call model%var_list%append_pdg_array (var_str ("charged"), &
+         aval, locked = .true., intrinsic=.true.)
     do i = 1, size (pdg)
        field => model%get_field_ptr (pdg(i))
        mask(i) = field%get_charge_type () == 1
     end do
     aval = pack (pdg, mask)
-    call var_list_append_pdg_array &
-         (model%var_list, var_str ("neutral"), &
-          aval, locked = .true., intrinsic=.true.)
+    call model%var_list%append_pdg_array (var_str ("neutral"), &
+         aval, locked = .true., intrinsic=.true.)
     do i = 1, size (pdg)
        field => model%get_field_ptr (pdg(i))
        mask(i) = field%get_color_type () /= 1
     end do
     aval = pack (pdg, mask)
-    call var_list_append_pdg_array &
-         (model%var_list, var_str ("colored"), &
-          aval, locked = .true., intrinsic=.true.)
+    call model%var_list%append_pdg_array (var_str ("colored"), &
+         aval, locked = .true., intrinsic=.true.)
   end subroutine model_append_field_vars
 
 @ %def model_append_field_vars
@@ -17381,6 +17367,7 @@ end module slha_interface_uti
     character(*), parameter :: file_slha = "slha_test.dat"
     type(model_list_t) :: model_list
     type(model_t), pointer :: model => null ()
+    type(var_list_t), pointer :: var_list
     type(string_t), dimension(0) :: empty_string_array
 
     write (u, "(A)")  "* Test output: SLHA Interface"
@@ -17419,8 +17406,8 @@ end module slha_interface_uti
     write (u, "(A)")  "* Writing out the list of variables (reals only):"
     write (u, "(A)")
 
-    call var_list_write (model%get_var_list_ptr (), &
-         only_type = V_REAL, unit = u)
+    var_list => model%get_var_list_ptr ()
+    call var_list%write (only_type = V_REAL, unit = u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Writing SLHA output to '" // file_slha // "'"

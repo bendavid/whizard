@@ -2156,7 +2156,7 @@ module rt_data_uti
   use lexers
   use parser
   use flavors
-  use variables, only: var_list_t, var_entry_t, var_entry_init_int
+  use variables, only: var_list_t
   use eval_trees
   use models
   use prclib_stacks

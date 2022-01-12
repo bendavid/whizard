@@ -176,7 +176,7 @@ the [[subevt_t]] parent type.
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Local variables:"
     call write_separator (u)
-    call var_list_write (object%var_list, u, follow_link=.false., &
+    call object%var_list%write (u, follow_link=.false., &
          pacified = pacified)
     call write_separator (u)
     if (object%subevt_filled) then
@@ -223,23 +223,18 @@ pointers to subobjects.
     class(subevt_expr_t), intent(inout), target :: expr
     real(default), intent(in) :: sqrts
     call expr%var_list%final ()
-    call var_list_append_real (expr%var_list, &
-         var_str ("sqrts"), sqrts, &
+    call expr%var_list%append_real (var_str ("sqrts"), sqrts, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_real_ptr (expr%var_list, &
-         var_str ("sqrts_hat"), expr%sqrts_hat, &
+    call expr%var_list%append_real_ptr (var_str ("sqrts_hat"), &
+         expr%sqrts_hat, is_known = expr%subevt_filled, &
+         locked = .true., verbose = .false., intrinsic = .true.)
+    call expr%var_list%append_int_ptr (var_str ("n_in"), expr%n_in, &
          is_known = expr%subevt_filled, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_int_ptr (expr%var_list, &
-         var_str ("n_in"), expr%n_in, &
+    call expr%var_list%append_int_ptr (var_str ("n_out"), expr%n_out, &
          is_known = expr%subevt_filled, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_int_ptr (expr%var_list, &
-         var_str ("n_out"), expr%n_out, &
-         is_known = expr%subevt_filled, &
-         locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_int_ptr (expr%var_list, &
-         var_str ("n_tot"), expr%n_tot, &
+    call expr%var_list%append_int_ptr (var_str ("n_tot"), expr%n_tot, &
          is_known = expr%subevt_filled, &
          locked = .true., verbose = .false., intrinsic = .true.)
   end subroutine subevt_expr_setup_vars
@@ -253,9 +248,8 @@ list, if it is not yet present.
   subroutine subevt_expr_setup_var_self (expr)
     class(subevt_expr_t), intent(inout), target :: expr
     if (.not. expr%var_list%contains (var_str ("@evt"))) then
-       call var_list_append_subevt_ptr &
-            (expr%var_list, &
-            var_str ("@evt"), expr%subevt_t, &
+       call expr%var_list%append_subevt_ptr &
+            (var_str ("@evt"), expr%subevt_t, &
             is_known = expr%subevt_filled, &
             locked = .true., verbose = .false., intrinsic=.true.)
     end if
@@ -835,37 +829,29 @@ specific variables for full events.  There is the event index.
     class(event_expr_t), intent(inout), target :: expr
     real(default), intent(in) :: sqrts
     call expr%base_setup_vars (sqrts)
-    call var_list_append_string_ptr (expr%var_list, &
-         var_str ("$process_id"), expr%id, &
-         is_known = expr%has_id, &
+    call expr%var_list%append_string_ptr (var_str ("$process_id"), &
+         expr%id, is_known = expr%has_id, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_int_ptr (expr%var_list, &
-         var_str ("process_num_id"), expr%num_id, &
-         is_known = expr%has_num_id, &
+    call expr%var_list%append_int_ptr (var_str ("process_num_id"), &
+         expr%num_id, is_known = expr%has_num_id, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_real_ptr (expr%var_list, &
-         var_str ("sqme"), expr%sqme_prc, &
-         is_known = expr%has_sqme_prc, &
+    call expr%var_list%append_real_ptr (var_str ("sqme"), &
+         expr%sqme_prc, is_known = expr%has_sqme_prc, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_real_ptr (expr%var_list, &
-         var_str ("sqme_ref"), expr%sqme_ref, &
-         is_known = expr%has_sqme_ref, &
+    call expr%var_list%append_real_ptr (var_str ("sqme_ref"), &
+         expr%sqme_ref, is_known = expr%has_sqme_ref, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_int_ptr (expr%var_list, &
-         var_str ("event_index"), expr%index, &
-         is_known = expr%has_index, &
+    call expr%var_list%append_int_ptr (var_str ("event_index"), &
+         expr%index, is_known = expr%has_index, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_real_ptr (expr%var_list, &
-         var_str ("event_weight"), expr%weight_prc, &
-         is_known = expr%has_weight_prc, &
+    call expr%var_list%append_real_ptr (var_str ("event_weight"), &
+         expr%weight_prc, is_known = expr%has_weight_prc, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_real_ptr (expr%var_list, &
-         var_str ("event_weight_ref"), expr%weight_ref, &
-         is_known = expr%has_weight_ref, &
+    call expr%var_list%append_real_ptr (var_str ("event_weight_ref"), &
+         expr%weight_ref, is_known = expr%has_weight_ref, &
          locked = .true., verbose = .false., intrinsic = .true.)
-    call var_list_append_real_ptr (expr%var_list, &
-         var_str ("event_excess"), expr%excess_prc, &
-         is_known = expr%has_excess_prc, &
+    call expr%var_list%append_real_ptr (var_str ("event_excess"), &
+         expr%excess_prc, is_known = expr%has_excess_prc, &
          locked = .true., verbose = .false., intrinsic = .true.)
   end subroutine event_expr_setup_vars
 
@@ -19264,7 +19250,7 @@ it should be linked to the global variable list, anyway.
     class(process_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
     if (associated (object%var_list)) then
-       call var_list_write (object%var_list, unit)
+       call object%var_list%write (unit)
     end if
   end subroutine process_stack_write_var_list
 

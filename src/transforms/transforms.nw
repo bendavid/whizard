@@ -13421,11 +13421,11 @@ We test the implementation of all I/O methods.
 
     call data%init (n_proc = 1, n_alt = 2)
 
-    call var_list_append_log (var_list, var_str ("?unweighted"), .false., &
+    call var_list%append_log (var_str ("?unweighted"), .false., &
          intrinsic = .true.)
-    call var_list_append_string (var_list, var_str ("$sample_normalization"), &
+    call var_list%append_string (var_str ("$sample_normalization"), &
          var_str ("auto"), intrinsic = .true.)
-    call var_list_append_real (var_list, var_str ("safety_factor"), &
+    call var_list%append_real (var_str ("safety_factor"), &
          1._default, intrinsic = .true.)
 
     allocate (event)
