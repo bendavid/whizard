@@ -33,6 +33,10 @@ noinst_LTLIBRARIES = libevents.la
 check_LTLIBRARIES = libevents_ut.la
 
 libevents_la_SOURCES = \
+  $(EVENTS_MODULES) \
+  $(EVENTS_SUBMODULES)
+
+EVENTS_MODULES = \
   event_base.f90 \
   event_handles.f90 \
   eio_data.f90 \
@@ -51,6 +55,25 @@ libevents_la_SOURCES = \
   eio_stdhep.f90 \
   eio_hepmc.f90 \
   eio_lcio.f90
+
+EVENTS_SUBMODULES = \
+  event_base_sub.f90 \
+  eio_data_sub.f90 \
+  eio_base_sub.f90 \
+  eio_direct_sub.f90 \
+  eio_checkpoints_sub.f90 \
+  eio_callback_sub.f90 \
+  eio_weights_sub.f90 \
+  eio_dump_sub.f90 \
+  hep_common_sub.f90 \
+  hepmc_interface_sub.f90 \
+  lcio_interface_sub.f90 \
+  hep_events_sub.f90 \
+  eio_ascii_sub.f90 \
+  eio_lhef_sub.f90 \
+  eio_stdhep_sub.f90 \
+  eio_hepmc_sub.f90 \
+  eio_lcio_sub.f90
 
 libevents_ut_la_SOURCES = \
   eio_data_uti.f90 eio_data_ut.f90 \
@@ -75,10 +98,11 @@ dist_noinst_DATA = events.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libevents_la_SOURCES:.f90=.$(FCMOD)}
+  ${EVENTS_MODULES:.f90=.$(FCMOD)}
 
+# Dump module names into file Modules
 libevents_Modules = \
-  ${libevents_la_SOURCES:.f90=} \
+  ${EVENTS_MODULES:.f90=} \
   ${libevents_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libevents_Modules); do \
@@ -153,6 +177,25 @@ libevents_la_LIBADD = \
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../fastjet -I../particles -I../xdr
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+event_base_sub.lo: event_base.lo
+eio_data_sub.lo: eio_data.lo
+eio_base_sub.lo: eio_base.lo
+eio_direct_sub.lo: eio_direct.lo
+eio_checkpoints_sub.lo: eio_checkpoints.lo
+eio_callback_sub.lo: eio_callback.lo
+eio_weights_sub.lo: eio_weights.lo
+eio_dump_sub.lo: eio_dump.lo
+hep_common_sub.lo: hep_common.lo
+hepmc_interface_sub.lo: hepmc_interface.lo
+lcio_interface_sub.lo: lcio_interface.lo
+hep_events_sub.lo: hep_events.lo
+eio_ascii_sub.lo: eio_ascii.lo
+eio_lhef_sub.lo: eio_lhef.lo
+eio_stdhep_sub.lo: eio_stdhep.lo
+eio_hepmc_sub.lo: eio_hepmc.lo
+eio_lcio_sub.lo: eio_lcio.lo
 
 ########################################################################
 ## Default Fortran compiler options
