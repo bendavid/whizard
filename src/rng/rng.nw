@@ -18,7 +18,7 @@ Implementation of the RNG abstract types:
   Interface to the TAO random number generator
   which the VAMP package provides.  Note that VAMP explicitly requests
   this generator.
-\item[Module [[rng{stream]]:]
+\item[Module [[rng_stream]]:]
   Implementation of RNGstream proposed by L'Ecuyer. The RNGStream provides
   access to different streams and/or substream of random numbers.
 \end{description}
@@ -40,7 +40,6 @@ module rng_base
 
 <<Use kinds>>
   use kinds, only: i16
-  use constants, only: TWOPI
 
 <<Standard module head>>
 
@@ -50,12 +49,29 @@ module rng_base
 
 <<RNG base: interfaces>>
 
+  interface
+<<RNG base: sub interfaces>>
+  end interface
+
+end module rng_base
+@ %def rng_base
+@
+<<[[rng_base_sub.f90]]>>=
+<<File header>>
+
+submodule (rng_base) rng_base_s
+
+  use constants, only: TWOPI
+
+  implicit none
+
 contains
 
 <<RNG base: procedures>>
 
-end module rng_base
-@ %def rng_base
+end submodule rng_base_s
+
+@ %def rng_base_s
 @
 \subsection{Generator type}
 The rng object is actually the state of the random-number generator.
@@ -148,8 +164,17 @@ from the PDG review.
        rng_generate_gaussian_single, rng_generate_gaussian_array
   procedure, private :: rng_generate_gaussian_single
   procedure, private :: rng_generate_gaussian_array
+<<RNG base: sub interfaces>>=
+    module subroutine rng_generate_gaussian_single (rng, x)
+      class(rng_t), intent(inout) :: rng
+      real(default), intent(out) :: x
+    end subroutine rng_generate_gaussian_single
+    module subroutine rng_generate_gaussian_array (rng, x)
+      class(rng_t), intent(inout) :: rng
+      real(default), dimension(:), intent(out) :: x
+    end subroutine rng_generate_gaussian_array
 <<RNG base: procedures>>=
-  subroutine rng_generate_gaussian_single (rng, x)
+  module subroutine rng_generate_gaussian_single (rng, x)
     class(rng_t), intent(inout) :: rng
     real(default), intent(out) :: x
     real(default), dimension(2) :: u
@@ -157,7 +182,7 @@ from the PDG review.
     x = sin (twopi * u(1)) * sqrt (- 2 * log (u(2)))
   end subroutine rng_generate_gaussian_single
 
-  subroutine rng_generate_gaussian_array (rng, x)
+  module subroutine rng_generate_gaussian_array (rng, x)
     class(rng_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
     integer :: i
@@ -518,9 +543,6 @@ Set up a factory and spawn generators.
 module selectors
 
 <<Use kinds>>
-  use io_units
-  use diagnostics
-  use format_defs, only: FMT_14, FMT_19
   use rng_base
 
 <<Standard module head>>
@@ -529,12 +551,31 @@ module selectors
 
 <<Selectors: types>>
 
+  interface
+<<Selectors: sub interfaces>>
+  end interface
+
+end module selectors
+@ %def selectors
+@
+<<[[selectors_sub.f90]]>>=
+<<File header>>
+
+submodule (selectors) selectors_s
+
+  use io_units
+  use diagnostics
+  use format_defs, only: FMT_14, FMT_19
+
+  implicit none
+
 contains
 
 <<Selectors: procedures>>
 
-end module selectors
-@ %def selectors
+end submodule selectors_s
+
+@ %def selectors_s
 @
 \subsection{Selector type}
 The rng object is actually the state of the random-number generator.
@@ -549,14 +590,20 @@ The methods initialize/reset and call the generator for this state.
      real(default), dimension(:), allocatable :: acc
    contains
    <<Selectors: selector: TBP>>
-end type selector_t
+  end type selector_t
 
 @ %def selector_t
 @ Display contents.
 <<Selectors: selector: TBP>>=
   procedure :: write => selector_write
+<<Selectors: sub interfaces>>=
+    module subroutine selector_write (object, unit, testflag)
+      class(selector_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag
+    end subroutine selector_write
 <<Selectors: procedures>>=
-  subroutine selector_write (object, unit, testflag)
+  module subroutine selector_write (object, unit, testflag)
     class(selector_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
@@ -590,8 +637,15 @@ this, but set up the selector so that it always returns the first
 entry.
 <<Selectors: selector: TBP>>=
   procedure :: init => selector_init
+<<Selectors: sub interfaces>>=
+    module subroutine selector_init (selector, weight, negative_weights, offset)
+      class(selector_t), intent(out) :: selector
+      real(default), dimension(:), intent(in) :: weight
+      logical, intent(in), optional :: negative_weights
+      integer, intent(in), optional :: offset
+    end subroutine selector_init
 <<Selectors: procedures>>=
-  subroutine selector_init (selector, weight, negative_weights, offset)
+  module subroutine selector_init (selector, weight, negative_weights, offset)
     class(selector_t), intent(out) :: selector
     real(default), dimension(:), intent(in) :: weight
     logical, intent(in), optional :: negative_weights
@@ -634,8 +688,14 @@ entry.
 uniformly distributed random number between 0 and 1.
 <<Selectors: selector: TBP>>=
   procedure :: select => selector_select
+<<Selectors: sub interfaces>>=
+    module function selector_select (selector, x) result (n)
+      class(selector_t), intent(in) :: selector
+      real(default), intent(in) :: x
+      integer :: n
+    end function selector_select
 <<Selectors: procedures>>=
-  function selector_select (selector, x) result (n)
+  module function selector_select (selector, x) result (n)
     class(selector_t), intent(in) :: selector
     real(default), intent(in) :: x
     integer :: n
@@ -653,8 +713,14 @@ uniformly distributed random number between 0 and 1.
 is only one entry.)
 <<Selectors: selector: TBP>>=
   procedure :: generate => selector_generate
+<<Selectors: sub interfaces>>=
+    module subroutine selector_generate (selector, rng, n)
+      class(selector_t), intent(in) :: selector
+      class(rng_t), intent(inout) :: rng
+      integer, intent(out) :: n
+    end subroutine selector_generate
 <<Selectors: procedures>>=
-  subroutine selector_generate (selector, rng, n)
+  module subroutine selector_generate (selector, rng, n)
     class(selector_t), intent(in) :: selector
     class(rng_t), intent(inout) :: rng
     integer, intent(out) :: n
@@ -674,8 +740,14 @@ linear search for the inverse lookup, assuming that efficiency is not
 an issue for this function.
 <<Selectors: selector: TBP>>=
   procedure :: get_weight => selector_get_weight
+<<Selectors: sub interfaces>>=
+    module function selector_get_weight (selector, n) result (weight)
+      class(selector_t), intent(in) :: selector
+      integer, intent(in) :: n
+      real(default) :: weight
+    end function selector_get_weight
 <<Selectors: procedures>>=
-  function selector_get_weight (selector, n) result (weight)
+  module function selector_get_weight (selector, n) result (weight)
     class(selector_t), intent(in) :: selector
     integer, intent(in) :: n
     real(default) :: weight
@@ -890,8 +962,6 @@ which is available via the VAMP package.
 module rng_tao
 
 <<Use kinds>>
-  use io_units
-  use format_utils, only: write_indent
   use tao_random_numbers !NODEP!
 
   use rng_base
@@ -902,12 +972,34 @@ module rng_tao
 
 <<RNG tao: types>>
 
+  interface
+<<RNG tao: sub interfaces>>
+  end interface
+
+contains
+
+<<RNG tao: main procedures>>
+
+end module rng_tao
+@ %def rng_tao
+@
+<<[[rng_tao_sub.f90]]>>=
+<<File header>>
+
+submodule (rng_tao) rng_tao_s
+
+  use io_units
+  use format_utils, only: write_indent
+
+  implicit none
+
 contains
 
 <<RNG tao: procedures>>
 
-end module rng_tao
-@ %def rng_tao
+end submodule rng_tao_s
+
+@ %def rng_tao_s
 @
 \subsection{Generator type}
 The rng object is actually the state of the random-number generator.
@@ -930,8 +1022,13 @@ number of calls since seeding.
 @ Output: Display seed and number of calls.
 <<RNG tao: rng tao: TBP>>=
   procedure :: write => rng_tao_write
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_write (rng, unit, indent)
+      class(rng_tao_t), intent(in) :: rng
+      integer, intent(in), optional :: unit, indent
+    end subroutine rng_tao_write
 <<RNG tao: procedures>>=
-  subroutine rng_tao_write (rng, unit, indent)
+  module subroutine rng_tao_write (rng, unit, indent)
     class(rng_tao_t), intent(in) :: rng
     integer, intent(in), optional :: unit, indent
     integer :: u, ind
@@ -953,8 +1050,13 @@ sufficient for a seed.
 The seed may be omitted.  The default seed is 0.
 <<RNG tao: rng tao: TBP>>=
   procedure :: init => rng_tao_init
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_init (rng, seed)
+      class(rng_tao_t), intent(out) :: rng
+      integer, intent(in), optional :: seed
+    end subroutine rng_tao_init
 <<RNG tao: procedures>>=
-  subroutine rng_tao_init (rng, seed)
+  module subroutine rng_tao_init (rng, seed)
     class(rng_tao_t), intent(out) :: rng
     integer, intent(in), optional :: seed
     if (present (seed))  rng%seed = seed
@@ -966,8 +1068,12 @@ The seed may be omitted.  The default seed is 0.
 for another call of [[init]] to reset the generator.
 <<RNG tao: rng tao: TBP>>=
   procedure :: final => rng_tao_final
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_final (rng)
+      class(rng_tao_t), intent(inout) :: rng
+    end subroutine rng_tao_final
 <<RNG tao: procedures>>=
-  subroutine rng_tao_final (rng)
+  module subroutine rng_tao_final (rng)
     class(rng_tao_t), intent(inout) :: rng
     call tao_random_destroy (rng%state)
   end subroutine rng_tao_final
@@ -983,8 +1089,17 @@ an interface for [[tao_random_numbers]].
 <<RNG tao: rng tao: TBP>>=
   procedure :: generate_single => rng_tao_generate_single
   procedure :: generate_array => rng_tao_generate_array
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_generate_single (rng, x)
+      class(rng_tao_t), intent(inout) :: rng
+      real(default), intent(out) :: x
+    end subroutine rng_tao_generate_single
+    module subroutine rng_tao_generate_array (rng, x)
+      class(rng_tao_t), intent(inout) :: rng
+      real(default), dimension(:), intent(out) :: x
+    end subroutine rng_tao_generate_array
 <<RNG tao: procedures>>=
-  subroutine rng_tao_generate_single (rng, x)
+  module subroutine rng_tao_generate_single (rng, x)
     class(rng_tao_t), intent(inout) :: rng
     real(default), intent(out) :: x
     real(default) :: r
@@ -993,7 +1108,7 @@ an interface for [[tao_random_numbers]].
     rng%n_calls = rng%n_calls + 1
   end subroutine rng_tao_generate_single
 
-  subroutine rng_tao_generate_array (rng, x)
+  module subroutine rng_tao_generate_array (rng, x)
     class(rng_tao_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
     real(default) :: r
@@ -1029,8 +1144,13 @@ starting with zero.
 @ Output.
 <<RNG tao: rng tao factory: TBP>>=
   procedure :: write => rng_tao_factory_write
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_factory_write (object, unit)
+      class(rng_tao_factory_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine rng_tao_factory_write
 <<RNG tao: procedures>>=
-  subroutine rng_tao_factory_write (object, unit)
+  module subroutine rng_tao_factory_write (object, unit)
     class(rng_tao_factory_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -1043,17 +1163,25 @@ starting with zero.
 @ Initialize, translating the given seed.
 <<RNG tao: rng tao factory: TBP>>=
   procedure :: init => rng_tao_factory_init
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_factory_init (factory, seed)
+      class(rng_tao_factory_t), intent(out) :: factory
+      integer(i16), intent(in), optional :: seed
+    end subroutine rng_tao_factory_init
 <<RNG tao: procedures>>=
-  subroutine rng_tao_factory_init (factory, seed)
+  module subroutine rng_tao_factory_init (factory, seed)
     class(rng_tao_factory_t), intent(out) :: factory
     integer(i16), intent(in), optional :: seed
     if (present (seed))  factory%s = seed
   end subroutine rng_tao_factory_init
 
 @ %def rng_tao_factory_init
+@ Due to a bug of allocating polymorphic types with submodules in
+gfortran 7/8/9  (and maybe together with MPI) this needs to be in the
+module, not the submodule.
 <<RNG tao: rng tao factory: TBP>>=
   procedure :: make => rng_tao_factory_make
-<<RNG tao: procedures>>=
+<<RNG tao: main procedures>>=
   subroutine rng_tao_factory_make (factory, rng)
     class(rng_tao_factory_t), intent(inout) :: factory
     class(rng_t), intent(out), allocatable :: rng
@@ -1274,27 +1402,47 @@ module rng_stream
 
 <<Use kinds>>
   use kinds, only: i16
-  use io_units
-  use format_utils, only: write_indent
-  use diagnostics
-
   use rng_base
 
 <<Standard module head>>
-
-<<RNG stream: parameters>>
 
 <<RNG stream: public>>
 
 <<RNG stream: types>>
 
+  interface
+<<RNG stream: sub interfaces>>
+  end interface
+
+contains
+
+<<RNG stream: main procedures>>
+
+end module rng_stream
+@ %def rng_stream
+@
+<<[[rng_stream_sub.f90]]>>=
+<<File header>>
+
+submodule (rng_stream) rng_stream_s
+
+  use io_units
+  use format_utils, only: write_indent
+  use diagnostics
+
+  implicit none
+
+<<RNG stream: parameters>>
+
 contains
 
 <<RNG stream: procedures>>
 
-end module rng_stream
-@ %def rng_stream
-@ We store the current position in the stream of random numbers. Furthermore, we
+end submodule rng_stream_s
+
+@ %def rng_stream_s
+@
+We store the current position in the stream of random numbers. Furthermore, we
 store the beginning of the (latest) substream and the initial starting point of
 the stream, which corresponds to the ``seed''. The default seed is 1234.
 <<RNG stream: public>>=
@@ -1315,8 +1463,14 @@ the stream, which corresponds to the ``seed''. The default seed is 1234.
 @ Output. Display current position and the (sub-)stream positions.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: write => rng_stream_write
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_write (rng, unit, indent)
+      class(rng_stream_t), intent(in) :: rng
+      integer, intent(in), optional :: unit
+      integer, intent(in), optional :: indent
+    end subroutine rng_stream_write
 <<RNG stream: procedures>>=
-  subroutine rng_stream_write (rng, unit, indent)
+  module subroutine rng_stream_write (rng, unit, indent)
     class(rng_stream_t), intent(in) :: rng
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
@@ -1355,8 +1509,13 @@ the stream, which corresponds to the ``seed''. The default seed is 1234.
 @ Initialise the generator. Set the states to the (optional) seed.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: init => rng_stream_init
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_init (rng, seed)
+      class(rng_stream_t), intent(out) :: rng
+      integer, intent(in), optional :: seed
+    end subroutine rng_stream_init
 <<RNG stream: procedures>>=
-  subroutine rng_stream_init (rng, seed)
+  module subroutine rng_stream_init (rng, seed)
     class(rng_stream_t), intent(out) :: rng
     integer, intent(in), optional :: seed
     real(default), dimension(3, 2) :: real_seed
@@ -1370,8 +1529,12 @@ the stream, which corresponds to the ``seed''. The default seed is 1234.
 @ Finalize. Nothing to do.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: final => rng_stream_final
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_final (rng)
+      class(rng_stream_t), intent(inout) :: rng
+    end subroutine rng_stream_final
 <<RNG stream: procedures>>=
-  subroutine rng_stream_final (rng)
+  module subroutine rng_stream_final (rng)
     class(rng_stream_t), intent(inout) :: rng
   end subroutine rng_stream_final
 
@@ -1380,8 +1543,13 @@ the stream, which corresponds to the ``seed''. The default seed is 1234.
 or larger than $m_1$ or $m_2$.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: set_initial_stream => rng_stream_set_initial_stream
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_set_initial_stream (rng, seed)
+      class(rng_stream_t), intent(inout) :: rng
+      real(default), dimension(3, 2), intent(in) :: seed
+    end subroutine rng_stream_set_initial_stream
 <<RNG stream: procedures>>=
-  subroutine rng_stream_set_initial_stream (rng, seed)
+  module subroutine rng_stream_set_initial_stream (rng, seed)
     class(rng_stream_t), intent(inout) :: rng
     real(default), dimension(3, 2), intent(in) :: seed
     if (any (seed(:, 1) > m1)) then
@@ -1435,17 +1603,22 @@ $y(3, 1) - y(3, 2) + m_1$ is congruent to $y(3, 1) - y(3, 2) \mod{m_1}$.
        shape (A2p0), order = [2, 1])
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: generate_single => rng_stream_generate_single
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_generate_single (rng, x)
+      class(rng_stream_t), intent(inout) :: rng
+      real(default), intent(out) :: x
+    end subroutine rng_stream_generate_single
 <<RNG stream: procedures>>=
-  subroutine rng_stream_generate_single (rng, x)
+  module subroutine rng_stream_generate_single (rng, x)
     class(rng_stream_t), intent(inout) :: rng
     real(default), intent(out) :: x
     associate (y => rng%current_position)
       y(:, 1) = mod (matmul (A1p0, y(:, 1)), m1)
-      if (y(3, 1) < 0.) y(3, 1) = y(3, 1) + m1
+      if (y(3, 1) < 0._default) y(3, 1) = y(3, 1) + m1
       y(:, 2) = mod (matmul (A2p0, y(:, 2)), m2)
-      if (y(3, 2) < 0.) y(3, 2) = y(3, 2) + m2
+      if (y(3, 2) < 0._default) y(3, 2) = y(3, 2) + m2
       x = y(3, 1) - y(3, 2)
-      if (x < 0.) x = x + m1
+      if (x < 0._default) x = x + m1
       x = x * norm
     end associate
     if (rng%antithetic) x = 1. - x
@@ -1455,8 +1628,13 @@ $y(3, 1) - y(3, 2) + m_1$ is congruent to $y(3, 1) - y(3, 2) \mod{m_1}$.
 @ Generate an array of real random numbers.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: generate_array => rng_stream_generate_array
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_generate_array (rng, x)
+      class(rng_stream_t), intent(inout) :: rng
+      real(default), dimension(:), intent(out) :: x
+    end subroutine rng_stream_generate_array
 <<RNG stream: procedures>>=
-  subroutine rng_stream_generate_array (rng, x)
+  module subroutine rng_stream_generate_array (rng, x)
     class(rng_stream_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
     integer :: j
@@ -1469,8 +1647,12 @@ $y(3, 1) - y(3, 2) + m_1$ is congruent to $y(3, 1) - y(3, 2) \mod{m_1}$.
 @ Reset to initial stream.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: reset_stream => rng_stream_reset_stream
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_reset_stream (rng)
+      class(rng_stream_t), intent(inout) :: rng
+    end subroutine rng_stream_reset_stream
 <<RNG stream: procedures>>=
-  subroutine rng_stream_reset_stream (rng)
+  module subroutine rng_stream_reset_stream (rng)
     class(rng_stream_t), intent(inout) :: rng
     rng%current_position = rng%initial_stream
     rng%beginning_substream = rng%initial_stream
@@ -1480,8 +1662,12 @@ $y(3, 1) - y(3, 2) + m_1$ is congruent to $y(3, 1) - y(3, 2) \mod{m_1}$.
 @ Reset to beginning of substream.
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: reset_substream => rng_stream_reset_substream
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_reset_substream (rng)
+      class(rng_stream_t), intent(inout) :: rng
+    end subroutine rng_stream_reset_substream
 <<RNG stream: procedures>>=
-  subroutine rng_stream_reset_substream (rng)
+  module subroutine rng_stream_reset_substream (rng)
     class(rng_stream_t), intent(inout) :: rng
     rng%current_position = rng%beginning_substream
   end subroutine rng_stream_reset_substream
@@ -1501,8 +1687,12 @@ $y(3, 1) - y(3, 2) + m_1$ is congruent to $y(3, 1) - y(3, 2) \mod{m_1}$.
        shape(A2p76), order = [2, 1])
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: next_substream => rng_stream_next_substream
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_next_substream (rng)
+      class(rng_stream_t), intent(inout) :: rng
+    end subroutine rng_stream_next_substream
 <<RNG stream: procedures>>=
-  subroutine rng_stream_next_substream (rng)
+  module subroutine rng_stream_next_substream (rng)
     class(rng_stream_t), intent(inout) :: rng
     associate (x => rng%beginning_substream)
       x(:,1) = matmul_mod (A1p76, x(:,1), m1)
@@ -1533,8 +1723,13 @@ The procedure must only be used with care! Misuse can lead to wrong results!
        shape(A2p0), order = [2, 1])
 <<RNG stream: rng stream: TBP>>=
   procedure, public :: advance_state => rng_stream_advance_state
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_advance_state (rng, n)
+      class(rng_stream_t), intent(inout) :: rng
+      integer, intent(in) :: n
+    end subroutine rng_stream_advance_state
 <<RNG stream: procedures>>=
-  subroutine rng_stream_advance_state (rng, n)
+  module subroutine rng_stream_advance_state (rng, n)
     class(rng_stream_t), intent(inout) :: rng
     integer, intent(in) :: n
     real(default), dimension(3, 3) :: A1pn, A2pn
@@ -1558,7 +1753,7 @@ We refer to the original paper from L'Ecuyer for further reading.
     real(default), dimension(3, 3) :: w
     integer :: i
     w = a
-    c = 0.; forall (i = 1:3) c(i, i) = 1.
+    c = 0._default; forall (i = 1:3) c(i, i) = 1._default
     i = n
     do while (i > 0)
        if (mod(i, 2) /= 0) c = matmat_mod (w, c, m)
@@ -1605,8 +1800,13 @@ We store the seed and the initial stream, also, the beginning of the substream.
 @ Output.
 <<RNG stream: rng stream factory: TBP>>=
   procedure, public :: write => rng_stream_factory_write
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_factory_write (object, unit)
+      class(rng_stream_factory_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine rng_stream_factory_write
 <<RNG stream: procedures>>=
-  subroutine rng_stream_factory_write (object, unit)
+  module subroutine rng_stream_factory_write (object, unit)
     class(rng_stream_factory_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -1627,8 +1827,13 @@ we are using floating-point arithmetic and not integer arithemtic due to a
 larger set of number in the representation of real numbers.
 <<RNG stream: rng stream factory: TBP>>=
   procedure, public :: init => rng_stream_factory_init
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_factory_init (factory, seed)
+      class(rng_stream_factory_t), intent(out) :: factory
+      integer(i16), intent(in), optional :: seed
+    end subroutine rng_stream_factory_init
 <<RNG stream: procedures>>=
-  subroutine rng_stream_factory_init (factory, seed)
+  module subroutine rng_stream_factory_init (factory, seed)
     class(rng_stream_factory_t), intent(out) :: factory
     integer(i16), intent(in), optional :: seed
     real(default), dimension(3, 2) :: real_seed
@@ -1639,9 +1844,12 @@ larger set of number in the representation of real numbers.
 
 @ %def rng_stream_factory_init
 @ Allocate a new RNG and different stream states, accordingly.
+Due to a bug of allocating polymorphic types with submodules in
+gfortran 7/8/9  (and maybe together with MPI) this needs to be in the
+module, not the submodule.
 <<RNG stream: rng stream factory: TBP>>=
   procedure, public :: make => rng_stream_factory_make
-<<RNG stream: procedures>>=
+<<RNG stream: main procedures>>=
   subroutine rng_stream_factory_make (factory, rng)
     class(rng_stream_factory_t), intent(inout) :: factory
     class(rng_t), intent(out), allocatable :: rng
@@ -1657,20 +1865,24 @@ larger set of number in the representation of real numbers.
 @ %def rng_stream_factory_make
 @ Advance seed. Use the precalculated transistion matrices for the streams.
 <<RNG stream: parameters>>=
-real(default), dimension(3,3), parameter :: A1p127 = reshape (&
-     [2427906178.0_default, 3580155704.0_default, 949770784.0_default, &
-     226153695.0_default, 1230515664.0_default, 3580155704.0_default, &
-     1988835001.0_default, 986791581.0_default, 1230515664.0_default], &
-     shape(A1p127), order = [2, 1])
-real(default), dimension(3,3), parameter :: A2p127 = reshape (&
-     [1464411153.0_default, 277697599.0_default, 1610723613.0_default, &
-     32183930.0_default, 1464411153.0_default, 1022607788.0_default, &
-     2824425944.0_default, 32183930.0_default, 2093834863.0_default], &
-     shape(A2p127), order = [2, 1])
+  real(default), dimension(3, 3), parameter :: A1p127 = reshape (&
+       [2427906178.0_default, 3580155704.0_default, 949770784.0_default, &
+       226153695.0_default, 1230515664.0_default, 3580155704.0_default, &
+       1988835001.0_default, 986791581.0_default, 1230515664.0_default], &
+       shape(A1p127), order = [2, 1])
+  real(default), dimension(3, 3), parameter :: A2p127 = reshape (&
+       [1464411153.0_default, 277697599.0_default, 1610723613.0_default, &
+       32183930.0_default, 1464411153.0_default, 1022607788.0_default, &
+       2824425944.0_default, 32183930.0_default, 2093834863.0_default], &
+       shape(A2p127), order = [2, 1])
 <<RNG stream: rng stream factory: TBP>>=
   procedure, private :: advance_seed => rng_stream_factory_advance_seed
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_factory_advance_seed (factory)
+      class(rng_stream_factory_t), intent(inout) :: factory
+    end subroutine rng_stream_factory_advance_seed
 <<RNG stream: procedures>>=
-  subroutine rng_stream_factory_advance_seed (factory)
+  module subroutine rng_stream_factory_advance_seed (factory)
     class(rng_stream_factory_t), intent(inout) :: factory
     factory%seed(:,1) = matmul_mod (A1p127, factory%seed(:,1), m1)
     factory%seed(:,2) = matmul_mod (A2p127, factory%seed(:,2), m2)
@@ -1680,8 +1892,6 @@ real(default), dimension(3,3), parameter :: A2p127 = reshape (&
 @ Matrix modulo calculation optimized for $2^{53}$ representation of floating
 numbers. Speed efficiency is not a requirement, because the streams should not
 be advanced that often.
-<<RNG stream: public>>=
-  private :: matmul_mod
 <<RNG stream: procedures>>=
   function matmul_mod (a, u, m) result (v)
     real(default), dimension(:, :), intent(in) :: a
@@ -1711,8 +1921,6 @@ a \cdot s mod m = ((a1 \cdot s \mod{m}) * 2^{17} + a2 \cdot s) \mod{m}.
        a23n = 1370589.0_default, &
        two53 = 9007199254740992.0_default, &
        two17 = 131072.0_default
-<<RNG stream: public>>=
-  private :: mult_mod
 <<RNG stream: procedures>>=
   function mult_mod (a, b, c, m) result (v)
     real(default), intent(in) :: a
@@ -1730,7 +1938,7 @@ a \cdot s mod m = ((a1 \cdot s \mod{m}) * 2^{17} + a2 \cdot s) \mod{m}.
        v = v * two17 + a2 * b + c
     end if
     v = mod (v, m)
-    if (v < 0.0) v = v + m
+    if (v < 0.0_default) v = v + m
   end function mult_mod
 
 @ %def mult_mod
@@ -2055,12 +2263,8 @@ module dispatch_rng
 
   use kinds, only: i16
 <<Use strings>>
-  use diagnostics
   use variables
-
   use rng_base
-  use rng_tao
-  use rng_stream
 
 <<Standard module head>>
 
@@ -2068,12 +2272,34 @@ module dispatch_rng
 
 <<Dispatch rng: variables>>
 
+  interface
+<<Dispatch rng: sub interfaces>>
+  end interface
+
+end module dispatch_rng
+@ %def dispatch_rng
+@
+<<[[dispatch_rng_sub.f90]]>>=
+<<File header>>
+
+submodule (dispatch_rng) dispatch_rng_s
+
+  use diagnostics
+  use rng_tao
+  use rng_stream
+
+  implicit none
+
+<<Dispatch rng: parameters>>
+
 contains
 
 <<Dispatch rng: procedures>>
 
-end module dispatch_rng
-@ %def dispatch_rng
+end submodule dispatch_rng_s
+
+@ %def dispatch_rng_s
+@
 @ Allocate a random-number generator factory according to the variable
 [[$rng_method]], using the current seed in the global record.  (If the
 variable does not exist, the lookup will return the value 0.)  We take
@@ -2086,8 +2312,16 @@ the rng factory and return it to the caller.  If the user wants to have
 identical sequences, he can always set the seed manually, before it is used.
 <<Dispatch rng: public>>=
   public :: dispatch_rng_factory
+<<Dispatch rng: sub interfaces>>=
+    module subroutine dispatch_rng_factory &
+         (rng_factory, var_list, next_rng_seed)
+      class(rng_factory_t), allocatable, intent(inout) :: rng_factory
+      type(var_list_t), intent(in) :: var_list
+      integer, intent(out) :: next_rng_seed
+    end subroutine dispatch_rng_factory
 <<Dispatch rng: procedures>>=
-  subroutine dispatch_rng_factory (rng_factory, var_list, next_rng_seed)
+  module subroutine dispatch_rng_factory &
+       (rng_factory, var_list, next_rng_seed)
     class(rng_factory_t), allocatable, intent(inout) :: rng_factory
     type(var_list_t), intent(in) :: var_list
     integer, intent(out) :: next_rng_seed
@@ -2138,15 +2372,20 @@ variable list.  Separate subroutine with optional argument for more
 flexibility.
 <<Dispatch rng: public>>=
   public :: update_rng_seed_in_var_list
+<<Dispatch rng: sub interfaces>>=
+    module subroutine update_rng_seed_in_var_list (var_list, next_rng_seed)
+      type(var_list_t), intent(inout), optional :: var_list
+      integer, intent(in) :: next_rng_seed
+    end subroutine update_rng_seed_in_var_list
 <<Dispatch rng: procedures>>=
-  subroutine update_rng_seed_in_var_list (var_list, next_rng_seed)
+  module subroutine update_rng_seed_in_var_list (var_list, next_rng_seed)
     type(var_list_t), intent(inout), optional :: var_list
     integer, intent(in) :: next_rng_seed
     if (present (var_list)) then 
        call var_list%set_int (var_str ("seed"), next_rng_seed, is_known=.true.)
     end if
   end subroutine update_rng_seed_in_var_list
-  
+
 @ %def update_rng_seed_in_var_list
 @
 \subsection{Unit tests}

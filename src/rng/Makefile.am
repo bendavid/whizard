@@ -32,11 +32,22 @@ noinst_LTLIBRARIES = librng.la
 check_LTLIBRARIES = librng_ut.la
 
 librng_la_SOURCES = \
+  $(RNG_MODULES) \
+  $(RNG_SUBMODULES)
+
+RNG_MODULES = \
   rng_base.f90 \
   selectors.f90 \
   rng_tao.f90 \
   rng_stream.f90 \
   dispatch_rng.f90
+
+RNG_SUBMODULES = \
+  rng_base_sub.f90 \
+  selectors_sub.f90 \
+  rng_tao_sub.f90 \
+  rng_stream_sub.f90 \
+  dispatch_rng_sub.f90
 
 librng_ut_la_SOURCES = \
   rng_base_uti.f90 rng_base_ut.f90 \
@@ -52,9 +63,9 @@ dist_noinst_DATA = rng.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${librng_la_SOURCES:.f90=.$(FCMOD)}
+  ${RNG_MODULES:.f90=.$(FCMOD)}
 
-librng_Modules = ${librng_la_SOURCES:.f90=} ${librng_ut_la_SOURCES:.f90=}
+librng_Modules = ${RNG_MODULES:.f90=} ${librng_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(librng_Modules); do \
           echo $$module >> $@.new; \
@@ -122,6 +133,13 @@ rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FCMOD)
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../../vamp/src -I../variables -I../expr_base -I../parsing -I../types -I../fastjet -I../physics -I../combinatorics
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+rng_base_sub.lo: rng_base.lo
+selectors_sub.lo: selectors.lo
+rng_tao_sub.lo: rng_tao.lo
+rng_stream_sub.lo: rng_stream.lo
+dispatch_rng_sub.lo: dispatch_rng.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -189,7 +207,7 @@ clean-local: clean-noweb
 	-rm -f rng.stamp rng.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
