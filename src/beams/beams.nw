@@ -27470,7 +27470,7 @@ module dispatch_beams
   use sm_qed, only: qed_t, alpha_qed_fixed_t, alpha_qed_from_scale_t
   use beam_structures
   use dispatch_rng, only: dispatch_rng_factory
- use dispatch_rng, only: update_rng_seed_in_var_list
+  use dispatch_rng, only: update_rng_seed_in_var_list
   use sf_base
   use sf_mappings
   use sf_isr

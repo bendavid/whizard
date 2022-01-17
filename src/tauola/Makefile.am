@@ -28,16 +28,23 @@
 ## The files in this directory end up in an auxiliary libtool library.
 noinst_LTLIBRARIES = libtauola_interface.la
 libtauola_interface_la_SOURCES = \
-   hepev4_aux.f90 \
-   tauola_interface.f90
+  $(TAUOLA_MODULES) \
+  $(TAUOLA_SUBMODULES)
+
+TAUOLA_MODULES = \
+  hepev4_aux.f90 \
+  tauola_interface.f90
+
+TAUOLA_SUBMODULES = \
+  tauola_interface_sub.f90
 
 # Modules and installation
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libtauola_interface_la_SOURCES:.f90=.$(FCMOD)}
+  ${TAUOLA_MODULES:.f90=.$(FCMOD)}
 
-libtauola_interface_Modules = ${libtauola_interface_la_SOURCES:.f90=}
+libtauola_interface_Modules = ${TAUOLA_MODULES:.f90=}
 Modules: Makefile
 	@for module in $(libtauola_interface_Modules); do \
           echo $$module >> $@.new; \
@@ -111,6 +118,10 @@ endif
 AM_FCFLAGS =
 
 ########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+tauola_interface_sub.lo: tauola_interface.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -148,5 +159,5 @@ maintainer-clean-local:
 clean-local:
 	-rm -f $(MODULES)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
