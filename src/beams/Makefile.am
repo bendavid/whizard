@@ -30,6 +30,10 @@ noinst_LTLIBRARIES = libbeams.la
 check_LTLIBRARIES = libbeams_ut.la
 
 libbeams_la_SOURCES = \
+  $(BEAMS_MODULES) \
+  $(BEAMS_SUBMODULES)
+
+BEAMS_MODULES = \
   beam_structures.f90 \
   beams.f90 \
   sf_mappings.f90 \
@@ -48,6 +52,25 @@ libbeams_la_SOURCES = \
   sf_lhapdf.f90 \
   pdf.f90 \
   dispatch_beams.f90
+
+BEAMS_SUBMODULES = \
+  beam_structures_sub.f90 \
+  beams_sub.f90 \
+  sf_mappings_sub.f90 \
+  sf_aux_sub.f90 \
+  sf_base_sub.f90 \
+  sf_isr_sub.f90 \
+  sf_epa_sub.f90 \
+  sf_ewa_sub.f90 \
+  sf_escan_sub.f90 \
+  sf_gaussian_sub.f90 \
+  sf_beam_events_sub.f90 \
+  sf_circe1_sub.f90 \
+  sf_circe2_sub.f90 \
+  sf_pdf_builtin_sub.f90 \
+  sf_lhapdf_sub.f90 \
+  pdf_sub.f90 \
+  dispatch_beams_sub.f90
 
 libbeams_ut_la_SOURCES = \
   beam_structures_uti.f90 beam_structures_ut.f90 \
@@ -73,9 +96,9 @@ dist_noinst_DATA = beams.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libbeams_la_SOURCES:.f90=.$(FCMOD)}
+  ${BEAMS_MODULES:.f90=.$(FCMOD)}
 
-libbeams_Modules = ${libbeams_la_SOURCES:.f90=} ${libbeams_ut_la_SOURCES:.f90=}
+libbeams_Modules = ${BEAMS_MODULES:.f90=} ${libbeams_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libbeams_Modules); do \
           echo $$module >> $@.new; \
@@ -155,6 +178,25 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../types -I../particles -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../variables -I../expr_base -I../parsing
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+beam_structures_sub.lo: beam_structures.lo
+beams_sub.lo: beams.lo
+sf_mappings_sub.lo: sf_mappings.lo
+sf_aux_sub.lo: sf_aux.lo
+sf_base_sub.lo: sf_base.lo
+sf_isr_sub.lo: sf_isr.lo
+sf_epa_sub.lo: sf_epa.lo
+sf_ewa_sub.lo: sf_ewa.lo
+sf_escan_sub.lo: sf_escan.lo
+sf_gaussian_sub.lo: sf_gaussian.lo
+sf_beam_events_sub.lo: sf_beam_events.lo
+sf_circe1_sub.lo: sf_circe1.lo
+sf_circe2_sub.lo: sf_circe2.lo
+sf_pdf_builtin_sub.lo: sf_pdf_builtin.lo
+sf_lhapdf_sub.lo: sf_lhapdf.lo
+pdf_sub.lo: pdf.lo
+dispatch_beams_sub.lo: dispatch_beams.lo
 
 ########################################################################
 ## Default Fortran compiler options
