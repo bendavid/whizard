@@ -33,12 +33,24 @@ noinst_LTLIBRARIES = libme_methods.la
 check_LTLIBRARIES = libme_methods_ut.la
 
 libme_methods_la_SOURCES = \
+  $(ME_METHODS_MODULES) \
+  $(ME_METHODS_SUBMODULES)
+
+ME_METHODS_MODULES = \
   prc_core.f90 \
   prc_test_core.f90 \
   prc_template_me.f90 \
   prc_omega.f90 \
   prc_external.f90 \
   prc_threshold.f90
+
+ME_METHODS_SUBMODULES = \
+  prc_core_sub.f90 \
+  prc_test_core_sub.f90 \
+  prc_template_me_sub.f90 \
+  prc_omega_sub.f90 \
+  prc_external_sub.f90 \
+  prc_threshold_sub.f90
 
 libme_methods_ut_la_SOURCES = \
   prc_template_me_uti.f90 prc_template_me_ut.f90 \
@@ -51,10 +63,10 @@ dist_noinst_DATA = me_methods.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libme_methods_la_SOURCES:.f90=.$(FCMOD)}
+  ${ME_METHODS_MODULES:.f90=.$(FCMOD)}
 
 libme_methods_Modules = \
-  ${libme_methods_la_SOURCES:.f90=}\
+  ${ME_METHODS_MODULES:.f90=}\
   ${libme_methods_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libme_methods_Modules); do \
@@ -103,7 +115,6 @@ Module_dependencies.sed: $(module_lists)
 
 DISTCLEANFILES = Module_dependencies.sed
 
-
 # The following line just says
 #    include Makefile.depend
 # but in a portable fashion (depending on automake's AM_MAKE_INCLUDE
@@ -129,6 +140,14 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I ../variables -I../fastjet -I../pdf_builtin -I../lhapdf
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+prc_core_sub.lo: prc_core.lo
+prc_test_core_sub.lo: prc_test_core.lo
+prc_template_me_sub.lo: prc_template_me.lo
+prc_omega_sub.lo: prc_omega.lo
+prc_external_sub.lo: prc_external.lo
+prc_threshold_sub.lo: prc_threshold.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -198,7 +217,7 @@ clean-local: clean-noweb
 	-rm -f me_methods.stamp me_methods.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
