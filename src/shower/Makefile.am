@@ -31,6 +31,10 @@ noinst_LTLIBRARIES = libshower.la
 check_LTLIBRARIES = libshower_ut.la
 
 libshower_la_SOURCES = \
+  $(SHOWER_MODULES) \
+  $(SHOWER_SUBMODULES)
+
+SHOWER_MODULES = \
   pythia6_up.f \
   ktclus.f90 \
   shower_base.f90 \
@@ -38,6 +42,13 @@ libshower_la_SOURCES = \
   shower_core.f90 \
   shower_pythia6.f90 \
   shower_pythia8.f90
+
+SHOWER_SUBMODULES = \
+  shower_base_sub.f90 \
+  shower_partons_sub.f90 \
+  shower_core_sub.f90 \
+  shower_pythia6_sub.f90 \
+  shower_pythia8_sub.f90
 
 libshower_ut_la_SOURCES = \
   shower_base_uti.f90 shower_base_ut.f90
@@ -56,7 +67,7 @@ nodist_execmod_HEADERS = \
   shower_pythia6.$(FCMOD) \
   shower_pythia8.$(FCMOD)
 
-libshower_Modules = ${libshower_la_SOURCES:.f90=} ${libshower_ut_la_SOURCES:.f90=}
+libshower_Modules = ${SHOWER_MODULES:.f90=} ${libshower_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libshower_Modules); do \
 		echo $$module >> $@.new; \
@@ -140,6 +151,14 @@ AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../fastjet -I../lhapdf -I ../
 AM_FFLAGS =
 
 ########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+shower_base_sub.lo: shower_base.lo
+shower_partons_sub.lo: shower_partons.lo
+shower_core_sub.lo: shower_core.lo
+shower_pythia6_sub.lo: shower_pythia6.lo
+shower_pythia8_sub.lo: shower_pythia8.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -208,7 +227,7 @@ clean-local: clean-noweb
 	-rm -f shower.stamp shower.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

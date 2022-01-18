@@ -16,17 +16,10 @@ module shower_base
 
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use constants
-  use diagnostics
-  use format_utils, only: write_separator
   use lorentz
   use particles
   use os_interface
   use rng_base
-  use physics_defs
-  use sm_physics, only: running_as_lam
-  use particles
   use variables
   use model_data
   use pdf
@@ -42,12 +35,34 @@ module shower_base
 
 <<Shower base: interfaces>>
 
+  interface
+<<Shower base: sub interfaces>>
+  end interface
+
+end module shower_base
+@ %def shower_base
+@
+<<[[shower_base_sub.f90]]>>=
+<<File header>>
+
+submodule (shower_base) shower_base_s
+
+  use io_units
+  use constants
+  use diagnostics
+  use format_utils, only: write_separator
+  use physics_defs
+  use sm_physics, only: running_as_lam
+
+  implicit none
+
 contains
 
 <<Shower base: procedures>>
 
-end module shower_base
-@ %def shower_base
+end submodule shower_base_s
+
+@ %def shower_base_s
 @
 \subsection{Shower implementations}
 <<Shower base: public>>=
@@ -61,8 +76,13 @@ end module shower_base
 @ A dictionary
 <<Shower base: public>>=
   public :: shower_method_of_string
+<<Shower base: sub interfaces>>=
+    elemental module function shower_method_of_string (string) result (i)
+      integer :: i
+      type(string_t), intent(in) :: string
+    end function shower_method_of_string
 <<Shower base: procedures>>=
-  elemental function shower_method_of_string (string) result (i)
+  elemental module function shower_method_of_string (string) result (i)
     integer :: i
     type(string_t), intent(in) :: string
     select case (char(string))
@@ -81,8 +101,13 @@ end module shower_base
 @
 <<Shower base: public>>=
   public :: shower_method_to_string
+<<Shower base: sub interfaces>>=
+    elemental module function shower_method_to_string (i) result (string)
+      type(string_t) :: string
+      integer, intent(in) :: i
+    end function shower_method_to_string
 <<Shower base: procedures>>=
-  elemental function shower_method_to_string (i) result (string)
+  elemental module function shower_method_to_string (i) result (string)
     type(string_t) :: string
     integer, intent(in) :: i
     select case (i)
@@ -162,8 +187,13 @@ end of the line.
 hadronization are switched on).
 <<Shower base: shower settings: TBP>>=
   procedure :: init => shower_settings_init
+<<Shower base: sub interfaces>>=
+    module subroutine shower_settings_init (settings, var_list)
+      class(shower_settings_t), intent(out) :: settings
+      type(var_list_t), intent(in) :: var_list
+    end subroutine shower_settings_init
 <<Shower base: procedures>>=
-  subroutine shower_settings_init (settings, var_list)
+  module subroutine shower_settings_init (settings, var_list)
     class(shower_settings_t), intent(out) :: settings
     type(var_list_t), intent(in) :: var_list
 
@@ -236,8 +266,13 @@ hadronization are switched on).
 @
 <<Shower base: shower settings: TBP>>=
   procedure :: write => shower_settings_write
+<<Shower base: sub interfaces>>=
+    module subroutine shower_settings_write (settings, unit)
+      class(shower_settings_t), intent(in) :: settings
+      integer, intent(in), optional :: unit
+    end subroutine shower_settings_write
 <<Shower base: procedures>>=
-  subroutine shower_settings_write (settings, unit)
+  module subroutine shower_settings_write (settings, unit)
     class(shower_settings_t), intent(in) :: settings
     integer, intent(in), optional :: unit
     integer :: u
@@ -344,8 +379,12 @@ emissions.
 @
 <<Shower base: shower base: TBP>>=
   procedure :: write_msg => shower_base_write_msg
+<<Shower base: sub interfaces>>=
+    module subroutine shower_base_write_msg (shower)
+      class(shower_base_t), intent(inout) :: shower
+    end subroutine shower_base_write_msg
 <<Shower base: procedures>>=
-  subroutine shower_base_write_msg (shower)
+  module subroutine shower_base_write_msg (shower)
     class(shower_base_t), intent(inout) :: shower
     call msg_message ("Shower: Using " // char(shower%name) // " shower")
   end subroutine shower_base_write_msg
@@ -354,8 +393,13 @@ emissions.
 @
 <<Shower base: shower base: TBP>>=
   procedure :: import_rng => shower_base_import_rng
+<<Shower base: sub interfaces>>=
+    pure module subroutine shower_base_import_rng (shower, rng)
+      class(shower_base_t), intent(inout) :: shower
+      class(rng_t), intent(inout), allocatable :: rng
+    end subroutine shower_base_import_rng
 <<Shower base: procedures>>=
-  pure subroutine shower_base_import_rng (shower, rng)
+  pure module subroutine shower_base_import_rng (shower, rng)
     class(shower_base_t), intent(inout) :: shower
     class(rng_t), intent(inout), allocatable :: rng
     call move_alloc (from = rng, to = shower%rng)
@@ -385,8 +429,13 @@ In order to use external files or tools we need access to [[os_data]].
 Set event parameters: [[fac_scale]], [[alpha_s]]
 <<Shower base: shower base: TBP>>=
   procedure :: prepare_new_event => shower_base_prepare_new_event
+<<Shower base: sub interfaces>>=
+    module subroutine shower_base_prepare_new_event (shower, fac_scale, alpha_s)
+      class(shower_base_t), intent(inout) :: shower
+      real(default), intent(in) :: fac_scale, alpha_s
+    end subroutine shower_base_prepare_new_event
 <<Shower base: procedures>>=
-  subroutine shower_base_prepare_new_event (shower, fac_scale, alpha_s)
+  module subroutine shower_base_prepare_new_event (shower, fac_scale, alpha_s)
     class(shower_base_t), intent(inout) :: shower
     real(default), intent(in) :: fac_scale, alpha_s
     shower%fac_scale = fac_scale
@@ -478,8 +527,19 @@ Temporary parameters for the $P_t$-ordered shower:
 <<Shower base: public>>=
   public :: D_alpha_s_isr
   public :: D_alpha_s_fsr
+<<Shower base: sub interfaces>>=
+    module function D_alpha_s_isr (tin, settings) result (alpha_s)
+      real(default), intent(in) :: tin
+      type(shower_settings_t), intent(in) :: settings
+      real(default) :: alpha_s
+    end function D_alpha_s_isr
+    module function D_alpha_s_fsr (tin, settings) result (alpha_s)
+      real(default), intent(in) :: tin
+      type(shower_settings_t), intent(in) :: settings
+      real(default) :: alpha_s
+    end function D_alpha_s_fsr
 <<Shower base: procedures>>=
-  function D_alpha_s_isr (tin, settings) result (alpha_s)
+  module function D_alpha_s_isr (tin, settings) result (alpha_s)
     real(default), intent(in) :: tin
     type(shower_settings_t), intent(in) :: settings
     real(default) :: min_virtuality, d_constalpha_s, d_lambda_isr
@@ -504,7 +564,7 @@ Temporary parameters for the $P_t$-ordered shower:
     end if
   end function D_alpha_s_isr
 
-  function D_alpha_s_fsr (tin, settings) result (alpha_s)
+  module function D_alpha_s_fsr (tin, settings) result (alpha_s)
     real(default), intent(in) :: tin
     type(shower_settings_t), intent(in) :: settings
     real(default) :: min_virtuality, d_lambda_fsr, d_constalpha_s
@@ -539,15 +599,28 @@ remnants and any other particles.
 <<Shower base: public>>=
   public :: mass_type
   public :: mass_squared_type
+<<Shower base: sub interfaces>>=
+    elemental module function mass_type (type, m2_default) result (mass)
+      integer, intent(in) :: type
+      real(default), intent(in) :: m2_default
+      real(default) :: mass
+    end function mass_type
+    elemental module function mass_squared_type &
+         (type, m2_default) result (mass2)
+      integer, intent(in) :: type
+      real(default), intent(in) :: m2_default
+      real(default) :: mass2
+    end function mass_squared_type
 <<Shower base: procedures>>=
-  elemental function mass_type (type, m2_default) result (mass)
+  elemental module function mass_type (type, m2_default) result (mass)
     integer, intent(in) :: type
     real(default), intent(in) :: m2_default
     real(default) :: mass
     mass = sqrt (mass_squared_type (type, m2_default))
   end function mass_type
 
-  elemental function mass_squared_type (type, m2_default) result (mass2)
+  elemental module function mass_squared_type &
+       (type, m2_default) result (mass2)
     integer, intent(in) :: type
     real(default), intent(in) :: m2_default
     real(default) :: mass2
@@ -616,8 +689,16 @@ remnants and any other particles.
 @ The number of flavors active at a certain scale (virtuality) $t$.
 <<Shower base: public>>=
   public :: number_of_flavors
+<<Shower base: sub interfaces>>=
+    elemental module function number_of_flavors &
+         (t, d_nf, min_virtuality) result (nr)
+      real(default), intent(in) :: t, min_virtuality
+      integer, intent(in) :: d_nf
+      real(default) :: nr
+    end function number_of_flavors
 <<Shower base: procedures>>=
-  elemental function number_of_flavors (t, d_nf, min_virtuality) result (nr)
+  elemental module function number_of_flavors &
+       (t, d_nf, min_virtuality) result (nr)
     real(default), intent(in) :: t, min_virtuality
     integer, intent(in) :: d_nf
     real(default) :: nr
@@ -767,18 +848,9 @@ to steer the initial and final state showers.
 module shower_partons
 
 <<Use kinds with double>>
-<<Use debug>>
-  use io_units
   use constants
-  use system_defs, only: TAB
-  use diagnostics
-  use physics_defs
   use lorentz
-  use sm_physics
   use particles
-  use flavors
-  use colors
-  use subevents
   use model_data
   use shower_base
   use rng_base
@@ -789,12 +861,37 @@ module shower_partons
 
 <<Shower partons: types>>
 
+  interface
+<<Shower partons: sub interfaces>>
+  end interface
+
+end module shower_partons
+@ %def shower_partons
+@
+<<[[shower_partons_sub.f90]]>>=
+<<File header>>
+
+submodule (shower_partons) shower_partons_s
+
+<<Use debug>>
+  use io_units
+  use system_defs, only: TAB
+  use diagnostics
+  use physics_defs
+  use sm_physics
+  use colors
+  use flavors
+  use subevents
+
+  implicit none
+
 contains
 
 <<Shower partons: procedures>>
 
-end module shower_partons
-@ %def shower_partons
+end submodule shower_partons_s
+
+@ %def shower_partons_s
 @
 \subsection{The basic type defintions}
 
@@ -852,8 +949,17 @@ available to all operations on the shower partons, we endow the
 \subsection{Routines}
 <<Shower partons: parton: TBP>>=
   procedure :: to_particle => parton_to_particle
+<<Shower partons: sub interfaces>>=
+    module function parton_to_particle &
+         (parton, model, from_hard_int) result (particle)
+      type(particle_t) :: particle
+      class(parton_t), intent(in) :: parton
+      class(model_data_t), pointer, intent(in) :: model
+      logical, intent(in), optional :: from_hard_int
+    end function parton_to_particle
 <<Shower partons: procedures>>=
-  function parton_to_particle (parton, model, from_hard_int) result (particle)
+  module function parton_to_particle &
+       (parton, model, from_hard_int) result (particle)
     type(particle_t) :: particle
     class(parton_t), intent(in) :: parton
     class(model_data_t), pointer, intent(in) :: model
@@ -868,9 +974,14 @@ available to all operations on the shower partons, we endow the
 @
 <<Shower partons: public>>=
   public :: parton_of_particle
+<<Shower partons: sub interfaces>>=
+    pure module function parton_of_particle (particle, nr) result (parton)
+      type(parton_t) :: parton
+      type(particle_t), intent(in) :: particle
+      integer, intent(in) :: nr
+    end function parton_of_particle
 <<Shower partons: procedures>>=
- ! pure
-  function parton_of_particle (particle, nr) result (parton)
+  pure module function parton_of_particle (particle, nr) result (parton)
     type(parton_t) :: parton
     type(particle_t), intent(in) :: particle
     integer, intent(in) :: nr
@@ -890,8 +1001,16 @@ available to all operations on the shower partons, we endow the
 @
 <<Shower partons: parton: TBP>>=
   procedure :: to_status => parton_to_status
+<<Shower partons: sub interfaces>>=
+    pure module function parton_to_status &
+         (parton, from_hard_int) result (status)
+      integer :: status
+      class(parton_t), intent(in) :: parton
+      logical, intent(in), optional :: from_hard_int
+    end function parton_to_status
 <<Shower partons: procedures>>=
-  pure function parton_to_status (parton, from_hard_int) result (status)
+  pure module function parton_to_status &
+       (parton, from_hard_int) result (status)
     integer :: status
     class(parton_t), intent(in) :: parton
     logical, intent(in), optional :: from_hard_int
@@ -912,8 +1031,14 @@ available to all operations on the shower partons, we endow the
 @
 <<Shower partons: parton: TBP>>=
   procedure :: to_color => parton_to_color
+<<Shower partons: sub interfaces>>=
+    pure module subroutine parton_to_color (parton, c1, c2, from_hard_int)
+      class(parton_t), intent(in) :: parton
+      integer, intent(out) :: c1, c2
+      logical, intent(in), optional :: from_hard_int
+    end subroutine parton_to_color
 <<Shower partons: procedures>>=
-  pure subroutine parton_to_color (parton, c1, c2, from_hard_int)
+  pure module subroutine parton_to_color (parton, c1, c2, from_hard_int)
     class(parton_t), intent(in) :: parton
     integer, intent(out) :: c1, c2
     logical, intent(in), optional :: from_hard_int
@@ -935,8 +1060,13 @@ available to all operations on the shower partons, we endow the
 @ %def parton_to_color
 <<Shower partons: public>>=
   public :: parton_copy
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_copy (prt1, prt2)
+      type(parton_t), intent(in) :: prt1
+      type(parton_t), intent(out) :: prt2
+    end subroutine parton_copy
 <<Shower partons: procedures>>=
-  subroutine parton_copy (prt1, prt2)
+  module subroutine parton_copy (prt1, prt2)
     type(parton_t), intent(in) :: prt1
     type(parton_t), intent(out) :: prt2
     if (associated (prt1%settings))  prt2%settings => prt1%settings
@@ -967,8 +1097,13 @@ available to all operations on the shower partons, we endow the
 massless.
 <<Shower partons: parton: TBP>>=
   procedure :: get_costheta => parton_get_costheta
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_get_costheta (prt) result (costheta)
+      class(parton_t), intent(in) :: prt
+      real(default) :: costheta
+    end function parton_get_costheta
 <<Shower partons: procedures>>=
-  elemental function parton_get_costheta (prt) result (costheta)
+  elemental module function parton_get_costheta (prt) result (costheta)
     class(parton_t), intent(in) :: prt
     real(default) :: costheta
     real(default) :: denom
@@ -984,10 +1119,16 @@ massless.
 @ The same for massive daughters.
 <<Shower partons: parton: TBP>>=
   procedure :: get_costheta_mass => parton_get_costheta_mass
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_get_costheta_mass (prt) result (costheta)
+      class(parton_t), intent(in) :: prt
+      real(default) :: costheta
+    end function parton_get_costheta_mass
 <<Shower partons: procedures>>=
-  elemental function parton_get_costheta_mass (prt) result (costheta)
+  elemental module function parton_get_costheta_mass (prt) result (costheta)
     class(parton_t), intent(in) :: prt
-    real(default) :: costheta, sqrt12
+    real(default) :: costheta
+    real(default) :: sqrt12
     if (prt%is_branched ()) then
        if (prt%child1%simulated .and. &
            prt%child2%simulated) then
@@ -1011,8 +1152,15 @@ massless.
 parton and first daughter.  This is only used for debugging.
 <<Shower partons: parton: TBP>>=
   procedure :: get_costheta_motherfirst => parton_get_costheta_motherfirst
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_get_costheta_motherfirst &
+         (prt) result (costheta)
+      class(parton_t), intent(in) :: prt
+      real(default) :: costheta
+    end function parton_get_costheta_motherfirst
 <<Shower partons: procedures>>=
-  elemental function parton_get_costheta_motherfirst (prt) result (costheta)
+  elemental module function parton_get_costheta_motherfirst &
+       (prt) result (costheta)
     class(parton_t), intent(in) :: prt
     real(default) :: costheta
     if (prt%is_branched ()) then
@@ -1033,7 +1181,11 @@ parton and first daughter.  This is only used for debugging.
 @ Get the parton velocities.
 <<Shower partons: parton: TBP>>=
   procedure :: get_beta => parton_get_beta
-@
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_get_beta (prt) result (beta)
+      class(parton_t), intent(in) :: prt
+      real(default) :: beta
+    end function parton_get_beta
 <<Shower partons: procedures>>=
   pure function get_beta (t,E) result (beta)
     real(default), intent(in) :: t,E
@@ -1041,7 +1193,7 @@ parton and first daughter.  This is only used for debugging.
     beta = sqrt (max (tiny_07, one - t /(E**2)))
   end function get_beta
 
-  elemental function parton_get_beta (prt) result (beta)
+  elemental module function parton_get_beta (prt) result (beta)
     class(parton_t), intent(in) :: prt
     real(default) :: beta
     beta = sqrt (max (tiny_07, one - prt%t / prt%momentum%p(0)**2))
@@ -1051,8 +1203,13 @@ parton and first daughter.  This is only used for debugging.
 @ Write routine.
 <<Shower partons: parton: TBP>>=
   procedure :: write => parton_write
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_write (prt, unit)
+      class(parton_t), intent(in) :: prt
+      integer, intent(in), optional :: unit
+    end subroutine parton_write
 <<Shower partons: procedures>>=
-  subroutine parton_write (prt, unit)
+  module subroutine parton_write (prt, unit)
     class(parton_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     integer :: u
@@ -1150,8 +1307,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: is_final => parton_is_final
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_final (prt) result (is_final)
+      class(parton_t), intent(in) :: prt
+      logical :: is_final
+    end function parton_is_final
 <<Shower partons: procedures>>=
-  elemental function parton_is_final (prt) result (is_final)
+  elemental module function parton_is_final (prt) result (is_final)
     class(parton_t), intent(in) :: prt
     logical :: is_final
     is_final = .false.
@@ -1166,8 +1328,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: is_branched => parton_is_branched
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_branched (prt) result (is_branched)
+      class(parton_t), intent(in) :: prt
+      logical :: is_branched
+    end function parton_is_branched
 <<Shower partons: procedures>>=
-  elemental function parton_is_branched (prt) result (is_branched)
+  elemental module function parton_is_branched (prt) result (is_branched)
     class(parton_t), intent(in) :: prt
     logical :: is_branched
     is_branched = associated (prt%child1) .and. associated (prt%child2)
@@ -1177,8 +1344,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: set_simulated => parton_set_simulated
+<<Shower partons: sub interfaces>>=
+    pure module subroutine parton_set_simulated (prt, sim)
+      class(parton_t), intent(inout) :: prt
+      logical, intent(in), optional :: sim
+    end subroutine parton_set_simulated
 <<Shower partons: procedures>>=
-  pure subroutine parton_set_simulated (prt, sim)
+  pure module subroutine parton_set_simulated (prt, sim)
     class(parton_t), intent(inout) :: prt
     logical, intent(in), optional :: sim
     if (present (sim)) then
@@ -1192,8 +1364,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: public>>=
   public :: parton_set_parent
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_set_parent (prt, parent)
+      type(parton_t), intent(inout) :: prt
+      type(parton_t), intent(in) , target :: parent
+    end subroutine parton_set_parent
 <<Shower partons: procedures>>=
-  subroutine parton_set_parent (prt, parent)
+  module subroutine parton_set_parent (prt, parent)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) , target :: parent
     prt%parent => parent
@@ -1203,8 +1380,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: public>>=
   public :: parton_get_parent
+<<Shower partons: sub interfaces>>=
+    module function parton_get_parent (prt) result (parent)
+      type(parton_t), intent(in) :: prt
+      type(parton_t), pointer :: parent
+    end function parton_get_parent
 <<Shower partons: procedures>>=
-  function parton_get_parent (prt) result (parent)
+  module function parton_get_parent (prt) result (parent)
     type(parton_t), intent(in) :: prt
     type(parton_t), pointer :: parent
     parent => prt%parent
@@ -1214,8 +1396,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: public>>=
   public :: parton_set_initial
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_set_initial (prt, initial)
+      type(parton_t), intent(inout) :: prt
+      type(parton_t), intent(in) , target :: initial
+    end subroutine parton_set_initial
 <<Shower partons: procedures>>=
-  subroutine parton_set_initial (prt, initial)
+  module subroutine parton_set_initial (prt, initial)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) , target :: initial
     prt%initial => initial
@@ -1225,8 +1412,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: public>>=
   public :: parton_get_initial
+<<Shower partons: sub interfaces>>=
+    module function parton_get_initial (prt) result (initial)
+      type(parton_t), intent(in) :: prt
+      type(parton_t), pointer :: initial
+    end function parton_get_initial
 <<Shower partons: procedures>>=
-  function parton_get_initial (prt) result (initial)
+  module function parton_get_initial (prt) result (initial)
     type(parton_t), intent(in) :: prt
     type(parton_t), pointer :: initial
     initial => prt%initial
@@ -1236,8 +1428,14 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: public>>=
   public :: parton_set_child
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_set_child (prt, child, i)
+      type(parton_t), intent(inout) :: prt
+      type(parton_t), intent(in), target :: child
+      integer, intent(in) ::  i
+    end subroutine parton_set_child
 <<Shower partons: procedures>>=
-  subroutine parton_set_child (prt, child, i)
+  module subroutine parton_set_child (prt, child, i)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in), target :: child
     integer, intent(in) ::  i
@@ -1252,8 +1450,14 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: public>>=
   public :: parton_get_child
+<<Shower partons: sub interfaces>>=
+    module function parton_get_child (prt, i) result (child)
+      type(parton_t), pointer :: child
+      type(parton_t), intent(in) :: prt
+      integer, intent(in) :: i
+    end function parton_get_child
 <<Shower partons: procedures>>=
-  function parton_get_child (prt, i) result (child)
+  module function parton_get_child (prt, i) result (child)
     type(parton_t), pointer :: child
     type(parton_t), intent(in) :: prt
     integer, intent(in) :: i
@@ -1269,8 +1473,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: is_quark => parton_is_quark
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_quark (prt) result (is_quark)
+      class(parton_t), intent(in) ::prt
+      logical :: is_quark
+    end function parton_is_quark
 <<Shower partons: procedures>>=
-  elemental function parton_is_quark (prt) result (is_quark)
+  elemental module function parton_is_quark (prt) result (is_quark)
     class(parton_t), intent(in) ::prt
     logical :: is_quark
     is_quark = abs (prt%type) <= 6 .and. prt%type /= 0
@@ -1280,8 +1489,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: is_squark => parton_is_squark
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_squark (prt) result (is_squark)
+      class(parton_t), intent(in) ::prt
+      logical :: is_squark
+    end function parton_is_squark
 <<Shower partons: procedures>>=
-  elemental function parton_is_squark (prt) result (is_squark)
+  elemental module function parton_is_squark (prt) result (is_squark)
     class(parton_t), intent(in) ::prt
     logical :: is_squark
     is_squark = ((abs(prt%type) >= 1000001) .and. (abs(prt%type) <= 1000006)) &
@@ -1292,8 +1506,13 @@ parton and first daughter.  This is only used for debugging.
 @ 9 can be used for gluons in codes for glueballs
 <<Shower partons: parton: TBP>>=
   procedure :: is_gluon => parton_is_gluon
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_gluon (prt) result (is_gluon)
+      class(parton_t), intent(in) :: prt
+      logical :: is_gluon
+    end function parton_is_gluon
 <<Shower partons: procedures>>=
-  elemental function parton_is_gluon (prt) result (is_gluon)
+  elemental module function parton_is_gluon (prt) result (is_gluon)
     class(parton_t), intent(in) :: prt
     logical :: is_gluon
     is_gluon = prt%type == GLUON .or. prt%type == 9
@@ -1303,8 +1522,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: is_gluino => parton_is_gluino
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_gluino (prt) result (is_gluino)
+      class(parton_t), intent(in) :: prt
+      logical :: is_gluino
+    end function parton_is_gluino
 <<Shower partons: procedures>>=
-  elemental function parton_is_gluino (prt) result (is_gluino)
+  elemental module function parton_is_gluino (prt) result (is_gluino)
     class(parton_t), intent(in) :: prt
     logical :: is_gluino
     is_gluino = prt%type == 1000021
@@ -1314,8 +1538,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: is_proton => parton_is_proton
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_is_proton (prt) result (is_hadron)
+      class(parton_t), intent(in) :: prt
+      logical :: is_hadron
+    end function parton_is_proton
 <<Shower partons: procedures>>=
-  elemental function parton_is_proton (prt) result (is_hadron)
+  elemental module function parton_is_proton (prt) result (is_hadron)
     class(parton_t), intent(in) :: prt
     logical :: is_hadron
     is_hadron = abs (prt%type) == PROTON
@@ -1325,8 +1554,13 @@ parton and first daughter.  This is only used for debugging.
 @ TODO: SUSY partons.
 <<Shower partons: parton: TBP>>=
   procedure :: is_colored => parton_is_colored
+<<Shower partons: sub interfaces>>=
+    pure module function parton_is_colored (parton) result (is_colored)
+      logical :: is_colored
+      class(parton_t), intent(in) :: parton
+    end function parton_is_colored
 <<Shower partons: procedures>>=
-  pure function parton_is_colored (parton) result (is_colored)
+  pure module function parton_is_colored (parton) result (is_colored)
     logical :: is_colored
     class(parton_t), intent(in) :: parton
     is_colored = parton_is_quark (parton) .or. parton_is_gluon (parton)
@@ -1336,8 +1570,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: mass => parton_mass
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_mass (prt) result (mass)
+      class(parton_t), intent(in) :: prt
+      real(default) :: mass
+    end function parton_mass
 <<Shower partons: procedures>>=
-  elemental function parton_mass (prt) result (mass)
+  elemental module function parton_mass (prt) result (mass)
     class(parton_t), intent(in) :: prt
     real(default) :: mass
     mass = mass_type (prt%type, prt%mass2)
@@ -1347,8 +1586,13 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: mass_squared => parton_mass_squared
+<<Shower partons: sub interfaces>>=
+    elemental module function parton_mass_squared (prt) result (mass_squared)
+      class(parton_t), intent(in) :: prt
+      real(default) :: mass_squared
+    end function parton_mass_squared
 <<Shower partons: procedures>>=
-  elemental function parton_mass_squared (prt) result (mass_squared)
+  elemental module function parton_mass_squared (prt) result (mass_squared)
     class(parton_t), intent(in) :: prt
     real(default) :: mass_squared
     mass_squared = mass_squared_type (prt%type, prt%mass2)
@@ -1358,24 +1602,29 @@ parton and first daughter.  This is only used for debugging.
 @
 <<Shower partons: parton: TBP>>=
   procedure :: momentum_to_pythia6 => parton_momentum_to_pythia6
+<<Shower partons: sub interfaces>>=
+    pure module function parton_momentum_to_pythia6 (prt) result (p)
+      real(double), dimension(1:5) :: p
+      class(parton_t), intent(in) :: prt
+    end function parton_momentum_to_pythia6
 <<Shower partons: procedures>>=
-  pure function parton_momentum_to_pythia6 (prt) result (p)
+  pure module function parton_momentum_to_pythia6 (prt) result (p)
     real(double), dimension(1:5) :: p
     class(parton_t), intent(in) :: prt
-    real(default) :: mass
-    !!! gfortran 5.1 complains about 'ELEMENTAL procedure pointer
-    !!! component ‘mass’ is not allowed as an actual argument'
-    !!! p = prt%momentum%to_pythia6 (prt%mass ())
-    mass = prt%mass ()
-    p = prt%momentum%to_pythia6 (mass)
+    p = prt%momentum%to_pythia6 (prt%mass ())
   end function parton_momentum_to_pythia6
 
 @ %def parton_momentum_to_pythia6
 @
 <<Shower partons: public>>=
   public :: P_prt_to_child1
+<<Shower partons: sub interfaces>>=
+    module function P_prt_to_child1 (prt) result (retvalue)
+      type(parton_t), intent(in) :: prt
+      real(default) :: retvalue
+    end function P_prt_to_child1
 <<Shower partons: procedures>>=
-  function P_prt_to_child1 (prt) result (retvalue)
+  module function P_prt_to_child1 (prt) result (retvalue)
     type(parton_t), intent(in) :: prt
     real(default) :: retvalue
     retvalue = zero
@@ -1399,8 +1648,16 @@ parton and first daughter.  This is only used for debugging.
 parton [[prt]] into its daughters are allowed or not.
 <<Shower partons: public>>=
   public :: thetabar
+<<Shower partons: sub interfaces>>=
+    module function thetabar (prt, recoiler, isr_ang, E3out) result (retvalue)
+      type(parton_t), intent(inout) :: prt
+      type(parton_t), intent(in) :: recoiler
+      real(default), intent(out), optional :: E3out
+      logical, intent(in) :: isr_ang
+      logical :: retvalue
+    end function thetabar
 <<Shower partons: procedures>>=
-  function thetabar (prt, recoiler, isr_ang, E3out) result (retvalue)
+  module function thetabar (prt, recoiler, isr_ang, E3out) result (retvalue)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) :: recoiler
     real(default), intent(out), optional :: E3out
@@ -1445,8 +1702,13 @@ parton [[prt]] into its daughters are allowed or not.
 @
 <<Shower partons: public>>=
   public :: parton_apply_costheta
+<<Shower partons: sub interfaces>>=
+    recursive module subroutine parton_apply_costheta (prt, rng)
+      type(parton_t), intent(inout) :: prt
+      class(rng_t), intent(inout), allocatable :: rng
+    end subroutine parton_apply_costheta
 <<Shower partons: procedures>>=
-  recursive subroutine parton_apply_costheta (prt, rng)
+  recursive module subroutine parton_apply_costheta (prt, rng)
     type(parton_t), intent(inout) :: prt
     class(rng_t), intent(inout), allocatable :: rng
     if (debug2_active (D_SHOWER)) then
@@ -1476,8 +1738,13 @@ parton [[prt]] into its daughters are allowed or not.
 @
 <<Shower partons: public>>=
   public :: parton_apply_lorentztrafo
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_apply_lorentztrafo (prt, L)
+      type(parton_t), intent(inout) :: prt
+      type(lorentz_transformation_t), intent(in) :: L
+    end subroutine parton_apply_lorentztrafo
 <<Shower partons: procedures>>=
-  subroutine parton_apply_lorentztrafo (prt, L)
+  module subroutine parton_apply_lorentztrafo (prt, L)
     type(parton_t), intent(inout) :: prt
     type(lorentz_transformation_t), intent(in) :: L
     prt%momentum = L * prt%momentum
@@ -1487,8 +1754,13 @@ parton [[prt]] into its daughters are allowed or not.
 @
 <<Shower partons: public>>=
   public :: parton_apply_lorentztrafo_recursive
+<<Shower partons: sub interfaces>>=
+    recursive module subroutine parton_apply_lorentztrafo_recursive (prt, L)
+      type(parton_t), intent(inout) :: prt
+      type(lorentz_transformation_t) ,intent(in) :: L
+    end subroutine parton_apply_lorentztrafo_recursive
 <<Shower partons: procedures>>=
-  recursive subroutine parton_apply_lorentztrafo_recursive (prt, L)
+  recursive module subroutine parton_apply_lorentztrafo_recursive (prt, L)
     type(parton_t), intent(inout) :: prt
     type(lorentz_transformation_t) ,intent(in) :: L
     if (prt%type /= PROTON .and. prt%type /= BEAM_REMNANT) then
@@ -1520,8 +1792,13 @@ parton [[prt]] into its daughters are allowed or not.
 three-momenta of its children given their energy and virtuality
 <<Shower partons: parton: TBP>>=
   procedure :: generate_ps => parton_generate_ps
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_generate_ps (prt, rng)
+      class(parton_t), intent(inout) :: prt
+      class(rng_t), intent(inout), allocatable :: rng
+    end subroutine parton_generate_ps
 <<Shower partons: procedures>>=
-  subroutine parton_generate_ps (prt, rng)
+  module subroutine parton_generate_ps (prt, rng)
     class(parton_t), intent(inout) :: prt
     class(rng_t), intent(inout), allocatable :: rng
     real(default), dimension(1:3, 1:3) :: directions
@@ -1530,7 +1807,8 @@ three-momenta of its children given their energy and virtuality
     real(default), dimension(1:3) :: momentum
     type(vector3_t) :: pchild1_direction
     type(lorentz_transformation_t) :: L, rotation
-    if (debug2_active (D_SHOWER)) print *, "D: parton_generate_ps for parton " , prt%nr
+    if (debug2_active (D_SHOWER)) &
+         print *, "D: parton_generate_ps for parton " , prt%nr
     if (debug_active (D_SHOWER)) then
        if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
           call msg_fatal ("no children for generate_ps")
@@ -1652,15 +1930,21 @@ ISR. It takes the three-momentum of a parton's first child as fixed and
 generates the two remaining three-momenta.
 <<Shower partons: parton: TBP>>=
   procedure :: generate_ps_ini => parton_generate_ps_ini
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_generate_ps_ini (prt, rng)
+      class(parton_t), intent(inout) :: prt
+      class(rng_t), intent(inout), allocatable :: rng
+    end subroutine parton_generate_ps_ini
 <<Shower partons: procedures>>=
-  subroutine parton_generate_ps_ini (prt, rng)
+  module subroutine parton_generate_ps_ini (prt, rng)
     class(parton_t), intent(inout) :: prt
     class(rng_t), intent(inout), allocatable :: rng
     real(default), dimension(1:3, 1:3) :: directions
     integer :: i,j
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
-    if (debug_active (D_SHOWER)) print *, "D: parton_generate_ps_ini: for parton " , prt%nr
+    if (debug_active (D_SHOWER)) &
+         print *, "D: parton_generate_ps_ini: for parton " , prt%nr
     if (debug_active (D_SHOWER)) then
        if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
           call msg_fatal ("no children for generate_ps")
@@ -1735,8 +2019,13 @@ generates the two remaining three-momenta.
 \subsection{The analytic FSR}
 <<Shower partons: parton: TBP>>=
   procedure :: next_t_ana => parton_next_t_ana
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_next_t_ana (prt, rng)
+      class(parton_t), intent(inout) :: prt
+      class(rng_t), intent(inout), allocatable :: rng
+    end subroutine parton_next_t_ana
 <<Shower partons: procedures>>=
-  subroutine parton_next_t_ana (prt, rng)
+  module subroutine parton_next_t_ana (prt, rng)
     class(parton_t), intent(inout) :: prt
     class(rng_t), intent(inout), allocatable :: rng
     integer :: gtoqq
@@ -1794,8 +2083,18 @@ from the sister parton into account, if not given it is assumed
 used for the integration.
 <<Shower partons: public>>=
   public :: parton_simulate_stept
+<<Shower partons: sub interfaces>>=
+    module subroutine parton_simulate_stept &
+         (prt, rng, integral, random, gtoqq, lookatsister)
+      type(parton_t), intent(inout) :: prt
+      class(rng_t), intent(inout), allocatable :: rng
+      real(default), intent(inout) :: integral
+      real(default), intent(inout) :: random
+      integer, intent(out) :: gtoqq
+      logical, intent(in), optional :: lookatsister
+    end subroutine parton_simulate_stept
 <<Shower partons: procedures>>=
-  subroutine parton_simulate_stept &
+  module subroutine parton_simulate_stept &
        (prt, rng, integral, random, gtoqq, lookatsister)
     type(parton_t), intent(inout) :: prt
     class(rng_t), intent(inout), allocatable :: rng
@@ -2003,8 +2302,13 @@ end do SET_SISTER
 one module needs to access it.
 <<Shower partons: public>>=
   public :: maxzz
+<<Shower partons: sub interfaces>>=
+    module function maxzz (shat, s, maxz_isr, minenergy_timelike) result (maxz)
+      real(default), intent(in) :: shat, s, minenergy_timelike, maxz_isr
+      real(default) :: maxz
+    end function maxzz
 <<Shower partons: procedures>>=
-  function maxzz (shat, s, maxz_isr, minenergy_timelike) result (maxz)
+  module function maxzz (shat, s, maxz_isr, minenergy_timelike) result (maxz)
     real(default), intent(in) :: shat, s, minenergy_timelike, maxz_isr
     real(default) :: maxz
     maxz = min (maxz_isr, one - (two * minenergy_timelike * sqrt(shat)) / s)
@@ -2022,44 +2326,60 @@ module shower_core
 <<Use kinds with double>>
 <<Use strings>>
 <<Use debug>>
-  use io_units
-  use constants
-  use format_utils, only: write_separator
-  use numeric_utils
-  use diagnostics
-  use physics_defs
   use os_interface
   use lorentz
-  use sm_physics
   use particles
   use model_data
-  use flavors
-  use colors
-  use subevents
   use pdf
   use rng_base
   use shower_base
   use shower_partons
   use muli, only: muli_t
-  use hep_common
   use tauola_interface
 
 <<Standard module head>>
 
 <<Shower core: public>>
 
-<<Shower core: parameters>>
-
 <<Shower core: types>>
 
 <<Shower core: interfaces>>
+
+  interface
+<<Shower core: sub interfaces>>
+  end interface
+
+end module shower_core
+@ %def shower_core
+@
+<<[[shower_core_sub.f90]]>>=
+<<File header>>
+
+submodule (shower_core) shower_core_s
+
+  use io_units
+  use constants
+  use format_utils, only: write_separator
+  use numeric_utils
+  use diagnostics
+  use physics_defs
+  use sm_physics
+  use hep_common
+  use flavors
+  use colors
+  use subevents
+
+  implicit none
+
+<<Shower core: parameters>>
 
 contains
 
 <<Shower core: procedures>>
 
-end module shower_core
-@ %def shower_core
+end submodule shower_core_s
+
+@ %def shower_core_s
 @
 <<Shower core: public>>=
   public :: shower_interaction_t
@@ -2095,8 +2415,18 @@ $k_T$-ordered showers.
 @
 <<Shower core: shower: TBP>>=
   procedure :: init => shower_init
+<<Shower core: sub interfaces>>=
+    module subroutine shower_init &
+         (shower, settings, taudec_settings, pdf_data, os_data)
+      class(shower_t), intent(out) :: shower
+      type(shower_settings_t), intent(in) :: settings
+      type(taudec_settings_t), intent(in) :: taudec_settings
+      type(pdf_data_t), intent(in) :: pdf_data
+      type(os_data_t), intent(in) :: os_data
+    end subroutine shower_init
 <<Shower core: procedures>>=
-  subroutine shower_init (shower, settings, taudec_settings, pdf_data, os_data)
+  module subroutine shower_init &
+       (shower, settings, taudec_settings, pdf_data, os_data)
     class(shower_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
     type(taudec_settings_t), intent(in) :: taudec_settings
@@ -2115,8 +2445,13 @@ $k_T$-ordered showers.
 @
 <<Shower core: shower: TBP>>=
   procedure :: prepare_new_event => shower_prepare_new_event
+<<Shower core: sub interfaces>>=
+    module subroutine shower_prepare_new_event (shower, fac_scale, alpha_s)
+      class(shower_t), intent(inout) :: shower
+      real(default), intent(in) :: fac_scale, alpha_s
+    end subroutine shower_prepare_new_event
 <<Shower core: procedures>>=
-  subroutine shower_prepare_new_event (shower, fac_scale, alpha_s)
+  module subroutine shower_prepare_new_event (shower, fac_scale, alpha_s)
     class(shower_t), intent(inout) :: shower
     real(default), intent(in) :: fac_scale, alpha_s
     call shower%cleanup ()
@@ -2140,9 +2475,14 @@ $k_T$-ordered showers.
 @ %def shower_prepare_new_event
 @ It would be better to have the muli type outside of the shower.
 <<Shower core: shower: TBP>>=
-  procedure :: activate_multiple_interactions => shower_activate_multiple_interactions
+  procedure :: activate_multiple_interactions => &
+       shower_activate_multiple_interactions
+<<Shower core: sub interfaces>>=
+    module subroutine shower_activate_multiple_interactions (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_activate_multiple_interactions
 <<Shower core: procedures>>=
-  subroutine shower_activate_multiple_interactions (shower)
+  module subroutine shower_activate_multiple_interactions (shower)
     class(shower_t), intent(inout) :: shower
     if (shower%mi%is_initialized ()) then
        call shower%mi%restart ()
@@ -2165,11 +2505,15 @@ $k_T$-ordered showers.
 
 @ %def shower_activate_multiple_interactions
 @
-@
 <<Shower core: shower: TBP>>=
   procedure :: import_particle_set => shower_import_particle_set
+<<Shower core: sub interfaces>>=
+    module subroutine shower_import_particle_set (shower, particle_set)
+      class(shower_t), target, intent(inout) :: shower
+      type(particle_set_t), intent(in) :: particle_set
+    end subroutine shower_import_particle_set
 <<Shower core: procedures>>=
-  subroutine shower_import_particle_set (shower, particle_set)
+  module subroutine shower_import_particle_set (shower, particle_set)
     class(shower_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     !integer, dimension(:), allocatable :: connections
@@ -2262,9 +2606,16 @@ $k_T$-ordered showers.
 @
 <<Shower core: shower: TBP>>=
   procedure :: generate_emissions => shower_generate_emissions
-<<Shower core: procedures>>=
-  subroutine shower_generate_emissions &
+<<Shower core: sub interfaces>>=
+    module subroutine shower_generate_emissions &
          (shower, valid, number_of_emissions)
+      class(shower_t), intent(inout), target :: shower
+      logical, intent(out) :: valid
+      integer, optional, intent(in) :: number_of_emissions
+    end subroutine shower_generate_emissions
+<<Shower core: procedures>>=
+  module subroutine shower_generate_emissions &
+       (shower, valid, number_of_emissions)
     class(shower_t), intent(inout), target :: shower
     logical, intent(out) :: valid
     integer, optional, intent(in) :: number_of_emissions
@@ -2426,9 +2777,17 @@ $k_T$-ordered showers.
 @
 <<Shower core: shower: TBP>>=
   procedure :: make_particle_set => shower_make_particle_set
-<<Shower core: procedures>>=
-  subroutine shower_make_particle_set &
+<<Shower core: sub interfaces>>=
+    module subroutine shower_make_particle_set &
          (shower, particle_set, model, model_hadrons)
+      class(shower_t), intent(in) :: shower
+      type(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model
+      class(model_data_t), intent(in), target :: model_hadrons
+    end subroutine shower_make_particle_set
+<<Shower core: procedures>>=
+  module subroutine shower_make_particle_set &
+       (shower, particle_set, model, model_hadrons)
     class(shower_t), intent(in) :: shower
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
@@ -2458,8 +2817,13 @@ be partons with $E < m$: if such a parton is found, quarks will be
 treated massless.
 <<Shower core: shower: TBP>>=
   procedure :: add_interaction_2ton => shower_add_interaction_2ton
+<<Shower core: sub interfaces>>=
+    module subroutine shower_add_interaction_2ton (shower, partons)
+      class(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
+    end subroutine shower_add_interaction_2ton
 <<Shower core: procedures>>=
-  subroutine shower_add_interaction_2ton (shower, partons)
+  module subroutine shower_add_interaction_2ton (shower, partons)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t), intent(in), dimension(:), allocatable :: partons
     !type(ckkw_pseudo_shower_weights_t), intent(in) :: ckkw_pseudo_weights
@@ -2841,8 +3205,12 @@ end subroutine set_starting_scale
 @
 <<Shower core: shower: TBP>>=
   procedure :: simulate_no_isr_shower => shower_simulate_no_isr_shower
+<<Shower core: sub interfaces>>=
+    module subroutine shower_simulate_no_isr_shower (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_simulate_no_isr_shower
 <<Shower core: procedures>>=
-  subroutine shower_simulate_no_isr_shower (shower)
+  module subroutine shower_simulate_no_isr_shower (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i, j
     type(parton_t), pointer :: prt
@@ -2881,8 +3249,12 @@ end subroutine set_starting_scale
 @
 <<Shower core: shower: TBP>>=
   procedure :: simulate_no_fsr_shower => shower_simulate_no_fsr_shower
+<<Shower core: sub interfaces>>=
+    module subroutine shower_simulate_no_fsr_shower (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_simulate_no_fsr_shower
 <<Shower core: procedures>>=
-  subroutine shower_simulate_no_fsr_shower (shower)
+  module subroutine shower_simulate_no_fsr_shower (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i, j
     type(parton_t), pointer :: prt
@@ -2953,8 +3325,12 @@ end subroutine set_starting_scale
 @
 <<Shower core: shower: TBP>>=
   procedure :: sort_partons => shower_sort_partons
+<<Shower core: sub interfaces>>=
+    module subroutine shower_sort_partons (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_sort_partons
 <<Shower core: procedures>>=
-  subroutine shower_sort_partons (shower)
+  module subroutine shower_sort_partons (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i, j, maxsort, size_partons
     logical :: changed
@@ -3054,8 +3430,12 @@ end subroutine set_starting_scale
 @ Deallocate the interaction pointers.
 <<Shower core: shower: TBP>>=
   procedure :: cleanup => shower_cleanup
+<<Shower core: sub interfaces>>=
+    module subroutine shower_cleanup (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_cleanup
 <<Shower core: procedures>>=
-  subroutine shower_cleanup (shower)
+  module subroutine shower_cleanup (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
     if (allocated (shower%interactions)) then
@@ -3073,8 +3453,13 @@ end subroutine set_starting_scale
 @ Bookkeeping functions.
 <<Shower core: shower: TBP>>=
   procedure :: get_next_free_nr => shower_get_next_free_nr
+<<Shower core: sub interfaces>>=
+    module function shower_get_next_free_nr (shower) result (next_number)
+      class(shower_t), intent(inout) :: shower
+      integer :: next_number
+    end function shower_get_next_free_nr
 <<Shower core: procedures>>=
-  function shower_get_next_free_nr (shower) result (next_number)
+  module function shower_get_next_free_nr (shower) result (next_number)
     class(shower_t), intent(inout) :: shower
     integer :: next_number
     next_number = shower%next_free_nr
@@ -3085,8 +3470,13 @@ end subroutine set_starting_scale
 @
 <<Shower core: shower: TBP>>=
   procedure :: update_max_color_nr => shower_update_max_color_nr
+<<Shower core: sub interfaces>>=
+    pure module subroutine shower_update_max_color_nr (shower, index)
+      class(shower_t), intent(inout) :: shower
+      integer, intent(in) :: index
+    end subroutine shower_update_max_color_nr
 <<Shower core: procedures>>=
-  pure subroutine shower_update_max_color_nr (shower, index)
+  pure module subroutine shower_update_max_color_nr (shower, index)
     class(shower_t), intent(inout) :: shower
     integer, intent(in) :: index
     if (index > shower%next_color_nr) then
@@ -3097,8 +3487,13 @@ end subroutine set_starting_scale
 @ %def shower_update_max_color_nr
 <<Shower core: shower: TBP>>=
   procedure :: get_next_color_nr => shower_get_next_color_nr
+<<Shower core: sub interfaces>>=
+    module function shower_get_next_color_nr (shower) result (next_color)
+      class(shower_t), intent(inout) :: shower
+      integer :: next_color
+    end function shower_get_next_color_nr
 <<Shower core: procedures>>=
-  function shower_get_next_color_nr (shower) result (next_color)
+  module function shower_get_next_color_nr (shower) result (next_color)
     class(shower_t), intent(inout) :: shower
     integer :: next_color
     next_color = shower%next_color_nr
@@ -3147,8 +3542,14 @@ end subroutine set_starting_scale
 @
 <<Shower core: shower: TBP>>=
   procedure :: add_child => shower_add_child
+<<Shower core: sub interfaces>>=
+    module subroutine shower_add_child (shower, prt, child)
+      class(shower_t), intent(inout) :: shower
+      type(parton_t), pointer :: prt
+      integer, intent(in) :: child
+    end subroutine shower_add_child
 <<Shower core: procedures>>=
-  subroutine shower_add_child (shower, prt, child)
+  module subroutine shower_add_child (shower, prt, child)
     class(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: prt
     integer, intent(in) :: child
@@ -3191,13 +3592,19 @@ end subroutine set_starting_scale
 @
 <<Shower core: shower: TBP>>=
   procedure :: add_parent => shower_add_parent
+<<Shower core: sub interfaces>>=
+    module subroutine shower_add_parent (shower, prt)
+      class(shower_t), intent(inout) :: shower
+      type(parton_t), intent(inout), target :: prt
+    end subroutine shower_add_parent
 <<Shower core: procedures>>=
-  subroutine shower_add_parent (shower, prt)
+  module subroutine shower_add_parent (shower, prt)
     class(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
     integer :: i, lastfree
     type(parton_pointer_t) :: newprt
-    if (debug_on) call msg_debug2 (D_SHOWER, "shower_add_parent: for parton nr", prt%nr)
+    if (debug_on)  call msg_debug2 &
+         (D_SHOWER, "shower_add_parent: for parton nr", prt%nr)
     allocate (newprt%p)
     newprt%p%nr = shower%get_next_free_nr ()
     !!! add new parton as parent
@@ -3250,13 +3657,22 @@ whereby you can require a minimum energy [[mine]] and specify whether to
 [[include_remnants]], which is done if not given.
 <<Shower core: shower: TBP>>=
   procedure :: get_nr_of_partons => shower_get_nr_of_partons
-<<Shower core: procedures>>=
-  function shower_get_nr_of_partons (shower, mine, &
+<<Shower core: sub interfaces>>=
+    module function shower_get_nr_of_partons (shower, mine, &
          include_remnants, no_hard_prts, only_colored) result (nr)
+      class(shower_t), intent(in) :: shower
+      real(default), intent(in), optional :: mine
+      logical, intent(in), optional :: include_remnants, no_hard_prts, &
+           only_colored
+      integer :: nr
+    end function shower_get_nr_of_partons
+<<Shower core: procedures>>=
+  module function shower_get_nr_of_partons (shower, mine, &
+       include_remnants, no_hard_prts, only_colored) result (nr)
     class(shower_t), intent(in) :: shower
     real(default), intent(in), optional :: mine
     logical, intent(in), optional :: include_remnants, no_hard_prts, &
-                                     only_colored
+         only_colored
     logical :: no_hard, only_col, include_rem
     integer :: nr, i
     nr = 0
@@ -3318,8 +3734,13 @@ whereby you can require a minimum energy [[mine]] and specify whether to
 <<Shower core: shower: TBP>>=
   procedure :: get_final_colored_ME_momenta => &
        shower_get_final_colored_ME_momenta
+<<Shower core: sub interfaces>>=
+    module subroutine shower_get_final_colored_ME_momenta (shower, momenta)
+      class(shower_t), intent(in) :: shower
+      type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
+    end subroutine shower_get_final_colored_ME_momenta
 <<Shower core: procedures>>=
-  subroutine shower_get_final_colored_ME_momenta (shower, momenta)
+  module subroutine shower_get_final_colored_ME_momenta (shower, momenta)
     class(shower_t), intent(in) :: shower
     type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
     type(parton_pointer_t), dimension(:), allocatable :: partons
@@ -3412,8 +3833,13 @@ whereby you can require a minimum energy [[mine]] and specify whether to
 @
 <<Shower core: public>>=
   public :: shower_interaction_get_s
+<<Shower core: sub interfaces>>=
+    module function shower_interaction_get_s (interaction) result (s)
+      type(shower_interaction_t), intent(in) :: interaction
+      real(default) :: s
+    end function shower_interaction_get_s
 <<Shower core: procedures>>=
-  function shower_interaction_get_s (interaction) result (s)
+  module function shower_interaction_get_s (interaction) result (s)
     type(shower_interaction_t), intent(in) :: interaction
     real(default) :: s
     s = (interaction%partons(1)%p%initial%momentum + &
@@ -3512,8 +3938,12 @@ whereby you can require a minimum energy [[mine]] and specify whether to
 @
 <<Shower core: shower: TBP>>=
   procedure :: update_beamremnants => shower_update_beamremnants
+<<Shower core: sub interfaces>>=
+    module subroutine shower_update_beamremnants (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_update_beamremnants
 <<Shower core: procedures>>=
-  subroutine shower_update_beamremnants (shower)
+  module subroutine shower_update_beamremnants (shower)
     class(shower_t), intent(inout) :: shower
     type(parton_t), pointer :: hadron, remnant
     integer :: i
@@ -3785,8 +4215,12 @@ center-of-mass frame of its partons nearest to the hadron.
 partons nearest to the hadron.
 <<Shower core: shower: TBP>>=
   procedure :: boost_to_CMframe => shower_boost_to_CMframe
+<<Shower core: sub interfaces>>=
+    module subroutine shower_boost_to_CMframe (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_boost_to_CMframe
 <<Shower core: procedures>>=
-  subroutine shower_boost_to_CMframe (shower)
+  module subroutine shower_boost_to_CMframe (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
     do i = 1, size (shower%interactions)
@@ -3802,8 +4236,12 @@ partons nearest to the hadron.
 $x$-value.
 <<Shower core: shower: TBP>>=
   procedure :: boost_to_labframe => shower_boost_to_labframe
+<<Shower core: sub interfaces>>=
+    module subroutine shower_boost_to_labframe (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_boost_to_labframe
 <<Shower core: procedures>>=
-  subroutine shower_boost_to_labframe (shower)
+  module subroutine shower_boost_to_labframe (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
     do i = 1, size (shower%interactions)
@@ -3860,8 +4298,12 @@ to be aligned along the z-axis).
 @ Rotate initial partons to lie along $\pm z$ axis.
 <<Shower core: shower: TBP>>=
   procedure :: rotate_to_z => shower_rotate_to_z
+<<Shower core: sub interfaces>>=
+    module subroutine shower_rotate_to_z (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_rotate_to_z
 <<Shower core: procedures>>=
-  subroutine shower_rotate_to_z (shower)
+  module subroutine shower_rotate_to_z (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
     do i = 1, size (shower%interactions)
@@ -3935,8 +4377,12 @@ implemented.
 @
 <<Shower core: shower: TBP>>=
   procedure :: generate_primordial_kt => shower_generate_primordial_kt
+<<Shower core: sub interfaces>>=
+    module subroutine shower_generate_primordial_kt (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_generate_primordial_kt
 <<Shower core: procedures>>=
-  subroutine shower_generate_primordial_kt (shower)
+  module subroutine shower_generate_primordial_kt (shower)
     class(shower_t), intent(inout) :: shower
     integer :: i
     do i = 1, size (shower%interactions)
@@ -3976,8 +4422,13 @@ implemented.
 @
 <<Shower core: shower: TBP>>=
   procedure :: write => shower_write
+<<Shower core: sub interfaces>>=
+    module subroutine shower_write (shower, unit)
+      class(shower_t), intent(in) :: shower
+      integer, intent(in), optional :: unit
+    end subroutine shower_write
 <<Shower core: procedures>>=
-  subroutine shower_write (shower, unit)
+  module subroutine shower_write (shower, unit)
     class(shower_t), intent(in) :: shower
     integer, intent(in), optional :: unit
     integer :: i, u
@@ -4031,9 +4482,17 @@ the old [[particle_set]] are removed as they are provided, including
 proper flavor information, by the ISR shower.
 <<Shower core: shower: TBP>>=
   procedure :: combine_with_particle_set => shower_combine_with_particle_set
-<<Shower core: procedures>>=
-  subroutine shower_combine_with_particle_set (shower, particle_set, &
+<<Shower core: sub interfaces>>=
+    module subroutine shower_combine_with_particle_set (shower, particle_set, &
          model_in, model_hadrons)
+      class(shower_t), intent(in) :: shower
+      type(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model_in
+      class(model_data_t), intent(in), target :: model_hadrons
+    end subroutine shower_combine_with_particle_set
+<<Shower core: procedures>>=
+  module subroutine shower_combine_with_particle_set (shower, particle_set, &
+       model_in, model_hadrons)
     class(shower_t), intent(in) :: shower
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model_in
@@ -4198,8 +4657,13 @@ proper flavor information, by the ISR shower.
 @
 <<Shower core: shower: TBP>>=
   procedure :: write_lhef => shower_write_lhef
+<<Shower core: sub interfaces>>=
+    module subroutine shower_write_lhef (shower, unit)
+      class(shower_t), intent(in) :: shower
+      integer, intent(in), optional :: unit
+    end subroutine shower_write_lhef
 <<Shower core: procedures>>=
-  subroutine shower_write_lhef (shower, unit)
+  module subroutine shower_write_lhef (shower, unit)
     class(shower_t), intent(in) :: shower
     integer, intent(in), optional :: unit
     integer :: u
@@ -4953,8 +5417,14 @@ branching, while FSR branchings are ignored.
 <<Shower core: shower: TBP>>=
   procedure :: generate_next_isr_branching_veto => &
        shower_generate_next_isr_branching_veto
+<<Shower core: sub interfaces>>=
+    module function shower_generate_next_isr_branching_veto &
+         (shower) result (next_brancher)
+      class(shower_t), intent(inout) :: shower
+      type(parton_pointer_t) :: next_brancher
+    end function shower_generate_next_isr_branching_veto
 <<Shower core: procedures>>=
-  function shower_generate_next_isr_branching_veto &
+  module function shower_generate_next_isr_branching_veto &
        (shower) result (next_brancher)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t) :: next_brancher
@@ -5242,8 +5712,14 @@ branching, while FSR branchings are ignored.
 @
 <<Shower core: shower: TBP>>=
   procedure :: find_recoiler => shower_find_recoiler
+<<Shower core: sub interfaces>>=
+    module function shower_find_recoiler (shower, prt) result(recoiler)
+      class(shower_t), intent(inout) :: shower
+      type(parton_t), intent(inout), target :: prt
+      type(parton_t), pointer :: recoiler
+    end function shower_find_recoiler
 <<Shower core: procedures>>=
-  function shower_find_recoiler (shower, prt) result(recoiler)
+  module function shower_find_recoiler (shower, prt) result(recoiler)
     class(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout), target :: prt
     type(parton_t), pointer :: recoiler
@@ -5523,8 +5999,14 @@ FSR branchings are ignored.
 <<Shower core: shower: TBP>>=
   procedure :: generate_next_isr_branching => &
        shower_generate_next_isr_branching
+<<Shower core: sub interfaces>>=
+    module function shower_generate_next_isr_branching &
+         (shower) result (next_brancher)
+      class(shower_t), intent(inout) :: shower
+      type(parton_pointer_t) :: next_brancher
+    end function shower_generate_next_isr_branching
 <<Shower core: procedures>>=
-  function shower_generate_next_isr_branching &
+  module function shower_generate_next_isr_branching &
        (shower) result (next_brancher)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t) :: next_brancher
@@ -5590,13 +6072,18 @@ FSR branchings are ignored.
 <<Shower core: shower: TBP>>=
   procedure :: generate_fsr_for_isr_partons => &
        shower_generate_fsr_for_partons_emitted_in_ISR
+<<Shower core: sub interfaces>>=
+    module subroutine shower_generate_fsr_for_partons_emitted_in_ISR (shower)
+      class(shower_t), intent(inout) :: shower
+    end subroutine shower_generate_fsr_for_partons_emitted_in_ISR
 <<Shower core: procedures>>=
-  subroutine shower_generate_fsr_for_partons_emitted_in_ISR (shower)
+  module subroutine shower_generate_fsr_for_partons_emitted_in_ISR (shower)
     class(shower_t), intent(inout) :: shower
     integer :: n_int, i
     type(parton_t), pointer :: prt
     if (shower%settings%isr_only_onshell_emitted_partons) return
-    if (debug_on) call msg_debug (D_SHOWER, "shower_generate_fsr_for_partons_emitted_in_ISR")
+    if (debug_on)  call msg_debug &
+         (D_SHOWER, "shower_generate_fsr_for_partons_emitted_in_ISR")
     INTERACTIONS_LOOP: do n_int = 1, size (shower%interactions)
        INCOMING_PARTONS_LOOP: do i = 1, 2
           if (signal_is_pending ()) return
@@ -5629,8 +6116,13 @@ FSR branchings are ignored.
 flavors, momenta, etc.
 <<Shower core: shower: TBP>>=
   procedure :: execute_next_isr_branching => shower_execute_next_isr_branching
+<<Shower core: sub interfaces>>=
+    module subroutine shower_execute_next_isr_branching (shower, prtp)
+      class(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), intent(inout) :: prtp
+    end subroutine shower_execute_next_isr_branching
 <<Shower core: procedures>>=
-  subroutine shower_execute_next_isr_branching (shower, prtp)
+  module subroutine shower_execute_next_isr_branching (shower, prtp)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t), intent(inout) :: prtp
     type(parton_t), pointer :: prt, otherprt
@@ -5878,8 +6370,13 @@ flavors, momenta, etc.
 @
 <<Shower core: shower: TBP>>=
   procedure :: get_ISR_scale => shower_get_ISR_scale
+<<Shower core: sub interfaces>>=
+    module function shower_get_ISR_scale (shower) result (scale)
+      class(shower_t), intent(in) :: shower
+      real(default) :: scale
+    end function shower_get_ISR_scale
 <<Shower core: procedures>>=
-  function shower_get_ISR_scale (shower) result (scale)
+  module function shower_get_ISR_scale (shower) result (scale)
     class(shower_t), intent(in) :: shower
     real(default) :: scale
     type(parton_t), pointer :: prt1, prt2
@@ -5900,8 +6397,13 @@ flavors, momenta, etc.
 @
 <<Shower core: shower: TBP>>=
   procedure :: set_max_isr_scale => shower_set_max_isr_scale
+<<Shower core: sub interfaces>>=
+    module subroutine shower_set_max_isr_scale (shower, newscale)
+      class(shower_t), intent(inout) :: shower
+      real(default), intent(in) :: newscale
+    end subroutine shower_set_max_isr_scale
 <<Shower core: procedures>>=
-  subroutine shower_set_max_isr_scale (shower, newscale)
+  module subroutine shower_set_max_isr_scale (shower, newscale)
     class(shower_t), intent(inout) :: shower
     real(default), intent(in) :: newscale
     real(default) :: scale
@@ -5961,9 +6463,13 @@ flavors, momenta, etc.
 <<Shower core: shower: TBP>>=
   procedure :: interaction_generate_fsr_2ton => &
        shower_interaction_generate_fsr_2ton
-@
+<<Shower core: sub interfaces>>=
+    module subroutine shower_interaction_generate_fsr_2ton (shower, interaction)
+      class(shower_t), intent(inout) :: shower
+      type(shower_interaction_t), intent(inout) :: interaction
+    end subroutine shower_interaction_generate_fsr_2ton
 <<Shower core: procedures>>=
-  subroutine shower_interaction_generate_fsr_2ton (shower, interaction)
+  module subroutine shower_interaction_generate_fsr_2ton (shower, interaction)
     class(shower_t), intent(inout) :: shower
     type(shower_interaction_t), intent(inout) :: interaction
     type(parton_t), pointer :: prt
@@ -6013,27 +6519,43 @@ procedure is intended for branched FSR-partons emitted in the ISR.
 <<Shower core: shower: TBP>>=
   procedure :: parton_pointer_array_generate_fsr_recursive => &
        shower_parton_pointer_array_generate_fsr_recursive
-@
-<<Shower core: procedures>>=
-    recursive subroutine shower_parton_pointer_array_generate_fsr_recursive &
+<<Shower core: sub interfaces>>=
+    recursive module subroutine shower_parton_pointer_array_generate_fsr_recursive &
          (shower, partons)
       class(shower_t), intent(inout) :: shower
       type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: &
            partons
-      type(parton_pointer_t), dimension(:), allocatable :: partons_new
-      if (debug_on) call msg_debug (D_SHOWER, "shower_parton_pointer_array_generate_fsr_recursive")
-      if (signal_is_pending ()) return
-      if (size (partons) == 0) return
-      call shower%parton_pointer_array_generate_fsr (partons, partons_new)
-      call shower%parton_pointer_array_generate_fsr_recursive (partons_new)
     end subroutine shower_parton_pointer_array_generate_fsr_recursive
+<<Shower core: procedures>>=
+  recursive module subroutine shower_parton_pointer_array_generate_fsr_recursive &
+       (shower, partons)
+    class(shower_t), intent(inout) :: shower
+    type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: &
+         partons
+    type(parton_pointer_t), dimension(:), allocatable :: partons_new
+    if (debug_on) call msg_debug (D_SHOWER, "shower_parton_pointer_array_generate_fsr_recursive")
+    if (signal_is_pending ()) return
+    if (size (partons) == 0) return
+    call shower%parton_pointer_array_generate_fsr (partons, partons_new)
+    call shower%parton_pointer_array_generate_fsr_recursive (partons_new)
+  end subroutine shower_parton_pointer_array_generate_fsr_recursive
+
+@ %def shower_parton_pointer_array_generate_fsr_recursive
 @
 <<Shower core: shower: TBP>>=
   procedure :: parton_pointer_array_generate_fsr => &
        shower_parton_pointer_array_generate_fsr
-@
+<<Shower core: sub interfaces>>=
+    module subroutine shower_parton_pointer_array_generate_fsr &
+         (shower, partons, partons_new)
+      class(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: &
+           partons
+      type(parton_pointer_t), dimension(:), allocatable, intent(out) :: &
+           partons_new
+    end subroutine shower_parton_pointer_array_generate_fsr
 <<Shower core: procedures>>=
-  subroutine shower_parton_pointer_array_generate_fsr &
+  module subroutine shower_parton_pointer_array_generate_fsr &
        (shower, partons, partons_new)
     class(shower_t), intent(inout) :: shower
     type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: &
@@ -6153,8 +6675,15 @@ procedure is intended for branched FSR-partons emitted in the ISR.
 parton densities.
 <<Shower core: shower: TBP>>=
   procedure :: get_pdf => shower_get_pdf
+<<Shower core: sub interfaces>>=
+    module function shower_get_pdf (shower, mother, x, Q2, daughter) result (pdf)
+      class(shower_t), intent(inout), target :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+      real(default) :: pdf
+    end function shower_get_pdf
 <<Shower core: procedures>>=
-  function shower_get_pdf (shower, mother, x, Q2, daughter) result (pdf)
+  module function shower_get_pdf (shower, mother, x, Q2, daughter) result (pdf)
     <<get pdf>>
     if (x > eps0) then
        pdf = pdf / x
@@ -6164,8 +6693,15 @@ parton densities.
 @ %def shower_get_pdf
 <<Shower core: shower: TBP>>=
   procedure :: get_xpdf => shower_get_xpdf
+<<Shower core: sub interfaces>>=
+    module function shower_get_xpdf (shower, mother, x, Q2, daughter) result (pdf)
+      class(shower_t), intent(inout), target :: shower
+      integer, intent(in) :: mother, daughter
+      real(default), intent(in) :: x, Q2
+      real(default) :: pdf
+    end function shower_get_xpdf
 <<Shower core: procedures>>=
-  function shower_get_xpdf (shower, mother, x, Q2, daughter) result (pdf)
+  module function shower_get_xpdf (shower, mother, x, Q2, daughter) result (pdf)
     <<get pdf>>
   end function shower_get_xpdf
 
@@ -6208,8 +6744,12 @@ lastx  = dble(x)
 interaction.
 <<Shower core: shower: TBP>>=
   procedure :: converttopythia => shower_converttopythia
+<<Shower core: sub interfaces>>=
+    module subroutine shower_converttopythia (shower)
+      class(shower_t), intent(in) :: shower
+    end subroutine shower_converttopythia
 <<Shower core: procedures>>=
-  subroutine shower_converttopythia (shower)
+  module subroutine shower_converttopythia (shower)
     class(shower_t), intent(in) :: shower
   <<PYJETS COMMON BLOCK>>
     type(parton_t), pointer :: pp, ppparent
@@ -6402,36 +6942,55 @@ module shower_pythia6
 
 <<Use kinds with double>>
 <<Use strings>>
+  use os_interface
+  use lorentz
+  use shower_base
+  use particles
+  use model_data
+  use pdf
+  use tauola_interface
+
+<<Standard module head>>
+
+<<Shower pythia6: public>>
+
+<<Shower pythia6: types>>
+
+  interface
+<<Shower pythia6: sub interfaces>>
+  end interface
+
+end module shower_pythia6
+
+@ %def shower_topythia
+@
+<<[[shower_pythia6_sub.f90]]>>=
+<<File header>>
+
+submodule (shower_pythia6) shower_pythia6_s
+
 <<Use debug>>
   use constants
   use numeric_utils, only: vanishes
   use io_units
   use physics_defs
   use diagnostics
-  use os_interface
-  use lorentz
   use subevents
-  use shower_base
-  use particles
-  use model_data
   use hep_common
-  use pdf
   use helicities
-  use tauola_interface
 
-<<Standard module head>>
+  implicit none
 
-<<Shower pythia6: public>>
 <<Shower pythia6: variables>>
-<<Shower pythia6: types>>
 
 contains
 
 <<Shower pythia6: procedures>>
 
-  end module shower_pythia6
+end submodule shower_pythia6_s
 
-@ %def shower_topythia
+@ %def shower_pythia6_s
+@
 <<PYJETS COMMON BLOCK>>=
   integer :: N, NPAD, K
   real(double) :: P, V
@@ -6457,8 +7016,18 @@ contains
 @ Initialize the PYTHIA6 shower.
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: init => shower_pythia6_init
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_init &
+         (shower, settings, taudec_settings, pdf_data, os_data)
+      class(shower_pythia6_t), intent(out) :: shower
+      type(shower_settings_t), intent(in) :: settings
+      type(taudec_settings_t), intent(in) :: taudec_settings
+      type(pdf_data_t), intent(in) :: pdf_data
+      type(os_data_t), intent(in) :: os_data
+    end subroutine shower_pythia6_init
 <<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_init (shower, settings, taudec_settings, pdf_data, os_data)
+  module subroutine shower_pythia6_init &
+       (shower, settings, taudec_settings, pdf_data, os_data)
     class(shower_pythia6_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
     type(taudec_settings_t), intent(in) :: taudec_settings
@@ -6478,9 +7047,15 @@ contains
 @
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: import_particle_set => shower_pythia6_import_particle_set
-<<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_import_particle_set &
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_import_particle_set &
          (shower, particle_set)
+      class(shower_pythia6_t), target, intent(inout) :: shower
+      type(particle_set_t), intent(in) :: particle_set
+    end subroutine shower_pythia6_import_particle_set
+<<Shower pythia6: procedures>>=
+  module subroutine shower_pythia6_import_particle_set &
+       (shower, particle_set)
     class(shower_pythia6_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t) :: pset_reduced
@@ -6506,9 +7081,16 @@ contains
 @
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: generate_emissions => shower_pythia6_generate_emissions
-<<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_generate_emissions &
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_generate_emissions &
          (shower, valid, number_of_emissions)
+      class(shower_pythia6_t), intent(inout), target :: shower
+      logical, intent(out) :: valid
+      integer, optional, intent(in) :: number_of_emissions
+    end subroutine shower_pythia6_generate_emissions
+<<Shower pythia6: procedures>>=
+  module subroutine shower_pythia6_generate_emissions &
+       (shower, valid, number_of_emissions)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
     COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
@@ -6583,9 +7165,17 @@ contains
 @
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: make_particle_set => shower_pythia6_make_particle_set
-<<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_make_particle_set &
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_make_particle_set &
          (shower, particle_set, model, model_hadrons)
+      class(shower_pythia6_t), intent(in) :: shower
+      type(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model
+      class(model_data_t), intent(in), target :: model_hadrons
+    end subroutine shower_pythia6_make_particle_set
+<<Shower pythia6: procedures>>=
+  module subroutine shower_pythia6_make_particle_set &
+       (shower, particle_set, model, model_hadrons)
     class(shower_pythia6_t), intent(in) :: shower
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
@@ -6597,8 +7187,12 @@ contains
 @
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: transfer_settings => shower_pythia6_transfer_settings
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_transfer_settings (shower)
+      class(shower_pythia6_t), intent(inout) :: shower
+    end subroutine shower_pythia6_transfer_settings
 <<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_transfer_settings (shower)
+  module subroutine shower_pythia6_transfer_settings (shower)
     class(shower_pythia6_t), intent(inout) :: shower
     character(len=10) :: buffer
     real(default) :: rand
@@ -6688,8 +7282,16 @@ contains
 <<Shower pythia6: shower pythia6: TBP>>=
   procedure :: combine_with_particle_set => &
        shower_pythia6_combine_with_particle_set
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_combine_with_particle_set &
+           (shower, particle_set, model_in, model_hadrons)
+      class(shower_pythia6_t), intent(in) :: shower
+      type(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model_in
+      class(model_data_t), intent(in), target :: model_hadrons
+    end subroutine shower_pythia6_combine_with_particle_set
 <<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_combine_with_particle_set &
+  module subroutine shower_pythia6_combine_with_particle_set &
          (shower, particle_set, model_in, model_hadrons)
     class(shower_pythia6_t), intent(in) :: shower
     type(particle_set_t), intent(inout) :: particle_set
@@ -6725,9 +7327,16 @@ added back in by Pythia.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_combine_with_particle_set
-@
+<<Shower pythia6: sub interfaces>>=
+    module subroutine pythia6_combine_with_particle_set (particle_set, model_in, &
+         model_hadrons, settings)
+      type(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model_in
+      class(model_data_t), intent(in), target :: model_hadrons
+      type(shower_settings_t), intent(in) :: settings
+    end subroutine pythia6_combine_with_particle_set
 <<Shower pythia6: procedures>>=
-  subroutine pythia6_combine_with_particle_set (particle_set, model_in, &
+  module subroutine pythia6_combine_with_particle_set (particle_set, model_in, &
        model_hadrons, settings)
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model_in
@@ -7192,9 +7801,16 @@ with the ordering of the color string but am not sure.
 @ %def fudge_whizard_partons_in_hadro
 @
 <<Shower pythia6: shower pythia6: TBP>>=
-  procedure :: get_final_colored_ME_momenta => shower_pythia6_get_final_colored_ME_momenta
+  procedure :: get_final_colored_ME_momenta => &
+       shower_pythia6_get_final_colored_ME_momenta
+<<Shower pythia6: sub interfaces>>=
+    module subroutine shower_pythia6_get_final_colored_ME_momenta &
+           (shower, momenta)
+      class(shower_pythia6_t), intent(in) :: shower
+      type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
+    end subroutine shower_pythia6_get_final_colored_ME_momenta
 <<Shower pythia6: procedures>>=
-  subroutine shower_pythia6_get_final_colored_ME_momenta &
+  module subroutine shower_pythia6_get_final_colored_ME_momenta &
          (shower, momenta)
     class(shower_pythia6_t), intent(in) :: shower
     type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
@@ -7229,8 +7845,13 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_setup_lhe_io_units
+<<Shower pythia6: sub interfaces>>=
+    module subroutine pythia6_setup_lhe_io_units (u_W2P, u_P2W)
+      integer, intent(out) :: u_W2P
+      integer, intent(out), optional :: u_P2W
+    end subroutine pythia6_setup_lhe_io_units
 <<Shower pythia6: procedures>>=
-  subroutine pythia6_setup_lhe_io_units (u_W2P, u_P2W)
+  module subroutine pythia6_setup_lhe_io_units (u_W2P, u_P2W)
     integer, intent(out) :: u_W2P
     integer, intent(out), optional :: u_P2W
     character(len=10) :: buffer
@@ -7261,8 +7882,12 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_set_config
+<<Shower pythia6: sub interfaces>>=
+    module subroutine pythia6_set_config (pygive_all)
+      type(string_t), intent(in) :: pygive_all
+    end subroutine pythia6_set_config
 <<Shower pythia6: procedures>>=
-  subroutine pythia6_set_config (pygive_all)
+  module subroutine pythia6_set_config (pygive_all)
     type(string_t), intent(in) :: pygive_all
     type(string_t) :: pygive_remaining, pygive_partial
     if (len (pygive_all) > 0) then
@@ -7282,8 +7907,12 @@ with the ordering of the color string but am not sure.
 @ Exchanging error messages with PYTHIA6.
 <<Shower pythia6: public>>=
   public :: pythia6_set_error
+<<Shower pythia6: sub interfaces>>=
+    module subroutine pythia6_set_error (mstu23)
+      integer, intent(in) :: mstu23
+    end subroutine pythia6_set_error
 <<Shower pythia6: procedures>>=
-  subroutine pythia6_set_error (mstu23)
+  module subroutine pythia6_set_error (mstu23)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
     COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
@@ -7296,8 +7925,12 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_get_error
+<<Shower pythia6: sub interfaces>>=
+    module function pythia6_get_error () result (mstu23)
+      integer :: mstu23
+    end function pythia6_get_error
 <<Shower pythia6: procedures>>=
-  function pythia6_get_error () result (mstu23)
+  module function pythia6_get_error () result (mstu23)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
     COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
@@ -7310,8 +7943,12 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_tauola_active
+<<Shower pythia6: sub interfaces>>=
+    module function pythia6_tauola_active () result (active)
+      logical :: active
+    end function pythia6_tauola_active
 <<Shower pythia6: procedures>>=
-  function pythia6_tauola_active () result (active)
+  module function pythia6_tauola_active () result (active)
     IMPLICIT DOUBLE PRECISION(A-H, O-Z)
     IMPLICIT INTEGER(I-N)
     COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
@@ -7324,8 +7961,12 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_handle_errors
+<<Shower pythia6: sub interfaces>>=
+    module function pythia6_handle_errors () result (valid)
+      logical :: valid
+    end function pythia6_handle_errors
 <<Shower pythia6: procedures>>=
-  function pythia6_handle_errors () result (valid)
+  module function pythia6_handle_errors () result (valid)
     logical :: valid
     valid = pythia6_get_error () == 0
     if (.not. valid) then
@@ -7337,8 +7978,12 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_set_verbose
+<<Shower pythia6: sub interfaces>>=
+    module subroutine pythia6_set_verbose (verbose)
+      logical, intent(in) :: verbose
+    end subroutine pythia6_set_verbose
 <<Shower pythia6: procedures>>=
-  subroutine pythia6_set_verbose (verbose)
+  module subroutine pythia6_set_verbose (verbose)
     logical, intent(in) :: verbose
     if (verbose) then
        call pygive ('MSTU(13)=1')
@@ -7352,8 +7997,12 @@ with the ordering of the color string but am not sure.
 @
 <<Shower pythia6: public>>=
   public :: pythia6_set_last_treated_line
+<<Shower pythia6: sub interfaces>>=
+    module subroutine pythia6_set_last_treated_line (last_line)
+      integer,intent(in) :: last_line
+    end subroutine pythia6_set_last_treated_line
 <<Shower pythia6: procedures>>=
-  subroutine pythia6_set_last_treated_line (last_line)
+  module subroutine pythia6_set_last_treated_line (last_line)
     integer,intent(in) :: last_line
     N_old = last_line
   end subroutine pythia6_set_last_treated_line
@@ -8314,37 +8963,55 @@ module shower_pythia8
 
 <<Use kinds with double>>
 <<Use strings>>
+  use os_interface
+  use lorentz
+  use shower_base
+  use particles
+  use model_data
+  use pdf
+  use whizard_lha
+  use pythia8
+  use tauola_interface, only: taudec_settings_t
+
+<<Standard module head>>
+
+<<Shower pythia8: public>>
+
+<<Shower pythia8: variables>>
+
+<<Shower pythia8: types>>
+
+  interface
+<<Shower pythia8: sub interfaces>>
+  end interface
+
+end module shower_pythia8
+
+@ %def shower_pythia8
+@
+<<[[shower_pythia8_sub.f90]]>>=
+<<File header>>
+
+submodule (shower_pythia8) shower_pythia8_s
+
 <<Use debug>>
   use constants
   use numeric_utils, only: vanishes
   use io_units
   use physics_defs
   use diagnostics
-  use os_interface
-  use lorentz
-  use subevents
-  use shower_base
-  use particles
-  use model_data
-  use pdf
   use helicities
-  use whizard_lha
-  use pythia8
-  use tauola_interface, only: taudec_settings_t
+  use subevents
 
-  <<Standard module head>>
-
-  <<Shower pythia8: public>>
-  <<Shower pythia8: variables>>
-  <<Shower pythia8: types>>
+  implicit none
 
 contains
 
-  <<Shower pythia8: procedures>>
+<<Shower pythia8: procedures>>
 
-end module shower_pythia8
+end submodule shower_pythia8_s
 
-@ %def shower_pythia8
+@ %def shower_pythia8_s
 @
 <<Shower pythia8: public>>=
   public :: shower_pythia8_t
@@ -8364,8 +9031,18 @@ end module shower_pythia8
 @
 <<Shower pythia8: shower pythia8: TBP>>=
   procedure :: init => shower_pythia8_init
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_init &
+         (shower, settings, taudec_settings, pdf_data, os_data)
+      class(shower_pythia8_t), intent(out) :: shower
+      type(shower_settings_t), intent(in) :: settings
+      type(taudec_settings_t), intent(in) :: taudec_settings
+      type(pdf_data_t), intent(in) :: pdf_data
+      type(os_data_t), intent(in) :: os_data
+    end subroutine shower_pythia8_init
 <<Shower pythia8: procedures>>=
-  subroutine shower_pythia8_init (shower, settings, taudec_settings, pdf_data, os_data)
+  module subroutine shower_pythia8_init &
+       (shower, settings, taudec_settings, pdf_data, os_data)
     class(shower_pythia8_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
     type(taudec_settings_t), intent(in) :: taudec_settings
@@ -8392,8 +9069,13 @@ and set the strategy of the user process to weighted events.
 Therefore, we choose arbitrary defaults.
 <<Shower pythia8: shower pythia8: TBP>>=
   procedure, private :: set_user_process => shower_pythia8_set_user_process
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_set_user_process (shower, pset)
+      class(shower_pythia8_t), intent(inout) :: shower
+      type(particle_set_t), intent(in) :: pset
+    end subroutine shower_pythia8_set_user_process
 <<Shower pythia8: procedures>>=
-  subroutine shower_pythia8_set_user_process (shower, pset)
+  module subroutine shower_pythia8_set_user_process (shower, pset)
     class(shower_pythia8_t), intent(inout) :: shower
     type(particle_set_t), intent(in) :: pset
     integer, dimension(2) :: beam_pdg
@@ -8413,9 +9095,15 @@ Therefore, we choose arbitrary defaults.
 We check whether the LHA object needs to be initialized and do the appropriate steps.
 <<Shower pythia8: shower pythia8: TBP>>=
   procedure :: import_particle_set => shower_pythia8_import_particle_set
-<<Shower pythia8: procedures>>=
-  subroutine shower_pythia8_import_particle_set &
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_import_particle_set &
          (shower, particle_set)
+      class(shower_pythia8_t), target, intent(inout) :: shower
+      type(particle_set_t), intent(in) :: particle_set
+    end subroutine shower_pythia8_import_particle_set
+<<Shower pythia8: procedures>>=
+  module subroutine shower_pythia8_import_particle_set &
+       (shower, particle_set)
     class(shower_pythia8_t), target, intent(inout) :: shower
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t) :: pset_reduced
@@ -8443,9 +9131,16 @@ We check whether the LHA object needs to be initialized and do the appropriate s
 @
 <<Shower pythia8: shower pythia8: TBP>>=
   procedure :: generate_emissions => shower_pythia8_generate_emissions
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_generate_emissions &
+          (shower, valid, number_of_emissions)
+      class(shower_pythia8_t), intent(inout), target :: shower
+      logical, intent(out) :: valid
+      integer, optional, intent(in) :: number_of_emissions
+    end subroutine shower_pythia8_generate_emissions
 <<Shower pythia8: procedures>>=
-   subroutine shower_pythia8_generate_emissions &
-         (shower, valid, number_of_emissions)
+  module subroutine shower_pythia8_generate_emissions &
+        (shower, valid, number_of_emissions)
     class(shower_pythia8_t), intent(inout), target :: shower
     logical, intent(out) :: valid
     integer, optional, intent(in) :: number_of_emissions
@@ -8458,9 +9153,17 @@ We check whether the LHA object needs to be initialized and do the appropriate s
 @
 <<Shower pythia8: shower pythia8: TBP>>=
   procedure :: make_particle_set => shower_pythia8_make_particle_set
-<<Shower pythia8: procedures>>=
-  subroutine shower_pythia8_make_particle_set &
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_make_particle_set &
          (shower, particle_set, model, model_hadrons)
+      class(shower_pythia8_t), intent(in) :: shower
+      type(particle_set_t), intent(inout) :: particle_set
+      class(model_data_t), intent(in), target :: model
+      class(model_data_t), intent(in), target :: model_hadrons
+    end subroutine shower_pythia8_make_particle_set
+<<Shower pythia8: procedures>>=
+  module subroutine shower_pythia8_make_particle_set &
+       (shower, particle_set, model, model_hadrons)
     class(shower_pythia8_t), intent(in) :: shower
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
@@ -8494,11 +9197,17 @@ We check whether the LHA object needs to be initialized and do the appropriate s
 Import a pointer to [[shower%rng]] and initialize Pythia itself, at once.
 <<Shower pythia8: shower pythia8: TBP>>=
   procedure, private :: transfer_settings => shower_pythia8_transfer_settings
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_transfer_settings (shower)
+      class(shower_pythia8_t), intent(inout), target :: shower
+    end subroutine shower_pythia8_transfer_settings
 <<Shower pythia8: procedures>>=
-  subroutine shower_pythia8_transfer_settings (shower)
+  module subroutine shower_pythia8_transfer_settings (shower)
     class(shower_pythia8_t), intent(inout), target :: shower
-    if (debug_on) call msg_debug (D_SHOWER, "shower_pythia8_transfer_settings")
-    if (debug_on) call msg_debug2 (D_SHOWER, "pythia_initialized", shower%pythia_initialized)
+    if (debug_on)  call msg_debug &
+         (D_SHOWER, "shower_pythia8_transfer_settings")
+    if (debug_on)  call msg_debug2 &
+         (D_SHOWER, "pythia_initialized", shower%pythia_initialized)
     if (shower%pythia_initialized) return
     associate (pythia => shower%pythia)
       call pythia%set_lhaup_ptr (shower%lhaup)
@@ -8530,13 +9239,21 @@ Import a pointer to [[shower%rng]] and initialize Pythia itself, at once.
 @ %def shower_pythia8_transfer_settings
 @
 <<Shower pythia8: shower pythia8: TBP>>=
-  procedure :: get_final_colored_ME_momenta => shower_pythia8_get_final_colored_ME_momenta
+  procedure :: get_final_colored_ME_momenta => &
+       shower_pythia8_get_final_colored_ME_momenta
+<<Shower pythia8: sub interfaces>>=
+    module subroutine shower_pythia8_get_final_colored_ME_momenta &
+           (shower, momenta)
+      class(shower_pythia8_t), intent(in) :: shower
+      type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
+    end subroutine shower_pythia8_get_final_colored_ME_momenta
 <<Shower pythia8: procedures>>=
-  subroutine shower_pythia8_get_final_colored_ME_momenta &
+  module subroutine shower_pythia8_get_final_colored_ME_momenta &
          (shower, momenta)
     class(shower_pythia8_t), intent(in) :: shower
     type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
-    if (debug_on) call msg_debug (D_MATCHING, "shower_pythia8_get_final_colored_ME_momenta")
+    if (debug_on)  call msg_debug &
+         (D_MATCHING, "shower_pythia8_get_final_colored_ME_momenta")
     call shower%pythia%get_final_colored_ME_momenta (momenta)
   end subroutine shower_pythia8_get_final_colored_ME_momenta
 
