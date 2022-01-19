@@ -32,28 +32,36 @@ noinst_LTLIBRARIES = libblha.la
 check_LTLIBRARIES = libblha_ut.la
 
 COMMON_F90 = \
-  blha_olp_interfaces.f90
+  blha_olp_interfaces.f90 \
+  blha_config.f90
 MPI_F90 = \
-  blha_config.f90_mpi
+  blha_config_sub.f90_mpi
 SERIAL_F90 = \
-  blha_config.f90_serial
+  blha_config_sub.f90_serial
+BLHA_SUBMODULES = \
+  blha_olp_interfaces_sub.f90
+
+BLHA_MODULES = \
+  $(COMMON_F90)
 
 EXTRA_DIST = \
   $(COMMON_F90) \
+  $(BLHA_SUBMODULES) \
   $(SERIAL_F90) \
   $(MPI_F90)
 
 nodist_libblha_la_SOURCES = \
-  blha_config.f90 \
-  $(COMMON_F90)
+  $(BLHA_MODULES) \
+  blha_config_sub.f90 \
+  $(BLHA_SUBMODULES)
 
-DISTCLEANFILES = blha_config.f90
+DISTCLEANFILES = blha_config_sub.f90
 
 if FC_USE_MPI
-blha_config.f90: blha_config.f90_mpi
+blha_config_sub.f90: blha_config_sub.f90_mpi
 	-cp -f $< $@
 else
-blha_config.f90: blha_config.f90_serial
+blha_config_sub.f90: blha_config_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -152,6 +160,11 @@ DISTCLEANFILES += Makefile.depend
 AM_FCFLAGS = $(include_modules) -I../fastjet -I../pdf_builtin -I../lhapdf
 
 ########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+blha_config_sub.lo: blha_config.lo
+blha_olp_interfaces_sub.lo: blha_olp_interfaces.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -186,6 +199,9 @@ blha.stamp: $(PRELUDE) $(srcdir)/blha.nw $(POSTLUDE)
 	for src in $(COMMON_F90) $(libblha_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
+	for src in $(BLHA_SUBMODULES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+	done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
@@ -194,7 +210,7 @@ blha.stamp: $(PRELUDE) $(srcdir)/blha.nw $(POSTLUDE)
         done
 	@mv -f blha.tmp blha.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libblha_ut_la_SOURCES): blha.stamp
+$(COMMON_F90) $(BLHA_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libblha_ut_la_SOURCES): blha.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f blha.stamp; \
