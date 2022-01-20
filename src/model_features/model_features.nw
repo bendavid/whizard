@@ -49,29 +49,49 @@ module auto_components
 
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use diagnostics
   use model_data
   use pdg_arrays
-  use physics_defs, only: PHOTON, GLUON, Z_BOSON, W_BOSON
-  use numeric_utils, only: extend_integer_array
 
 <<Standard module head>>
 
 <<Auto components: public>>
 
-<<Auto components: parameters>>
-
 <<Auto components: types>>
 
 <<Auto components: interfaces>>
+
+  interface
+<<Auto components: sub interfaces>>
+  end interface
+
+contains
+
+<<Auto components: main procedures>>
+
+end module auto_components
+@ %def auto_components
+@
+<<[[auto_components_sub.f90]]>>=
+<<File header>>
+
+submodule (auto_components) auto_components_s
+
+  use io_units
+  use diagnostics
+  use physics_defs, only: PHOTON, GLUON, Z_BOSON, W_BOSON
+  use numeric_utils, only: extend_integer_array
+
+  implicit none
+
+<<Auto components: parameters>>
 
 contains
 
 <<Auto components: procedures>>
 
-end module auto_components
-@ %def auto_components
+end submodule auto_components_s
+
+@ %def auto_components_s
 @
 \subsection{Constraints: Abstract types}
 An abstract type that denotes a constraint on the automatically generated
@@ -89,8 +109,30 @@ during the splitting algorithm.
   procedure :: check_before_split  => split_constraint_check_before_split
   procedure :: check_before_insert => split_constraint_check_before_insert
   procedure :: check_before_record => split_constraint_check_before_record
+<<Auto components: sub interfaces>>=
+    module subroutine split_constraint_check_before_split (c, table, pl, k, passed)
+      class(split_constraint_t), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: k
+      logical, intent(out) :: passed
+    end subroutine split_constraint_check_before_split
+    module subroutine split_constraint_check_before_insert (c, table, pa, pl, passed)
+      class(split_constraint_t), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_array_t), intent(in) :: pa
+      type(pdg_list_t), intent(inout) :: pl
+      logical, intent(out) :: passed
+    end subroutine split_constraint_check_before_insert
+    module subroutine split_constraint_check_before_record (c, table, pl, n_loop, passed)
+      class(split_constraint_t), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine split_constraint_check_before_record
 <<Auto components: procedures>>=
-  subroutine split_constraint_check_before_split (c, table, pl, k, passed)
+  module subroutine split_constraint_check_before_split (c, table, pl, k, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -99,7 +141,7 @@ during the splitting algorithm.
     passed = .true.
   end subroutine split_constraint_check_before_split
 
-  subroutine split_constraint_check_before_insert (c, table, pa, pl, passed)
+  module subroutine split_constraint_check_before_insert (c, table, pa, pl, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_array_t), intent(in) :: pa
@@ -108,7 +150,7 @@ during the splitting algorithm.
     passed = .true.
   end subroutine split_constraint_check_before_insert
 
-  subroutine split_constraint_check_before_record (c, table, pl, n_loop, passed)
+  module subroutine split_constraint_check_before_record (c, table, pl, n_loop, passed)
     class(split_constraint_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -138,10 +180,11 @@ during the splitting algorithm.
   end type split_constraints_t
 
 @ %def split_constraints_t
-@ Initialize the constraints set with a specific number of elements.
+@ Gfortran 7/8/9 bug: has to remain in the main module.
+Initialize the constraints set with a specific number of elements.
 <<Auto components: split constraints: TBP>>=
   procedure :: init => split_constraints_init
-<<Auto components: procedures>>=
+<<Auto components: main procedures>>=
   subroutine split_constraints_init (constraints, n)
     class(split_constraints_t), intent(out) :: constraints
     integer, intent(in) :: n
@@ -152,8 +195,14 @@ during the splitting algorithm.
 @ Set a constraint.
 <<Auto components: split constraints: TBP>>=
   procedure :: set => split_constraints_set
+<<Auto components: sub interfaces>>=
+    module subroutine split_constraints_set (constraints, i, c)
+      class(split_constraints_t), intent(inout) :: constraints
+      integer, intent(in) :: i
+      class(split_constraint_t), intent(in) :: c
+    end subroutine split_constraints_set
 <<Auto components: procedures>>=
-  subroutine split_constraints_set (constraints, i, c)
+  module subroutine split_constraints_set (constraints, i, c)
     class(split_constraints_t), intent(inout) :: constraints
     integer, intent(in) :: i
     class(split_constraint_t), intent(in) :: c
@@ -176,8 +225,33 @@ results from splitting before it is recorded.
   procedure :: check_before_split  => split_constraints_check_before_split
   procedure :: check_before_insert => split_constraints_check_before_insert
   procedure :: check_before_record => split_constraints_check_before_record
+<<Auto components: sub interfaces>>=
+    module subroutine split_constraints_check_before_split &
+         (constraints, table, pl, k, passed)
+      class(split_constraints_t), intent(in) :: constraints
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: k
+      logical, intent(out) :: passed
+    end subroutine split_constraints_check_before_split
+    module subroutine split_constraints_check_before_insert &
+         (constraints, table, pa, pl, passed)
+      class(split_constraints_t), intent(in) :: constraints
+      class(ps_table_t), intent(in) :: table
+      type(pdg_array_t), intent(in) :: pa
+      type(pdg_list_t), intent(inout) :: pl
+      logical, intent(out) :: passed
+    end subroutine split_constraints_check_before_insert
+    module subroutine split_constraints_check_before_record &
+         (constraints, table, pl, n_loop, passed)
+      class(split_constraints_t), intent(in) :: constraints
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine split_constraints_check_before_record
 <<Auto components: procedures>>=
-  subroutine split_constraints_check_before_split &
+  module subroutine split_constraints_check_before_split &
        (constraints, table, pl, k, passed)
     class(split_constraints_t), intent(in) :: constraints
     class(ps_table_t), intent(in) :: table
@@ -192,7 +266,7 @@ results from splitting before it is recorded.
     end do
   end subroutine split_constraints_check_before_split
 
-  subroutine split_constraints_check_before_insert &
+  module subroutine split_constraints_check_before_insert &
        (constraints, table, pa, pl, passed)
     class(split_constraints_t), intent(in) :: constraints
     class(ps_table_t), intent(in) :: table
@@ -207,7 +281,7 @@ results from splitting before it is recorded.
     end do
   end subroutine split_constraints_check_before_insert
 
-  subroutine split_constraints_check_before_record &
+  module subroutine split_constraints_check_before_record &
        (constraints, table, pl, n_loop, passed)
     class(split_constraints_t), intent(in) :: constraints
     class(ps_table_t), intent(in) :: table
@@ -243,14 +317,33 @@ defined only when we are recording the entry.
 @ %def constraint_n_tot
 <<Auto components: public>>=
   public :: constrain_n_tot
+<<Auto components: sub interfaces>>=
+    module function constrain_n_tot (n_max) result (c)
+      integer, intent(in) :: n_max
+      type(constraint_n_tot) :: c
+    end function constrain_n_tot
+    module subroutine constraint_n_tot_check_before_split (c, table, pl, k, passed)
+      class(constraint_n_tot), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: k
+      logical, intent(out) :: passed
+    end subroutine constraint_n_tot_check_before_split
+    module subroutine constraint_n_tot_check_before_record (c, table, pl, n_loop, passed)
+      class(constraint_n_tot), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine constraint_n_tot_check_before_record
 <<Auto components: procedures>>=
-  function constrain_n_tot (n_max) result (c)
+  module function constrain_n_tot (n_max) result (c)
     integer, intent(in) :: n_max
     type(constraint_n_tot) :: c
     c%n_max = n_max
   end function constrain_n_tot
 
-  subroutine constraint_n_tot_check_before_split (c, table, pl, k, passed)
+  module subroutine constraint_n_tot_check_before_split (c, table, pl, k, passed)
     class(constraint_n_tot), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -259,7 +352,7 @@ defined only when we are recording the entry.
     passed = pl%get_size () < c%n_max
   end subroutine constraint_n_tot_check_before_split
 
-  subroutine constraint_n_tot_check_before_record (c, table, pl, n_loop, passed)
+  module subroutine constraint_n_tot_check_before_record (c, table, pl, n_loop, passed)
     class(constraint_n_tot), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -285,14 +378,27 @@ total number of particles.
 @ %def constraint_n_loop
 <<Auto components: public>>=
   public :: constrain_n_loop
+<<Auto components: sub interfaces>>=
+    module function constrain_n_loop (n_loop_max) result (c)
+      integer, intent(in) :: n_loop_max
+      type(constraint_n_loop) :: c
+    end function constrain_n_loop
+    module subroutine constraint_n_loop_check_before_record &
+         (c, table, pl, n_loop, passed)
+      class(constraint_n_loop), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine constraint_n_loop_check_before_record
 <<Auto components: procedures>>=
-  function constrain_n_loop (n_loop_max) result (c)
+  module function constrain_n_loop (n_loop_max) result (c)
     integer, intent(in) :: n_loop_max
     type(constraint_n_loop) :: c
     c%n_loop_max = n_loop_max
   end function constrain_n_loop
 
-  subroutine constraint_n_loop_check_before_record &
+  module subroutine constraint_n_loop_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_n_loop), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -323,8 +429,24 @@ occurs, the check fails.
 @ %def constraint_splittings
 <<Auto components: public>>=
   public :: constrain_splittings
+<<Auto components: sub interfaces>>=
+    module function constrain_splittings &
+         (pl_match, pl_excluded_gauge_splittings) result (c)
+      type(pdg_list_t), intent(in) :: pl_match
+      type(pdg_list_t), intent(in) :: pl_excluded_gauge_splittings
+      type(constraint_splittings) :: c
+    end function constrain_splittings
+    module subroutine constraint_splittings_check_before_insert &
+         (c, table, pa, pl, passed)
+      class(constraint_splittings), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_array_t), intent(in) :: pa
+      type(pdg_list_t), intent(inout) :: pl
+      logical, intent(out) :: passed
+    end subroutine constraint_splittings_check_before_insert
 <<Auto components: procedures>>=
-  function constrain_splittings (pl_match, pl_excluded_gauge_splittings) result (c)
+  module function constrain_splittings &
+       (pl_match, pl_excluded_gauge_splittings) result (c)
     type(pdg_list_t), intent(in) :: pl_match
     type(pdg_list_t), intent(in) :: pl_excluded_gauge_splittings
     type(constraint_splittings) :: c
@@ -332,7 +454,8 @@ occurs, the check fails.
     c%pl_excluded_gauge_splittings = pl_excluded_gauge_splittings
   end function constrain_splittings
 
-  subroutine constraint_splittings_check_before_insert (c, table, pa, pl, passed)
+  module subroutine constraint_splittings_check_before_insert &
+       (c, table, pa, pl, passed)
     class(constraint_splittings), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_array_t), intent(in) :: pa
@@ -377,14 +500,26 @@ check fails.
 @ %def constraint_insert
 <<Auto components: public>>=
   public :: constrain_insert
+<<Auto components: sub interfaces>>=
+    module function constrain_insert (pl_match) result (c)
+      type(pdg_list_t), intent(in) :: pl_match
+      type(constraint_insert) :: c
+    end function constrain_insert
+    module subroutine constraint_insert_check_before_insert (c, table, pa, pl, passed)
+      class(constraint_insert), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_array_t), intent(in) :: pa
+      type(pdg_list_t), intent(inout) :: pl
+      logical, intent(out) :: passed
+    end subroutine constraint_insert_check_before_insert
 <<Auto components: procedures>>=
-  function constrain_insert (pl_match) result (c)
+  module function constrain_insert (pl_match) result (c)
     type(pdg_list_t), intent(in) :: pl_match
     type(constraint_insert) :: c
     c%pl_match = pl_match
   end function constrain_insert
 
-  subroutine constraint_insert_check_before_insert (c, table, pa, pl, passed)
+  module subroutine constraint_insert_check_before_insert (c, table, pa, pl, passed)
     class(constraint_insert), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_array_t), intent(in) :: pa
@@ -416,14 +551,27 @@ match is found.  The constraint passed if all entries have been crossed out.
 For an [[if_table]] in particular, we check the final state only.
 <<Auto components: public>>=
   public :: constrain_require
+<<Auto components: sub interfaces>>=
+    module function constrain_require (pl) result (c)
+      type(pdg_list_t), intent(in) :: pl
+      type(constraint_require) :: c
+    end function constrain_require
+    module subroutine constraint_require_check_before_record &
+         (c, table, pl, n_loop, passed)
+      class(constraint_require), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine constraint_require_check_before_record
 <<Auto components: procedures>>=
-  function constrain_require (pl) result (c)
+  module function constrain_require (pl) result (c)
     type(pdg_list_t), intent(in) :: pl
     type(constraint_require) :: c
     c%pl = pl
   end function constrain_require
 
-  subroutine constraint_require_check_before_record &
+  module subroutine constraint_require_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_require), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -473,12 +621,25 @@ constraint prohibits this situation.
   end type constraint_radiation
 
 @ %def constraint_radiation
+<<Auto components: sub interfaces>>=
+    module function constrain_radiation () result (c)
+      type(constraint_radiation) :: c
+    end function constrain_radiation
+    module subroutine constraint_radiation_check_before_insert &
+         (c, table, pa, pl, passed)
+      class(constraint_radiation), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_array_t), intent(in) :: pa
+      type(pdg_list_t), intent(inout) :: pl
+      logical, intent(out) :: passed
+    end subroutine constraint_radiation_check_before_insert
 <<Auto components: procedures>>=
-  function constrain_radiation () result (c)
+  module function constrain_radiation () result (c)
     type(constraint_radiation) :: c
   end function constrain_radiation
 
-  subroutine constraint_radiation_check_before_insert (c, table, pa, pl, passed)
+  module subroutine constraint_radiation_check_before_insert &
+       (c, table, pa, pl, passed)
     class(constraint_radiation), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_array_t), intent(in) :: pa
@@ -511,8 +672,22 @@ zero).  If not, equality is allowed.
   end type constraint_mass_sum
 
 @ %def contraint_mass_sum
+<<Auto components: sub interfaces>>=
+    module function constrain_mass_sum (mass_limit, margin) result (c)
+      real(default), intent(in) :: mass_limit
+      real(default), intent(in), optional :: margin
+      type(constraint_mass_sum) :: c
+    end function constrain_mass_sum
+    module subroutine constraint_mass_sum_check_before_record &
+         (c, table, pl, n_loop, passed)
+      class(constraint_mass_sum), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine constraint_mass_sum_check_before_record
 <<Auto components: procedures>>=
-  function constrain_mass_sum (mass_limit, margin) result (c)
+  module function constrain_mass_sum (mass_limit, margin) result (c)
     real(default), intent(in) :: mass_limit
     real(default), intent(in), optional :: margin
     type(constraint_mass_sum) :: c
@@ -523,7 +698,7 @@ zero).  If not, equality is allowed.
     end if
   end function constrain_mass_sum
 
-  subroutine constraint_mass_sum_check_before_record &
+  module subroutine constraint_mass_sum_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_mass_sum), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -570,14 +745,27 @@ it is recorded.
   end type constraint_in_state
 
 @ %def constraint_in_state
+<<Auto components: sub interfaces>>=
+    module function constrain_in_state (pl) result (c)
+      type(pdg_list_t), intent(in) :: pl
+      type(constraint_in_state) :: c
+    end function constrain_in_state
+    module subroutine constraint_in_state_check_before_record &
+         (c, table, pl, n_loop, passed)
+      class(constraint_in_state), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine constraint_in_state_check_before_record
 <<Auto components: procedures>>=
-  function constrain_in_state (pl) result (c)
+  module function constrain_in_state (pl) result (c)
     type(pdg_list_t), intent(in) :: pl
     type(constraint_in_state) :: c
     c%pl = pl
   end function constrain_in_state
 
-  subroutine constraint_in_state_check_before_record &
+  module subroutine constraint_in_state_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_in_state), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -612,14 +800,27 @@ If set, filter out photon induced processes.
   end type constraint_photon_induced_processes
 
 @ %def constraint_photon_induced_processes
+<<Auto components: sub interfaces>>=
+    module function constrain_photon_induced_processes (n_in) result (c)
+      integer, intent(in) :: n_in
+      type(constraint_photon_induced_processes) :: c
+    end function constrain_photon_induced_processes
+    module subroutine constraint_photon_induced_processes_check_before_record &
+         (c, table, pl, n_loop, passed)
+      class(constraint_photon_induced_processes), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop
+      logical, intent(out) :: passed
+    end subroutine constraint_photon_induced_processes_check_before_record
 <<Auto components: procedures>>=
-  function constrain_photon_induced_processes (n_in) result (c)
+  module function constrain_photon_induced_processes (n_in) result (c)
     integer, intent(in) :: n_in
     type(constraint_photon_induced_processes) :: c
     c%n_in = n_in
   end function constrain_photon_induced_processes
 
-  subroutine constraint_photon_induced_processes_check_before_record &
+  module subroutine constraint_photon_induced_processes_check_before_record &
        (c, table, pl, n_loop, passed)
     class(constraint_photon_induced_processes), intent(in) :: c
     class(ps_table_t), intent(in) :: table
@@ -657,8 +858,14 @@ Filters vertices which do not match the desired NLO pattern.
 @
 <<Auto components: public>>=
   public :: constrain_couplings
+<<Auto components: sub interfaces>>=
+    module function constrain_couplings (qcd, qed, n_nlo_correction_types) result (c)
+      type(constraint_coupling_t) :: c
+      logical, intent(in) :: qcd, qed
+      integer, intent(in) :: n_nlo_correction_types
+    end function constrain_couplings
 <<Auto components: procedures>>=
-  function constrain_couplings (qcd, qed, n_nlo_correction_types) result (c)
+  module function constrain_couplings (qcd, qed, n_nlo_correction_types) result (c)
     type(constraint_coupling_t) :: c
     logical, intent(in) :: qcd, qed
     integer, intent(in) :: n_nlo_correction_types
@@ -670,8 +877,16 @@ Filters vertices which do not match the desired NLO pattern.
 @
 <<Auto components: constraint coupling: TBP>>=
   procedure :: check_before_insert => constraint_coupling_check_before_insert
+<<Auto components: sub interfaces>>=
+    module subroutine constraint_coupling_check_before_insert (c, table, pa, pl, passed)
+      class(constraint_coupling_t), intent(in) :: c
+      class(ps_table_t), intent(in) :: table
+      type(pdg_array_t), intent(in) :: pa
+      type(pdg_list_t), intent(inout) :: pl
+      logical, intent(out) :: passed
+    end subroutine constraint_coupling_check_before_insert
 <<Auto components: procedures>>=
-  subroutine constraint_coupling_check_before_insert (c, table, pa, pl, passed)
+  module subroutine constraint_coupling_check_before_insert (c, table, pa, pl, passed)
     class(constraint_coupling_t), intent(in) :: c
     class(ps_table_t), intent(in) :: table
     type(pdg_array_t), intent(in) :: pa
@@ -787,8 +1002,12 @@ particles in its list as incoming antiparticles.
 @ Finalizer: we must deallocate the embedded list.
 <<Auto components: ps table: TBP>>=
   procedure :: final => ps_table_final
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_final (object)
+      class(ps_table_t), intent(inout) :: object
+    end subroutine ps_table_final
 <<Auto components: procedures>>=
-  subroutine ps_table_final (object)
+  module subroutine ps_table_final (object)
     class(ps_table_t), intent(inout) :: object
     type(ps_entry_t), pointer :: current
     do while (associated (object%first))
@@ -821,8 +1040,26 @@ for the headers.
   procedure :: write => if_table_write
 @ The first [[n_in]] particles will be replaced by antiparticles in
 the output, and we write an arrow if [[n_in]] is present.
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_base_write (object, unit, n_in)
+      class(ps_table_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      integer, intent(in), optional :: n_in
+    end subroutine ps_table_base_write
+    module subroutine ds_table_write (object, unit)
+      class(ds_table_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine ds_table_write
+    module subroutine fs_table_write (object, unit)
+      class(fs_table_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine fs_table_write
+    module subroutine if_table_write (object, unit)
+      class(if_table_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine if_table_write
 <<Auto components: procedures>>=
-  subroutine ps_table_base_write (object, unit, n_in)
+  module subroutine ps_table_base_write (object, unit, n_in)
     class(ps_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: n_in
@@ -869,7 +1106,7 @@ the output, and we write an arrow if [[n_in]] is present.
     end do
   end subroutine ps_table_base_write
 
-  subroutine ds_table_write (object, unit)
+  module subroutine ds_table_write (object, unit)
     class(ds_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
     type(field_data_t), pointer :: prt
@@ -881,7 +1118,7 @@ the output, and we write an arrow if [[n_in]] is present.
     call object%base_write (u)
   end subroutine ds_table_write
 
-  subroutine fs_table_write (object, unit)
+  module subroutine fs_table_write (object, unit)
     class(fs_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -890,7 +1127,7 @@ the output, and we write an arrow if [[n_in]] is present.
     call object%base_write (u)
   end subroutine fs_table_write
 
-  subroutine if_table_write (object, unit)
+  module subroutine if_table_write (object, unit)
     class(if_table_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -908,8 +1145,14 @@ the output, and we write an arrow if [[n_in]] is present.
 @ Obtain a particle string for a given index in the pdg list
 <<Auto components: ps table: TBP>>=
   procedure :: get_particle_string => ps_table_get_particle_string
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_get_particle_string (object, index, prt_in, prt_out)
+      class(ps_table_t), intent(in) :: object
+      integer, intent(in) :: index
+      type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
+    end subroutine ps_table_get_particle_string
 <<Auto components: procedures>>=
-  subroutine ps_table_get_particle_string (object, index, prt_in, prt_out)
+  module subroutine ps_table_get_particle_string (object, index, prt_in, prt_out)
     class(ps_table_t), intent(in) :: object
     integer, intent(in) :: index
     type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
@@ -971,8 +1214,25 @@ the output, and we write an arrow if [[n_in]] is present.
 <<Auto components: if table: TBP>>=
   generic :: init => if_table_init
   procedure, private :: if_table_init
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_init &
+         (table, model, pl, constraints, n_in, do_not_check_regular)
+      class(ps_table_t), intent(out) :: table
+      class(model_data_t), intent(in), target :: model
+      type(pdg_list_t), dimension(:), intent(in) :: pl
+      type(split_constraints_t), intent(in) :: constraints
+      integer, intent(in), optional :: n_in
+      logical, intent(in), optional :: do_not_check_regular
+    end subroutine ps_table_init
+    module subroutine if_table_init (table, model, pl_in, pl_out, constraints)
+      class(if_table_t), intent(out) :: table
+      class(model_data_t), intent(in), target :: model
+      type(pdg_list_t), dimension(:), intent(in) :: pl_in, pl_out
+      type(split_constraints_t), intent(in) :: constraints
+    end subroutine if_table_init
 <<Auto components: procedures>>=
-  subroutine ps_table_init (table, model, pl, constraints, n_in, do_not_check_regular)
+  module subroutine ps_table_init &
+       (table, model, pl, constraints, n_in, do_not_check_regular)
     class(ps_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), intent(in) :: pl
@@ -1005,7 +1265,7 @@ the output, and we write an arrow if [[n_in]] is present.
     end do
   end subroutine ps_table_init
 
-  subroutine if_table_init (table, model, pl_in, pl_out, constraints)
+  module subroutine if_table_init (table, model, pl_in, pl_out, constraints)
     class(if_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), intent(in) :: pl_in, pl_out
@@ -1042,8 +1302,12 @@ the output, and we write an arrow if [[n_in]] is present.
 @ Enable loops for the table.  This affects both splitting and output.
 <<Auto components: ps table: TBP>>=
   procedure :: enable_loops => ps_table_enable_loops
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_enable_loops (table)
+      class(ps_table_t), intent(inout) :: table
+    end subroutine ps_table_enable_loops
 <<Auto components: procedures>>=
-  subroutine ps_table_enable_loops (table)
+  module subroutine ps_table_enable_loops (table)
     class(ps_table_t), intent(inout) :: table
     table%loops = .true.
   end subroutine ps_table_enable_loops
@@ -1056,8 +1320,15 @@ states from a single particle with PDG code [[pdg_in]].  The construction is
 limited by the given [[constraints]].
 <<Auto components: ds table: TBP>>=
   procedure :: make => ds_table_make
+<<Auto components: sub interfaces>>=
+    module subroutine ds_table_make (table, model, pdg_in, constraints)
+      class(ds_table_t), intent(out) :: table
+      class(model_data_t), intent(in), target :: model
+      integer, intent(in) :: pdg_in
+      type(split_constraints_t), intent(in) :: constraints
+    end subroutine ds_table_make
 <<Auto components: procedures>>=
-  subroutine ds_table_make (table, model, pdg_in, constraints)
+  module subroutine ds_table_make (table, model, pdg_in, constraints)
     class(ds_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     integer, intent(in) :: pdg_in
@@ -1076,8 +1347,14 @@ limited by the given [[constraints]].
 contain states.  Add and record split states on the fly.
 <<Auto components: fs table: TBP>>=
   procedure :: radiate => fs_table_radiate
+<<Auto components: sub interfaces>>=
+    module subroutine fs_table_radiate (table, constraints, do_not_check_regular)
+      class(fs_table_t), intent(inout) :: table
+      type(split_constraints_t) :: constraints
+      logical, intent(in), optional :: do_not_check_regular
+    end subroutine fs_table_radiate
 <<Auto components: procedures>>=
-  subroutine fs_table_radiate (table, constraints, do_not_check_regular)
+  module subroutine fs_table_radiate (table, constraints, do_not_check_regular)
     class(fs_table_t), intent(inout) :: table
     type(split_constraints_t) :: constraints
     logical, intent(in), optional :: do_not_check_regular
@@ -1107,8 +1384,17 @@ The recursion terminates whenever the split array would have a length
 greater than $n_\text{max}$.
 <<Auto components: ps table: TBP>>=
   procedure :: split => ps_table_split
+<<Auto components: sub interfaces>>=
+    recursive module subroutine ps_table_split (table, pl, n_rad, constraints, &
+          record, do_not_check_regular)
+      class(ps_table_t), intent(inout) :: table
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_rad
+      type(split_constraints_t), intent(in) :: constraints
+      logical, intent(in), optional :: record, do_not_check_regular
+    end subroutine ps_table_split
 <<Auto components: procedures>>=
-  recursive subroutine ps_table_split (table, pl, n_rad, constraints, &
+  recursive module subroutine ps_table_split (table, pl, n_rad, constraints, &
         record, do_not_check_regular)
     class(ps_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
@@ -1164,8 +1450,19 @@ The [[n_in]] parameter tells the replacement routine to insert the new
 particles after entry [[n_in]].  Otherwise, they follow index [[i]].
 <<Auto components: ps table: TBP>>=
   procedure :: insert => ps_table_insert
+<<Auto components: sub interfaces>>=
+    recursive module subroutine ps_table_insert &
+         (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
+      class(ps_table_t), intent(inout) :: table
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_rad, i
+      integer, dimension(:), intent(in) :: pdg
+      type(split_constraints_t), intent(in) :: constraints
+      integer, intent(in), optional :: n_in
+      logical, intent(in), optional :: do_not_check_regular
+    end subroutine ps_table_insert
 <<Auto components: procedures>>=
-  recursive subroutine ps_table_insert &
+  recursive module subroutine ps_table_insert &
        (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
     class(ps_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
@@ -1221,8 +1518,19 @@ Note that we must call the base-method procedure explicitly, so the
 procedure.
 <<Auto components: if table: TBP>>=
   procedure :: insert => if_table_insert
+<<Auto components: sub interfaces>>=
+    recursive module subroutine if_table_insert  &
+         (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
+      class(if_table_t), intent(inout) :: table
+      class(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_rad, i
+      integer, dimension(:), intent(in) :: pdg
+      type(split_constraints_t), intent(in) :: constraints
+      integer, intent(in), optional :: n_in
+      logical, intent(in), optional :: do_not_check_regular
+    end subroutine if_table_insert
 <<Auto components: procedures>>=
-  recursive subroutine if_table_insert  &
+  recursive module subroutine if_table_insert  &
        (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
     class(if_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
@@ -1264,8 +1572,27 @@ allowed in the [[pl_beam]] PDG list, if that is provided.
   procedure :: record_sorted => ps_table_record_sorted
 <<Auto components: if table: TBP>>=
   procedure :: record_sorted => if_table_record_sorted
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_record_sorted &
+         (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
+      class(ps_table_t), intent(inout) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop, n_rad
+      type(split_constraints_t), intent(in) :: constraints
+      logical, intent(in), optional :: do_not_check_regular
+      logical, intent(out) :: passed
+    end subroutine ps_table_record_sorted
+    module subroutine if_table_record_sorted &
+         (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
+      class(if_table_t), intent(inout) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop, n_rad
+      type(split_constraints_t), intent(in) :: constraints
+      logical, intent(in), optional :: do_not_check_regular
+      logical, intent(out) :: passed
+    end subroutine if_table_record_sorted
 <<Auto components: procedures>>=
-  subroutine ps_table_record_sorted &
+  module subroutine ps_table_record_sorted &
        (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
     class(ps_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -1277,7 +1604,7 @@ allowed in the [[pl_beam]] PDG list, if that is provided.
          do_not_check_regular, passed)
   end subroutine ps_table_record_sorted
 
-  subroutine if_table_record_sorted &
+  module subroutine if_table_record_sorted &
        (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
     class(if_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -1298,8 +1625,18 @@ available energy.  This restriction is removed by setting
 [[constrained]] to false.
 <<Auto components: ps table: TBP>>=
   procedure :: record => ps_table_record
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, &
+         do_not_check_regular, passed)
+      class(ps_table_t), intent(inout) :: table
+      type(pdg_list_t), intent(in) :: pl
+      integer, intent(in) :: n_loop, n_rad
+      type(split_constraints_t), intent(in) :: constraints
+      logical, intent(in), optional :: do_not_check_regular
+      logical, intent(out) :: passed
+    end subroutine ps_table_record
 <<Auto components: procedures>>=
-  subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, &
+  module subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, &
        do_not_check_regular, passed)
     class(ps_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
@@ -1325,14 +1662,14 @@ available energy.  This restriction is removed by setting
        if (pl == current) then
           if (n_loop == current%n_loop)  return
        else if (pl < current) then
-          call insert
+          call record_insert ()
           return
        end if
        current => current%next
     end do
-    call insert
+    call record_insert ()
   contains
-    subroutine insert ()
+    subroutine record_insert ()
       type(ps_entry_t), pointer :: entry
       allocate (entry)
       entry%pdg_list_t = pl
@@ -1356,7 +1693,7 @@ available energy.  This restriction is removed by setting
          end if
          table%last => entry
       end if
-    end subroutine insert
+    end subroutine record_insert
   end subroutine ps_table_record
 
 @ %def ps_table_record
@@ -1406,8 +1743,13 @@ depends on the model.
 Return the number of generated decays.
 <<Auto components: ps table: TBP>>=
   procedure :: get_length => ps_table_get_length
+<<Auto components: sub interfaces>>=
+    module function ps_table_get_length (ps_table) result (n)
+      class(ps_table_t), intent(in) :: ps_table
+      integer :: n
+    end function ps_table_get_length
 <<Auto components: procedures>>=
-  function ps_table_get_length (ps_table) result (n)
+  module function ps_table_get_length (ps_table) result (n)
     class(ps_table_t), intent(in) :: ps_table
     integer :: n
     type(ps_entry_t), pointer :: entry
@@ -1423,43 +1765,49 @@ Return the number of generated decays.
 @
 <<Auto components: ps table: TBP>>=
   procedure :: get_emitters => ps_table_get_emitters
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_get_emitters (table, constraints, emitters)
+      class(ps_table_t), intent(in) :: table
+      type(split_constraints_t), intent(in) :: constraints
+      integer, dimension(:), allocatable, intent(out) :: emitters
+    end subroutine ps_table_get_emitters
 <<Auto components: procedures>>=
-  subroutine ps_table_get_emitters (table, constraints, emitters)
-     class(ps_table_t), intent(in) :: table
-     type(split_constraints_t), intent(in) :: constraints
-     integer, dimension(:), allocatable, intent(out) :: emitters
-     class(pdg_list_t), pointer :: pl
-     integer :: i
-     logical :: passed
-     type(vertex_iterator_t) :: vit
-     integer, dimension(:), allocatable :: pdg1, pdg2
-     integer :: n_emitters
-     integer, dimension(:), allocatable :: emitters_tmp
-     integer, parameter :: buf0 = 6
-     n_emitters = 0
-     pl => table%first
-     allocate (emitters_tmp (buf0))
-     do i = 1, pl%get_size ()
-        call constraints%check_before_split (table, pl, i, passed)
-        if (passed) then
-           pdg1 = pl%get(i)
-           call vit%init (table%model, pdg1, .false.)
-           do
-              call vit%get_next_match(pdg2)
-              if (allocated (pdg2)) then
-                 if (n_emitters + 1 > size (emitters_tmp)) &
-                      call extend_integer_array (emitters_tmp, 10)
-                 emitters_tmp (n_emitters + 1) = pdg1(1)
-                 n_emitters = n_emitters + 1
-              else
-                 exit
-              end if
-           end do
-        end if
-     end do
-     allocate (emitters (n_emitters))
-     emitters = emitters_tmp (1:n_emitters)
-     deallocate (emitters_tmp)
+  module subroutine ps_table_get_emitters (table, constraints, emitters)
+    class(ps_table_t), intent(in) :: table
+    type(split_constraints_t), intent(in) :: constraints
+    integer, dimension(:), allocatable, intent(out) :: emitters
+    class(pdg_list_t), pointer :: pl
+    integer :: i
+    logical :: passed
+    type(vertex_iterator_t) :: vit
+    integer, dimension(:), allocatable :: pdg1, pdg2
+    integer :: n_emitters
+    integer, dimension(:), allocatable :: emitters_tmp
+    integer, parameter :: buf0 = 6
+    n_emitters = 0
+    pl => table%first
+    allocate (emitters_tmp (buf0))
+    do i = 1, pl%get_size ()
+       call constraints%check_before_split (table, pl, i, passed)
+       if (passed) then
+          pdg1 = pl%get(i)
+          call vit%init (table%model, pdg1, .false.)
+          do
+             call vit%get_next_match(pdg2)
+             if (allocated (pdg2)) then
+                if (n_emitters + 1 > size (emitters_tmp)) &
+                     call extend_integer_array (emitters_tmp, 10)
+                emitters_tmp (n_emitters + 1) = pdg1(1)
+                n_emitters = n_emitters + 1
+             else
+                exit
+             end if
+          end do
+       end if
+    end do
+    allocate (emitters (n_emitters))
+    emitters = emitters_tmp (1:n_emitters)
+    deallocate (emitters_tmp)
   end subroutine ps_table_get_emitters
 
 @ %def ps_table_get_emitters
@@ -1467,8 +1815,15 @@ Return the number of generated decays.
 requested, return also the loop and radiation order count.
 <<Auto components: ps table: TBP>>=
   procedure :: get_pdg_out => ps_table_get_pdg_out
+<<Auto components: sub interfaces>>=
+    module subroutine ps_table_get_pdg_out (ps_table, i, pa_out, n_loop, n_rad)
+      class(ps_table_t), intent(in) :: ps_table
+      integer, intent(in) :: i
+      type(pdg_array_t), dimension(:), allocatable, intent(out) :: pa_out
+      integer, intent(out), optional :: n_loop, n_rad
+    end subroutine ps_table_get_pdg_out
 <<Auto components: procedures>>=
-  subroutine ps_table_get_pdg_out (ps_table, i, pa_out, n_loop, n_rad)
+  module subroutine ps_table_get_pdg_out (ps_table, i, pa_out, n_loop, n_rad)
     class(ps_table_t), intent(in) :: ps_table
     integer, intent(in) :: i
     type(pdg_array_t), dimension(:), allocatable, intent(out) :: pa_out
@@ -1943,31 +2298,47 @@ module radiation_generator
 
 <<Use kinds>>
 <<Use strings>>
-  use diagnostics
-  use io_units
   use sorting, only: sort_abs
-  use physics_defs, only: PHOTON, GLUON
   use pdg_arrays
-  use flavors
   use model_data
   use auto_components
-  use string_utils, only: split_string, string_contains_word
 
   implicit none
   private
 
-<<radiation generator: public>>
+<<Radiation generator: public>>
 
-<<radiation generator: types>>
+<<Radiation generator: types>>
 
-contains
-
-<<radiation generator: procedures>>
+  interface
+<<Radiation generator: sub interfaces>>
+  end interface
 
 end module radiation_generator
 @ %def radiation_generator
 @
-<<radiation generator: types>>=
+<<[[radiation_generator_sub.f90]]>>=
+<<File header>>
+
+submodule (radiation_generator) radiation_generator_s
+
+  use io_units
+  use diagnostics
+  use physics_defs, only: PHOTON, GLUON
+  use string_utils, only: split_string, string_contains_word
+  use flavors
+
+  implicit none
+
+contains
+
+<<Radiation generator: procedures>>
+
+end submodule radiation_generator_s
+
+@ %def radiation_generator_s
+@
+<<Radiation generator: types>>=
   type :: pdg_sorter_t
      integer :: pdg
      logical :: checked = .false.
@@ -1976,30 +2347,39 @@ end module radiation_generator
 
 @ %def pdg_sorter
 @
-<<radiation generator: types>>=
+<<Radiation generator: types>>=
   type :: pdg_states_t
     type(pdg_array_t), dimension(:), allocatable :: pdg
     type(pdg_states_t), pointer :: next
     integer :: n_particles
   contains
-  <<radiation generator: pdg states: TBP>>
+  <<Radiation generator: pdg states: TBP>>
   end type pdg_states_t
 
 @ %def pdg_states_t
-<<radiation generator: pdg states: TBP>>=
+<<Radiation generator: pdg states: TBP>>=
   procedure :: init => pdg_states_init
-<<radiation generator: procedures>>=
-  subroutine pdg_states_init (states)
+<<Radiation generator: sub interfaces>>=
+    module subroutine pdg_states_init (states)
+      class(pdg_states_t), intent(inout) :: states
+    end subroutine pdg_states_init
+<<Radiation generator: procedures>>=
+  module subroutine pdg_states_init (states)
     class(pdg_states_t), intent(inout) :: states
     nullify (states%next)
   end subroutine pdg_states_init
 
 @ %def pdg_states_init
 @
-<<radiation generator: pdg states: TBP>>=
+<<Radiation generator: pdg states: TBP>>=
   procedure :: add => pdg_states_add
-<<radiation generator: procedures>>=
-  subroutine pdg_states_add (states, pdg)
+<<Radiation generator: sub interfaces>>=
+    module subroutine pdg_states_add (states, pdg)
+      class(pdg_states_t), intent(inout), target :: states
+      type(pdg_array_t), dimension(:), intent(in) :: pdg
+    end subroutine pdg_states_add
+<<Radiation generator: procedures>>=
+  module subroutine pdg_states_add (states, pdg)
     class(pdg_states_t), intent(inout), target :: states
     type(pdg_array_t), dimension(:), intent(in) :: pdg
     type(pdg_states_t), pointer :: current_state
@@ -2021,10 +2401,15 @@ end module radiation_generator
 
 @ %def pdg_states_add
 @
-<<radiation generator: pdg states: TBP>>=
+<<Radiation generator: pdg states: TBP>>=
   procedure :: get_n_states => pdg_states_get_n_states
-<<radiation generator: procedures>>=
-  function pdg_states_get_n_states (states) result (n)
+<<Radiation generator: sub interfaces>>=
+    module function pdg_states_get_n_states (states) result (n)
+      class(pdg_states_t), intent(in), target :: states
+      integer :: n
+    end function pdg_states_get_n_states
+<<Radiation generator: procedures>>=
+  module function pdg_states_get_n_states (states) result (n)
     class(pdg_states_t), intent(in), target :: states
     integer :: n
     type(pdg_states_t), pointer :: current_state
@@ -2045,7 +2430,7 @@ end module radiation_generator
 
 @ %def pdg_states_get_n_states
 @
-<<radiation generator: types>>=
+<<Radiation generator: types>>=
   type :: prt_queue_t
     type(string_t), dimension(:), allocatable :: prt_string
     type(prt_queue_t), pointer :: next => null ()
@@ -2055,15 +2440,19 @@ end module radiation_generator
     type(prt_queue_t), pointer :: back => null ()
     integer :: n_lists = 0
   contains
-  <<radiation generator: prt queue: TBP>>
+  <<Radiation generator: prt queue: TBP>>
   end type prt_queue_t
 
 @ %def prt_queue_t
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: null => prt_queue_null
-<<radiation generator: procedures>>=
-  subroutine prt_queue_null (queue)
+<<Radiation generator: sub interfaces>>=
+    module subroutine prt_queue_null (queue)
+      class(prt_queue_t), intent(out) :: queue
+    end subroutine prt_queue_null
+<<Radiation generator: procedures>>=
+  module subroutine prt_queue_null (queue)
     class(prt_queue_t), intent(out) :: queue
     queue%next => null ()
     queue%previous => null ()
@@ -2076,10 +2465,15 @@ end module radiation_generator
 
 @ %def prt_queue_null
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: append => prt_queue_append
-<<radiation generator: procedures>>=
-  subroutine prt_queue_append (queue, prt_string)
+<<Radiation generator: sub interfaces>>=
+    module subroutine prt_queue_append (queue, prt_string)
+      class(prt_queue_t), intent(inout) :: queue
+      type(string_t), intent(in), dimension(:) :: prt_string
+    end subroutine prt_queue_append
+<<Radiation generator: procedures>>=
+  module subroutine prt_queue_append (queue, prt_string)
     class(prt_queue_t), intent(inout) :: queue
     type(string_t), intent(in), dimension(:) :: prt_string
     type(prt_queue_t), pointer :: new_element => null ()
@@ -2103,10 +2497,15 @@ end module radiation_generator
 
 @ %def prt_queue_append
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: get => prt_queue_get
-<<radiation generator: procedures>>=
-  subroutine prt_queue_get (queue, prt_string)
+<<Radiation generator: sub interfaces>>=
+    module subroutine prt_queue_get (queue, prt_string)
+      class(prt_queue_t), intent(inout) :: queue
+      type(string_t), dimension(:), allocatable, intent(out) :: prt_string
+    end subroutine prt_queue_get
+<<Radiation generator: procedures>>=
+  module subroutine prt_queue_get (queue, prt_string)
     class(prt_queue_t), intent(inout) :: queue
     type(string_t), dimension(:), allocatable, intent(out) :: prt_string
     if (associated (queue%current_prt)) then
@@ -2120,10 +2519,15 @@ end module radiation_generator
 
 @ %def prt_queue_get
 @ As above.
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: get_last => prt_queue_get_last
-<<radiation generator: procedures>>=
-  subroutine prt_queue_get_last (queue, prt_string)
+<<Radiation generator: sub interfaces>>=
+    module subroutine prt_queue_get_last (queue, prt_string)
+      class(prt_queue_t), intent(in) :: queue
+      type(string_t), dimension(:), allocatable, intent(out) :: prt_string
+    end subroutine prt_queue_get_last
+<<Radiation generator: procedures>>=
+  module subroutine prt_queue_get_last (queue, prt_string)
     class(prt_queue_t), intent(in) :: queue
     type(string_t), dimension(:), allocatable, intent(out) :: prt_string
     if (associated (queue%back)) then
@@ -2136,20 +2540,29 @@ end module radiation_generator
 
 @ %def prt_queue_get_last
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: reset => prt_queue_reset
-<<radiation generator: procedures>>=
-  subroutine prt_queue_reset (queue)
+<<Radiation generator: sub interfaces>>=
+    module subroutine prt_queue_reset (queue)
+      class(prt_queue_t), intent(inout) :: queue
+    end subroutine prt_queue_reset
+<<Radiation generator: procedures>>=
+  module subroutine prt_queue_reset (queue)
     class(prt_queue_t), intent(inout) :: queue
     queue%current_prt => queue%front
   end subroutine prt_queue_reset
 
 @ %def prt_queue_reset
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: check_for_same_prt_strings => prt_queue_check_for_same_prt_strings
-<<radiation generator: procedures>>=
-  function prt_queue_check_for_same_prt_strings (queue) result (val)
+<<Radiation generator: sub interfaces>>=
+    module function prt_queue_check_for_same_prt_strings (queue) result (val)
+      class(prt_queue_t), intent(inout) :: queue
+      logical :: val
+    end function prt_queue_check_for_same_prt_strings
+<<Radiation generator: procedures>>=
+  module function prt_queue_check_for_same_prt_strings (queue) result (val)
     class(prt_queue_t), intent(inout) :: queue
     logical :: val
     type(string_t), dimension(:), allocatable :: prt_string
@@ -2235,10 +2648,16 @@ end module radiation_generator
 
 @ %def prt_queue_check_for_same_prt_strings
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: contains => prt_queue_contains
-<<radiation generator: procedures>>=
-  function prt_queue_contains (queue, prt_string) result (val)
+<<Radiation generator: sub interfaces>>=
+    module function prt_queue_contains (queue, prt_string) result (val)
+      class(prt_queue_t), intent(in) :: queue
+      type(string_t), intent(in), dimension(:) :: prt_string
+      logical :: val
+    end function prt_queue_contains
+<<Radiation generator: procedures>>=
+  module function prt_queue_contains (queue, prt_string) result (val)
     class(prt_queue_t), intent(in) :: queue
     type(string_t), intent(in), dimension(:) :: prt_string
     logical :: val
@@ -2266,10 +2685,15 @@ end module radiation_generator
 
 @ %def prt_string_list_contains
 @
-<<radiation generator: prt queue: TBP>>=
+<<Radiation generator: prt queue: TBP>>=
   procedure :: write => prt_queue_write
-<<radiation generator: procedures>>=
-  subroutine prt_queue_write (queue, unit)
+<<Radiation generator: sub interfaces>>=
+    module subroutine prt_queue_write (queue, unit)
+      class(prt_queue_t), intent(in) :: queue
+      integer, optional :: unit
+    end subroutine prt_queue_write
+<<Radiation generator: procedures>>=
+  module subroutine prt_queue_write (queue, unit)
     class(prt_queue_t), intent(in) :: queue
     integer, optional :: unit
     type(prt_queue_t), pointer :: current => null ()
@@ -2299,7 +2723,7 @@ end module radiation_generator
 
 @ %def prt_queue_write
 @
-<<radiation generator: procedures>>=
+<<Radiation generator: procedures>>=
   subroutine sort_prt (prt, model)
     type(string_t), dimension(:), intent(inout) :: prt
     class(model_data_t), intent(in), target :: model
@@ -2343,7 +2767,7 @@ end module radiation_generator
 
 @ %def sort_prt sort_pdg create_pdg_array
 @ This is used in unit tests:
-<<radiation generator: test auxiliary>>=
+<<Radiation generator: test auxiliary>>=
   subroutine write_pdg_array (pdg, u)
     use pdg_arrays
     type(pdg_array_t), dimension(:), intent(in) :: pdg
@@ -2367,20 +2791,24 @@ end module radiation_generator
   end subroutine write_particle_string
 
 @ %def write_pdg_array write_particle_string
-<<radiation generator: types>>=
+<<Radiation generator: types>>=
   type :: reshuffle_list_t
      integer, dimension(:), allocatable :: ii
      type(reshuffle_list_t), pointer :: next => null ()
   contains
-  <<radiation generator: reshuffle list: TBP>>
+  <<Radiation generator: reshuffle list: TBP>>
   end type reshuffle_list_t
 
 @ %def reshuffle_list_t
 @
-<<radiation generator: reshuffle list: TBP>>=
+<<Radiation generator: reshuffle list: TBP>>=
   procedure :: write => reshuffle_list_write
-<<radiation generator: procedures>>=
-  subroutine reshuffle_list_write (rlist)
+<<Radiation generator: sub interfaces>>=
+    module subroutine reshuffle_list_write (rlist)
+      class(reshuffle_list_t), intent(in) :: rlist
+    end subroutine reshuffle_list_write
+<<Radiation generator: procedures>>=
+  module subroutine reshuffle_list_write (rlist)
     class(reshuffle_list_t), intent(in) :: rlist
     type(reshuffle_list_t), pointer :: current => null ()
     integer :: i
@@ -2404,10 +2832,15 @@ end module radiation_generator
 
 @ %def reshuffle_list_write
 @
-<<radiation generator: reshuffle list: TBP>>=
+<<Radiation generator: reshuffle list: TBP>>=
   procedure :: append => reshuffle_list_append
-<<radiation generator: procedures>>=
-  subroutine reshuffle_list_append (rlist, ii)
+<<Radiation generator: sub interfaces>>=
+    module subroutine reshuffle_list_append (rlist, ii)
+      class(reshuffle_list_t), intent(inout) :: rlist
+      integer, dimension(:), allocatable, intent(in) :: ii
+    end subroutine reshuffle_list_append
+<<Radiation generator: procedures>>=
+  module subroutine reshuffle_list_append (rlist, ii)
     class(reshuffle_list_t), intent(inout) :: rlist
     integer, dimension(:), allocatable, intent(in) :: ii
     type(reshuffle_list_t), pointer :: current
@@ -2432,10 +2865,15 @@ end module radiation_generator
 
 @ %def reshuffle_list_append
 @
-<<radiation generator: reshuffle list: TBP>>=
+<<Radiation generator: reshuffle list: TBP>>=
   procedure :: is_empty => reshuffle_list_is_empty
-<<radiation generator: procedures>>=
-  elemental function reshuffle_list_is_empty (rlist) result (is_empty)
+<<Radiation generator: sub interfaces>>=
+    elemental module function reshuffle_list_is_empty (rlist) result (is_empty)
+      logical :: is_empty
+      class(reshuffle_list_t), intent(in) :: rlist
+    end function reshuffle_list_is_empty
+<<Radiation generator: procedures>>=
+  elemental module function reshuffle_list_is_empty (rlist) result (is_empty)
     logical :: is_empty
     class(reshuffle_list_t), intent(in) :: rlist
     is_empty = .not. associated (rlist%next)
@@ -2443,10 +2881,16 @@ end module radiation_generator
 
 @ %def reshuffle_list_is_empty
 @
-<<radiation generator: reshuffle list: TBP>>=
+<<Radiation generator: reshuffle list: TBP>>=
   procedure :: get => reshuffle_list_get
-<<radiation generator: procedures>>=
-  function reshuffle_list_get (rlist, index) result (ii)
+<<Radiation generator: sub interfaces>>=
+    module function reshuffle_list_get (rlist, index) result (ii)
+      integer, dimension(:), allocatable :: ii
+      class(reshuffle_list_t), intent(inout) :: rlist
+      integer, intent(in) :: index
+    end function reshuffle_list_get
+<<Radiation generator: procedures>>=
+  module function reshuffle_list_get (rlist, index) result (ii)
     integer, dimension(:), allocatable :: ii
     class(reshuffle_list_t), intent(inout) :: rlist
     integer, intent(in) :: index
@@ -2473,19 +2917,23 @@ pointers. Considering that at most $n_{\rm{legs}}$ integers are saved
 in the lists, and that the subroutine is only called during the
 initialization phase (more precisely: at the moment only in the
 [[radiation_generator]] unit tests), I think this quick fix is justified.
-<<radiation generator: reshuffle list: TBP>>=
+<<Radiation generator: reshuffle list: TBP>>=
   procedure :: reset => reshuffle_list_reset
-<<radiation generator: procedures>>=
-  subroutine reshuffle_list_reset (rlist)
+<<Radiation generator: sub interfaces>>=
+    module subroutine reshuffle_list_reset (rlist)
+      class(reshuffle_list_t), intent(inout) :: rlist
+    end subroutine reshuffle_list_reset
+<<Radiation generator: procedures>>=
+  module subroutine reshuffle_list_reset (rlist)
     class(reshuffle_list_t), intent(inout) :: rlist
     rlist%next => null ()
   end subroutine reshuffle_list_reset
 
 @ %def reshuffle_list_reset
 @
-<<radiation generator: public>>=
+<<Radiation generator: public>>=
   public :: radiation_generator_t
-<<radiation generator: types>>=
+<<Radiation generator: types>>=
   type :: radiation_generator_t
     logical :: qcd_enabled = .false.
     logical :: qed_enabled = .false.
@@ -2508,17 +2956,46 @@ initialization phase (more precisely: at the moment only in the
     type(if_table_t) :: if_table
     type(reshuffle_list_t) :: reshuffle_list
   contains
-  <<radiation generator: radiation generator: TBP>>
+  <<Radiation generator: radiation generator: TBP>>
   end type radiation_generator_t
 
-@
 @ %def radiation_generator_t
-<<radiation generator: radiation generator: TBP>>=
+@ These are infrastructur types needed in some of the routines.
+<<Radiation generator: types>>=
+  type :: prt_array_t
+     type(string_t), dimension(:), allocatable :: prt
+  end type prt_array_t
+
+@ %def prt_array_t 
+@
+<<Radiation generator: types>>=
+  type :: prt_table_t
+     type(string_t), dimension(:), allocatable :: prt
+  end type prt_table_t
+
+@ %def prt_table_t
+@
+<<Radiation generator: radiation generator: TBP>>=
   generic :: init => init_pdg_list, init_pdg_array
   procedure :: init_pdg_list => radiation_generator_init_pdg_list
   procedure :: init_pdg_array => radiation_generator_init_pdg_array
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_init_pdg_list &
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_init_pdg_list &
+         (generator, pl_in, pl_out, pl_excluded_gauge_splittings, qcd, qed)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(pdg_list_t), intent(in) :: pl_in, pl_out
+      type(pdg_list_t), intent(in) :: pl_excluded_gauge_splittings
+      logical, intent(in), optional :: qcd, qed
+    end subroutine radiation_generator_init_pdg_list
+    module subroutine radiation_generator_init_pdg_array &
+         (generator, pdg_in, pdg_out, pdg_excluded_gauge_splittings, qcd, qed)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(pdg_array_t), intent(in), dimension(:) :: pdg_in, pdg_out
+      type(pdg_array_t), intent(in), dimension(:) :: pdg_excluded_gauge_splittings
+      logical, intent(in), optional :: qcd, qed
+    end subroutine radiation_generator_init_pdg_array
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_init_pdg_list &
        (generator, pl_in, pl_out, pl_excluded_gauge_splittings, qcd, qed)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_list_t), intent(in) :: pl_in, pl_out
@@ -2537,7 +3014,7 @@ initialization phase (more precisely: at the moment only in the
     call generator%pdg_raw%init ()
   end subroutine radiation_generator_init_pdg_list
 
-  subroutine radiation_generator_init_pdg_array &
+  module subroutine radiation_generator_init_pdg_array &
        (generator, pdg_in, pdg_out, pdg_excluded_gauge_splittings, qcd, qed)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_array_t), intent(in), dimension(:) :: pdg_in, pdg_out
@@ -2564,21 +3041,30 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_init_pdg_list radiation_generator_init_pdg_array
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: set_initial_state_emissions => &
      radiation_generator_set_initial_state_emissions
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_set_initial_state_emissions (generator)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_set_initial_state_emissions (generator)
+       class(radiation_generator_t), intent(inout) :: generator
+    end subroutine radiation_generator_set_initial_state_emissions
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_set_initial_state_emissions (generator)
      class(radiation_generator_t), intent(inout) :: generator
      generator%only_final_state = .false.
   end subroutine radiation_generator_set_initial_state_emissions
 
 @ %def radiation_generator_set_initial_state_emissions
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: setup_if_table => radiation_generator_setup_if_table
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_setup_if_table (generator, model)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_setup_if_table (generator, model)
+      class(radiation_generator_t), intent(inout) :: generator
+      class(model_data_t), intent(in), target :: model
+    end subroutine radiation_generator_setup_if_table
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_setup_if_table (generator, model)
     class(radiation_generator_t), intent(inout) :: generator
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), allocatable :: pl_in, pl_out
@@ -2594,15 +3080,24 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_setup_if_table
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   generic :: reset_particle_content => reset_particle_content_pdg_array, &
                                        reset_particle_content_pdg_list
   procedure :: reset_particle_content_pdg_list => &
     radiation_generator_reset_particle_content_pdg_list
   procedure :: reset_particle_content_pdg_array => &
     radiation_generator_reset_particle_content_pdg_array
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_reset_particle_content_pdg_list (generator, pl)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_reset_particle_content_pdg_list (generator, pl)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(pdg_list_t), intent(in) :: pl
+    end subroutine radiation_generator_reset_particle_content_pdg_list
+    module subroutine radiation_generator_reset_particle_content_pdg_array (generator, pdg)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(pdg_array_t), intent(in), dimension(:) :: pdg
+    end subroutine radiation_generator_reset_particle_content_pdg_array
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_reset_particle_content_pdg_list (generator, pl)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_list_t), intent(in) :: pl
     generator%pl_out = pl
@@ -2610,7 +3105,7 @@ initialization phase (more precisely: at the moment only in the
     generator%fs_photon = pl%search_for_particle (PHOTON)
   end subroutine radiation_generator_reset_particle_content_pdg_list
 
-  subroutine radiation_generator_reset_particle_content_pdg_array (generator, pdg)
+  module subroutine radiation_generator_reset_particle_content_pdg_array (generator, pdg)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_array_t), intent(in), dimension(:) :: pdg
     type(pdg_list_t) :: pl
@@ -2624,20 +3119,29 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_reset_particle_content
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: reset_reshuffle_list=> radiation_generator_reset_reshuffle_list
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_reset_reshuffle_list (generator)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_reset_reshuffle_list (generator)
+      class(radiation_generator_t), intent(inout) :: generator
+    end subroutine radiation_generator_reset_reshuffle_list
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_reset_reshuffle_list (generator)
     class(radiation_generator_t), intent(inout) :: generator
     call generator%reshuffle_list%reset ()
   end subroutine radiation_generator_reset_reshuffle_list
 
 @ %def radiation_generator_reset_reshuffle_list
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: set_n => radiation_generator_set_n
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_set_n (generator, n_in, n_out, n_loops)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_set_n (generator, n_in, n_out, n_loops)
+      class(radiation_generator_t), intent(inout) :: generator
+      integer, intent(in) :: n_in, n_out, n_loops
+    end subroutine radiation_generator_set_n
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_set_n (generator, n_in, n_out, n_loops)
     class(radiation_generator_t), intent(inout) :: generator
     integer, intent(in) :: n_in, n_out, n_loops
     generator%n_tot = n_in + n_out + 1
@@ -2648,10 +3152,20 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_set_n
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: set_constraints => radiation_generator_set_constraints
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_set_constraints &
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_set_constraints &
+         (generator, set_n_loop, set_mass_sum, &
+          set_selected_particles, set_required_particles)
+      class(radiation_generator_t), intent(inout), target :: generator
+      logical, intent(in) :: set_n_loop
+      logical, intent(in) :: set_mass_sum
+      logical, intent(in) :: set_selected_particles
+      logical, intent(in) :: set_required_particles
+    end subroutine radiation_generator_set_constraints
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_set_constraints &
        (generator, set_n_loop, set_mass_sum, &
         set_selected_particles, set_required_particles)
     class(radiation_generator_t), intent(inout), target :: generator
@@ -2764,10 +3278,14 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_set_constraints
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: find_splittings => radiation_generator_find_splittings
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_find_splittings (generator)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_find_splittings (generator)
+      class(radiation_generator_t), intent(inout) :: generator
+    end subroutine radiation_generator_find_splittings
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_find_splittings (generator)
     class(radiation_generator_t), intent(inout) :: generator
     integer :: i
     type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out, pdg_tmp
@@ -2838,15 +3356,18 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_find_splittings
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: generate_real_particle_strings &
        => radiation_generator_generate_real_particle_strings
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_generate_real_particle_strings &
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_generate_real_particle_strings &
+         (generator, prt_tot_in, prt_tot_out)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(string_t), intent(out), dimension(:), allocatable :: prt_tot_in, prt_tot_out
+    end subroutine radiation_generator_generate_real_particle_strings
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_generate_real_particle_strings &
        (generator, prt_tot_in, prt_tot_out)
-    type :: prt_array_t
-       type(string_t), dimension(:), allocatable :: prt
-    end type
     class(radiation_generator_t), intent(inout) :: generator
     type(string_t), intent(out), dimension(:), allocatable :: prt_tot_in, prt_tot_out
     type(prt_array_t), dimension(:), allocatable :: prt_in, prt_out
@@ -2965,10 +3486,15 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_generate_real_particle_strings
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: contains_emissions => radiation_generator_contains_emissions
-<<radiation generator: procedures>>=
-  function radiation_generator_contains_emissions (generator) result (has_em)
+<<Radiation generator: sub interfaces>>=
+    module function radiation_generator_contains_emissions (generator) result (has_em)
+      logical :: has_em
+      class(radiation_generator_t), intent(in) :: generator
+    end function radiation_generator_contains_emissions
+<<Radiation generator: procedures>>=
+  module function radiation_generator_contains_emissions (generator) result (has_em)
     logical :: has_em
     class(radiation_generator_t), intent(in) :: generator
     has_em = .not. generator%reshuffle_list%is_empty ()
@@ -2976,10 +3502,15 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_contains_emissions
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: generate => radiation_generator_generate
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_generate (generator, prt_in, prt_out)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_generate (generator, prt_in, prt_out)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
+    end subroutine radiation_generator_generate
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_generate (generator, prt_in, prt_out)
     class(radiation_generator_t), intent(inout) :: generator
     type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
     call generator%find_splittings ()
@@ -2988,10 +3519,18 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_generate
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: generate_multiple => radiation_generator_generate_multiple
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_generate_multiple (generator, max_multiplicity, model)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_generate_multiple &
+         (generator, max_multiplicity, model)
+      class(radiation_generator_t), intent(inout) :: generator
+      integer, intent(in) :: max_multiplicity
+      class(model_data_t), intent(in), target :: model
+    end subroutine radiation_generator_generate_multiple
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_generate_multiple &
+       (generator, max_multiplicity, model)
     class(radiation_generator_t), intent(inout) :: generator
     integer, intent(in) :: max_multiplicity
     class(model_data_t), intent(in), target :: model
@@ -3005,10 +3544,15 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_generate_multiple
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: first_emission => radiation_generator_first_emission
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_first_emission (generator, model)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_first_emission (generator, model)
+      class(radiation_generator_t), intent(inout) :: generator
+      class(model_data_t), intent(in), target :: model
+    end subroutine radiation_generator_first_emission
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_first_emission (generator, model)
     class(radiation_generator_t), intent(inout) :: generator
     class(model_data_t), intent(in), target :: model
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
@@ -3020,10 +3564,18 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_first_emission
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: append_emissions => radiation_generator_append_emissions
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_append_emissions (generator, max_multiplicity, model)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_append_emissions &
+         (generator, max_multiplicity, model)
+      class(radiation_generator_t), intent(inout) :: generator
+      integer, intent(in) :: max_multiplicity
+      class(model_data_t), intent(in), target :: model
+    end subroutine radiation_generator_append_emissions
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_append_emissions &
+       (generator, max_multiplicity, model)
     class(radiation_generator_t), intent(inout) :: generator
     integer, intent(in) :: max_multiplicity
     class(model_data_t), intent(in), target :: model
@@ -3032,9 +3584,6 @@ initialization phase (more precisely: at the moment only in the
     type(string_t), dimension(:), allocatable :: prt_out
     type(pdg_array_t), dimension(:), allocatable :: pdg_new_out
     integer :: current_multiplicity, i, j, n_longest_length
-    type :: prt_table_t
-       type(string_t), dimension(:), allocatable :: prt
-    end type prt_table_t
     type(prt_table_t), dimension(:), allocatable :: prt_table_out
     do
        call generator%prt_queue%get (prt_fetched)
@@ -3111,20 +3660,29 @@ initialization phase (more precisely: at the moment only in the
   end subroutine radiation_generator_append_emissions
 @ %def radiation_generator_append_emissions
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: reset_queue => radiation_generator_reset_queue
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_reset_queue (generator)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_reset_queue (generator)
+      class(radiation_generator_t), intent(inout) :: generator
+    end subroutine radiation_generator_reset_queue
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_reset_queue (generator)
     class(radiation_generator_t), intent(inout) :: generator
     call generator%prt_queue%reset ()
   end subroutine radiation_generator_reset_queue
 
 @ %def radiation_generator_reset_queue
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: get_n_gks_states => radiation_generator_get_n_gks_states
-<<radiation generator: procedures>>=
-  function radiation_generator_get_n_gks_states (generator) result (n)
+<<Radiation generator: sub interfaces>>=
+    module function radiation_generator_get_n_gks_states (generator) result (n)
+      class(radiation_generator_t), intent(in) :: generator
+      integer :: n
+    end function radiation_generator_get_n_gks_states
+<<Radiation generator: procedures>>=
+  module function radiation_generator_get_n_gks_states (generator) result (n)
     class(radiation_generator_t), intent(in) :: generator
     integer :: n
     n = generator%prt_queue%n_lists
@@ -3132,10 +3690,15 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_get_n_fks_states
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: get_next_state => radiation_generator_get_next_state
-<<radiation generator: procedures>>=
-  function radiation_generator_get_next_state (generator) result (prt_string)
+<<Radiation generator: sub interfaces>>=
+    module function radiation_generator_get_next_state (generator) result (prt_string)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(string_t), dimension(:), allocatable :: prt_string
+    end function radiation_generator_get_next_state
+<<Radiation generator: procedures>>=
+  module function radiation_generator_get_next_state (generator) result (prt_string)
     class(radiation_generator_t), intent(inout) :: generator
     type(string_t), dimension(:), allocatable :: prt_string
     call generator%prt_queue%get (prt_string)
@@ -3143,51 +3706,61 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_get_next_state
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: get_emitter_indices => radiation_generator_get_emitter_indices
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_get_emitter_indices (generator, indices)
-     class(radiation_generator_t), intent(in) :: generator
-     integer, dimension(:), allocatable, intent(out) :: indices
-     type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
-     integer, dimension(:), allocatable :: flv_in, flv_out
-     integer, dimension(:), allocatable :: emitters
-     integer :: i, j
-     integer :: n_in, n_out
-
-     call generator%pl_in%create_pdg_array (pdg_in)
-     call generator%pl_out%create_pdg_array (pdg_out)
-
-     n_in = size (pdg_in); n_out = size (pdg_out)
-     allocate (flv_in (n_in), flv_out (n_out))
-     forall (i=1:n_in) flv_in(i) = pdg_in(i)%get()
-     forall (i=1:n_out) flv_out(i) = pdg_out(i)%get()
-
-     call generator%if_table%get_emitters (generator%constraints, emitters)
-     allocate (indices (size (emitters)))
-
-     j = 1
-     do i = 1, n_in + n_out
-        if (i <= n_in) then
-           if (any (flv_in(i) == emitters)) then
-              indices (j) = i
-              j = j + 1
-           end if
-        else
-           if (any (flv_out(i-n_in) == emitters)) then
-              indices (j) = i
-              j = j + 1
-           end if
-        end if
-     end do
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_get_emitter_indices (generator, indices)
+      class(radiation_generator_t), intent(in) :: generator
+      integer, dimension(:), allocatable, intent(out) :: indices
+    end subroutine radiation_generator_get_emitter_indices
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_get_emitter_indices (generator, indices)
+    class(radiation_generator_t), intent(in) :: generator
+    integer, dimension(:), allocatable, intent(out) :: indices
+    type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
+    integer, dimension(:), allocatable :: flv_in, flv_out
+    integer, dimension(:), allocatable :: emitters
+    integer :: i, j
+    integer :: n_in, n_out
+    
+    call generator%pl_in%create_pdg_array (pdg_in)
+    call generator%pl_out%create_pdg_array (pdg_out)
+    
+    n_in = size (pdg_in); n_out = size (pdg_out)
+    allocate (flv_in (n_in), flv_out (n_out))
+    forall (i=1:n_in) flv_in(i) = pdg_in(i)%get()
+    forall (i=1:n_out) flv_out(i) = pdg_out(i)%get()
+    
+    call generator%if_table%get_emitters (generator%constraints, emitters)
+    allocate (indices (size (emitters)))
+    
+    j = 1
+    do i = 1, n_in + n_out
+       if (i <= n_in) then
+          if (any (flv_in(i) == emitters)) then
+             indices (j) = i
+             j = j + 1
+          end if
+       else
+          if (any (flv_out(i-n_in) == emitters)) then
+             indices (j) = i
+             j = j + 1
+          end if
+       end if
+    end do
   end subroutine radiation_generator_get_emitter_indices
 
 @ %def radiation_generator_get_emitter_indices
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: get_raw_states => radiation_generator_get_raw_states
-<<radiation generator: procedures>>=
-  function radiation_generator_get_raw_states (generator) result (raw_states)
+<<Radiation generator: sub interfaces>>=
+    module function radiation_generator_get_raw_states (generator) result (raw_states)
+      class(radiation_generator_t), intent(in), target :: generator
+      integer, dimension(:,:), allocatable :: raw_states
+    end function radiation_generator_get_raw_states
+<<Radiation generator: procedures>>=
+  module function radiation_generator_get_raw_states (generator) result (raw_states)
     class(radiation_generator_t), intent(in), target :: generator
     integer, dimension(:,:), allocatable :: raw_states
     type(pdg_states_t), pointer :: state
@@ -3208,10 +3781,15 @@ initialization phase (more precisely: at the moment only in the
 
 @ %def radiation_generator_get_raw_states
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: save_born_raw => radiation_generator_save_born_raw
-<<radiation generator: procedures>>=
-  subroutine radiation_generator_save_born_raw (generator, pdg_in, pdg_out)
+<<Radiation generator: sub interfaces>>=
+    module subroutine radiation_generator_save_born_raw (generator, pdg_in, pdg_out)
+      class(radiation_generator_t), intent(inout) :: generator
+      type(pdg_array_t), dimension(:), allocatable, intent(in) :: pdg_in, pdg_out
+    end subroutine radiation_generator_save_born_raw
+<<Radiation generator: procedures>>=
+  module subroutine radiation_generator_save_born_raw (generator, pdg_in, pdg_out)
     class(radiation_generator_t), intent(inout) :: generator
     type(pdg_array_t), dimension(:), allocatable, intent(in) :: pdg_in, pdg_out
     generator%pdg_in_born = pdg_in
@@ -3219,10 +3797,15 @@ initialization phase (more precisely: at the moment only in the
   end subroutine radiation_generator_save_born_raw
 @ %def radiation_generator_save_born_raw
 @
-<<radiation generator: radiation generator: TBP>>=
+<<Radiation generator: radiation generator: TBP>>=
   procedure :: get_born_raw => radiation_generator_get_born_raw
-<<radiation generator: procedures>>=
-  function radiation_generator_get_born_raw (generator) result (flv_born)
+<<Radiation generator: sub interfaces>>=
+    module function radiation_generator_get_born_raw (generator) result (flv_born)
+      class(radiation_generator_t), intent(in) :: generator
+      integer, dimension(:,:), allocatable :: flv_born
+    end function radiation_generator_get_born_raw
+<<Radiation generator: procedures>>=
+  module function radiation_generator_get_born_raw (generator) result (flv_born)
     class(radiation_generator_t), intent(in) :: generator
     integer, dimension(:,:), allocatable :: flv_born
     integer :: i_part, n_particles
@@ -3248,11 +3831,11 @@ module radiation_generator_ut
 
 <<Standard module head>>
 
-<<radiation generator: public test>>
+<<Radiation generator: public test>>
 
 contains
 
-<<radiation generator: test driver>>
+<<Radiation generator: test driver>>
 
 end module radiation_generator_ut
 @ %def radiation_generator_ut
@@ -3273,20 +3856,20 @@ module radiation_generator_uti
 
 <<Standard module head>>
 
-<<radiation generator: test declarations>>
+<<Radiation generator: test declarations>>
 
 contains
 
-<<radiation generator: tests>>
+<<Radiation generator: tests>>
 
-<<radiation generator: test auxiliary>>
+<<Radiation generator: test auxiliary>>
 
 end module radiation_generator_uti
 @ %def radiation_generator_ut
 @ API: driver for the unit tests below.
-<<radiation generator: public test>>=
+<<Radiation generator: public test>>=
   public :: radiation_generator_test
-<<radiation generator: test driver>>=
+<<Radiation generator: test driver>>=
   subroutine radiation_generator_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -3306,9 +3889,9 @@ end module radiation_generator_uti
 
 @ %def radiation_generator_test
 @
-<<radiation generator: test declarations>>=
+<<Radiation generator: test declarations>>=
   public :: radiation_generator_1
-<<radiation generator: tests>>=
+<<Radiation generator: tests>>=
   subroutine radiation_generator_1 (u)
     integer, intent(in) :: u
     type(radiation_generator_t) :: generator
@@ -3434,9 +4017,9 @@ end module radiation_generator_uti
 
 @ %def radiation_generator_1
 @
-<<radiation generator: test declarations>>=
+<<Radiation generator: test declarations>>=
   public :: radiation_generator_2
-<<radiation generator: tests>>=
+<<Radiation generator: tests>>=
   subroutine radiation_generator_2 (u)
     integer, intent(in) :: u
     type(radiation_generator_t) :: generator
@@ -3506,9 +4089,9 @@ end module radiation_generator_uti
 
 @ %def radiation_generator_2
 @
-<<radiation generator: test declarations>>=
+<<Radiation generator: test declarations>>=
   public :: radiation_generator_3
-<<radiation generator: tests>>=
+<<Radiation generator: tests>>=
   subroutine radiation_generator_3 (u)
     integer, intent(in) :: u
     type(radiation_generator_t) :: generator
@@ -3653,9 +4236,9 @@ end module radiation_generator_uti
 
 @ %def radiation_generator_3
 @
-<<radiation generator: test declarations>>=
+<<Radiation generator: test declarations>>=
   public :: radiation_generator_4
-<<radiation generator: tests>>=
+<<Radiation generator: tests>>=
   subroutine radiation_generator_4 (u)
     integer, intent(in) :: u
     type(radiation_generator_t) :: generator
@@ -3744,27 +4327,15 @@ module eval_trees
   use, intrinsic :: iso_c_binding !NODEP!
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use constants, only: DEGREE, IMAGO, PI
-  use format_defs, only: FMT_19
-  use numeric_utils, only: nearly_equal
-  use diagnostics
-  use lorentz
-  use md5
-  use formats
-  use sorting
   use ifiles
   use lexers
   use syntax_rules
   use parser
-  use analysis
-  use jets
   use pdg_arrays
   use subevents
   use var_base
   use expr_base
   use variables
-  use observables
 
 <<Standard module head>>
 
@@ -3776,12 +4347,44 @@ module eval_trees
 
 <<Eval trees: variables>>
 
+  interface
+<<Eval trees: sub interfaces>>
+  end interface
+
+contains
+
+<<Eval trees: main procedures>>
+
+end module eval_trees
+@ %def eval_trees
+@
+<<[[eval_trees_sub.f90]]>>=
+<<File header>>
+
+submodule (eval_trees) eval_trees_s
+
+  use io_units
+  use constants, only: DEGREE, IMAGO, PI
+  use format_defs, only: FMT_19
+  use numeric_utils, only: nearly_equal
+  use diagnostics
+  use lorentz
+  use md5
+  use formats
+  use sorting
+  use analysis
+  use jets
+  use observables
+
+  implicit none
+
 contains
 
 <<Eval trees: procedures>>
 
-end module eval_trees
-@ %def eval_trees
+end submodule eval_trees_s
+
+@ %def eval_trees_s
 @
 \subsection{Tree nodes}
 The evaluation tree consists of branch nodes (unary and binary) and of
@@ -3895,8 +4498,12 @@ leafs are literal constants or named-parameter references.
 pointers are ignored.
 <<Eval trees: eval node: TBP>>=
   procedure :: final_rec => eval_node_final_rec
+<<Eval trees: sub interfaces>>=
+    recursive module subroutine eval_node_final_rec (node)
+      class(eval_node_t), intent(inout) :: node
+    end subroutine eval_node_final_rec
 <<Eval trees: procedures>>=
-  recursive subroutine eval_node_final_rec (node)
+  recursive module subroutine eval_node_final_rec (node)
     class(eval_node_t), intent(inout) :: node
     select case (node%type)
     case (EN_UNARY)
@@ -4651,8 +5258,14 @@ pseudo-observable is always known when it is referred to.
 \subsubsection{Output}
 <<Eval trees: eval node: TBP>>=
   procedure :: write => eval_node_write
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_node_write (node, unit, indent)
+      class(eval_node_t), intent(in) :: node
+      integer, intent(in), optional :: unit
+      integer, intent(in), optional :: indent
+    end subroutine eval_node_write
 <<Eval trees: procedures>>=
-  subroutine eval_node_write (node, unit, indent)
+  module subroutine eval_node_write (node, unit, indent)
     class(eval_node_t), intent(in) :: node
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
@@ -10569,8 +11182,14 @@ determine the result.
 This is called from a unit test: initialize a particular observable.
 <<Eval trees: eval node: TBP>>=
   procedure :: test_obs => eval_node_test_obs
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_node_test_obs (node, var_list, var_name)
+      class(eval_node_t), intent(inout) :: node
+      type(var_list_t), intent(in) :: var_list
+      type(string_t), intent(in) :: var_name
+    end subroutine eval_node_test_obs
 <<Eval trees: procedures>>=
-  subroutine eval_node_test_obs (node, var_list, var_name)
+  module subroutine eval_node_test_obs (node, var_list, var_name)
     class(eval_node_t), intent(inout) :: node
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: var_name
@@ -10596,15 +11215,20 @@ We have two different flavors of the syntax: with and without particles.
 <<Eval trees: public>>=
   public :: syntax_expr_init
   public :: syntax_pexpr_init
+<<Eval trees: sub interfaces>>=
+    module subroutine syntax_expr_init ()
+    end subroutine syntax_expr_init
+    module subroutine syntax_pexpr_init ()
+    end subroutine syntax_pexpr_init
 <<Eval trees: procedures>>=
-  subroutine syntax_expr_init ()
+  module subroutine syntax_expr_init ()
     type(ifile_t) :: ifile
     call define_expr_syntax (ifile, particles=.false., analysis=.false.)
     call syntax_init (syntax_expr, ifile)
     call ifile_final (ifile)
   end subroutine syntax_expr_init
 
-  subroutine syntax_pexpr_init ()
+  module subroutine syntax_pexpr_init ()
     type(ifile_t) :: ifile
     call define_expr_syntax (ifile, particles=.true., analysis=.false.)
     call syntax_init (syntax_pexpr, ifile)
@@ -10615,20 +11239,29 @@ We have two different flavors of the syntax: with and without particles.
 <<Eval trees: public>>=
   public :: syntax_expr_final
   public :: syntax_pexpr_final
+<<Eval trees: sub interfaces>>=
+    module subroutine syntax_expr_final ()
+    end subroutine syntax_expr_final
+    module subroutine syntax_pexpr_final ()
+    end subroutine syntax_pexpr_final
 <<Eval trees: procedures>>=
-  subroutine syntax_expr_final ()
+  module subroutine syntax_expr_final ()
     call syntax_final (syntax_expr)
   end subroutine syntax_expr_final
 
-  subroutine syntax_pexpr_final ()
+  module subroutine syntax_pexpr_final ()
     call syntax_final (syntax_pexpr)
   end subroutine syntax_pexpr_final
 
 @ %def syntax_expr_final syntax_pexpr_final
 <<Eval trees: public>>=
   public :: syntax_pexpr_write
+<<Eval trees: sub interfaces>>=
+    module subroutine syntax_pexpr_write (unit)
+      integer, intent(in), optional :: unit
+    end subroutine syntax_pexpr_write
 <<Eval trees: procedures>>=
-  subroutine syntax_pexpr_write (unit)
+  module subroutine syntax_pexpr_write (unit)
     integer, intent(in), optional :: unit
     call syntax_write (syntax_pexpr, unit)
   end subroutine syntax_pexpr_write
@@ -10637,8 +11270,13 @@ We have two different flavors of the syntax: with and without particles.
 <<Eval trees: public>>=
   public :: define_expr_syntax
 @ Numeric expressions.
+<<Eval trees: sub interfaces>>=
+    module subroutine define_expr_syntax (ifile, particles, analysis)
+      type(ifile_t), intent(inout) :: ifile
+      logical, intent(in) :: particles, analysis
+    end subroutine define_expr_syntax
 <<Eval trees: procedures>>=
-  subroutine define_expr_syntax (ifile, particles, analysis)
+  module subroutine define_expr_syntax (ifile, particles, analysis)
     type(ifile_t), intent(inout) :: ifile
     logical, intent(in) :: particles, analysis
     type(string_t) :: numeric_pexpr
@@ -11128,8 +11766,32 @@ appropriate expression syntax has to be available.
   public :: parse_tree_init_pexpr
   public :: parse_tree_init_cexpr
   public :: parse_tree_init_sexpr
+<<Eval trees: sub interfaces>>=
+    module subroutine parse_tree_init_expr (parse_tree, stream, particles)
+      type(parse_tree_t), intent(out) :: parse_tree
+      type(stream_t), intent(inout), target :: stream
+      logical, intent(in) :: particles
+    end subroutine parse_tree_init_expr
+    module subroutine parse_tree_init_lexpr (parse_tree, stream, particles)
+      type(parse_tree_t), intent(out) :: parse_tree
+      type(stream_t), intent(inout), target :: stream
+      logical, intent(in) :: particles
+    end subroutine parse_tree_init_lexpr
+    module subroutine parse_tree_init_pexpr (parse_tree, stream)
+      type(parse_tree_t), intent(out) :: parse_tree
+      type(stream_t), intent(inout), target :: stream
+    end subroutine parse_tree_init_pexpr
+    module subroutine parse_tree_init_cexpr (parse_tree, stream)
+      type(parse_tree_t), intent(out) :: parse_tree
+      type(stream_t), intent(inout), target :: stream
+    end subroutine parse_tree_init_cexpr
+    module subroutine parse_tree_init_sexpr (parse_tree, stream, particles)
+      type(parse_tree_t), intent(out) :: parse_tree
+      type(stream_t), intent(inout), target :: stream
+      logical, intent(in) :: particles
+    end subroutine parse_tree_init_sexpr
 <<Eval trees: procedures>>=
-  subroutine parse_tree_init_expr (parse_tree, stream, particles)
+  module subroutine parse_tree_init_expr (parse_tree, stream, particles)
     type(parse_tree_t), intent(out) :: parse_tree
     type(stream_t), intent(inout), target :: stream
     logical, intent(in) :: particles
@@ -11146,7 +11808,7 @@ appropriate expression syntax has to be available.
     call lexer_final (lexer)
   end subroutine parse_tree_init_expr
 
-  subroutine parse_tree_init_lexpr (parse_tree, stream, particles)
+  module subroutine parse_tree_init_lexpr (parse_tree, stream, particles)
     type(parse_tree_t), intent(out) :: parse_tree
     type(stream_t), intent(inout), target :: stream
     logical, intent(in) :: particles
@@ -11163,7 +11825,7 @@ appropriate expression syntax has to be available.
     call lexer_final (lexer)
   end subroutine parse_tree_init_lexpr
 
-  subroutine parse_tree_init_pexpr (parse_tree, stream)
+  module subroutine parse_tree_init_pexpr (parse_tree, stream)
     type(parse_tree_t), intent(out) :: parse_tree
     type(stream_t), intent(inout), target :: stream
     type(lexer_t) :: lexer
@@ -11174,7 +11836,7 @@ appropriate expression syntax has to be available.
     call lexer_final (lexer)
   end subroutine parse_tree_init_pexpr
 
-  subroutine parse_tree_init_cexpr (parse_tree, stream)
+  module subroutine parse_tree_init_cexpr (parse_tree, stream)
     type(parse_tree_t), intent(out) :: parse_tree
     type(stream_t), intent(inout), target :: stream
     type(lexer_t) :: lexer
@@ -11185,7 +11847,7 @@ appropriate expression syntax has to be available.
     call lexer_final (lexer)
   end subroutine parse_tree_init_cexpr
 
-  subroutine parse_tree_init_sexpr (parse_tree, stream, particles)
+  module subroutine parse_tree_init_sexpr (parse_tree, stream, particles)
     type(parse_tree_t), intent(out) :: parse_tree
     type(stream_t), intent(inout), target :: stream
     logical, intent(in) :: particles
@@ -11226,8 +11888,17 @@ The evaluation tree contains the initial variable list and the root node.
 @ Init from stream, using a temporary parse tree.
 <<Eval trees: eval tree: TBP>>=
   procedure :: init_stream => eval_tree_init_stream
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_init_stream &
+         (eval_tree, stream, var_list, subevt, result_type)
+      class(eval_tree_t), intent(out), target :: eval_tree
+      type(stream_t), intent(inout), target :: stream
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), target, optional :: subevt
+      integer, intent(in), optional :: result_type
+    end subroutine eval_tree_init_stream
 <<Eval trees: procedures>>=
-  subroutine eval_tree_init_stream &
+  module subroutine eval_tree_init_stream &
        (eval_tree, stream, var_list, subevt, result_type)
     class(eval_tree_t), intent(out), target :: eval_tree
     type(stream_t), intent(inout), target :: stream
@@ -11279,8 +11950,44 @@ optional.
   procedure :: init_pexpr => eval_tree_init_pexpr
   procedure :: init_cexpr => eval_tree_init_cexpr
   procedure :: init_sexpr => eval_tree_init_sexpr
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_init_expr &
+        (expr, parse_node, var_list, subevt)
+      class(eval_tree_t), intent(out), target :: expr
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+    end subroutine eval_tree_init_expr
+    module subroutine eval_tree_init_lexpr &
+        (expr, parse_node, var_list, subevt)
+      class(eval_tree_t), intent(out), target :: expr
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+    end subroutine eval_tree_init_lexpr
+    module subroutine eval_tree_init_pexpr &
+        (expr, parse_node, var_list, subevt)
+      class(eval_tree_t), intent(out), target :: expr
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+    end subroutine eval_tree_init_pexpr
+    module subroutine eval_tree_init_cexpr &
+        (expr, parse_node, var_list, subevt)
+      class(eval_tree_t), intent(out), target :: expr
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+    end subroutine eval_tree_init_cexpr
+    module subroutine eval_tree_init_sexpr &
+        (expr, parse_node, var_list, subevt)
+      class(eval_tree_t), intent(out), target :: expr
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+    end subroutine eval_tree_init_sexpr
 <<Eval trees: procedures>>=
-  subroutine eval_tree_init_expr &
+  module subroutine eval_tree_init_expr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
     type(parse_node_t), intent(in), target :: parse_node
@@ -11292,7 +11999,7 @@ optional.
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_expr
 
-  subroutine eval_tree_init_lexpr &
+  module subroutine eval_tree_init_lexpr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
     type(parse_node_t), intent(in), target :: parse_node
@@ -11304,7 +12011,7 @@ optional.
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_lexpr
 
-  subroutine eval_tree_init_pexpr &
+  module subroutine eval_tree_init_pexpr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
     type(parse_node_t), intent(in), target :: parse_node
@@ -11316,7 +12023,7 @@ optional.
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_pexpr
 
-  subroutine eval_tree_init_cexpr &
+  module subroutine eval_tree_init_cexpr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
     type(parse_node_t), intent(in), target :: parse_node
@@ -11328,7 +12035,7 @@ optional.
          (expr%root, parse_node, expr%var_list)
   end subroutine eval_tree_init_cexpr
 
-  subroutine eval_tree_init_sexpr &
+  module subroutine eval_tree_init_sexpr &
       (expr, parse_node, var_list, subevt)
     class(eval_tree_t), intent(out), target :: expr
     type(parse_node_t), intent(in), target :: parse_node
@@ -11354,36 +12061,57 @@ may be referred to has already been added to the local variable list.
   procedure :: setup_pexpr => eval_tree_setup_pexpr
   procedure :: setup_cexpr => eval_tree_setup_cexpr
   procedure :: setup_sexpr => eval_tree_setup_sexpr
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_setup_expr (expr, vars)
+      class(eval_tree_t), intent(inout), target :: expr
+      class(vars_t), intent(in), target :: vars
+    end subroutine eval_tree_setup_expr
+    module subroutine eval_tree_setup_lexpr (expr, vars)
+      class(eval_tree_t), intent(inout), target :: expr
+      class(vars_t), intent(in), target :: vars
+    end subroutine eval_tree_setup_lexpr
+    module subroutine eval_tree_setup_pexpr (expr, vars)
+      class(eval_tree_t), intent(inout), target :: expr
+      class(vars_t), intent(in), target :: vars
+    end subroutine eval_tree_setup_pexpr
+    module subroutine eval_tree_setup_cexpr (expr, vars)
+      class(eval_tree_t), intent(inout), target :: expr
+      class(vars_t), intent(in), target :: vars
+    end subroutine eval_tree_setup_cexpr
+    module subroutine eval_tree_setup_sexpr (expr, vars)
+      class(eval_tree_t), intent(inout), target :: expr
+      class(vars_t), intent(in), target :: vars
+    end subroutine eval_tree_setup_sexpr
 <<Eval trees: procedures>>=
-  subroutine eval_tree_setup_expr (expr, vars)
+  module subroutine eval_tree_setup_expr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
     call eval_tree_link_var_list (expr, vars)
     call eval_node_compile_expr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_expr
 
-  subroutine eval_tree_setup_lexpr (expr, vars)
+  module subroutine eval_tree_setup_lexpr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
     call eval_tree_link_var_list (expr, vars)
     call eval_node_compile_lexpr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_lexpr
 
-  subroutine eval_tree_setup_pexpr (expr, vars)
+  module subroutine eval_tree_setup_pexpr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
     call eval_tree_link_var_list (expr, vars)
     call eval_node_compile_pexpr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_pexpr
 
-  subroutine eval_tree_setup_cexpr (expr, vars)
+  module subroutine eval_tree_setup_cexpr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
     call eval_tree_link_var_list (expr, vars)
     call eval_node_compile_cexpr (expr%root, expr%pn, expr%var_list)
   end subroutine eval_tree_setup_cexpr
 
-  subroutine eval_tree_setup_sexpr (expr, vars)
+  module subroutine eval_tree_setup_sexpr (expr, vars)
     class(eval_tree_t), intent(inout), target :: expr
     class(vars_t), intent(in), target :: vars
     call eval_tree_link_var_list (expr, vars)
@@ -11399,8 +12127,13 @@ may be referred to has already been added to the local variable list.
 The only nontrivial part is the optional unit.
 <<Eval trees: eval tree: TBP>>=
   procedure :: init_numeric_value => eval_tree_init_numeric_value
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_init_numeric_value (eval_tree, parse_node)
+      class(eval_tree_t), intent(out), target :: eval_tree
+      type(parse_node_t), intent(in), target :: parse_node
+    end subroutine eval_tree_init_numeric_value
 <<Eval trees: procedures>>=
-  subroutine eval_tree_init_numeric_value (eval_tree, parse_node)
+  module subroutine eval_tree_init_numeric_value (eval_tree, parse_node)
     class(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     call eval_node_compile_numeric_value (eval_tree%root, parse_node)
@@ -11431,8 +12164,12 @@ to this as variable [[@evt]] in the local variable list.
 @ Finalizer.
 <<Eval trees: eval tree: TBP>>=
   procedure :: final => eval_tree_final
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_final (expr)
+      class(eval_tree_t), intent(inout) :: expr
+    end subroutine eval_tree_final
 <<Eval trees: procedures>>=
-  subroutine eval_tree_final (expr)
+  module subroutine eval_tree_final (expr)
     class(eval_tree_t), intent(inout) :: expr
     call expr%var_list%final ()
     if (associated (expr%root)) then
@@ -11445,8 +12182,12 @@ to this as variable [[@evt]] in the local variable list.
 @
 <<Eval trees: eval tree: TBP>>=
   procedure :: evaluate => eval_tree_evaluate
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_evaluate (expr)
+      class(eval_tree_t), intent(inout) :: expr
+    end subroutine eval_tree_evaluate
 <<Eval trees: procedures>>=
-  subroutine eval_tree_evaluate (expr)
+  module subroutine eval_tree_evaluate (expr)
     class(eval_tree_t), intent(inout) :: expr
     if (associated (expr%root)) then
        call eval_node_evaluate (expr%root)
@@ -11501,8 +12242,49 @@ safe against real/integer mismatch.
   procedure :: get_pdg_array => eval_tree_get_pdg_array
   procedure :: get_subevt => eval_tree_get_subevt
   procedure :: get_string => eval_tree_get_string
+<<Eval trees: sub interfaces>>=
+    module function eval_tree_get_result_type (expr) result (type)
+      integer :: type
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_result_type
+    module function eval_tree_result_is_known (expr) result (flag)
+      logical :: flag
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_result_is_known
+    module function eval_tree_result_is_known_ptr (expr) result (ptr)
+      logical, pointer :: ptr
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_result_is_known_ptr
+    module function eval_tree_get_log (expr) result (lval)
+      logical :: lval
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_log
+    module function eval_tree_get_int (expr) result (ival)
+      integer :: ival
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_int
+    module function eval_tree_get_real (expr) result (rval)
+      real(default) :: rval
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_real
+    module function eval_tree_get_cmplx (expr) result (cval)
+      complex(default) :: cval
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_cmplx
+    module function eval_tree_get_pdg_array (expr) result (aval)
+      type(pdg_array_t) :: aval
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_pdg_array
+    module function eval_tree_get_subevt (expr) result (pval)
+      type(subevt_t) :: pval
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_subevt
+    module function eval_tree_get_string (expr) result (sval)
+      type(string_t) :: sval
+      class(eval_tree_t), intent(in) :: expr
+    end function eval_tree_get_string
 <<Eval trees: procedures>>=
-  function eval_tree_get_result_type (expr) result (type)
+  module function eval_tree_get_result_type (expr) result (type)
     integer :: type
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11512,7 +12294,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_get_result_type
 
-  function eval_tree_result_is_known (expr) result (flag)
+  module function eval_tree_result_is_known (expr) result (flag)
     logical :: flag
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11527,7 +12309,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_result_is_known
 
-  function eval_tree_result_is_known_ptr (expr) result (ptr)
+  module function eval_tree_result_is_known_ptr (expr) result (ptr)
     logical, pointer :: ptr
     class(eval_tree_t), intent(in) :: expr
     logical, target, save :: known = .true.
@@ -11543,13 +12325,13 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_result_is_known_ptr
 
-  function eval_tree_get_log (expr) result (lval)
+  module function eval_tree_get_log (expr) result (lval)
     logical :: lval
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root))  lval = expr%root%lval
   end function eval_tree_get_log
 
-  function eval_tree_get_int (expr) result (ival)
+  module function eval_tree_get_int (expr) result (ival)
     integer :: ival
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11561,7 +12343,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_get_int
 
-  function eval_tree_get_real (expr) result (rval)
+  module function eval_tree_get_real (expr) result (rval)
     real(default) :: rval
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11573,7 +12355,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_get_real
 
-  function eval_tree_get_cmplx (expr) result (cval)
+  module function eval_tree_get_cmplx (expr) result (cval)
     complex(default) :: cval
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11585,7 +12367,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_get_cmplx
 
-  function eval_tree_get_pdg_array (expr) result (aval)
+  module function eval_tree_get_pdg_array (expr) result (aval)
     type(pdg_array_t) :: aval
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11593,7 +12375,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_get_pdg_array
 
-  function eval_tree_get_subevt (expr) result (pval)
+  module function eval_tree_get_subevt (expr) result (pval)
     type(subevt_t) :: pval
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11601,7 +12383,7 @@ safe against real/integer mismatch.
     end if
   end function eval_tree_get_subevt
 
-  function eval_tree_get_string (expr) result (sval)
+  module function eval_tree_get_string (expr) result (sval)
     type(string_t) :: sval
     class(eval_tree_t), intent(in) :: expr
     if (associated (expr%root)) then
@@ -11695,8 +12477,14 @@ safe against real/integer mismatch.
 @ %def eval_tree_get_string_ptr
 <<Eval trees: eval tree: TBP>>=
   procedure :: write => eval_tree_write
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_write (expr, unit, write_vars)
+      class(eval_tree_t), intent(in) :: expr
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: write_vars
+    end subroutine eval_tree_write
 <<Eval trees: procedures>>=
-  subroutine eval_tree_write (expr, unit, write_vars)
+  module subroutine eval_tree_write (expr, unit, write_vars)
     class(eval_tree_t), intent(in) :: expr
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: write_vars
@@ -11742,8 +12530,65 @@ the [[is_known]] flag is present, which will be set accordingly.
   public :: eval_subevt
   public :: eval_pdg_array
   public :: eval_string
+<<Eval trees: sub interfaces>>=
+    module function eval_log &
+         (parse_node, var_list, subevt, is_known) result (lval)
+      logical :: lval
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_log
+    module function eval_int &
+         (parse_node, var_list, subevt, is_known) result (ival)
+      integer :: ival
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_int
+    module function eval_real &
+         (parse_node, var_list, subevt, is_known) result (rval)
+      real(default) :: rval
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_real
+    module function eval_cmplx &
+         (parse_node, var_list, subevt, is_known) result (cval)
+      complex(default) :: cval
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_cmplx
+    module function eval_subevt &
+         (parse_node, var_list, subevt, is_known) result (pval)
+      type(subevt_t) :: pval
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_subevt
+    module function eval_pdg_array &
+         (parse_node, var_list, subevt, is_known) result (aval)
+      type(pdg_array_t) :: aval
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_pdg_array
+    module function eval_string &
+         (parse_node, var_list, subevt, is_known) result (sval)
+      type(string_t) :: sval
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      logical, intent(out), optional :: is_known
+    end function eval_string
 <<Eval trees: procedures>>=
-  function eval_log &
+  module function eval_log &
        (parse_node, var_list, subevt, is_known) result (lval)
     logical :: lval
     type(parse_node_t), intent(in), target :: parse_node
@@ -11766,7 +12611,7 @@ the [[is_known]] flag is present, which will be set accordingly.
     call eval_tree_final (eval_tree)
   end function eval_log
 
-  function eval_int &
+  module function eval_int &
        (parse_node, var_list, subevt, is_known) result (ival)
     integer :: ival
     type(parse_node_t), intent(in), target :: parse_node
@@ -11789,7 +12634,7 @@ the [[is_known]] flag is present, which will be set accordingly.
     call eval_tree_final (eval_tree)
   end function eval_int
 
-  function eval_real &
+  module function eval_real &
        (parse_node, var_list, subevt, is_known) result (rval)
     real(default) :: rval
     type(parse_node_t), intent(in), target :: parse_node
@@ -11812,7 +12657,7 @@ the [[is_known]] flag is present, which will be set accordingly.
     call eval_tree_final (eval_tree)
   end function eval_real
 
-  function eval_cmplx &
+  module function eval_cmplx &
        (parse_node, var_list, subevt, is_known) result (cval)
     complex(default) :: cval
     type(parse_node_t), intent(in), target :: parse_node
@@ -11835,7 +12680,7 @@ the [[is_known]] flag is present, which will be set accordingly.
     call eval_tree_final (eval_tree)
   end function eval_cmplx
 
-  function eval_subevt &
+  module function eval_subevt &
        (parse_node, var_list, subevt, is_known) result (pval)
     type(subevt_t) :: pval
     type(parse_node_t), intent(in), target :: parse_node
@@ -11857,7 +12702,7 @@ the [[is_known]] flag is present, which will be set accordingly.
     call eval_tree_final (eval_tree)
   end function eval_subevt
 
-  function eval_pdg_array &
+  module function eval_pdg_array &
        (parse_node, var_list, subevt, is_known) result (aval)
     type(pdg_array_t) :: aval
     type(parse_node_t), intent(in), target :: parse_node
@@ -11879,7 +12724,7 @@ the [[is_known]] flag is present, which will be set accordingly.
     call eval_tree_final (eval_tree)
   end function eval_pdg_array
 
-  function eval_string &
+  module function eval_string &
        (parse_node, var_list, subevt, is_known) result (sval)
     type(string_t) :: sval
     type(parse_node_t), intent(in), target :: parse_node
@@ -11909,8 +12754,21 @@ the [[is_known]] flag is present, which will be set accordingly.
 appropriate kind to be selected later:
 <<Eval trees: public>>=
   public :: eval_numeric
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_numeric &
+         (parse_node, var_list, subevt, ival, rval, cval, &
+          is_known, result_type)
+      type(parse_node_t), intent(in), target :: parse_node
+      type(var_list_t), intent(in), target :: var_list
+      type(subevt_t), intent(in), optional, target :: subevt
+      integer, intent(out), optional :: ival
+      real(default), intent(out), optional :: rval
+      complex(default), intent(out), optional :: cval
+      logical, intent(out), optional :: is_known
+      integer, intent(out), optional :: result_type
+    end subroutine eval_numeric
 <<Eval trees: procedures>>=
-  subroutine eval_numeric &
+  module subroutine eval_numeric &
        (parse_node, var_list, subevt, ival, rval, cval, &
         is_known, result_type)
     type(parse_node_t), intent(in), target :: parse_node
@@ -11972,8 +12830,13 @@ matching factory type and build method.
 @ Output: delegate to the output of the embedded parse node.
 <<Eval trees: eval tree factory: TBP>>=
   procedure :: write => eval_tree_factory_write
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_factory_write (expr_factory, unit)
+      class(eval_tree_factory_t), intent(in) :: expr_factory
+      integer, intent(in), optional :: unit
+    end subroutine eval_tree_factory_write
 <<Eval trees: procedures>>=
-  subroutine eval_tree_factory_write (expr_factory, unit)
+  module subroutine eval_tree_factory_write (expr_factory, unit)
     class(eval_tree_factory_t), intent(in) :: expr_factory
     integer, intent(in), optional :: unit
     if (associated (expr_factory%pn)) then
@@ -11985,8 +12848,13 @@ matching factory type and build method.
 @ Initializer: take a parse node and hide it thus from the environment.
 <<Eval trees: eval tree factory: TBP>>=
   procedure :: init => eval_tree_factory_init
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_factory_init (expr_factory, pn)
+      class(eval_tree_factory_t), intent(out) :: expr_factory
+      type(parse_node_t), intent(in), pointer :: pn
+    end subroutine eval_tree_factory_init
 <<Eval trees: procedures>>=
-  subroutine eval_tree_factory_init (expr_factory, pn)
+  module subroutine eval_tree_factory_init (expr_factory, pn)
     class(eval_tree_factory_t), intent(out) :: expr_factory
     type(parse_node_t), intent(in), pointer :: pn
     expr_factory%pn => pn
@@ -11995,9 +12863,10 @@ matching factory type and build method.
 @ %def eval_tree_factory_init
 @ Factory method: allocate expression with correct eval tree type.  If the
 stored parse node is not associate, don't allocate.
+Gfortran 7/8/9 bug, has to remain in the module.
 <<Eval trees: eval tree factory: TBP>>=
   procedure :: build => eval_tree_factory_build
-<<Eval trees: procedures>>=
+<<Eval trees: main procedures>>=
   subroutine eval_tree_factory_build (expr_factory, expr)
     class(eval_tree_factory_t), intent(in) :: expr_factory
     class(expr_t), intent(out), allocatable :: expr
@@ -12367,23 +13236,14 @@ module models
 <<Use kinds>>
   use kinds, only: c_default_float
 <<Use strings>>
-  use io_units
-  use diagnostics
-  use md5
   use os_interface
-  use physics_defs, only: UNDEFINED
   use model_data
 
-  use ifiles
   use syntax_rules
-  use lexers
   use parser
-  use pdg_arrays
   use variables
   use expr_base
   use eval_trees
-
-  use ttv_formfactors, only: init_parameters
 
 <<Standard module head>>
 
@@ -12397,12 +13257,41 @@ module models
 
 <<Models: variables>>
 
+  interface
+<<Models: sub interfaces>>
+  end interface
+
+contains
+
+<<Models: main procedures>>
+
+end module models
+@ %def models
+@
+<<[[models_sub.f90]]>>=
+<<File header>>
+
+submodule (models) models_s
+
+  use io_units
+  use diagnostics
+  use md5
+  use physics_defs, only: UNDEFINED
+
+  use ifiles
+  use lexers
+  use pdg_arrays
+  use ttv_formfactors, only: init_parameters
+
+  implicit none
+
 contains
 
 <<Models: procedures>>
 
-end module models
-@ %def models
+end submodule models_s
+
+@ %def models_s
 @
 \subsection{Physics Parameters}
 A parameter has a name, a value.  Derived parameters also have a
@@ -12459,8 +13348,27 @@ This implementation supports only real parameters and real values.
   procedure :: init_derived => parameter_init_derived
   procedure :: init_external => parameter_init_external
   procedure :: init_unused => parameter_init_unused
+<<Models: sub interfaces>>=
+    module subroutine parameter_init_independent_value &
+         (par, par_data, name, value)
+      class(parameter_t), intent(out) :: par
+      class(modelpar_data_t), intent(in), target :: par_data
+      type(string_t), intent(in) :: name
+      real(default), intent(in) :: value
+    end subroutine parameter_init_independent_value
+    module subroutine parameter_init_external (par, par_data, name)
+      class(parameter_t), intent(out) :: par
+      class(modelpar_data_t), intent(in), target :: par_data
+      type(string_t), intent(in) :: name
+    end subroutine parameter_init_external
+    module subroutine parameter_init_unused (par, par_data, name)
+      class(parameter_t), intent(out) :: par
+      class(modelpar_data_t), intent(in), target :: par_data
+      type(string_t), intent(in) :: name
+    end subroutine parameter_init_unused
 <<Models: procedures>>=
-  subroutine parameter_init_independent_value (par, par_data, name, value)
+  module subroutine parameter_init_independent_value &
+       (par, par_data, name, value)
     class(parameter_t), intent(out) :: par
     class(modelpar_data_t), intent(in), target :: par_data
     type(string_t), intent(in) :: name
@@ -12470,6 +13378,29 @@ This implementation supports only real parameters and real values.
     call par%data%init (name, value)
   end subroutine parameter_init_independent_value
 
+  module subroutine parameter_init_external (par, par_data, name)
+    class(parameter_t), intent(out) :: par
+    class(modelpar_data_t), intent(in), target :: par_data
+    type(string_t), intent(in) :: name
+    par%type = PAR_EXTERNAL
+    par%data => par_data
+    call par%data%init (name, 0._default)
+  end subroutine parameter_init_external
+
+  module subroutine parameter_init_unused (par, par_data, name)
+    class(parameter_t), intent(out) :: par
+    class(modelpar_data_t), intent(in), target :: par_data
+    type(string_t), intent(in) :: name
+    par%type = PAR_UNUSED
+    par%data => par_data
+    call par%data%init (name, 0._default)
+  end subroutine parameter_init_unused
+
+@ %def parameter_init_independent_value
+@ %def parameter_init_external
+@ %def parameter_init_unused
+@ Gfortran 7/8/9 bug: these have to remain in the main module.
+<<Models: main procedures>>= 
   subroutine parameter_init_independent (par, par_data, name, pn)
     class(parameter_t), intent(out) :: par
     class(modelpar_data_t), intent(in), target :: par_data
@@ -12504,34 +13435,17 @@ This implementation supports only real parameters and real values.
     call par%data%init (name, 0._default)
   end subroutine parameter_init_derived
 
-  subroutine parameter_init_external (par, par_data, name)
-    class(parameter_t), intent(out) :: par
-    class(modelpar_data_t), intent(in), target :: par_data
-    type(string_t), intent(in) :: name
-    par%type = PAR_EXTERNAL
-    par%data => par_data
-    call par%data%init (name, 0._default)
-  end subroutine parameter_init_external
-
-  subroutine parameter_init_unused (par, par_data, name)
-    class(parameter_t), intent(out) :: par
-    class(modelpar_data_t), intent(in), target :: par_data
-    type(string_t), intent(in) :: name
-    par%type = PAR_UNUSED
-    par%data => par_data
-    call par%data%init (name, 0._default)
-  end subroutine parameter_init_unused
-
-@ %def parameter_init_independent_value
 @ %def parameter_init_independent
 @ %def parameter_init_derived
-@ %def parameter_init_external
-@ %def parameter_init_unused
 @ The finalizer is needed for the evaluation tree in the definition.
 <<Models: parameter: TBP>>=
   procedure :: final => parameter_final
+<<Models: sub interfaces>>=
+    module subroutine parameter_final (par)
+      class(parameter_t), intent(inout) :: par
+    end subroutine parameter_final
 <<Models: procedures>>=
-  subroutine parameter_final (par)
+  module subroutine parameter_final (par)
     class(parameter_t), intent(inout) :: par
     if (allocated (par%expr)) then
        call par%expr%final ()
@@ -12543,8 +13457,12 @@ This implementation supports only real parameters and real values.
 parameters have changed:
 <<Models: parameter: TBP>>=
   procedure :: reset_derived => parameter_reset_derived
+<<Models: sub interfaces>>=
+    module subroutine parameter_reset_derived (par)
+      class(parameter_t), intent(inout) :: par
+    end subroutine parameter_reset_derived
 <<Models: procedures>>=
-  subroutine parameter_reset_derived (par)
+  module subroutine parameter_reset_derived (par)
     class(parameter_t), intent(inout) :: par
     select case (par%type)
     case (PAR_DERIVED)
@@ -12558,8 +13476,14 @@ parameters have changed:
 suitable for input and output!]
 <<Models: parameter: TBP>>=
   procedure :: write => parameter_write
+<<Models: sub interfaces>>=
+    module subroutine parameter_write (par, unit, write_defs)
+      class(parameter_t), intent(in) :: par
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: write_defs
+    end subroutine parameter_write
 <<Models: procedures>>=
-  subroutine parameter_write (par, unit, write_defs)
+  module subroutine parameter_write (par, unit, write_defs)
     class(parameter_t), intent(in) :: par
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: write_defs
@@ -12604,8 +13528,14 @@ suitable for input and output!]
 @ Screen output variant.  Restrict output to the given parameter type.
 <<Models: parameter: TBP>>=
   procedure :: show => parameter_show
+<<Models: sub interfaces>>=
+    module subroutine parameter_show (par, l, u, partype)
+      class(parameter_t), intent(in) :: par
+      integer, intent(in) :: l, u
+      integer, intent(in) :: partype
+    end subroutine parameter_show
 <<Models: procedures>>=
-  subroutine parameter_show (par, l, u, partype)
+  module subroutine parameter_show (par, l, u, partype)
     class(parameter_t), intent(in) :: par
     integer, intent(in) :: l, u
     integer, intent(in) :: partype
@@ -12697,8 +13627,17 @@ base.
 <<Models: model: TBP>>=
   generic :: init => model_init
   procedure, private :: model_init
+<<Models: sub interfaces>>=
+    module subroutine model_init &
+         (model, name, libname, os_data, n_par, n_prt, n_vtx, ufo)
+      class(model_t), intent(inout) :: model
+      type(string_t), intent(in) :: name, libname
+      type(os_data_t), intent(in) :: os_data
+      integer, intent(in) :: n_par, n_prt, n_vtx
+      logical, intent(in), optional :: ufo
+    end subroutine model_init
 <<Models: procedures>>=
-  subroutine model_init &
+  module subroutine model_init &
        (model, name, libname, os_data, n_par, n_prt, n_vtx, ufo)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name, libname
@@ -12756,8 +13695,14 @@ base.
 core of the full initializer above.
 <<Models: model: TBP>>=
   procedure, private :: basic_init => model_basic_init
+<<Models: sub interfaces>>=
+    module subroutine model_basic_init (model, name, n_par, n_prt, n_vtx)
+      class(model_t), intent(inout) :: model
+      type(string_t), intent(in) :: name
+      integer, intent(in) :: n_par, n_prt, n_vtx
+    end subroutine model_basic_init
 <<Models: procedures>>=
-  subroutine model_basic_init (model, name, n_par, n_prt, n_vtx)
+  module subroutine model_basic_init (model, name, n_par, n_prt, n_vtx)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name
     integer, intent(in) :: n_par, n_prt, n_vtx
@@ -12771,8 +13716,12 @@ tree.  We also close the DL access object, if any, that enables external
 parameter calculation.
 <<Models: model: TBP>>=
   procedure :: final => model_final
+<<Models: sub interfaces>>=
+    module subroutine model_final (model)
+      class(model_t), intent(inout) :: model
+    end subroutine model_final
 <<Models: procedures>>=
-  subroutine model_final (model)
+  module subroutine model_final (model)
     class(model_t), intent(inout) :: model
     integer :: i
     if (allocated (model%par)) then
@@ -12792,8 +13741,22 @@ parameter calculation.
 tree) is displayed, and the vertex hash table is shown.
 <<Models: model: TBP>>=
   procedure :: write => model_write
+<<Models: sub interfaces>>=
+    module subroutine model_write (model, unit, verbose, &
+         show_md5sum, show_variables, show_parameters, &
+         show_particles, show_vertices, show_scheme)
+      class(model_t), intent(in) :: model
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: verbose
+      logical, intent(in), optional :: show_md5sum
+      logical, intent(in), optional :: show_variables
+      logical, intent(in), optional :: show_parameters
+      logical, intent(in), optional :: show_particles
+      logical, intent(in), optional :: show_vertices
+      logical, intent(in), optional :: show_scheme
+    end subroutine model_write
 <<Models: procedures>>=
-  subroutine model_write (model, unit, verbose, &
+  module subroutine model_write (model, unit, verbose, &
        show_md5sum, show_variables, show_parameters, &
        show_particles, show_vertices, show_scheme)
     class(model_t), intent(in) :: model
@@ -12856,8 +13819,13 @@ tree) is displayed, and the vertex hash table is shown.
 @ Screen output, condensed form.
 <<Models: model: TBP>>=
   procedure :: show => model_show
+<<Models: sub interfaces>>=
+    module subroutine model_show (model, unit)
+      class(model_t), intent(in) :: model
+      integer, intent(in), optional :: unit
+    end subroutine model_show
 <<Models: procedures>>=
-  subroutine model_show (model, unit)
+  module subroutine model_show (model, unit)
     class(model_t), intent(in) :: model
     integer, intent(in), optional :: unit
     integer :: i, u, l
@@ -12900,8 +13868,14 @@ tree) is displayed, and the vertex hash table is shown.
 @ Show all fields/particles.
 <<Models: model: TBP>>=
   procedure :: show_fields => model_show_fields
+<<Models: sub interfaces>>=
+    module subroutine model_show_fields (model, l, unit)
+      class(model_t), intent(in), target :: model
+      integer, intent(in) :: l
+      integer, intent(in), optional :: unit
+    end subroutine model_show_fields
 <<Models: procedures>>=
-  subroutine model_show_fields (model, l, unit)
+  module subroutine model_show_fields (model, l, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in) :: l
     integer, intent(in), optional :: unit
@@ -12923,8 +13897,25 @@ particles, respectively.
   procedure :: show_unstable => model_show_unstable
   procedure :: show_polarized => model_show_polarized
   procedure :: show_unpolarized => model_show_unpolarized
+<<Models: sub interfaces>>=
+    module subroutine model_show_stable (model, unit)
+      class(model_t), intent(in), target :: model
+      integer, intent(in), optional :: unit
+    end subroutine model_show_stable
+    module subroutine model_show_unstable (model, unit)
+      class(model_t), intent(in), target :: model
+      integer, intent(in), optional :: unit
+    end subroutine model_show_unstable
+    module subroutine model_show_polarized (model, unit)
+      class(model_t), intent(in), target :: model
+      integer, intent(in), optional :: unit
+    end subroutine model_show_polarized
+    module subroutine model_show_unpolarized (model, unit)
+      class(model_t), intent(in), target :: model
+      integer, intent(in), optional :: unit
+    end subroutine model_show_unpolarized
 <<Models: procedures>>=
-  subroutine model_show_stable (model, unit)
+  module subroutine model_show_stable (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
     type(field_data_t), pointer :: field
@@ -12945,7 +13936,7 @@ particles, respectively.
     write (u, *)
   end subroutine model_show_stable
 
-  subroutine model_show_unstable (model, unit)
+  module subroutine model_show_unstable (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
     type(field_data_t), pointer :: field
@@ -12966,7 +13957,7 @@ particles, respectively.
     write (u, *)
   end subroutine model_show_unstable
 
-  subroutine model_show_polarized (model, unit)
+  module subroutine model_show_polarized (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
     type(field_data_t), pointer :: field
@@ -12987,7 +13978,7 @@ particles, respectively.
     write (u, *)
   end subroutine model_show_polarized
 
-  subroutine model_show_unpolarized (model, unit)
+  module subroutine model_show_unpolarized (model, unit)
     class(model_t), intent(in), target :: model
     integer, intent(in), optional :: unit
     type(field_data_t), pointer :: field
@@ -13016,8 +14007,13 @@ particles, respectively.
 @ Retrieve the MD5 sum of a model (actually, of the model file).
 <<Models: model: TBP>>=
   procedure :: get_md5sum => model_get_md5sum
+<<Models: sub interfaces>>=
+    module function model_get_md5sum (model) result (md5sum)
+      character(32) :: md5sum
+      class(model_t), intent(in) :: model
+    end function model_get_md5sum
 <<Models: procedures>>=
-  function model_get_md5sum (model) result (md5sum)
+  module function model_get_md5sum (model) result (md5sum)
     character(32) :: md5sum
     class(model_t), intent(in) :: model
     md5sum = model%md5sum
@@ -13035,8 +14031,33 @@ arbitrary.
        set_parameter_external => model_set_parameter_external
   procedure :: &
        set_parameter_unused => model_set_parameter_unused
+<<Models: sub interfaces>>=
+    module subroutine model_set_parameter_constant (model, i, name, value)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: name
+      real(default), intent(in) :: value
+    end subroutine model_set_parameter_constant
+    module subroutine model_set_parameter_parse_node &
+         (model, i, name, pn, constant)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: name
+      type(parse_node_t), intent(in), target :: pn
+      logical, intent(in) :: constant
+    end subroutine model_set_parameter_parse_node
+    module subroutine model_set_parameter_external (model, i, name)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: name
+    end subroutine model_set_parameter_external
+    module subroutine model_set_parameter_unused (model, i, name)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: name
+    end subroutine model_set_parameter_unused
 <<Models: procedures>>=
-  subroutine model_set_parameter_constant (model, i, name, value)
+  module subroutine model_set_parameter_constant (model, i, name, value)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: name
@@ -13052,7 +14073,8 @@ arbitrary.
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_constant
 
-  subroutine model_set_parameter_parse_node (model, i, name, pn, constant)
+  module subroutine model_set_parameter_parse_node &
+       (model, i, name, pn, constant)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: name
@@ -13073,7 +14095,7 @@ arbitrary.
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_parse_node
 
-  subroutine model_set_parameter_external (model, i, name)
+  module subroutine model_set_parameter_external (model, i, name)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: name
@@ -13088,7 +14110,7 @@ arbitrary.
     model%max_par_name_length = max (model%max_par_name_length, len (name))
   end subroutine model_set_parameter_external
 
-  subroutine model_set_parameter_unused (model, i, name)
+  module subroutine model_set_parameter_unused (model, i, name)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: name
@@ -13108,8 +14130,14 @@ list.  The safe solution is to make use of the above initializers,
 which also take care of the building a new variable list.
 <<Models: model: TBP>>=
   procedure, private :: copy_parameter => model_copy_parameter
+<<Models: sub interfaces>>=
+    module subroutine model_copy_parameter (model, i, par)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(parameter_t), intent(in) :: par
+    end subroutine model_copy_parameter
 <<Models: procedures>>=
-  subroutine model_copy_parameter (model, i, par)
+  module subroutine model_copy_parameter (model, i, par)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parameter_t), intent(in) :: par
@@ -13143,8 +14171,12 @@ which also take care of the building a new variable list.
 @ Recalculate all derived parameters.
 <<Models: model: TBP>>=
   procedure :: update_parameters => model_parameters_update
+<<Models: sub interfaces>>=
+    module subroutine model_parameters_update (model)
+      class(model_t), intent(inout) :: model
+    end subroutine model_parameters_update
 <<Models: procedures>>=
-  subroutine model_parameters_update (model)
+  module subroutine model_parameters_update (model)
     class(model_t), intent(inout) :: model
     integer :: i
     real(default), dimension(:), allocatable :: par
@@ -13180,8 +14212,15 @@ which also take care of the building a new variable list.
 @ Initialize field data with PDG long name and PDG code.
 <<Models: model: TBP>>=
   procedure, private :: init_field => model_init_field
+<<Models: sub interfaces>>=
+    module subroutine model_init_field (model, i, longname, pdg)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: longname
+      integer, intent(in) :: pdg
+    end subroutine model_init_field
 <<Models: procedures>>=
-  subroutine model_init_field (model, i, longname, pdg)
+  module subroutine model_init_field (model, i, longname, pdg)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: longname
@@ -13196,8 +14235,14 @@ which also take care of the building a new variable list.
 as a template.  The name should be the unique long name.
 <<Models: model: TBP>>=
   procedure, private :: copy_field => model_copy_field
+<<Models: sub interfaces>>=
+    module subroutine model_copy_field (model, i, name_src)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(string_t), intent(in) :: name_src
+    end subroutine model_copy_field
 <<Models: procedures>>=
-  subroutine model_copy_field (model, i, name_src)
+  module subroutine model_copy_field (model, i, name_src)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(string_t), intent(in) :: name_src
@@ -13213,8 +14258,14 @@ as a template.  The name should be the unique long name.
 Write the model variable list.
 <<Models: model: TBP>>=
   procedure :: write_var_list => model_write_var_list
+<<Models: sub interfaces>>=
+    module subroutine model_write_var_list (model, unit, follow_link)
+      class(model_t), intent(in) :: model
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: follow_link
+    end subroutine model_write_var_list
 <<Models: procedures>>=
-  subroutine model_write_var_list (model, unit, follow_link)
+  module subroutine model_write_var_list (model, unit, follow_link)
     class(model_t), intent(in) :: model
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: follow_link
@@ -13225,8 +14276,13 @@ Write the model variable list.
 @ Link a variable list to the model variables.
 <<Models: model: TBP>>=
   procedure :: link_var_list => model_link_var_list
+<<Models: sub interfaces>>=
+    module subroutine model_link_var_list (model, var_list)
+      class(model_t), intent(inout) :: model
+      type(var_list_t), intent(in), target :: var_list
+    end subroutine model_link_var_list
 <<Models: procedures>>=
-  subroutine model_link_var_list (model, var_list)
+  module subroutine model_link_var_list (model, var_list)
     class(model_t), intent(inout) :: model
     type(var_list_t), intent(in), target :: var_list
     call model%var_list%link (var_list)
@@ -13237,8 +14293,14 @@ Write the model variable list.
 Check if the model contains a named variable.
 <<Models: model: TBP>>=
   procedure :: var_exists => model_var_exists
+<<Models: sub interfaces>>=
+    module function model_var_exists (model, name) result (flag)
+      class(model_t), intent(in) :: model
+      type(string_t), intent(in) :: name
+      logical :: flag
+    end function model_var_exists
 <<Models: procedures>>=
-  function model_var_exists (model, name) result (flag)
+  module function model_var_exists (model, name) result (flag)
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     logical :: flag
@@ -13249,8 +14311,14 @@ Check if the model contains a named variable.
 @ Check if the model variable is a derived parameter, i.e., locked.
 <<Models: model: TBP>>=
   procedure :: var_is_locked => model_var_is_locked
+<<Models: sub interfaces>>=
+    module function model_var_is_locked (model, name) result (flag)
+      class(model_t), intent(in) :: model
+      type(string_t), intent(in) :: name
+      logical :: flag
+    end function model_var_is_locked  
 <<Models: procedures>>=
-  function model_var_is_locked (model, name) result (flag)
+  module function model_var_is_locked (model, name) result (flag)
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     logical :: flag
@@ -13264,8 +14332,15 @@ model and variable list, so independent and derived parameters are
 always synchronized.
 <<Models: model: TBP>>=
   procedure :: set_real => model_var_set_real
+<<Models: sub interfaces>>=
+    module subroutine model_var_set_real (model, name, rval, verbose, pacified)
+      class(model_t), intent(inout) :: model
+      type(string_t), intent(in) :: name
+      real(default), intent(in) :: rval
+      logical, intent(in), optional :: verbose, pacified
+    end subroutine model_var_set_real
 <<Models: procedures>>=
-  subroutine model_var_set_real (model, name, rval, verbose, pacified)
+  module subroutine model_var_set_real (model, name, rval, verbose, pacified)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name
     real(default), intent(in) :: rval
@@ -13280,8 +14355,14 @@ always synchronized.
 @ Retrieve a model parameter value.
 <<Models: model: TBP>>=
   procedure :: get_rval => model_var_get_rval
+<<Models: sub interfaces>>=
+    module function model_var_get_rval (model, name) result (rval)
+      class(model_t), intent(in) :: model
+      type(string_t), intent(in) :: name
+      real(default) :: rval
+    end function model_var_get_rval
 <<Models: procedures>>=
-  function model_var_get_rval (model, name) result (rval)
+  module function model_var_get_rval (model, name) result (rval)
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     real(default) :: rval
@@ -13293,8 +14374,13 @@ always synchronized.
 [To be deleted] Return a pointer to the variable list.
 <<Models: model: TBP>>=
   procedure :: get_var_list_ptr => model_get_var_list_ptr
+<<Models: sub interfaces>>=
+    module function model_get_var_list_ptr (model) result (var_list)
+      type(var_list_t), pointer :: var_list
+      class(model_t), intent(in), target :: model
+    end function model_get_var_list_ptr
 <<Models: procedures>>=
-  function model_get_var_list_ptr (model) result (var_list)
+  module function model_get_var_list_ptr (model) result (var_list)
     type(var_list_t), pointer :: var_list
     class(model_t), intent(in), target :: model
     var_list => model%var_list
@@ -13308,8 +14394,13 @@ distinction, but the flag allows us to handle built-in and UFO models
 with the same name in parallel.
 <<Models: model: TBP>>=
   procedure :: is_ufo_model => model_is_ufo_model
+<<Models: sub interfaces>>=
+    module function model_is_ufo_model (model) result (flag)
+      class(model_t), intent(in) :: model
+      logical :: flag
+    end function model_is_ufo_model
 <<Models: procedures>>=
-  function model_is_ufo_model (model) result (flag)
+  module function model_is_ufo_model (model) result (flag)
     class(model_t), intent(in) :: model
     logical :: flag
     flag = model%ufo_model
@@ -13319,8 +14410,13 @@ with the same name in parallel.
 @ Return the UFO path used for fetching the UFO source.
 <<Models: model: TBP>>=
   procedure :: get_ufo_path => model_get_ufo_path
+<<Models: sub interfaces>>=
+    module function model_get_ufo_path (model) result (path)
+      class(model_t), intent(in) :: model
+      type(string_t) :: path
+    end function model_get_ufo_path
 <<Models: procedures>>=
-  function model_get_ufo_path (model) result (path)
+  module function model_get_ufo_path (model) result (path)
     class(model_t), intent(in) :: model
     type(string_t) :: path
     if (model%ufo_model) then
@@ -13420,8 +14516,13 @@ modified.
 The model supports schemes if the scheme array is allocated.
 <<Models: model: TBP>>=
   procedure :: has_schemes => model_has_schemes
+<<Models: sub interfaces>>=
+    module function model_has_schemes (model) result (flag)
+      logical :: flag
+      class(model_t), intent(in) :: model
+    end function model_has_schemes
 <<Models: procedures>>=
-  function model_has_schemes (model) result (flag)
+  module function model_has_schemes (model) result (flag)
     logical :: flag
     class(model_t), intent(in) :: model
     flag = allocated (model%schemes)
@@ -13432,8 +14533,13 @@ The model supports schemes if the scheme array is allocated.
 Enable schemes: fix the list of allowed schemes.
 <<Models: model: TBP>>=
   procedure :: enable_schemes => model_enable_schemes
+<<Models: sub interfaces>>=
+    module subroutine model_enable_schemes (model, scheme)
+      class(model_t), intent(inout) :: model
+      type(string_t), dimension(:), intent(in) :: scheme
+    end subroutine model_enable_schemes
 <<Models: procedures>>=
-  subroutine model_enable_schemes (model, scheme)
+  module subroutine model_enable_schemes (model, scheme)
     class(model_t), intent(inout) :: model
     type(string_t), dimension(:), intent(in) :: scheme
     allocate (model%schemes (size (scheme)), source = scheme)
@@ -13449,8 +14555,13 @@ select the first scheme.  The numeric scheme ID will then be $1$, while a
 model without schemes retains $0$.
 <<Models: model: TBP>>=
   procedure :: set_scheme => model_set_scheme
+<<Models: sub interfaces>>=
+    module subroutine model_set_scheme (model, scheme)
+      class(model_t), intent(inout) :: model
+      type(string_t), intent(in), optional :: scheme
+    end subroutine model_set_scheme
 <<Models: procedures>>=
-  subroutine model_set_scheme (model, scheme)
+  module subroutine model_set_scheme (model, scheme)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in), optional :: scheme
     logical :: ok
@@ -13490,8 +14601,13 @@ Get the scheme.  Note that the base [[model_data_t]] provides a
 [[get_scheme_num]] getter function.
 <<Models: model: TBP>>=
   procedure :: get_scheme => model_get_scheme
+<<Models: sub interfaces>>=
+    module function model_get_scheme (model) result (scheme)
+      class(model_t), intent(in) :: model
+      type(string_t) :: scheme
+    end function model_get_scheme
 <<Models: procedures>>=
-  function model_get_scheme (model) result (scheme)
+  module function model_get_scheme (model) result (scheme)
     class(model_t), intent(in) :: model
     type(string_t) :: scheme
     if (allocated (model%selected_scheme)) then
@@ -13513,8 +14629,19 @@ if there is an [[ufo_path]] requested, it must coincide with the
 [[ufo_path]] of the model.  If not, the model [[ufo_path]] is not checked.
 <<Models: model: TBP>>=
   procedure :: matches => model_matches
+<<Models: sub interfaces>>=
+    module function model_matches &
+         (model, name, scheme, ufo, ufo_path) result (flag)
+      logical :: flag
+      class(model_t), intent(in) :: model
+      type(string_t), intent(in) :: name
+      type(string_t), intent(in), optional :: scheme
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+    end function model_matches
 <<Models: procedures>>=
-  function model_matches (model, name, scheme, ufo, ufo_path) result (flag)
+  module function model_matches &
+       (model, name, scheme, ufo, ufo_path) result (flag)
     logical :: flag
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
@@ -13560,8 +14687,13 @@ if [[n_slha_block]] is nonzero, i.e., after SLHA block names have been
 parsed and registered.
 <<Models: model: TBP>>=
   procedure :: supports_custom_slha => model_supports_custom_slha
+<<Models: sub interfaces>>=
+    module function model_supports_custom_slha (model) result (flag)
+      class(model_t), intent(in) :: model
+      logical :: flag    
+    end function model_supports_custom_slha
 <<Models: procedures>>=
-  function model_supports_custom_slha (model) result (flag)
+  module function model_supports_custom_slha (model) result (flag)
     class(model_t), intent(in) :: model
     logical :: flag
     
@@ -13573,8 +14705,13 @@ parsed and registered.
 @ Return the block names for all SLHA block references.
 <<Models: model: TBP>>=
   procedure :: get_custom_slha_blocks => model_get_custom_slha_blocks
+<<Models: sub interfaces>>=
+    module subroutine model_get_custom_slha_blocks (model, block_name)
+      class(model_t), intent(in) :: model
+      type(string_t), dimension(:), allocatable :: block_name
+    end subroutine model_get_custom_slha_blocks
 <<Models: procedures>>=
-  subroutine model_get_custom_slha_blocks (model, block_name)
+  module subroutine model_get_custom_slha_blocks (model, block_name)
     class(model_t), intent(in) :: model
     type(string_t), dimension(:), allocatable :: block_name
     
@@ -13704,8 +14841,17 @@ file), so a simple linear search for each parameter should not be a
 performance problem.
 <<Models: model: TBP>>=
   procedure :: slha_lookup => model_slha_lookup
+<<Models: sub interfaces>>=
+    module subroutine model_slha_lookup &
+         (model, block_name, block_index, par_data)
+      class(model_t), intent(in) :: model
+      type(string_t), intent(in) :: block_name
+      integer, dimension(:), intent(in) :: block_index
+      class(modelpar_data_t), pointer, intent(out) :: par_data
+    end subroutine model_slha_lookup
 <<Models: procedures>>=
-  subroutine model_slha_lookup (model, block_name, block_index, par_data)
+  module subroutine model_slha_lookup &
+       (model, block_name, block_index, par_data)
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: block_name
     integer, dimension(:), intent(in) :: block_index
@@ -13739,8 +14885,15 @@ performance problem.
 @ Modify the value of a parameter, identified by block name and index array.
 <<Models: model: TBP>>=
   procedure :: slha_set_par => model_slha_set_par
+<<Models: sub interfaces>>=
+    module subroutine model_slha_set_par (model, block_name, block_index, value)
+      class(model_t), intent(inout) :: model
+      type(string_t), intent(in) :: block_name
+      integer, dimension(:), intent(in) :: block_index
+      real(default), intent(in) :: value
+    end subroutine model_slha_set_par
 <<Models: procedures>>=
-  subroutine model_slha_set_par (model, block_name, block_index, value)
+  module subroutine model_slha_set_par (model, block_name, block_index, value)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: block_name
     integer, dimension(:), intent(in) :: block_index
@@ -13870,8 +15023,11 @@ module variables:
 @ %def syntax_model_file
 <<Models: public>>=
   public :: syntax_model_file_init
+<<Models: sub interfaces>>=
+    module subroutine syntax_model_file_init ()
+    end subroutine syntax_model_file_init
 <<Models: procedures>>=
-  subroutine syntax_model_file_init ()
+  module subroutine syntax_model_file_init ()
     type(ifile_t) :: ifile
     call define_model_file_syntax (ifile)
     call syntax_init (syntax_model_file, ifile)
@@ -13894,16 +15050,23 @@ module variables:
 @ %def lexer_init_model_file
 <<Models: public>>=
   public :: syntax_model_file_final
+<<Models: sub interfaces>>=
+    module subroutine syntax_model_file_final ()
+    end subroutine syntax_model_file_final
 <<Models: procedures>>=
-  subroutine syntax_model_file_final ()
+  module subroutine syntax_model_file_final ()
     call syntax_final (syntax_model_file)
   end subroutine syntax_model_file_final
 
 @ %def syntax_model_file_final
 <<Models: public>>=
   public :: syntax_model_file_write
+<<Models: sub interfaces>>=
+    module subroutine syntax_model_file_write (unit)
+      integer, intent(in), optional :: unit
+    end subroutine syntax_model_file_write
 <<Models: procedures>>=
-  subroutine syntax_model_file_write (unit)
+  module subroutine syntax_model_file_write (unit)
     integer, intent(in), optional :: unit
     call syntax_write (syntax_model_file, unit)
   end subroutine syntax_model_file_write
@@ -13919,8 +15082,20 @@ There is no difference in the
 contents of the file or the generated model object.
 <<Models: model: TBP>>=
   procedure :: read => model_read
+<<Models: sub interfaces>>=
+    module subroutine model_read (model, filename, os_data, exist, &
+         scheme, ufo, ufo_path_requested, rebuild_mdl)
+      class(model_t), intent(out), target :: model
+      type(string_t), intent(in) :: filename
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(out), optional :: exist
+      type(string_t), intent(in), optional :: scheme
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path_requested
+      logical, intent(in), optional :: rebuild_mdl
+    end subroutine model_read
 <<Models: procedures>>=
-  subroutine model_read (model, filename, os_data, exist, &
+  module subroutine model_read (model, filename, os_data, exist, &
        scheme, ufo, ufo_path_requested, rebuild_mdl)
     class(model_t), intent(out), target :: model
     type(string_t), intent(in) :: filename
@@ -14246,8 +15421,14 @@ contents of the file or the generated model object.
 @ Parameters are real values (literal) with an optional unit.
 <<Models: model: TBP>>=
   procedure, private :: read_parameter => model_read_parameter
+<<Models: sub interfaces>>=
+    module subroutine model_read_parameter (model, i, node)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(parse_node_t), intent(in), target :: node
+    end subroutine model_read_parameter
 <<Models: procedures>>=
-  subroutine model_read_parameter (model, i, node)
+  module subroutine model_read_parameter (model, i, node)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in), target :: node
@@ -14268,8 +15449,14 @@ contents of the file or the generated model object.
 Don't evaluate the expression, yet.
 <<Models: model: TBP>>=
   procedure, private :: read_derived => model_read_derived
+<<Models: sub interfaces>>=
+    module subroutine model_read_derived (model, i, node)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(parse_node_t), intent(in), target :: node
+    end subroutine model_read_derived
 <<Models: procedures>>=
-  subroutine model_read_derived (model, i, node)
+  module subroutine model_read_derived (model, i, node)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in), target :: node
@@ -14285,8 +15472,14 @@ Don't evaluate the expression, yet.
 external library.
 <<Models: model: TBP>>=
   procedure, private :: read_external => model_read_external
+<<Models: sub interfaces>>=
+    module subroutine model_read_external (model, i, node)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(parse_node_t), intent(in), target :: node
+    end subroutine model_read_external
 <<Models: procedures>>=
-  subroutine model_read_external (model, i, node)
+  module subroutine model_read_external (model, i, node)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in), target :: node
@@ -14299,8 +15492,14 @@ external library.
 @ Ditto for unused parameters, they are there just for reserving the name.
 <<Models: model: TBP>>=
   procedure, private :: read_unused => model_read_unused
+<<Models: sub interfaces>>=
+    module subroutine model_read_unused (model, i, node)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(parse_node_t), intent(in), target :: node
+    end subroutine model_read_unused
 <<Models: procedures>>=
-  subroutine model_read_unused (model, i, node)
+  module subroutine model_read_unused (model, i, node)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in), target :: node
@@ -14312,8 +15511,14 @@ external library.
 @ %def model_read_unused
 <<Models: model: TBP>>=
   procedure, private :: read_field => model_read_field
+<<Models: sub interfaces>>=
+    module subroutine model_read_field (model, i, node)
+      class(model_t), intent(inout), target :: model
+      integer, intent(in) :: i
+      type(parse_node_t), intent(in) :: node
+    end subroutine model_read_field
 <<Models: procedures>>=
-  subroutine model_read_field (model, i, node)
+  module subroutine model_read_field (model, i, node)
     class(model_t), intent(inout), target :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in) :: node
@@ -14404,8 +15609,14 @@ external library.
 @ %def model_read_field
 <<Models: model: TBP>>=
   procedure, private :: read_vertex => model_read_vertex
+<<Models: sub interfaces>>=
+    module subroutine model_read_vertex (model, i, node)
+      class(model_t), intent(inout) :: model
+      integer, intent(in) :: i
+      type(parse_node_t), intent(in) :: node
+    end subroutine model_read_vertex
 <<Models: procedures>>=
-  subroutine model_read_vertex (model, i, node)
+  module subroutine model_read_vertex (model, i, node)
     class(model_t), intent(inout) :: model
     integer, intent(in) :: i
     type(parse_node_t), intent(in) :: node
@@ -14480,8 +15691,12 @@ external library.
 the field content.
 <<Models: model: TBP>>=
   procedure, private :: append_field_vars => model_append_field_vars
+<<Models: sub interfaces>>=
+    module subroutine model_append_field_vars (model)
+      class(model_t), intent(inout) :: model
+    end subroutine model_append_field_vars
 <<Models: procedures>>=
-  subroutine model_append_field_vars (model)
+  module subroutine model_append_field_vars (model)
     class(model_t), intent(inout) :: model
     type(pdg_array_t) :: aval
     type(field_data_t), dimension(:), pointer :: field_array
@@ -14548,8 +15763,13 @@ the field content.
 \subsection{Test models}
 <<Models: public>>=
   public :: create_test_model
+<<Models: sub interfaces>>=
+    module subroutine create_test_model (model_name, test_model)
+      type(string_t), intent(in) :: model_name
+      type(model_t), intent(out), pointer :: test_model
+    end subroutine create_test_model
 <<Models: procedures>>=
-  subroutine create_test_model (model_name, test_model)
+  module subroutine create_test_model (model_name, test_model)
     type(string_t), intent(in) :: model_name
     type(model_t), intent(out), pointer :: test_model
     type(os_data_t) :: os_data
@@ -14586,8 +15806,17 @@ List of currently active models
 from the global context.
 <<Models: model list: TBP>>=
   procedure :: write => model_list_write
+<<Models: sub interfaces>>=
+    recursive module subroutine model_list_write &
+         (object, unit, verbose, follow_link)
+      class(model_list_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: verbose
+      logical, intent(in), optional :: follow_link
+    end subroutine model_list_write
 <<Models: procedures>>=
-  recursive subroutine model_list_write (object, unit, verbose, follow_link)
+  recursive module subroutine model_list_write &
+       (object, unit, verbose, follow_link)
     class(model_list_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -14614,8 +15843,13 @@ from the global context.
 @ Link this list to another one.
 <<Models: model list: TBP>>=
   procedure :: link => model_list_link
+<<Models: sub interfaces>>=
+    module subroutine model_list_link (model_list, context)
+      class(model_list_t), intent(inout) :: model_list
+      type(model_list_t), intent(in), target :: context
+    end subroutine model_list_link
 <<Models: procedures>>=
-  subroutine model_list_link (model_list, context)
+  module subroutine model_list_link (model_list, context)
     class(model_list_t), intent(inout) :: model_list
     type(model_list_t), intent(in), target :: context
     model_list%context => context
@@ -14631,8 +15865,14 @@ not yet part of the list.
 If we provide a [[model]] argument, this returns a pointer to the new entry.
 <<Models: model list: TBP>>=
   procedure, private :: import => model_list_import
+<<Models: sub interfaces>>=
+    module subroutine model_list_import (model_list, current, model)
+      class(model_list_t), intent(inout) :: model_list
+      type(model_entry_t), pointer, intent(inout) :: current
+      type(model_t), optional, pointer, intent(out) :: model
+    end subroutine model_list_import
 <<Models: procedures>>=
-  subroutine model_list_import (model_list, current, model)
+  module subroutine model_list_import (model_list, current, model)
     class(model_list_t), intent(inout) :: model_list
     type(model_entry_t), pointer, intent(inout) :: current
     type(model_t), optional, pointer, intent(out) :: model
@@ -14655,8 +15895,17 @@ Add a new model with given [[name]] to the list, if it does not yet
 exist.  If successful, return a pointer to the new model.
 <<Models: model list: TBP>>=
   procedure :: add => model_list_add
+<<Models: sub interfaces>>=
+    module subroutine model_list_add (model_list, &
+         name, os_data, n_par, n_prt, n_vtx, model)
+      class(model_list_t), intent(inout) :: model_list
+      type(string_t), intent(in) :: name
+      type(os_data_t), intent(in) :: os_data
+      integer, intent(in) :: n_par, n_prt, n_vtx
+      type(model_t), pointer :: model
+    end subroutine model_list_add
 <<Models: procedures>>=
-  subroutine model_list_add (model_list, &
+  module subroutine model_list_add (model_list, &
        name, os_data, n_par, n_prt, n_vtx, model)
     class(model_list_t), intent(inout) :: model_list
     type(string_t), intent(in) :: name
@@ -14685,8 +15934,21 @@ way, we avoid loading models twice from different contexts.   When a model is
 modified, we should first allocate a local copy.
 <<Models: model list: TBP>>=
   procedure :: read_model => model_list_read_model
+<<Models: sub interfaces>>=
+    module subroutine model_list_read_model &
+         (model_list, name, filename, os_data, model, &
+         scheme, ufo, ufo_path, rebuild_mdl)
+      class(model_list_t), intent(inout), target :: model_list
+      type(string_t), intent(in) :: name, filename
+      type(os_data_t), intent(in) :: os_data
+      type(model_t), pointer, intent(inout) :: model
+      type(string_t), intent(in), optional :: scheme
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      logical, intent(in), optional :: rebuild_mdl
+    end subroutine model_list_read_model
 <<Models: procedures>>=
-  subroutine model_list_read_model &
+  module subroutine model_list_read_model &
        (model_list, name, filename, os_data, model, &
        scheme, ufo, ufo_path, rebuild_mdl)
     class(model_list_t), intent(inout), target :: model_list
@@ -14729,8 +15991,14 @@ modified, we should first allocate a local copy.
 pointer to the new entry.
 <<Models: model list: TBP>>=
   procedure :: append_copy => model_list_append_copy
+<<Models: sub interfaces>>=
+    module subroutine model_list_append_copy (model_list, orig, model)
+      class(model_list_t), intent(inout) :: model_list
+      type(model_t), intent(in), target :: orig
+      type(model_t), intent(out), pointer, optional :: model
+    end subroutine model_list_append_copy
 <<Models: procedures>>=
-  subroutine model_list_append_copy (model_list, orig, model)
+  module subroutine model_list_append_copy (model_list, orig, model)
     class(model_list_t), intent(inout) :: model_list
     type(model_t), intent(in), target :: orig
     type(model_t), intent(out), pointer, optional :: model
@@ -14745,8 +16013,19 @@ pointer to the new entry.
 told otherwise.
 <<Models: model list: TBP>>=
   procedure :: model_exists => model_list_model_exists
+<<Models: sub interfaces>>=
+    recursive module function model_list_model_exists &
+         (model_list, name, scheme, ufo, ufo_path, follow_link) result (exists)
+      class(model_list_t), intent(in) :: model_list
+      logical :: exists
+      type(string_t), intent(in) :: name
+      type(string_t), intent(in), optional :: scheme
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      logical, intent(in), optional :: follow_link
+    end function model_list_model_exists
 <<Models: procedures>>=
-  recursive function model_list_model_exists &
+  recursive module function model_list_model_exists &
        (model_list, name, scheme, ufo, ufo_path, follow_link) result (exists)
     class(model_list_t), intent(in) :: model_list
     logical :: exists
@@ -14778,8 +16057,19 @@ told otherwise.
 @ Return a pointer to a named model.  Search recursively unless told otherwise.
 <<Models: model list: TBP>>=
   procedure :: get_model_ptr => model_list_get_model_ptr
+<<Models: sub interfaces>>=
+    recursive module function model_list_get_model_ptr &
+         (model_list, name, scheme, ufo, ufo_path, follow_link) result (model)
+      class(model_list_t), intent(in) :: model_list
+      type(model_t), pointer :: model
+      type(string_t), intent(in) :: name
+      type(string_t), intent(in), optional :: scheme
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      logical, intent(in), optional :: follow_link
+    end function model_list_get_model_ptr
 <<Models: procedures>>=
-  recursive function model_list_get_model_ptr &
+  recursive module function model_list_get_model_ptr &
        (model_list, name, scheme, ufo, ufo_path, follow_link) result (model)
     class(model_list_t), intent(in) :: model_list
     type(model_t), pointer :: model
@@ -14811,8 +16101,12 @@ told otherwise.
 @ Delete the list of models.  No recursion.
 <<Models: model list: TBP>>=
   procedure :: final => model_list_final
+<<Models: sub interfaces>>=
+    module subroutine model_list_final (model_list)
+      class(model_list_t), intent(inout) :: model_list
+    end subroutine model_list_final
 <<Models: procedures>>=
-  subroutine model_list_final (model_list)
+  module subroutine model_list_final (model_list)
     class(model_list_t), intent(inout) :: model_list
     type(model_entry_t), pointer :: current
     model_list%last => null ()
@@ -14850,8 +16144,13 @@ In order for the local model to be able to use the correct UFO model
 setup, UFO model information has to be transferred.
 <<Models: model: TBP>>=
   procedure :: init_instance => model_copy
+<<Models: sub interfaces>>=
+    module subroutine model_copy (model, orig)
+      class(model_t), intent(out), target :: model
+      type(model_t), intent(in) :: orig
+    end subroutine model_copy
 <<Models: procedures>>=
-  subroutine model_copy (model, orig)
+  module subroutine model_copy (model, orig)
     class(model_t), intent(out), target :: model
     type(model_t), intent(in) :: orig
     integer :: n_par, n_prt, n_vtx
@@ -15810,16 +17109,8 @@ module slha_interface
 
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use constants
-  use string_utils, only: upper_case
-  use system_defs, only: VERSION_STRING
-  use system_defs, only: EOF
-  use diagnostics
   use os_interface
-  use ifiles
   use lexers
-  use syntax_rules
   use parser
   use variables
   use models
@@ -15828,20 +17119,44 @@ module slha_interface
 
 <<SLHA: public>>
 
+<<SLHA: types>>
+
+  interface
+<<SLHA: sub interfaces>>
+  end interface
+
+  save
+
+end module slha_interface
+@ %def slha_interface
+@
+<<[[slha_interface_sub.f90]]>>=
+<<File header>>
+
+submodule (slha_interface) slha_interface_s
+
+  use io_units
+  use constants
+  use string_utils, only: upper_case
+  use system_defs, only: VERSION_STRING
+  use system_defs, only: EOF
+  use diagnostics
+  use ifiles
+  use syntax_rules
+
+  implicit none
+
 <<SLHA: parameters>>
 
 <<SLHA: variables>>
-
-  save
 
 contains
 
 <<SLHA: procedures>>
 
-<<SLHA: tests>>
+end submodule slha_interface_s
 
-end module slha_interface
-@ %def slha_interface
+@ %def slha_interface_s
 @
 \subsection{Preprocessor}
 SLHA is a mixed-format standard.  It should be read in assuming free
@@ -15997,8 +17312,11 @@ parsing block names.
 @ %def syntax_slha
 <<SLHA: public>>=
   public :: syntax_slha_init
+<<SLHA: sub interfaces>>=
+    module subroutine syntax_slha_init ()
+    end subroutine syntax_slha_init
 <<SLHA: procedures>>=
-  subroutine syntax_slha_init ()
+  module subroutine syntax_slha_init ()
     type(ifile_t) :: ifile
     call define_slha_syntax (ifile)
     call syntax_init (syntax_slha, ifile)
@@ -16008,16 +17326,23 @@ parsing block names.
 @ %def syntax_slha_init
 <<SLHA: public>>=
   public :: syntax_slha_final
+<<SLHA: sub interfaces>>=
+    module subroutine syntax_slha_final ()
+    end subroutine syntax_slha_final
 <<SLHA: procedures>>=
-  subroutine syntax_slha_final ()
+  module subroutine syntax_slha_final ()
     call syntax_final (syntax_slha)
   end subroutine syntax_slha_final
 
 @ %def syntax_slha_final
 <<SLHA: public>>=
   public :: syntax_slha_write
+<<SLHA: sub interfaces>>=
+    module subroutine syntax_slha_write (unit)
+      integer, intent(in), optional :: unit
+    end subroutine syntax_slha_write
 <<SLHA: procedures>>=
-  subroutine syntax_slha_write (unit)
+  module subroutine syntax_slha_write (unit)
     integer, intent(in), optional :: unit
     call syntax_write (syntax_slha, unit)
   end subroutine syntax_slha_write
@@ -16074,8 +17399,12 @@ to allow essentially all characters as special characters, so the
 string can be read before it is discarded.
 <<SLHA: public>>=
   public :: lexer_init_slha
+<<SLHA: sub interfaces>>=
+    module subroutine lexer_init_slha (lexer)
+      type(lexer_t), intent(out) :: lexer
+    end subroutine lexer_init_slha
 <<SLHA: procedures>>=
-  subroutine lexer_init_slha (lexer)
+  module subroutine lexer_init_slha (lexer)
     type(lexer_t), intent(out) :: lexer
     call lexer_init (lexer, &
          comment_chars = "#", &
@@ -16248,16 +17577,20 @@ Return all strings with index [[i]].  The result is an allocated
 string array.  Since we do not know the number of matching entries in
 advance, we build an intermediate list which is transferred to the
 final array and deleted before exiting.
+<<SLHA: types>>=
+  type :: str_entry_t
+     type(string_t) :: str
+     type(str_entry_t), pointer :: next => null ()
+  end type str_entry_t
+
+@ %def str_entry_t
+@
 <<SLHA: procedures>>=
   subroutine retrieve_strings_in_block (pn_block, code, str_array)
     type(parse_node_t), intent(in), target :: pn_block
     integer, intent(in) :: code
     type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(parse_node_t), pointer :: pn_data, pn_item
-    type :: str_entry_t
-       type(string_t) :: str
-       type(str_entry_t), pointer :: next => null ()
-    end type str_entry_t
     type(str_entry_t), pointer :: first => null ()
     type(str_entry_t), pointer :: current => null ()
     integer :: n
@@ -16534,8 +17867,15 @@ are hard-coded block names and parameter calculations.
 Public for use in unit test.
 <<SLHA: public>>=
   public :: slha_interpret_parse_tree
+<<SLHA: sub interfaces>>=
+    module subroutine slha_interpret_parse_tree &
+         (parse_tree, model, input, spectrum, decays)
+      type(parse_tree_t), intent(in) :: parse_tree
+      type(model_t), intent(inout), target :: model
+      logical, intent(in) :: input, spectrum, decays
+    end subroutine slha_interpret_parse_tree
 <<SLHA: procedures>>=
-  subroutine slha_interpret_parse_tree &
+  module subroutine slha_interpret_parse_tree &
        (parse_tree, model, input, spectrum, decays)
     type(parse_tree_t), intent(in) :: parse_tree
     type(model_t), intent(inout), target :: model
@@ -17195,8 +18535,17 @@ is either [[MODE_SKIP]] or [[MODE_DATA]], corresponding to genuine
 SUSY and custom file content, respectively.
 <<SLHA: public>>=
   public :: slha_parse_file
+<<SLHA: sub interfaces>>=
+    module subroutine slha_parse_file &
+         (file, custom_block_name, os_data, parse_tree)
+      type(string_t), intent(in) :: file
+      type(string_t), dimension(:), intent(in) :: custom_block_name
+      type(os_data_t), intent(in) :: os_data
+      type(parse_tree_t), intent(out) :: parse_tree
+    end subroutine slha_parse_file
 <<SLHA: procedures>>=
-  subroutine slha_parse_file (file, custom_block_name, os_data, parse_tree)
+  module subroutine slha_parse_file &
+       (file, custom_block_name, os_data, parse_tree)
     type(string_t), intent(in) :: file
     type(string_t), dimension(:), intent(in) :: custom_block_name
     type(os_data_t), intent(in) :: os_data
@@ -17229,8 +18578,16 @@ appropriate model, which is loaded and modified in the background.
 The pointer to this model is returned as the last argument.
 <<SLHA: public>>=
   public :: slha_read_file
+<<SLHA: sub interfaces>>=
+    module subroutine slha_read_file &
+         (file, os_data, model, input, spectrum, decays)
+      type(string_t), intent(in) :: file
+      type(os_data_t), intent(in) :: os_data
+      type(model_t), intent(inout), target :: model
+      logical, intent(in) :: input, spectrum, decays
+    end subroutine slha_read_file
 <<SLHA: procedures>>=
-  subroutine slha_read_file &
+  module subroutine slha_read_file &
        (file, os_data, model, input, spectrum, decays)
     type(string_t), intent(in) :: file
     type(os_data_t), intent(in) :: os_data
@@ -17252,8 +18609,14 @@ The pointer to this model is returned as the last argument.
 @ Write the SLHA contents, as far as possible, to external file.
 <<SLHA: public>>=
   public :: slha_write_file
+<<SLHA: sub interfaces>>=
+    module subroutine slha_write_file (file, model, input, spectrum, decays)
+      type(string_t), intent(in) :: file
+      type(model_t), target, intent(in) :: model
+      logical, intent(in) :: input, spectrum, decays
+    end subroutine slha_write_file
 <<SLHA: procedures>>=
-  subroutine slha_write_file (file, model, input, spectrum, decays)
+  module subroutine slha_write_file (file, model, input, spectrum, decays)
     type(string_t), intent(in) :: file
     type(model_t), target, intent(in) :: model
     logical, intent(in) :: input, spectrum, decays
@@ -17283,8 +18646,13 @@ The pointer to this model is returned as the last argument.
 \subsection{Dispatch}
 <<SLHA: public>>=
   public :: dispatch_slha
+<<SLHA: sub interfaces>>=
+    module subroutine dispatch_slha (var_list, input, spectrum, decays)
+      type(var_list_t), intent(inout), target :: var_list
+      logical, intent(out) :: input, spectrum, decays
+    end subroutine dispatch_slha
 <<SLHA: procedures>>=
-  subroutine dispatch_slha (var_list, input, spectrum, decays)
+  module subroutine dispatch_slha (var_list, input, spectrum, decays)
     type(var_list_t), intent(inout), target :: var_list
     logical, intent(out) :: input, spectrum, decays
     input = var_list%get_lval (var_str ("?slha_read_input"))

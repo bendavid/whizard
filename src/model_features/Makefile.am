@@ -32,11 +32,22 @@ noinst_LTLIBRARIES = libmodel_features.la
 check_LTLIBRARIES = libmodel_features_ut.la
 
 libmodel_features_la_SOURCES = \
+  $(MODEL_FEATURES_MODULES) \
+  $(MODEL_FEATURES_SUBMODULES)
+
+MODEL_FEATURES_MODULES = \
   auto_components.f90 \
   radiation_generator.f90 \
   eval_trees.f90 \
   models.f90 \
   slha_interface.f90
+
+MODEL_FEATURES_SUBMODULES = \
+  auto_components_sub.f90 \
+  radiation_generator_sub.f90 \
+  eval_trees_sub.f90 \
+  models_sub.f90 \
+  slha_interface_sub.f90
 
 libmodel_features_ut_la_SOURCES = \
   auto_components_uti.f90 auto_components_ut.f90 \
@@ -52,11 +63,11 @@ dist_noinst_DATA = model_features.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${nodist_libbasics_la_SOURCES:.f90=.$(FCMOD)} \
-  ${libmodel_features_la_SOURCES:.f90=.$(FCMOD)}
+  ${MODEL_FEATURES_MODULES:.f90=.$(FCMOD)}
 
+# This must not include the submodules
 libmodel_features_Modules = \
-  ${libmodel_features_la_SOURCES:.f90=} \
+  ${MODEL_FEATURES_MODULES:.f90=} \
   ${libmodel_features_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libmodel_features_Modules); do \
@@ -133,6 +144,13 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../threshold -I../fastjet -I../variables
 
+########################################################################
+# For the moment, the submodule dependencies will be hard-coded
+auto_components_sub.lo: auto_components.lo
+radiation_generator_sub.lo: radiation_generator.lo
+eval_trees_sub.lo: eval_trees.lo
+models_sub.lo: models.lo
+slha_interface_sub.lo: slha_interface.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -202,7 +220,7 @@ clean-local: clean-noweb
 	-rm -f model_features.stamp model_features.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
