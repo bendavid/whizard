@@ -1561,7 +1561,7 @@ corrections are activated and photons are present at LO.
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: pdg_flv
     integer :: u
-    logical :: full
+    logical :: full, nlo3
     type(string_t) :: buf
     type(blha_cfg_process_node_t), pointer :: node
     integer :: i
@@ -1729,13 +1729,18 @@ corrections are activated and photons are present at LO.
          case (BLHA_AMP_TREE); buf = "Tree"
          case (BLHA_AMP_LOOPINDUCED); buf = "LoopInduced"
        end select
+       nlo3 = qcd_ew_interferences (pdg_flv) .and. &
+             (node%amplitude_type == BLHA_AMP_COLOR_C .or. &
+             node%amplitude_type == BLHA_AMP_SPIN_C) .and. &
+             .not. query_coupling_powers (pdg_flv, cfg%alpha_power+2, cfg%alphas_power-2)
        if (write_process) then
           write (u, '(A25, A)') "AmplitudeType " // pad, char (buf)
           buf = ""
           if (cfg%correction_type == BLHA_CT_EW .and. cfg%alphas_power > 0 .and. &
              (suffix_char (1:4) == "_SUB" .or. suffix_char (1:5) == "_LOOP" &
              .or. suffix_char (1:6) == "_DGLAP")) then
-             if (query_coupling_powers (pdg_flv, cfg%alpha_power, cfg%alphas_power)) then
+             if (query_coupling_powers (pdg_flv, cfg%alpha_power, cfg%alphas_power) &
+                .and. .not. nlo3) then
                 write (u,'(A25,A)') "CorrectionType" // pad, "EW"
                 select case (cfg%version)
                    case (1)

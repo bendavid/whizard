@@ -3098,6 +3098,8 @@ of the present one is increased.
                                   reg_data%alpha_power + 1, reg_data%alphas_power - 1))
                 non_singular_reg = .not. corr_type_valid .and. &
                                    qcd_ew_interferences (flv_alr_registered(i_reg)%flst) &
+                                   .and. query_coupling_powers (flv_alr_registered(i_reg)%flst, &
+                                   reg_data%alpha_power+2, reg_data%alphas_power-1) &
                                    .and. .not. qcd_ew_interferences (flv_uborn(i_reg)%flst) &
                                    .and. nlo_correction_type_dyn (i_reg) == "QCD"
                 if (non_singular_reg) nlo_correction_type_dyn (i_reg) = "none"
@@ -3161,6 +3163,8 @@ of the present one is increased.
                                 reg_data%alpha_power + 1, reg_data%alphas_power - 1))
                    non_singular_reg = .not. corr_type_valid .and. &
                                  qcd_ew_interferences (flv_alr_registered(i_reg)%flst) &
+                                 .and. query_coupling_powers (flv_alr_registered(i_reg)%flst, &
+                                 reg_data%alpha_power+2, reg_data%alphas_power-1) &
                                  .and. .not. qcd_ew_interferences (flv_uborn(i_reg)%flst) &
                                  .and. nlo_correction_type_dyn (i_reg) == "QCD"
                    if (non_singular_reg) nlo_correction_type_dyn (i_reg) = "none"
@@ -5988,9 +5992,9 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
     type(flavor_t) :: flv
     allocate (CF_factor (size (flv_born, 1), size (flv_born, 2)), &
          TR_factor (size (flv_born, 1), size (flv_born, 2)))
-    TR_sum = 0
     corr_type (1) = "QCD"; corr_type (2) = "EW"
     do i_corr = 1, 2
+       TR_sum = 0
        if (i_corr == 1) then
           CA_factor = CA; CF_factor = CF; TR_factor = TR
           nf = real(nf_input, default)
@@ -6165,7 +6169,6 @@ virtual corrections.
     logical, dimension(:), allocatable :: flv_evaluated
     integer, dimension(:), allocatable :: corr_index
     logical :: alr_qcd, alr_ew
-    QB = zero; BI = zero
     allocate (flv_evaluated(reg_data%n_flv_born))
     allocate (sqme_virt_arr(reg_data%n_flv_born))
     sqme_virt_arr = zero
@@ -6219,6 +6222,7 @@ virtual corrections.
              sqme_virt_arr(i_flv) = sqme_virt_arr(i_flv) + virt%sqme_virt_fin(i_flv)
           end if
           do i_corr = 1, size (corr_index)
+             QB = zero; BI = zero
              if (virt%selection == var_str ("Full") .or. &
                   virt%selection == var_str ("Subtraction")) then
                 call virt%evaluate_initial_state (i_flv, corr_index (i_corr), reg_data, QB)
