@@ -16,49 +16,71 @@ module prc_openloops
   use, intrinsic :: iso_c_binding !NODEP!
 
   use kinds
-  use io_units
 <<Use strings>>
   use string_utils, only: str
-  use constants
-  use numeric_utils
-  use diagnostics
-<<Use debug>>
-  use system_dependencies
   use physics_defs
   use variables
   use os_interface
   use lorentz
   use interactions
-  use sm_qcd
-  use sm_physics, only: top_width_sm_lo, top_width_sm_qcd_nlo_jk
   use model_data
-
-  use prclib_interfaces
   use prc_core_def
   use prc_core
 
   use blha_config
   use blha_olp_interfaces
+
 <<Use mpi f08>>
 
 <<Standard module head>>
 
-<<prc openloops: public>>
+<<Prc openloops: public>>
 
-<<prc openloops: parameters>>
+<<Prc openloops: main parameters>>
 
-<<prc openloops: types>>
+<<Prc openloops: types>>
 
-<<prc openloops: interfaces>>
+<<Prc openloops: interfaces>>
+
+  interface
+<<Prc openloops: sub interfaces>>
+  end interface
 
 contains
 
-<<prc openloops: procedures>>
+<<Prc openloops: main procedures>>
 
 end module prc_openloops
 @ %def module prc_openloops
 @
-<<prc openloops: parameters>>=
+<<[[prc_openloops_sub.f90]]>>=
+<<File header>>
+
+submodule (prc_openloops) prc_openloops_s
+
+<<Use debug>>
+  use io_units
+  use constants
+  use numeric_utils
+  use diagnostics
+  use system_dependencies
+  use sm_physics, only: top_width_sm_lo, top_width_sm_qcd_nlo_jk
+  use sm_qcd
+  use prclib_interfaces
+
+  implicit none
+
+<<Prc openloops: parameters>>
+
+contains
+
+<<Prc openloops: procedures>>
+
+end submodule prc_openloops_s
+
+@ %def prc_openloops_s
+@
+<<Prc openloops: parameters>>=
   real(default), parameter :: openloops_default_bmass = 0._default
   real(default), parameter :: openloops_default_topmass = 172._default
   real(default), parameter :: openloops_default_topwidth = 0._default
@@ -69,11 +91,12 @@ end module prc_openloops
   real(default), parameter :: openloops_default_higgsmass = 125._default
   real(default), parameter :: openloops_default_higgswidth = 0._default
 
+<<Prc openloops: main parameters>>=
   integer :: N_EXTERNAL = 0
 
 @ %def openloops default parameter
 @
-<<prc openloops: interfaces>>=
+<<Prc openloops: interfaces>>=
   abstract interface
      subroutine ol_evaluate_scpowheg (id, pp, emitter, res, resmunu) bind(C)
        import
@@ -85,7 +108,7 @@ end module prc_openloops
 
 @ %def ol_evaluate_scpowheg interface
 @
-<<prc openloops: interfaces>>=
+<<Prc openloops: interfaces>>=
   abstract interface
      subroutine ol_getparameter_double (variable_name, value) bind(C)
        import
@@ -96,26 +119,26 @@ end module prc_openloops
 
 @ %def ol_getparameter_double interface
 @
-<<prc openloops: types>>=
+<<Prc openloops: types>>=
   type, extends (prc_blha_writer_t) :: openloops_writer_t
   contains
-  <<prc openloops: openloops writer: TBP>>
+  <<Prc openloops: openloops writer: TBP>>
   end type openloops_writer_t
 
 @ %def openloops_writer_t
 @
-<<prc openloops: public>>=
+<<Prc openloops: public>>=
   public :: openloops_def_t
-<<prc openloops: types>>=
+<<Prc openloops: types>>=
   type, extends (blha_def_t) :: openloops_def_t
      integer :: verbosity
   contains
-  <<prc openloops: openloops def: TBP>>
+  <<Prc openloops: openloops def: TBP>>
   end type openloops_def_t
 
 @ %def openloops_def_t
 @
-<<prc openloops: types>>=
+<<Prc openloops: types>>=
   type, extends (blha_driver_t) :: openloops_driver_t
     integer :: n_external = 0
     type(string_t) :: olp_file
@@ -124,12 +147,12 @@ end module prc_openloops
     procedure(ol_getparameter_double), nopass, pointer :: &
          get_parameter_double => null ()
   contains
-  <<prc openloops: openloops driver: TBP>>
+  <<Prc openloops: openloops driver: TBP>>
   end type openloops_driver_t
 
 @ %def openloops_driver_t
 @
-<<prc openloops: types>>=
+<<Prc openloops: types>>=
   type :: openloops_threshold_data_t
     logical :: nlo = .true.
     real(default) :: alpha_ew
@@ -137,16 +160,23 @@ end module prc_openloops
     real(default) :: m_b, m_W
     real(default) :: vtb
   contains
-  <<prc openloops: openloops threshold data: TBP>>
+  <<Prc openloops: openloops threshold data: TBP>>
   end type openloops_threshold_data_t
 
 @ %def openloops_threshold_data_t
 @
-<<prc openloops: openloops threshold data: TBP>>=
+<<Prc openloops: openloops threshold data: TBP>>=
   procedure :: compute_top_width => &
        openloops_threshold_data_compute_top_width
-<<prc openloops: procedures>>=
-  function openloops_threshold_data_compute_top_width &
+<<Prc openloops: sub interfaces>>=
+    module function openloops_threshold_data_compute_top_width &
+         (data, mtop, alpha_s) result (wtop)
+      real(default) :: wtop
+      class(openloops_threshold_data_t), intent(in) :: data
+      real(default), intent(in) :: mtop, alpha_s
+    end function openloops_threshold_data_compute_top_width
+<<Prc openloops: procedures>>=
+  module function openloops_threshold_data_compute_top_width &
        (data, mtop, alpha_s) result (wtop)
     real(default) :: wtop
     class(openloops_threshold_data_t), intent(in) :: data
@@ -162,21 +192,26 @@ end module prc_openloops
 
 @ %def openloops_threshold_data_compute_top_width
 @
-<<prc openloops: public>>=
+<<Prc openloops: public>>=
   public :: openloops_state_t
-<<prc openloops: types>>=
+<<Prc openloops: types>>=
   type, extends (blha_state_t) :: openloops_state_t
     type(openloops_threshold_data_t), allocatable :: threshold_data
   contains
-  <<prc openloops: openloops state: TBP>>
+  <<Prc openloops: openloops state: TBP>>
   end type openloops_state_t
 
 @ %def openloops_state_t
 @
-<<prc openloops: openloops state: TBP>>=
+<<Prc openloops: openloops state: TBP>>=
   procedure :: init_threshold => openloops_state_init_threshold
-<<prc openloops: procedures>>=
-  subroutine openloops_state_init_threshold (object, model)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_state_init_threshold (object, model)
+      class(openloops_state_t), intent(inout) :: object
+      type(model_data_t), intent(in) :: model
+    end subroutine openloops_state_init_threshold
+<<Prc openloops: procedures>>=
+  module subroutine openloops_state_init_threshold (object, model)
     class(openloops_state_t), intent(inout) :: object
     type(model_data_t), intent(in) :: model
     if (model%get_name () == "SM_tt_threshold") then
@@ -194,29 +229,33 @@ end module prc_openloops
 
 @ %def openloops_state_init_threshold
 @
-<<prc openloops: public>>=
+<<Prc openloops: public>>=
   public :: prc_openloops_t
-<<prc openloops: types>>=
+<<Prc openloops: types>>=
   type, extends (prc_blha_t) :: prc_openloops_t
   contains
-  <<prc openloops: prc openloops: TBP>>
+  <<Prc openloops: prc openloops: TBP>>
   end type prc_openloops_t
 
 @ %def prc_openloops_t
 @
-<<prc openloops: openloops writer: TBP>>=
+<<Prc openloops: openloops writer: TBP>>=
   procedure, nopass :: type_name => openloops_writer_type_name
-<<prc openloops: procedures>>=
-  function openloops_writer_type_name () result (string)
+<<Prc openloops: sub interfaces>>=
+    module function openloops_writer_type_name () result (string)
+      type(string_t) :: string
+    end function openloops_writer_type_name
+<<Prc openloops: procedures>>=
+  module function openloops_writer_type_name () result (string)
     type(string_t) :: string
     string = "openloops"
   end function openloops_writer_type_name
 
-@
 @ %def openloops_writer_type_name
-<<prc openloops: openloops def: TBP>>=
+@ Gfortran 7/8/9 bug: has to remain in the main module.
+<<Prc openloops: openloops def: TBP>>=
   procedure :: init => openloops_def_init
-<<prc openloops: procedures>>=
+<<Prc openloops: main procedures>>=
   subroutine openloops_def_init (object, basename, model_name, &
      prt_in, prt_out, nlo_type, restrictions, var_list)
     class(openloops_def_t), intent(inout) :: object
@@ -225,7 +264,7 @@ end module prc_openloops
     integer, intent(in) :: nlo_type
     type(string_t), intent(in), optional :: restrictions
     type(var_list_t), intent(in) :: var_list
-  <<prc openloops: openloops def init: variables>>
+  <<Prc openloops: openloops def init: variables>>
     object%basename = basename
     allocate (openloops_writer_t :: object%writer)
     select case (nlo_type)
@@ -240,7 +279,7 @@ end module prc_openloops
     case (NLO_DGLAP)
        object%suffix = '_DGLAP'
     end select
-  <<prc openloops: openloops def init: suffix>>
+  <<Prc openloops: openloops def init: suffix>>
     select type (writer => object%writer)
     class is (prc_blha_writer_t)
        call writer%init (model_name, prt_in, prt_out, restrictions)
@@ -251,29 +290,38 @@ end module prc_openloops
 @ %def openloops_def_init
 @ Add additional suffix for each rank of the communicator, such that the
 filenames do not clash.
-<<MPI: prc openloops: openloops def init: variables>>=
+<<MPI: Prc openloops: openloops def init: variables>>=
   integer :: n_size, rank
-<<MPI: prc openloops: openloops def init: suffix>>=
+<<MPI: Prc openloops: openloops def init: suffix>>=
   call MPI_comm_rank (MPI_COMM_WORLD, rank)
   call MPI_Comm_size (MPI_COMM_WORLD, n_size)
   if (n_size > 1) then
      object%suffix = object%suffix // var_str ("_") // str (rank)
   end if
 @
-<<prc openloops: openloops def: TBP>>=
+<<Prc openloops: openloops def: TBP>>=
   procedure, nopass :: type_string => openloops_def_type_string
-<<prc openloops: procedures>>=
-  function openloops_def_type_string () result (string)
+<<Prc openloops: sub interfaces>>=
+    module function openloops_def_type_string () result (string)
+      type(string_t) :: string
+    end function openloops_def_type_string
+<<Prc openloops: procedures>>=
+  module function openloops_def_type_string () result (string)
     type(string_t) :: string
     string = "openloops"
   end function openloops_def_type_string
 
 @
 @ %def openloops_def_type_string
-<<prc openloops: openloops def: TBP>>=
+<<Prc openloops: openloops def: TBP>>=
   procedure :: write => openloops_def_write
-<<prc openloops: procedures>>=
-  subroutine openloops_def_write (object, unit)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_def_write (object, unit)
+      class(openloops_def_t), intent(in) :: object
+      integer, intent(in) :: unit
+    end subroutine openloops_def_write
+<<Prc openloops: procedures>>=
+  module subroutine openloops_def_write (object, unit)
     class(openloops_def_t), intent(in) :: object
     integer, intent(in) :: unit
     select type (writer => object%writer)
@@ -284,10 +332,19 @@ filenames do not clash.
 
 @
 @ %def openloops_def_write
-<<prc openloops: openloops driver: TBP>>=
-  procedure :: init_dlaccess_to_library => openloops_driver_init_dlaccess_to_library
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_init_dlaccess_to_library &
+<<Prc openloops: openloops driver: TBP>>=
+  procedure :: init_dlaccess_to_library => &
+       openloops_driver_init_dlaccess_to_library
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_init_dlaccess_to_library &
+       (object, os_data, dlaccess, success)
+      class(openloops_driver_t), intent(in) :: object
+      type(os_data_t), intent(in) :: os_data
+      type(dlaccess_t), intent(out) :: dlaccess
+      logical, intent(out) :: success
+    end subroutine openloops_driver_init_dlaccess_to_library
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_init_dlaccess_to_library &
      (object, os_data, dlaccess, success)
     class(openloops_driver_t), intent(in) :: object
     type(os_data_t), intent(in) :: os_data
@@ -310,10 +367,15 @@ filenames do not clash.
 
 @ %def openloops_driver_init_dlaccess_to_library
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure :: set_alpha_s => openloops_driver_set_alpha_s
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_set_alpha_s (driver, alpha_s)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_set_alpha_s (driver, alpha_s)
+      class(openloops_driver_t), intent(in) :: driver
+      real(default), intent(in) :: alpha_s
+    end subroutine openloops_driver_set_alpha_s
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_set_alpha_s (driver, alpha_s)
     class(openloops_driver_t), intent(in) :: driver
     real(default), intent(in) :: alpha_s
     integer :: ierr
@@ -330,10 +392,15 @@ filenames do not clash.
 
 @ %def openloops_driver_set_alpha_s
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure :: set_alpha_qed => openloops_driver_set_alpha_qed
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_set_alpha_qed (driver, alpha)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_set_alpha_qed (driver, alpha)
+      class(openloops_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: alpha
+    end subroutine openloops_driver_set_alpha_qed
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_set_alpha_qed (driver, alpha)
     class(openloops_driver_t), intent(inout) :: driver
     real(default), intent(in) :: alpha
     integer :: ierr
@@ -345,10 +412,15 @@ filenames do not clash.
 
 @ %def openloops_driver_set_alpha_qed
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure :: set_GF => openloops_driver_set_GF
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_set_GF (driver, GF)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_set_GF (driver, GF)
+      class(openloops_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: GF
+    end subroutine openloops_driver_set_GF
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_set_GF (driver, GF)
     class(openloops_driver_t), intent(inout) :: driver
     real(default), intent(in) :: GF
     integer :: ierr
@@ -360,10 +432,15 @@ filenames do not clash.
 
 @ %def openloops_driver_set_GF
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure :: set_weinberg_angle => openloops_driver_set_weinberg_angle
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_set_weinberg_angle (driver, sw2)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_set_weinberg_angle (driver, sw2)
+      class(openloops_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: sw2
+    end subroutine openloops_driver_set_weinberg_angle
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_set_weinberg_angle (driver, sw2)
     class(openloops_driver_t), intent(inout) :: driver
     real(default), intent(in) :: sw2
     integer :: ierr
@@ -375,30 +452,46 @@ filenames do not clash.
 
 @ %def openloops_driver_set_weinberg_angle
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure :: print_alpha_s => openloops_driver_print_alpha_s
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_print_alpha_s (object)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_print_alpha_s (object)
+      class(openloops_driver_t), intent(in) :: object
+    end subroutine openloops_driver_print_alpha_s
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_print_alpha_s (object)
     class(openloops_driver_t), intent(in) :: object
     call object%blha_olp_print_parameter (c_char_'alphas'//c_null_char)
   end subroutine openloops_driver_print_alpha_s
 
 @ %def openloops_driver_print_alpha_s
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure, nopass :: type_name => openloops_driver_type_name
-<<prc openloops: procedures>>=
-  function openloops_driver_type_name () result (type)
+<<Prc openloops: sub interfaces>>=
+    module function openloops_driver_type_name () result (type)
+      type(string_t) :: type
+    end function openloops_driver_type_name
+<<Prc openloops: procedures>>=
+  module function openloops_driver_type_name () result (type)
     type(string_t) :: type
     type = "OpenLoops"
   end function openloops_driver_type_name
 
 @ %def openloops_driver_type_name
 @
-<<prc openloops: openloops driver: TBP>>=
+<<Prc openloops: openloops driver: TBP>>=
   procedure :: load_procedures => openloops_driver_load_procedures
-<<prc openloops: procedures>>=
-  subroutine openloops_driver_load_procedures (object, os_data, success)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_load_procedures &
+         (object, os_data, success)
+      class(openloops_driver_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+      logical, intent(out) :: success
+    end subroutine openloops_driver_load_procedures
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_load_procedures &
+       (object, os_data, success)
     class(openloops_driver_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     logical, intent(out) :: success
@@ -426,19 +519,24 @@ filenames do not clash.
 
 @ %def openloops_driver_load_procedures
 @
-<<prc openloops: openloops def: TBP>>=
+<<Prc openloops: openloops def: TBP>>=
   procedure :: read => openloops_def_read
-<<prc openloops: procedures>>=
-  subroutine openloops_def_read (object, unit)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_def_read (object, unit)
+      class(openloops_def_t), intent(out) :: object
+      integer, intent(in) :: unit
+    end subroutine openloops_def_read
+<<Prc openloops: procedures>>=
+  module subroutine openloops_def_read (object, unit)
     class(openloops_def_t), intent(out) :: object
     integer, intent(in) :: unit
   end subroutine openloops_def_read
 
 @ %def openloops_def_read
-@
-<<prc openloops: openloops def: TBP>>=
+@ Gfortran 7/8/9 bug: has to remain in the main module.
+<<Prc openloops: openloops def: TBP>>=
   procedure :: allocate_driver => openloops_def_allocate_driver
-<<prc openloops: procedures>>=
+<<Prc openloops: main procedures>>=
   subroutine openloops_def_allocate_driver (object, driver, basename)
     class(openloops_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -448,19 +546,24 @@ filenames do not clash.
 
 @
 @ %def openloops_def_allocate_driver
-<<prc openloops: openloops state: TBP>>=
+<<Prc openloops: openloops state: TBP>>=
   procedure :: write => openloops_state_write
-<<prc openloops: procedures>>=
-  subroutine openloops_state_write (object, unit)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_state_write (object, unit)
+      class(openloops_state_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine openloops_state_write
+<<Prc openloops: procedures>>=
+  module subroutine openloops_state_write (object, unit)
     class(openloops_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
   end subroutine openloops_state_write
 
 @ %def prc_openloops_state_write
-@
-<<prc openloops: prc openloops: TBP>>=
+@ Gfortran 7/8/9 bug: has to remain in the main module.
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: allocate_workspace => prc_openloops_allocate_workspace
-<<prc openloops: procedures>>=
+<<Prc openloops: main procedures>>=
   subroutine prc_openloops_allocate_workspace (object, core_state)
     class(prc_openloops_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
@@ -469,10 +572,15 @@ filenames do not clash.
 
 @ %def prc_openloops_allocate_workspace
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: init_driver => prc_openloops_init_driver
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_init_driver (object, os_data)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_init_driver (object, os_data)
+      class(prc_openloops_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+    end subroutine prc_openloops_init_driver
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_init_driver (object, os_data)
     class(prc_openloops_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: olp_file, olc_file
@@ -497,10 +605,15 @@ filenames do not clash.
 
 @ %def prc_openloops_init_driver
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: write => prc_openloops_write
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_write (object, unit)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_write (object, unit)
+      class(prc_openloops_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine prc_openloops_write
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_write (object, unit)
     class(prc_openloops_t), intent(in) :: object
     integer, intent(in), optional :: unit
     call msg_message (unit = unit, string = "OpenLoops")
@@ -508,10 +621,15 @@ filenames do not clash.
 
 @
 @ %def prc_openloops_write
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: write_name => prc_openloops_write_name
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_write_name (object, unit)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_write_name (object, unit)
+      class(prc_openloops_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine prc_openloops_write_name
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_write_name (object, unit)
     class(prc_openloops_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -522,10 +640,16 @@ filenames do not clash.
 @
 @ %def prc_openloops_write_name
 
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: prepare_library => prc_openloops_prepare_library
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_prepare_library (object, os_data, model)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_prepare_library (object, os_data, model)
+      class(prc_openloops_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+      type(model_data_t), intent(in), target :: model
+    end subroutine prc_openloops_prepare_library
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_prepare_library (object, os_data, model)
     class(prc_openloops_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(model_data_t), intent(in), target :: model
@@ -540,10 +664,15 @@ filenames do not clash.
 
 @ %def prc_openloops_prepare_library
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: load_driver => prc_openloops_load_driver
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_load_driver (object, os_data)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_load_driver (object, os_data)
+      class(prc_openloops_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+    end subroutine prc_openloops_load_driver
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_load_driver (object, os_data)
     class(prc_openloops_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     logical :: success
@@ -556,10 +685,14 @@ filenames do not clash.
 
 @ %def prc_openloops_load_driver
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: start => prc_openloops_start
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_start (object)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_start (object)
+      class(prc_openloops_t), intent(inout) :: object
+    end subroutine prc_openloops_start
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_start (object)
     class(prc_openloops_t), intent(inout) :: object
     integer :: ierr
     select type (driver => object%driver)
@@ -570,10 +703,15 @@ filenames do not clash.
 
 @ %def prc_openloops_start
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: set_n_external => prc_openloops_set_n_external
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_set_n_external (object, n)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_set_n_external (object, n)
+      class(prc_openloops_t), intent(inout) :: object
+      integer, intent(in) :: n
+    end subroutine prc_openloops_set_n_external
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_set_n_external (object, n)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: n
     N_EXTERNAL = n
@@ -581,10 +719,14 @@ filenames do not clash.
 
 @ %def prc_openloops_set_n_external
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: reset_parameters => prc_openloops_reset_parameters
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_reset_parameters (object)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_reset_parameters (object)
+      class(prc_openloops_t), intent(inout) :: object
+    end subroutine prc_openloops_reset_parameters
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_reset_parameters (object)
     class(prc_openloops_t), intent(inout) :: object
     integer :: ierr
     select type (driver => object%driver)
@@ -619,10 +761,15 @@ filenames do not clash.
   \item[3] show debug information during run time
   \item[4] output for each call of [[set_parameters]].
 \end{itemize}
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: set_verbosity => prc_openloops_set_verbosity
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_set_verbosity (object, verbose)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_set_verbosity (object, verbose)
+      class(prc_openloops_t), intent(inout) :: object
+      integer, intent(in) :: verbose
+    end subroutine prc_openloops_set_verbosity
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_set_verbosity (object, verbose)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: verbose
     integer :: ierr
@@ -635,11 +782,23 @@ filenames do not clash.
 
 @ %def prc_openloops_set_verbosity
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: prepare_external_code => &
        prc_openloops_prepare_external_code
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_prepare_external_code &
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_prepare_external_code &
+         (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
+      class(prc_openloops_t), intent(inout) :: core
+      integer, intent(in), dimension(:,:), allocatable :: flv_states
+      type(var_list_t), intent(in) :: var_list
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in) :: libname
+      type(model_data_t), intent(in), target :: model
+      integer, intent(in) :: i_core
+      logical, intent(in) :: is_nlo
+    end subroutine prc_openloops_prepare_external_code
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_openloops_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -676,10 +835,21 @@ give out an accuracy, so that [[bad_point]] is always [[.false.]].
 OpenLoops includes a factor of 1 / [[n_hel]] in the
 amplitudes, which we have to undo if polarized matrix elements
 are requested.
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: compute_sqme_spin_c => prc_openloops_compute_sqme_spin_c
-<<prc openloops: procedures>>=
-  subroutine prc_openloops_compute_sqme_spin_c (object, &
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_compute_sqme_spin_c (object, &
+         i_flv, i_hel, em, p, ren_scale, sqme_spin_c, bad_point)
+      class(prc_openloops_t), intent(inout) :: object
+      integer, intent(in) :: i_flv, i_hel
+      integer, intent(in) :: em
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: ren_scale
+      real(default), intent(out), dimension(6) :: sqme_spin_c
+      logical, intent(out) :: bad_point
+    end subroutine prc_openloops_compute_sqme_spin_c
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_compute_sqme_spin_c (object, &
        i_flv, i_hel, em, p, ren_scale, sqme_spin_c, bad_point)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: i_flv, i_hel
@@ -728,10 +898,18 @@ are requested.
 
 @ %def prc_openloops_compute_sqme_spin_c
 @
-<<prc openloops: prc openloops: TBP>>=
+<<Prc openloops: prc openloops: TBP>>=
   procedure :: get_alpha_qed => prc_openloops_get_alpha_qed
-<<prc openloops: procedures>>=
-  function prc_openloops_get_alpha_qed (object, core_state) result (alpha_qed)
+<<Prc openloops: sub interfaces>>=
+    module function prc_openloops_get_alpha_qed &
+         (object, core_state) result (alpha_qed)
+      class(prc_openloops_t), intent(in) :: object
+      class(prc_core_state_t), intent(in), allocatable :: core_state
+      real(default) :: alpha_qed
+    end function prc_openloops_get_alpha_qed
+<<Prc openloops: procedures>>=
+  module function prc_openloops_get_alpha_qed &
+       (object, core_state) result (alpha_qed)
     class(prc_openloops_t), intent(in) :: object
     class(prc_core_state_t), intent(in), allocatable :: core_state
     real(double) :: value
@@ -742,7 +920,8 @@ are requested.
        alpha_qed = value
        return
     end select
-    call msg_fatal ("prc_openloops_get_alpha_qed: called by wrong driver, only supported for OpenLoops!")
+    call msg_fatal ("prc_openloops_get_alpha_qed: " // &
+         "called by wrong driver, only supported for OpenLoops!")
   end function prc_openloops_get_alpha_qed
 
 @ %def prc_openloops_get_alpha_qed

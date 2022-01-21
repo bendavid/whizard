@@ -75,7 +75,6 @@ dist_noinst_DATA = blha.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libblha_la_SOURCES:.f90=.$(FCMOD)} \
   blha_olp_interfaces.$(FCMOD) \
   blha_config.$(FCMOD)
 

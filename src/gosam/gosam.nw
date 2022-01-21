@@ -29,6 +29,45 @@ module prc_gosam
 
   use kinds
 <<Use strings>>
+  use physics_defs
+  use os_interface
+  use lorentz
+  use interactions
+  use model_data
+  use variables
+  use prc_core_def
+  use prc_core
+  use blha_config
+  use blha_olp_interfaces
+
+<<Standard module head>>
+
+<<Prc gosam: constants>>
+
+<<Prc gosam: public>>
+
+<<Prc gosam: types>>
+
+<<Prc gosam: interfaces>>
+
+  interface
+<<Prc gosam: sub interfaces>>
+  end interface
+
+contains
+
+<<Prc gosam: main procedures>>
+
+end module prc_gosam
+
+@
+@ %def module prc_gosam
+@
+<<[[prc_gosam_sub.f90]]>>=
+<<File header>>
+
+submodule (prc_gosam) prc_gosam_s
+
   use io_units
   use constants
   use numeric_utils
@@ -36,46 +75,25 @@ module prc_gosam
   use system_dependencies
   use file_utils
   use string_utils
-  use physics_defs
   use diagnostics
-  use os_interface
-  use lorentz
-  use interactions
-  use pdg_arrays
   use sm_qcd
   use flavors
-  use model_data
-  use variables
-
+  use pdg_arrays
   use process_constants
   use prclib_interfaces
   use process_libraries
-  use prc_core_def
-  use prc_core
 
-  use blha_config
-  use blha_olp_interfaces
-
-<<Standard module head>>
-
-<<prc gosam: constants>>
-
-<<prc gosam: public>>
-
-<<prc gosam: types>>
-
-<<prc gosam: interfaces>>
+  implicit none
 
 contains
 
-<<prc gosam: procedures>>
+<<Prc gosam: procedures>>
 
-end module prc_gosam
+end submodule prc_gosam_s
 
+@ %def prc_gosam_s
 @
-@ %def module prc_gosam
-@
-<<prc gosam: types>>=
+<<Prc gosam: types>>=
   type, extends (prc_blha_writer_t) :: gosam_writer_t
     type(string_t) :: gosam_dir
     type(string_t) :: golem_dir
@@ -89,24 +107,24 @@ end module prc_gosam
     integer :: form_workspace
     type(string_t) :: fc
   contains
-  <<prc gosam: gosam writer: TBP>>
+  <<Prc gosam: gosam writer: TBP>>
   end type gosam_writer_t
 
 @
 @ %def gosam_writer_t
 
-<<prc gosam: public>>=
+<<Prc gosam: public>>=
   public :: gosam_def_t
-<<prc gosam: types>>=
+<<Prc gosam: types>>=
   type, extends (blha_def_t) :: gosam_def_t
     logical :: execute_olp = .true.
   contains
-  <<prc gosam: gosam def: TBP>>
+  <<Prc gosam: gosam def: TBP>>
   end type gosam_def_t
 
 @
 @ %def gosam_def_t
-<<prc gosam: types>>=
+<<Prc gosam: types>>=
   type, extends (blha_driver_t) :: gosam_driver_t
     type(string_t) :: gosam_dir
     type(string_t) :: olp_file
@@ -114,33 +132,33 @@ end module prc_gosam
     type(string_t) :: olp_dir
     type(string_t) :: olp_lib
   contains
-  <<prc gosam: gosam driver: TBP>>
+  <<Prc gosam: gosam driver: TBP>>
   end type gosam_driver_t
 
 @
 @ %def gosam_driver_t
-<<prc gosam: public>>=
+<<Prc gosam: public>>=
   public :: prc_gosam_t
-<<prc gosam: types>>=
+<<Prc gosam: types>>=
   type, extends (prc_blha_t) :: prc_gosam_t
     logical :: initialized = .false.
   contains
-  <<prc gosam: prc gosam: TBP>>
+  <<Prc gosam: prc gosam: TBP>>
   end type prc_gosam_t
 
 @
 @ %def prc_gosam_t
-<<prc gosam: types>>=
+<<Prc gosam: types>>=
   type, extends (blha_state_t) :: gosam_state_t
   contains
-  <<prc gosam: gosam state: TBP>>
+  <<Prc gosam: gosam state: TBP>>
   end type gosam_state_t
 
 @ %def gosam_state_t
-@
-<<prc gosam: gosam def: TBP>>=
+@ Gfortran 7/8/9 bug: has to remain in main module.
+<<Prc gosam: gosam def: TBP>>=
   procedure :: init => gosam_def_init
-<<prc gosam: procedures>>=
+<<Prc gosam: main procedures>>=
   subroutine gosam_def_init (object, basename, model_name, &
      prt_in, prt_out, nlo_type, restrictions, var_list)
     class(gosam_def_t), intent(inout) :: object
@@ -180,10 +198,14 @@ end module prc_gosam
 
 @ %def gosam_def_init
 @
-<<prc gosam: gosam writer: TBP>>=
+<<Prc gosam: gosam writer: TBP>>=
   procedure :: write_config => gosam_writer_write_config
-<<prc gosam: procedures>>=
-  subroutine gosam_writer_write_config (gosam_writer)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_writer_write_config (gosam_writer)
+      class(gosam_writer_t), intent(in) :: gosam_writer
+    end subroutine gosam_writer_write_config
+<<Prc gosam: procedures>>=
+  module subroutine gosam_writer_write_config (gosam_writer)
     class(gosam_writer_t), intent(in) :: gosam_writer
     integer :: unit
     unit = free_unit ()
@@ -194,20 +216,29 @@ end module prc_gosam
 
 @ %def gosam_writer_write_config
 @
-<<prc gosam: gosam def: TBP>>=
+<<Prc gosam: gosam def: TBP>>=
   procedure, nopass :: type_string => gosam_def_type_string
-<<prc gosam: procedures>>=
-  function gosam_def_type_string () result (string)
+<<Prc gosam: sub interfaces>>=
+    module function gosam_def_type_string () result (string)
+      type(string_t) :: string
+    end function gosam_def_type_string
+<<Prc gosam: procedures>>=
+  module function gosam_def_type_string () result (string)
     type(string_t) :: string
     string = "gosam"
   end function gosam_def_type_string
 
 @
 @ %def gosam_def_type_string
-<<prc gosam: gosam def: TBP>>=
+<<Prc gosam: gosam def: TBP>>=
   procedure :: write => gosam_def_write
-<<prc gosam: procedures>>=
-  subroutine gosam_def_write (object, unit)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_def_write (object, unit)
+      class(gosam_def_t), intent(in) :: object
+      integer, intent(in) :: unit
+    end subroutine gosam_def_write
+<<Prc gosam: procedures>>=
+  module subroutine gosam_def_write (object, unit)
     class(gosam_def_t), intent(in) :: object
     integer, intent(in) :: unit
     select type (writer => object%writer)
@@ -218,19 +249,24 @@ end module prc_gosam
 
 @
 @ %def gosam_def_write
-<<prc gosam: gosam def: TBP>>=
+<<Prc gosam: gosam def: TBP>>=
   procedure :: read => gosam_def_read
-<<prc gosam: procedures>>=
-  subroutine gosam_def_read (object, unit)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_def_read (object, unit)
+      class(gosam_def_t), intent(out) :: object
+      integer, intent(in) :: unit
+    end subroutine gosam_def_read
+<<Prc gosam: procedures>>=
+  module subroutine gosam_def_read (object, unit)
     class(gosam_def_t), intent(out) :: object
     integer, intent(in) :: unit
   end subroutine gosam_def_read
 
 @ %def gosam_def_read
-@
-<<prc gosam: gosam def: TBP>>=
+@ Gfortran 7/8/9 bug: has to remain in main module.
+<<Prc gosam: gosam def: TBP>>=
   procedure :: allocate_driver => gosam_def_allocate_driver
-<<prc gosam: procedures>>=
+<<Prc gosam: main procedures>>=
   subroutine gosam_def_allocate_driver (object, driver, basename)
     class(gosam_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -240,20 +276,33 @@ end module prc_gosam
 
 @
 @ %def gosam_def_allocate_driver
-<<prc gosam: gosam writer: TBP>>=
+<<Prc gosam: gosam writer: TBP>>=
   procedure, nopass :: type_name => gosam_writer_type_name
-<<prc gosam: procedures>>=
-  function gosam_writer_type_name () result (string)
+<<Prc gosam: sub interfaces>>=
+    module function gosam_writer_type_name () result (string)
+      type(string_t) :: string
+    end function gosam_writer_type_name
+<<Prc gosam: procedures>>=
+  module function gosam_writer_type_name () result (string)
     type(string_t) :: string
     string = "gosam"
   end function gosam_writer_type_name
 
 @
 @ %def gosam_writer_type_name
-<<prc gosam: gosam writer: TBP>>=
+<<Prc gosam: gosam writer: TBP>>=
   procedure :: init => gosam_writer_init
-<<prc gosam: procedures>>=
-  pure subroutine gosam_writer_init (writer, model_name, prt_in, prt_out, restrictions)
+<<Prc gosam: sub interfaces>>=
+    pure module subroutine gosam_writer_init &
+         (writer, model_name, prt_in, prt_out, restrictions)
+      class(gosam_writer_t), intent(inout) :: writer
+      type(string_t), intent(in) :: model_name
+      type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      type(string_t), intent(in), optional :: restrictions
+    end subroutine gosam_writer_init
+<<Prc gosam: procedures>>=
+  pure module subroutine gosam_writer_init &
+       (writer, model_name, prt_in, prt_out, restrictions)
     class(gosam_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
@@ -269,21 +318,32 @@ end module prc_gosam
 
 @ %def gosam_writer_init
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure, nopass :: type_name => gosam_driver_type_name
-<<prc gosam: procedures>>=
-  function gosam_driver_type_name () result (string)
+<<Prc gosam: sub interfaces>>=
+    module function gosam_driver_type_name () result (string)
+      type(string_t) :: string
+    end function gosam_driver_type_name
+<<Prc gosam: procedures>>=
+  module function gosam_driver_type_name () result (string)
     type(string_t) :: string
     string = "gosam"
   end function gosam_driver_type_name
 
-@
 @ %def gosam_driver_type_name
-<<prc gosam: gosam driver: TBP>>=
+@
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: init_gosam => gosam_driver_init_gosam
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_init_gosam (object, os_data, olp_file, &
-                                olc_file, olp_dir, olp_lib)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_init_gosam (object, os_data, olp_file, &
+         olc_file, olp_dir, olp_lib)
+      class(gosam_driver_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in) :: olp_file, olc_file, olp_dir, olp_lib
+    end subroutine gosam_driver_init_gosam
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_init_gosam (object, os_data, olp_file, &
+       olc_file, olp_dir, olp_lib)
     class(gosam_driver_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: olp_file, olc_file, olp_dir, olp_lib
@@ -296,10 +356,18 @@ end module prc_gosam
 
 @ %def gosam_driver_init
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: init_dlaccess_to_library => gosam_driver_init_dlaccess_to_library
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_init_dlaccess_to_library &
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_init_dlaccess_to_library &
+       (object, os_data, dlaccess, success)
+      class(gosam_driver_t), intent(in) :: object
+      type(os_data_t), intent(in) :: os_data
+      type(dlaccess_t), intent(out) :: dlaccess
+      logical, intent(out) :: success
+    end subroutine gosam_driver_init_dlaccess_to_library
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_init_dlaccess_to_library &
      (object, os_data, dlaccess, success)
     class(gosam_driver_t), intent(in) :: object
     type(os_data_t), intent(in) :: os_data
@@ -318,66 +386,72 @@ end module prc_gosam
 
 @ %def gosam_driver_init_dlaccess_to_library
 @
-<<prc gosam: gosam writer: TBP>>=
+<<Prc gosam: gosam writer: TBP>>=
   procedure :: generate_configuration_file => &
             gosam_writer_generate_configuration_file
-<<prc gosam: procedures>>=
-  subroutine gosam_writer_generate_configuration_file &
-          (object, unit)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_writer_generate_configuration_file &
+         (object, unit)
       class(gosam_writer_t), intent(in) :: object
       integer, intent(in) :: unit
-      type(string_t) :: fc_bin
-      type(string_t) :: form_bin, qgraf_bin, haggies_bin
-      type(string_t) :: fcflags_golem, ldflags_golem
-      type(string_t) :: fcflags_samurai, ldflags_samurai
-      type(string_t) :: fcflags_ninja, ldflags_ninja
-      type(string_t) :: ldflags_avh_olo, ldflags_qcdloop
-      fc_bin = DEFAULT_FC
-      form_bin = object%form_dir // '/bin/tform'
-      qgraf_bin = object%qgraf_dir // '/bin/qgraf'
-      if (object%gosam_dir /= "") then
-        haggies_bin = '/usr/bin/java -jar ' // object%gosam_dir // &
-                       '/share/golem/haggies/haggies.jar'
-      else
-        call msg_fatal ("generate_configuration_file: At least " // &
-             "the GoSam Directory has to be specified!")
-      end if
-      if (object%golem_dir /= "") then
-        fcflags_golem = "-I" // object%golem_dir // "/include/golem95"
-        ldflags_golem = "-L" // object%golem_dir // "/lib -lgolem"
-      end if
-      if (object%samurai_dir /= "") then
-        fcflags_samurai = "-I" // object%samurai_dir // "/include/samurai"
-        ldflags_samurai = "-L" // object%samurai_dir // "/lib -lsamurai"
-        ldflags_avh_olo = "-L" // object%samurai_dir // "/lib -lavh_olo"
-        ldflags_qcdloop = "-L" // object%samurai_dir // "/lib -lqcdloop"
-      end if
-      if (object%ninja_dir /= "") then
-        fcflags_ninja = "-I" // object%ninja_dir // "/include/ninja " &
-                        // "-I" // object%ninja_dir // "/include"
-        ldflags_ninja = "-L" // object%ninja_dir // "/lib -lninja"
-      end if
-      write (unit, "(A)") "#+avh_olo.ldflags=" &
-            // char (ldflags_avh_olo)
-      write (unit, "(A)") "reduction_programs=golem95, samurai, ninja"
-      write (unit, "(A)") "extensions=autotools"
-      write (unit, "(A)") "#+qcdloop.ldflags=" &
-            // char (ldflags_qcdloop)
-      write (unit, "(A)") "#+zzz.extensions=qcdloop, avh_olo"
-      write (unit, "(A)") "#fc.bin=" // char (fc_bin)
-      write (unit, "(A)") "form.bin=" // char (form_bin)
-      write (unit, "(A)") "qgraf.bin=" // char (qgraf_bin)
-      write (unit, "(A)") "#golem95.fcflags=" // char (fcflags_golem)
-      write (unit, "(A)") "#golem95.ldflags=" // char (ldflags_golem)
-      write (unit, "(A)") "haggies.bin=" // char (haggies_bin)
-      write (unit, "(A)") "#samurai.fcflags=" // char (fcflags_samurai)
-      write (unit, "(A)") "#samurai.ldflags=" // char (ldflags_samurai)
-      write (unit, "(A)") "#ninja.fcflags=" // char (fcflags_ninja)
-      write (unit, "(A)") "#ninja.ldflags=" // char (ldflags_ninja)
-      !!! This might collide with the mass-setup in the order-file
-      !!! write (unit, "(A)") "zero=mU,mD,mC,mS,mB"
-      !!! This is covered by the BLHA2 interface
-      write (unit, "(A)") "PSP_check=False"
+    end subroutine gosam_writer_generate_configuration_file
+<<Prc gosam: procedures>>=
+  module subroutine gosam_writer_generate_configuration_file &
+       (object, unit)
+    class(gosam_writer_t), intent(in) :: object
+    integer, intent(in) :: unit
+    type(string_t) :: fc_bin
+    type(string_t) :: form_bin, qgraf_bin, haggies_bin
+    type(string_t) :: fcflags_golem, ldflags_golem
+    type(string_t) :: fcflags_samurai, ldflags_samurai
+    type(string_t) :: fcflags_ninja, ldflags_ninja
+    type(string_t) :: ldflags_avh_olo, ldflags_qcdloop
+    fc_bin = DEFAULT_FC
+    form_bin = object%form_dir // '/bin/tform'
+    qgraf_bin = object%qgraf_dir // '/bin/qgraf'
+    if (object%gosam_dir /= "") then
+       haggies_bin = '/usr/bin/java -jar ' // object%gosam_dir // &
+            '/share/golem/haggies/haggies.jar'
+    else
+       call msg_fatal ("generate_configuration_file: At least " // &
+            "the GoSam Directory has to be specified!")
+    end if
+    if (object%golem_dir /= "") then
+       fcflags_golem = "-I" // object%golem_dir // "/include/golem95"
+       ldflags_golem = "-L" // object%golem_dir // "/lib -lgolem"
+    end if
+    if (object%samurai_dir /= "") then
+       fcflags_samurai = "-I" // object%samurai_dir // "/include/samurai"
+       ldflags_samurai = "-L" // object%samurai_dir // "/lib -lsamurai"
+       ldflags_avh_olo = "-L" // object%samurai_dir // "/lib -lavh_olo"
+       ldflags_qcdloop = "-L" // object%samurai_dir // "/lib -lqcdloop"
+    end if
+    if (object%ninja_dir /= "") then
+       fcflags_ninja = "-I" // object%ninja_dir // "/include/ninja " &
+            // "-I" // object%ninja_dir // "/include"
+       ldflags_ninja = "-L" // object%ninja_dir // "/lib -lninja"
+    end if
+    write (unit, "(A)") "#+avh_olo.ldflags=" &
+         // char (ldflags_avh_olo)
+    write (unit, "(A)") "reduction_programs=golem95, samurai, ninja"
+    write (unit, "(A)") "extensions=autotools"
+    write (unit, "(A)") "#+qcdloop.ldflags=" &
+         // char (ldflags_qcdloop)
+    write (unit, "(A)") "#+zzz.extensions=qcdloop, avh_olo"
+    write (unit, "(A)") "#fc.bin=" // char (fc_bin)
+    write (unit, "(A)") "form.bin=" // char (form_bin)
+    write (unit, "(A)") "qgraf.bin=" // char (qgraf_bin)
+    write (unit, "(A)") "#golem95.fcflags=" // char (fcflags_golem)
+    write (unit, "(A)") "#golem95.ldflags=" // char (ldflags_golem)
+    write (unit, "(A)") "haggies.bin=" // char (haggies_bin)
+    write (unit, "(A)") "#samurai.fcflags=" // char (fcflags_samurai)
+    write (unit, "(A)") "#samurai.ldflags=" // char (ldflags_samurai)
+    write (unit, "(A)") "#ninja.fcflags=" // char (fcflags_ninja)
+    write (unit, "(A)") "#ninja.ldflags=" // char (ldflags_ninja)
+    !!! This might collide with the mass-setup in the order-file
+    !!! write (unit, "(A)") "zero=mU,mD,mC,mS,mB"
+    !!! This is covered by the BLHA2 interface
+    write (unit, "(A)") "PSP_check=False"
       if (char (object%filter_lo) /= "") &
          write (unit, "(A)") "filter.lo=" // char (object%filter_lo)
       if (char (object%filter_nlo) /= "") &
@@ -393,10 +467,16 @@ end module prc_gosam
 @ %def gosam_writer_generate_configuration_file
 @ We have to assure that all files necessary for the configure process
 in the GoSam code are ready. This is done with a stamp mechanism.
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: write_makefile => gosam_driver_write_makefile
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_write_makefile (object, unit, libname)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_write_makefile (object, unit, libname)
+      class(gosam_driver_t), intent(in) :: object
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: libname
+    end subroutine gosam_driver_write_makefile
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_write_makefile (object, unit, libname)
     class(gosam_driver_t), intent(in) :: object
     integer, intent(in) :: unit
     type(string_t), intent(in) :: libname
@@ -415,10 +495,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   end subroutine gosam_driver_write_makefile
 @ %def gosam_driver_write_makefile
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: set_alpha_s => gosam_driver_set_alpha_s
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_set_alpha_s (driver, alpha_s)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_set_alpha_s (driver, alpha_s)
+       class(gosam_driver_t), intent(in) :: driver
+       real(default), intent(in) :: alpha_s
+    end subroutine gosam_driver_set_alpha_s
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_set_alpha_s (driver, alpha_s)
      class(gosam_driver_t), intent(in) :: driver
      real(default), intent(in) :: alpha_s
      integer :: ierr
@@ -429,10 +514,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def gosam_driver_set_alpha_s
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: set_alpha_qed => gosam_driver_set_alpha_qed
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_set_alpha_qed (driver, alpha)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_set_alpha_qed (driver, alpha)
+      class(gosam_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: alpha
+    end subroutine gosam_driver_set_alpha_qed
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_set_alpha_qed (driver, alpha)
     class(gosam_driver_t), intent(inout) :: driver
     real(default), intent(in) :: alpha
     integer :: ierr
@@ -444,10 +534,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def gosam_driver_set_alpha_qed
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: set_GF => gosam_driver_set_GF
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_set_GF (driver, GF)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_set_GF (driver, GF)
+      class(gosam_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: GF
+    end subroutine gosam_driver_set_GF
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_set_GF (driver, GF)
     class(gosam_driver_t), intent(inout) :: driver
     real(default), intent(in) :: GF
     integer :: ierr
@@ -459,10 +554,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def gosam_driver_set_GF
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: set_weinberg_angle => gosam_driver_set_weinberg_angle
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_set_weinberg_angle (driver, sw2)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_set_weinberg_angle (driver, sw2)
+      class(gosam_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: sw2
+    end subroutine gosam_driver_set_weinberg_angle
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_set_weinberg_angle (driver, sw2)
     class(gosam_driver_t), intent(inout) :: driver
     real(default), intent(in) :: sw2
     integer :: ierr
@@ -474,20 +574,30 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def gosam_driver_set_weinberg_angle
 @
-<<prc gosam: gosam driver: TBP>>=
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: print_alpha_s => gosam_driver_print_alpha_s
-<<prc gosam: procedures>>=
-  subroutine gosam_driver_print_alpha_s (object)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_print_alpha_s (object)
+      class(gosam_driver_t), intent(in) :: object
+    end subroutine gosam_driver_print_alpha_s
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_print_alpha_s (object)
     class(gosam_driver_t), intent(in) :: object
     call object%blha_olp_print_parameter (c_char_'alphaS'//c_null_char)
   end subroutine gosam_driver_print_alpha_s
 
 @ %def gosam_driver_print_alpha_s
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: prepare_library => prc_gosam_prepare_library
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_prepare_library (object, os_data, libname)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_prepare_library (object, os_data, libname)
+      class(prc_gosam_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in) :: libname
+    end subroutine prc_gosam_prepare_library
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_prepare_library (object, os_data, libname)
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
@@ -501,11 +611,23 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_prepare_library
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: prepare_external_code => &
        prc_gosam_prepare_external_code
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_prepare_external_code &
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_prepare_external_code &
+         (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
+      class(prc_gosam_t), intent(inout) :: core
+      integer, intent(in), dimension(:,:), allocatable :: flv_states
+      type(var_list_t), intent(in) :: var_list
+      type(os_data_t), intent(in) :: os_data
+      type(string_t), intent(in) :: libname
+      type(model_data_t), intent(in), target :: model
+      integer, intent(in) :: i_core
+      logical, intent(in) :: is_nlo
+    end subroutine prc_gosam_prepare_external_code
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_prepare_external_code &
        (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_gosam_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -526,10 +648,16 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_prepare_external_code
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: write_makefile => prc_gosam_write_makefile
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_write_makefile (object, unit, libname)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_write_makefile (object, unit, libname)
+      class(prc_gosam_t), intent(in) :: object
+      integer, intent(in) :: unit
+      type(string_t), intent(in) :: libname
+    end subroutine prc_gosam_write_makefile
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_write_makefile (object, unit, libname)
     class(prc_gosam_t), intent(in) :: object
     integer, intent(in) :: unit
     type(string_t), intent(in) :: libname
@@ -541,10 +669,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_write_makefile
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: execute_makefile => prc_gosam_execute_makefile
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_execute_makefile (object, libname)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_execute_makefile (object, libname)
+      class(prc_gosam_t), intent(in) :: object
+      type(string_t), intent(in) :: libname
+    end subroutine prc_gosam_execute_makefile
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_execute_makefile (object, libname)
     class(prc_gosam_t), intent(in) :: object
     type(string_t), intent(in) :: libname
     select type (driver => object%driver)
@@ -556,10 +689,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_execute_makefile
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: create_olp_library => prc_gosam_create_olp_library
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_create_olp_library (object, libname)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_create_olp_library (object, libname)
+      class(prc_gosam_t), intent(inout) :: object
+      type(string_t), intent(in) :: libname
+    end subroutine prc_gosam_create_olp_library
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_create_olp_library (object, libname)
     class(prc_gosam_t), intent(inout) :: object
     type(string_t), intent(in) :: libname
     integer :: unit
@@ -576,10 +714,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_create_olp_library
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: load_driver => prc_gosam_load_driver
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_load_driver (object, os_data)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_load_driver (object, os_data)
+      class(prc_gosam_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+    end subroutine prc_gosam_load_driver
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_load_driver (object, os_data)
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     logical :: dl_success
@@ -594,10 +737,14 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_load_driver
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: start => prc_gosam_start
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_start (object)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_start (object)
+      class(prc_gosam_t), intent(inout) :: object
+    end subroutine prc_gosam_start
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_start (object)
     class(prc_gosam_t), intent(inout) :: object
     integer :: ierr
     if (object%includes_polarization())  &
@@ -610,10 +757,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_start
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: write => prc_gosam_write
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_write (object, unit)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_write (object, unit)
+      class(prc_gosam_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine prc_gosam_write
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_write (object, unit)
     class(prc_gosam_t), intent(in) :: object
     integer, intent(in), optional :: unit
     call msg_message (unit = unit, string = "GOSAM")
@@ -621,10 +773,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @
 @ %def prc_gosam_write
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: write_name => prc_gosam_write_name
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_write_name (object, unit)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_write_name (object, unit)
+      class(prc_gosam_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine prc_gosam_write_name
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_write_name (object, unit)
     class(prc_gosam_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer :: u
@@ -634,10 +791,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_write_name
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: init_driver => prc_gosam_init_driver
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_init_driver (object, os_data)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_init_driver (object, os_data)
+      class(prc_gosam_t), intent(inout) :: object
+      type(os_data_t), intent(in) :: os_data
+    end subroutine prc_gosam_init_driver
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_init_driver (object, os_data)
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: olp_file, olc_file, olp_dir
@@ -663,10 +825,14 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 
 @ %def prc_gosam_init_driver
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: set_initialized => prc_gosam_set_initialized
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_set_initialized (prc_gosam)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_set_initialized (prc_gosam)
+      class(prc_gosam_t), intent(inout) :: prc_gosam
+    end subroutine prc_gosam_set_initialized
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_set_initialized (prc_gosam)
     class(prc_gosam_t), intent(inout) :: prc_gosam
     prc_gosam%initialized = .true.
   end subroutine prc_gosam_set_initialized
@@ -688,11 +854,22 @@ The subsequent position, i.e. $2i + 2nj + 1$ is designated to the
 imaginary part of $S_{ij}$. Note that, since the first array position
 is 1, the implemented position association deviates from the above one
 in the addition of 1.
-<<prc gosam: procedures>>=
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: procedures>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: compute_sqme_spin_c => prc_gosam_compute_sqme_spin_c
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_compute_sqme_spin_c (object, &
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_compute_sqme_spin_c (object, &
+         i_flv, i_hel, em, p, ren_scale, me_sc, bad_point)
+      class(prc_gosam_t), intent(inout) :: object
+      integer, intent(in) :: i_flv, i_hel
+      integer, intent(in) :: em
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: ren_scale
+      complex(default), intent(out) :: me_sc
+      logical, intent(out) :: bad_point
+    end subroutine prc_gosam_compute_sqme_spin_c
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_compute_sqme_spin_c (object, &
        i_flv, i_hel, em, p, ren_scale, me_sc, bad_point)
     class(prc_gosam_t), intent(inout) :: object
     integer, intent(in) :: i_flv, i_hel
@@ -739,10 +916,10 @@ in the addition of 1.
   end subroutine prc_gosam_compute_sqme_spin_c
 
 @ %def prc_gosam_compute_sqme_spin_c
-@
-<<prc gosam: prc gosam: TBP>>=
+@ Gfortran 7/8/9 bug, has to remain in main module.
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: allocate_workspace => prc_gosam_allocate_workspace
-<<prc gosam: procedures>>=
+<<Prc gosam: main procedures>>=
   subroutine prc_gosam_allocate_workspace (object, core_state)
     class(prc_gosam_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
@@ -751,10 +928,15 @@ in the addition of 1.
 
 @ %def prc_gosam_allocate_workspace
 @
-<<prc gosam: gosam state: TBP>>=
+<<Prc gosam: gosam state: TBP>>=
   procedure :: write => gosam_state_write
-<<prc gosam: procedures>>=
-  subroutine gosam_state_write (object, unit)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_state_write (object, unit)
+      class(gosam_state_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+    end subroutine gosam_state_write
+<<Prc gosam: procedures>>=
+  module subroutine gosam_state_write (object, unit)
     class(gosam_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
     call msg_warning (unit = unit, string = "gosam_state_write: What to write?")
@@ -762,10 +944,15 @@ in the addition of 1.
 
 @ %def prc_gosam_state_write
 @
-<<prc gosam: prc gosam: TBP>>=
+<<Prc gosam: prc gosam: TBP>>=
   procedure :: set_particle_properties => prc_gosam_set_particle_properties
-<<prc gosam: procedures>>=
-  subroutine prc_gosam_set_particle_properties (object, model)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_set_particle_properties (object, model)
+      class(prc_gosam_t), intent(inout) :: object
+      class(model_data_t), intent(in), target :: model
+    end subroutine prc_gosam_set_particle_properties
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_set_particle_properties (object, model)
     class(prc_gosam_t), intent(inout) :: object
     class(model_data_t), intent(in), target :: model
     integer :: i, i_pdg

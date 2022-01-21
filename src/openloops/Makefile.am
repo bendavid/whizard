@@ -30,14 +30,21 @@
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = liboloops.la
 
-COMMOM_F90 =
+### As long as we have to work around the gfortran 7/8/9 submodule bug,
+### the MPI dependence is within the module, not the submodule
+
+COMMON_F90 = \
+  prc_openloops_sub.f90
 MPI_F90 = \
   prc_openloops.f90_mpi
 SERIAL_F90 = \
   prc_openloops.f90_serial
 
+OPENLOOPS_SUBMODULES = \
+  $(COMMON_F90)
+
 EXTRA_DIST = \
-  $(COMMON_F90) \
+  $(OPENLOOPS_SUBMODULES) \
   $(SERIAL_F90) \
   $(MPI_F90)
 
@@ -62,10 +69,10 @@ dist_noinst_DATA = openloops.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${liboloops_la_SOURCES:.f90=.$(FCMOD)} \
   prc_openloops.$(FCMOD)
 
-liboloops_Modules = $(nodist_liboloops_la_SOURCES:.f90=)
+liboloops_Modules = prc_openloops
+# liboloops_Modules = $(OPENLOOPS_MODULES:.f90=)
 Modules: Makefile
 	@for module in $(liboloops_Modules); do \
           echo $$module >> $@.new; \
@@ -138,6 +145,9 @@ DISTCLEANFILES += Makefile.depend
 #	touch $@
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../fks -I../variables -I../blha -I../fastjet -I../pdf_builtin -I../lhapdf
+
+########################################################################
+prc_openloops_sub.lo: prc_openloops.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -217,7 +227,7 @@ clean-local: clean-noweb
 	-rm -f openloops.stamp openloops.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

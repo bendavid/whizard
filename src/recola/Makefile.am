@@ -33,11 +33,15 @@ check_LTLIBRARIES = libwo_recola_ut.la
 
 if RECOLA_AVAILABLE
 libwo_recola_la_SOURCES = \
-  recola_wrapper.f90 prc_recola.f90
+  recola_wrapper.f90 \
+  prc_recola.f90 \
+  prc_recola_sub.f90
 SOURCE_DUMMY_FILES = recola_wrapper_dummy.f90
 else
 libwo_recola_la_SOURCES = \
-  recola_wrapper_dummy.f90 prc_recola.f90
+  recola_wrapper_dummy.f90 \
+  prc_recola.f90 \
+  prc_recola_sub.f90
 SOURCE_DUMMY_FILES = recola_wrapper.f90
 endif
 
@@ -138,6 +142,9 @@ DISTCLEANFILES += Makefile.depend
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../me_methods -I../variables -I../beams -I../lhapdf -I../pdf_builtin -I../fastjet 
 
 ########################################################################
+prc_recola_sub.lo: prc_recola.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -207,7 +214,7 @@ clean-local: clean-noweb
 	-rm -f recola.stamp recola.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

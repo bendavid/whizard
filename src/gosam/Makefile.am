@@ -31,7 +31,14 @@
 noinst_LTLIBRARIES = libgosam.la
 
 libgosam_la_SOURCES = \
+  $(GOSAM_MODULES) \
+  $(GOSAM_SUBMODULES)
+
+GOSAM_MODULES = \
   prc_gosam.f90
+
+GOSAM_SUBMODULES = \
+  prc_gosam_sub.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = gosam.nw
@@ -40,9 +47,9 @@ dist_noinst_DATA = gosam.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libgosam_la_SOURCES:.f90=.$(FCMOD)}
+  ${GOSAM_MODULES:.f90=.$(FCMOD)}
 
-libgosam_Modules = ${libgosam_la_SOURCES:.f90=}
+libgosam_Modules = ${GOSAM_MODULES:.f90=}
 Modules: Makefile
 	@for module in $(libgosam_Modules); do \
           echo $$module >> $@.new; \
@@ -115,6 +122,8 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../variables -I../fks -I../blha -I../fastjet -I../pdf_builtin -I../lhapdf
 
+########################################################################
+prc_gosam_sub.lo: prc_gosam.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -182,7 +191,7 @@ clean-local: clean-noweb
 	-rm -f gosam.stamp gosam.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
