@@ -1311,27 +1311,27 @@ module recola_wrapper
 
 <<Standard module head>>
 
-<<recola wrapper dummy: public>>
+<<Recola wrapper dummy: public>>
 
-<<recola wrapper dummy: parameters>>
+<<Recola wrapper dummy: parameters>>
 
 contains
 
-<<recola wrapper dummy: procedures>>
+<<Recola wrapper dummy: procedures>>
 
 end module recola_wrapper
 @ %def recola_wrapper_dummy
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_is_active
-<<recola wrapper dummy: parameters>>=
+<<Recola wrapper dummy: parameters>>=
   logical, parameter :: rclwrap_is_active = .false.
 
 @ %def rclwrap_is_active
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: get_recola_particle_string
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   elemental function get_recola_particle_string (pdg) result (name)
     type(string_t) :: name
     integer, intent(in) :: pdg
@@ -1340,9 +1340,9 @@ end module recola_wrapper
 
 @ %def get_recola_paritcle_string
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_new_recola_id
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_new_recola_id (id)
     integer, intent(out) :: id
     id = 0
@@ -1350,9 +1350,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_new_recola_id
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_current_recola_id
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   function rclwrap_get_current_recola_id () result (n)
     integer :: n
     n = 0
@@ -1360,17 +1360,17 @@ end module recola_wrapper
 
 @ %def rclwrap_get_current_recola_id
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_request_generate_processes
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_request_generate_processes ()
   end subroutine rclwrap_request_generate_processes
 
 @ %def rclwrap_request_generate_processes
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
    public :: rclwrap_add_process
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
    subroutine rclwrap_add_process (id, process_string, order)
      integer, intent(in) :: id
      type(string_t), intent(in) :: process_string, order
@@ -1378,25 +1378,25 @@ end module recola_wrapper
 
 @ %def rclwrap_add_process
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
    public :: rclwrap_define_processes
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
    subroutine rclwrap_define_processes ()
    end subroutine rclwrap_define_processes
 
 @ %def rclwrap_define_processes
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_generate_processes
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_generate_processes ()
   end subroutine rclwrap_generate_processes
 
 @ %def rclwrap_generate_processes
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_process
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_process (id, p, order, sqme)
     integer, intent(in) :: id
     real(double), intent(in), dimension(:,:) :: p
@@ -1406,9 +1406,9 @@ end module recola_wrapper
 
 @ %def rclwrap_compute_process
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_amplitude
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_amplitude (id, g_power, order, col, hel, amp)
     integer, intent(in) :: id, g_power
     character(len=*), intent(in) :: order
@@ -1418,9 +1418,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_amplitude
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_squared_amplitude
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_squared_amplitude (id, alphas_power, order, sqme)
     integer, intent(in) :: id, alphas_power
     character(len=*), intent(in) :: order
@@ -1429,9 +1429,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_squared_amplitude
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_pole_mass
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_pole_mass (pdg_id, mass, width)
     integer, intent(in) :: pdg_id
     real(double), intent(in) :: mass, width
@@ -1439,9 +1439,9 @@ end module recola_wrapper
 
 @ %def rclwrap_set_pole_mass
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_onshell_mass
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_onshell_mass (pdg_id, mass, width)
     integer, intent(in) :: pdg_id
     real(double), intent(in) :: mass, width
@@ -1449,53 +1449,53 @@ end module recola_wrapper
 
 @ %def rclwrap_set_onshell_mass
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_use_gfermi_scheme
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_use_gfermi_scheme (gf)
     real(double), intent(in), optional :: gf
   end subroutine rclwrap_use_gfermi_scheme
 
 @ %def rclwrap_use_gfermi_scheme
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_light_fermions
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_light_fermions (m)
     real(double), intent(in) :: m
   end subroutine rclwrap_set_light_fermions
 
 @ %def rclwrap_set_light_fermions
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_light_fermion
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_light_fermion (pdg_id)
     integer, intent(in) :: pdg_id
   end subroutine rclwrap_set_light_fermion
 
 @ %def rclwrap_set_light_fermion
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_unset_light_fermion
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_unset_light_fermion (pdg_id)
     integer, intent(in) :: pdg_id
   end subroutine rclwrap_unset_light_fermion
 
 @ %def rclwrap_unset_light_fermion
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_onshell_scheme
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_onshell_scheme
   end subroutine rclwrap_set_onshell_scheme
 
 @ %def rclwrap_set_onshell_scheme
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_alpha_s
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_alpha_s (alpha_s, mu, nf)
     real(double), intent(in) :: alpha_s, mu
     integer, intent(in) :: nf
@@ -1503,18 +1503,18 @@ end module recola_wrapper
 
 @ %def rclwrap_set_alpha_s
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_alpha_s
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   function rclwrap_get_alpha_s () result (alpha_s)
     real(double) :: alpha_s
   end function rclwrap_get_alpha_s
 
 @ %def rclwrap_get_alpha_s
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_helicity_configurations
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_helicity_configurations (id, hel)
     integer, intent(in) :: id
     integer, intent(inout), dimension(:,:), allocatable :: hel
@@ -1522,9 +1522,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_helicity_configurations
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_color_configurations
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_color_configurations (id, col)
     integer, intent(in) :: id
     integer, intent(out), dimension(:,:), allocatable :: col
@@ -1532,176 +1532,176 @@ end module recola_wrapper
 
 @ %def rclwrap_get_color_configurations
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_use_dim_reg_soft
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_use_dim_reg_soft ()
   end subroutine rclwrap_use_dim_reg_soft
 
 @ %def rclwrap_use_dim_reg_soft
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_use_mass_reg_soft
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_use_mass_reg_soft (m)
     real(double), intent(in) :: m
   end subroutine rclwrap_use_mass_reg_soft
 
 @ %def rclwrap_use_mass_reg_soft
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_delta_uv
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_delta_uv (d)
     real(double), intent(in) :: d
   end subroutine rclwrap_set_delta_uv
 
 @ %def rclwrap_set_delta_uv
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_mu_uv
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_mu_uv (mu)
     real(double), intent(in) :: mu
   end subroutine rclwrap_set_mu_uv
 
 @ %def rclwrap_set_mu_uv
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_delta_ir
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_delta_ir (d, d2)
     real(double), intent(in) :: d, d2
   end subroutine rclwrap_set_delta_ir
 
 @ %def rclwrap_set_delta_ir
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_mu_ir
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_mu_ir (mu)
     real(double), intent(in) :: mu
   end subroutine rclwrap_set_mu_ir
 
 @ %def rclwrap_set_mu_ir
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_renormalization_scale
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_renormalization_scale (mu)
     real(double), intent(out) :: mu
   end subroutine rclwrap_get_renormalization_scale
 
 @ %def rclwrap_get_renormalization_scale
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_flavor_scheme
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_flavor_scheme (nf)
     integer, intent(out) :: nf
   end subroutine rclwrap_get_flavor_scheme
 
 @ %def rclwrap_get_flavor_scheme
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_use_alpha0_scheme
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_use_alpha0_scheme (al0)
     real(double), intent(in), optional :: al0
   end subroutine rclwrap_use_alpha0_scheme
 
 @ %def rclwrap_use_alpha0_scheme
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_use_alphaz_scheme
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_use_alphaz_scheme (alz)
     real(double), intent(in), optional :: alz
   end subroutine rclwrap_use_alphaz_scheme
 
 @ %def rclwrap_use_alphaz_scheme
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_complex_mass_scheme
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_complex_mass_scheme ()
   end subroutine rclwrap_set_complex_mass_scheme
 
 @ %def rclwrap_set_complex_mass_scheme
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_resonant_particle
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_resonant_particle (pdg_id)
     integer, intent(in) :: pdg_id
   end subroutine rclwrap_set_resonant_particle
 
 @ %def rclwrap_set_resonant_particle
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_switch_on_resonant_self_energies
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_switch_on_resonant_self_energies ()
   end subroutine rclwrap_switch_on_resonant_self_energies
 
 @ %def rclwrap_switch_on_resonant_self_energies
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_switch_off_resonant_self_energies
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_switch_off_resonant_self_energies ()
   end subroutine rclwrap_switch_off_resonant_self_energies
 
 @ %def rclwrap_switch_off_resonant_self_energies
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_draw_level_branches
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_draw_level_branches (n)
     integer, intent(in) :: n
   end subroutine rclwrap_set_draw_level_branches
 
 @ %def rclwrap_set_draw_level_branches
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_print_level_amplitude
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_print_level_amplitude (n)
     integer, intent(in) :: n
   end subroutine rclwrap_set_print_level_amplitude
 
 @ %def rclwrap_set_print_level_amplitude
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_print_level_squared_amplitude
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_print_level_squared_amplitude (n)
     integer, intent(in) :: n
   end subroutine rclwrap_set_print_level_squared_amplitude
 
 @ %def rclwrap_set_print_level_squared_amplitude
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_print_level_correlations
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_print_level_correlations (n)
     integer, intent(in) :: n
   end subroutine rclwrap_set_print_level_correlations
 
 @ %def rclwrap_set_print_level_correlations
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_print_level_RAM
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_print_level_RAM (n)
     integer, intent(in) :: n
   end subroutine rclwrap_set_print_level_RAM
 
 @ %def rclwrap_set_print_level_RAM
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_scale_coupling3
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_scale_coupling3 (pdg_id1, pdg_id2, pdg_id3, factor)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3
     complex(double), intent(in) :: factor
@@ -1709,9 +1709,9 @@ end module recola_wrapper
 
 @ %def rclwrap_scale_coupling3
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_scale_coupling4
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_scale_coupling4 (pdg_id1, pdg_id2, pdg_id3, pdg_id4, factor)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3, pdg_id4
     complex(double), intent(in) :: factor
@@ -1719,54 +1719,54 @@ end module recola_wrapper
 
 @ %def rclwrap_scale_coupling4
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_switch_off_coupling3
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_switch_off_coupling3 (pdg_id1, pdg_id2, pdg_id3)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3
   end subroutine rclwrap_switch_off_coupling3
 
 @ %def rclwrap_switch_off_coupling3
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_switch_off_coupling4
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_switch_off_coupling4 (pdg_id1, pdg_id2, pdg_id3, pdg_id4)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3, pdg_id4
   end subroutine rclwrap_switch_off_coupling4
 
 @ %def rclwrap_switch_off_coupling4
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_ifail
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_ifail (i)
     integer, intent(in) :: i
   end subroutine rclwrap_set_ifail
 
 @ %def rclwrap_set_ifail
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_ifail
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_ifail (i)
     integer, intent(out) :: i
   end subroutine rclwrap_get_ifail
 
 @ %def rclwrap_get_ifail
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_output_file
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_output_file (filename)
     character(len=*), intent(in) :: filename
   end subroutine rclwrap_set_output_file
 
 @ %def rclwrap_set_output_file
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_gs_power
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_gs_power (id, gs_array)
     integer, intent(in) :: id
     integer, dimension(:,:), intent(in) :: gs_array
@@ -1774,81 +1774,81 @@ end module recola_wrapper
 
 @ %def rclwrap_set_gs_power
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_select_gs_power_born_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_select_gs_power_born_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
  end subroutine rclwrap_select_gs_power_born_amp
 
 @ %def rclwrap_select_gs_power_born_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_unselect_gs_power_born_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_unselect_gs_power_born_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
  end subroutine rclwrap_unselect_gs_power_born_amp
 
 @ %def rclwrap_unselect_gs_power_born_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_select_gs_power_loop_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_select_gs_power_loop_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
  end subroutine rclwrap_select_gs_power_loop_amp
 
 @ %def rclwrap_select_gs_power_loop_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_unselect_gs_power_loop_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_unselect_gs_power_loop_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
  end subroutine rclwrap_unselect_gs_power_loop_amp
 
 @ %def rclwrap_unselect_gs_power_loop_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_select_all_gs_powers_born_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_select_all_gs_powers_born_amp (id)
     integer, intent(in) :: id
   end subroutine rclwrap_select_all_gs_powers_born_amp
 
 @ %def rclwrap_select_all_gs_powers_born_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_unselect_all_gs_powers_loop_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_unselect_all_gs_powers_loop_amp (id)
     integer, intent(in) :: id
   end subroutine rclwrap_unselect_all_gs_powers_loop_amp
 
 @ %def rclwrap_unselect_all_gs_powers_loop_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_select_all_gs_powers_loop_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_select_all_gs_powers_loop_amp (id)
     integer, intent(in) :: id
   end subroutine rclwrap_select_all_gs_powers_loop_amp
 
 @ %def rclwrap_select_all_gs_powers_loop_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_unselect_all_gs_powers_born_amp
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_unselect_all_gs_powers_born_amp (id)
     integer, intent(in) :: id
   end subroutine rclwrap_unselect_all_gs_powers_born_amp
 
 @ %def rclwrap_unselect_all_gs_powers_born_amp
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_resonant_squared_momentum
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_resonant_squared_momentum (id, i_res, p2)
     integer, intent(in) :: id, i_res
     real(double), intent(in) :: p2
@@ -1856,9 +1856,9 @@ end module recola_wrapper
 
 @ %def rclwrap_set_resonant_squared_momentum
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_running_alpha_s
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_running_alpha_s (Q, nf, n_loops)
     real(double), intent(in) :: Q
     integer, intent(in) :: nf, n_loops
@@ -1866,17 +1866,17 @@ end module recola_wrapper
 
 @ %def rclwrap_compute_running_alpha_s
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_dynamic_settings
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_dynamic_settings ()
   end subroutine rclwrap_set_dynamic_settings
 
 @ %def rclwrap_set_dynamic_settings
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_rescale_process
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_rescale_process (id, order, sqme)
     integer, intent(in) :: id
     character(len=*), intent(in) :: order
@@ -1885,9 +1885,9 @@ end module recola_wrapper
 
 @ %def rclwrap_rescale_process
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_polarized_squared_amplitude
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_polarized_squared_amplitude (id, &
      alphas_power, order, hel, sqme)
     integer, intent(in) :: id, alphas_power
@@ -1898,9 +1898,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_polarized_squared_amplitude
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_color_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_color_correlation (id, p, &
      i1, i2, sqme)
     integer, intent(in) :: id
@@ -1911,9 +1911,9 @@ end module recola_wrapper
 
 @ %def rclwrap_compute_color_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_all_color_correlations
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_all_color_correlations (id, p)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
@@ -1921,9 +1921,9 @@ end module recola_wrapper
 
 @ %def rclwrap_compute_all_color_correlations
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_rescale_color_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_rescale_color_correlation (id, i1, i2, sqme)
     integer, intent(in) :: id, i1, i2
     real(double), intent(out), optional :: sqme
@@ -1931,18 +1931,18 @@ end module recola_wrapper
 
 @ %def rclwrap_rescale_color_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_rescale_all_color_correlations
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_rescale_all_color_correlations (id)
     integer, intent(in) :: id
   end subroutine rclwrap_rescale_all_color_correlations
 
 @ %def rclwrap_rescale_all_color_correlations
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_color_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_color_correlation (id, alphas_power, i1, i2, sqme)
     integer, intent(in) :: id, alphas_power, i1, i2
     real(double), intent(out) :: sqme
@@ -1950,9 +1950,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_color_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_spin_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_spin_correlation (id, p, i_photon, pol, sqme)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
@@ -1963,9 +1963,9 @@ end module recola_wrapper
 
 @ %def rclwrap_compute_spin_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_rescale_spin_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_rescale_spin_correlation (id, i_photon, pol, sqme)
     integer, intent(in) :: id, i_photon
     complex(double), dimension(:), intent(in) :: pol
@@ -1974,9 +1974,9 @@ end module recola_wrapper
 
 @ %def rclwrap_rescale_spin_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_spin_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_spin_correlation (id, alphas_power, sqme)
     integer, intent(in) :: id, alphas_power
     real(double), intent(out) :: sqme
@@ -1984,9 +1984,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_spin_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_spin_color_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_spin_color_correlation (id, p, &
      i_gluon, i_spectator, pol, sqme)
     integer, intent(in) :: id
@@ -1998,9 +1998,9 @@ end module recola_wrapper
 
 @ %def rclwrap_compute_spin_color_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_rescale_spin_color_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_rescale_spin_color_correlation (id, i_gluon, &
      i_spectator, pol, sqme)
     integer, intent(in) :: id, i_gluon, i_spectator
@@ -2010,9 +2010,9 @@ end module recola_wrapper
 
 @ %def rclwrap_rescale_spin_color_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_spin_color_correlation
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_spin_color_correlation (id, alphas_power, &
      i_gluon, i_spectator, sqme)
     integer, intent(in) :: id, alphas_power, i_gluon, i_spectator
@@ -2021,9 +2021,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_spin_color_correlation
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_get_momenta
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_get_momenta (id, p)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(out) :: p
@@ -2031,9 +2031,9 @@ end module recola_wrapper
 
 @ %def rclwrap_get_momenta
 @
-<<recola wrapper dummy: public>>=
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_reset_recola
-<<recola wrapper dummy: procedures>>=
+<<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_reset_recola
   end subroutine rclwrap_reset_recola
 

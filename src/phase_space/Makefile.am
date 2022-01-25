@@ -33,18 +33,40 @@ noinst_LTLIBRARIES = libphase_space.la
 check_LTLIBRARIES = libphase_space_ut.la
 
 libphase_space_la_SOURCES = \
+  $(PHS_MODULES) \
+  $(PHS_SUBMODULES)
+
+PHS_MODULES = \
   phs_base.f90 \
   phs_none.f90 \
   phs_single.f90 \
   phs_rambo.f90 \
   resonances.f90 \
-  mappings.f90 phs_trees.f90 phs_forests.f90 \
+  mappings.f90 \
+  phs_trees.f90 \
+  phs_forests.f90 \
   cascades.f90 \
+  cascades2_lexer.f90 \
+  cascades2.f90 \
   phs_wood.f90 \
   phs_fks.f90 \
-  dispatch_phase_space.f90 \
-  cascades2_lexer.f90 \
-  cascades2.f90
+  dispatch_phase_space.f90
+
+PHS_SUBMODULES = \
+  phs_base_sub.f90 \
+  phs_none_sub.f90 \
+  phs_single_sub.f90 \
+  phs_rambo_sub.f90 \
+  resonances_sub.f90 \
+  mappings_sub.f90 \
+  phs_trees_sub.f90 \
+  phs_forests_sub.f90 \
+  cascades_sub.f90 \
+  cascades2_lexer_sub.f90 \
+  cascades2_sub.f90 \
+  phs_wood_sub.f90 \
+  phs_fks_sub.f90 \
+  dispatch_phase_space_sub.f90
 
 libphase_space_ut_la_SOURCES = \
   phs_base_uti.f90 phs_base_ut.f90 \
@@ -55,11 +77,11 @@ libphase_space_ut_la_SOURCES = \
   phs_trees_uti.f90 phs_trees_ut.f90 \
   phs_forests_uti.f90 phs_forests_ut.f90 \
   cascades_uti.f90 cascades_ut.f90 \
+  cascades2_lexer_uti.f90 cascades2_lexer_ut.f90 \
+  cascades2_uti.f90 cascades2_ut.f90 \
   phs_wood_uti.f90 phs_wood_ut.f90 \
   phs_fks_uti.f90 phs_fks_ut.f90 \
-  dispatch_phs_uti.f90 dispatch_phs_ut.f90 \
-  cascades2_lexer_uti.f90 cascades2_lexer_ut.f90 \
-  cascades2_uti.f90 cascades2_ut.f90
+  dispatch_phs_uti.f90 dispatch_phs_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = phase_space.nw
@@ -68,11 +90,11 @@ dist_noinst_DATA = phase_space.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libphase_space_la_SOURCES:.f90=.$(FCMOD)}
+  ${PHS_MODULES:.f90=.$(FCMOD)}
 
 # Dump module names into file Modules
 libphase_space_Modules = \
-  ${libphase_space_la_SOURCES:.f90=} \
+  ${PHS_MODULES:.f90=} \
   ${libphase_space_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libphase_space_Modules); do \
@@ -148,6 +170,21 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../fastjet -I../qed_pdf -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../rng -I../../circe1/src -I../../circe2/src  -I../pdf_builtin -I../lhapdf -I../model_features -I../variables -I../expr_base -I../threshold
 
+########################################################################
+phs_base_sub.lo: phs_base.lo
+phs_none_sub.lo: phs_none.lo
+phs_single_sub.lo: phs_single.lo
+phs_rambo_sub.lo: phs_rambo.lo
+resonances_sub.lo: resonances.lo
+mappings_sub.lo: mappings.lo
+phs_trees_sub.lo: phs_trees.lo
+phs_forests_sub.lo: phs_forests.lo
+cascades_sub.lo: cascades.lo
+cascades2_lexer_sub.lo: cascades2_lexer.lo
+cascades2_sub.lo: cascades2.lo
+phs_wood_sub.lo: phs_wood.lo
+phs_fks_sub.lo: phs_fks.lo
+dispatch_phase_space_sub.lo: dispatch_phase_space.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -217,7 +254,7 @@ clean-local: clean-noweb
 	-rm -f phase_space.stamp phase_space.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
