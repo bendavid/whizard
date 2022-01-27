@@ -32,12 +32,24 @@ noinst_LTLIBRARIES = libfks.la
 check_LTLIBRARIES = libfks_ut.la
 
 libfks_la_SOURCES = \
+  $(FKS_MODULES) \
+  $(FKS_SUBMODULES)
+
+FKS_MODULES = \
   fks_regions.f90 \
   nlo_data.f90 \
   virtual.f90 \
   real_subtraction.f90 \
   dglap_remnant.f90 \
   dispatch_fks.f90
+
+FKS_SUBMODULES = \
+  fks_regions_sub.f90 \
+  nlo_data_sub.f90 \
+  virtual_sub.f90 \
+  real_subtraction_sub.f90 \
+  dglap_remnant_sub.f90 \
+  dispatch_fks_sub.f90
 
 libfks_ut_la_SOURCES = \
   fks_regions_uti.f90 fks_regions_ut.f90 \
@@ -50,9 +62,9 @@ dist_noinst_DATA = fks.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libfks_la_SOURCES:.f90=.$(FCMOD)}
+  ${FKS_MODULES:.f90=.$(FCMOD)}
 
-libfks_Modules = ${libfks_la_SOURCES:.f90=} ${libfks_ut_la_SOURCES:.f90=}
+libfks_Modules = ${FKS_MODULES:.f90=} ${libfks_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libfks_Modules); do \
           echo $$module >> $@.new; \
@@ -130,6 +142,13 @@ DISTCLEANFILES += Makefile.depend
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../combinatorics -I../physics -I../qft -I../model_features -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../blha -I../threshold -I../lhapdf -I../pdf_builtin -I../fastjet
 
+########################################################################
+fks_regions_sub.lo: fks_regions.lo
+nlo_data_sub.lo: nlo_data.lo
+virtual_sub.lo: virtual.lo
+real_subtraction_sub.lo: real_subtraction.lo
+dglap_remnant_sub.lo: dglap_remnant.lo
+dispatch_fks_sub.lo: dispatch_fks.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -197,7 +216,7 @@ clean-local: clean-noweb
 	-rm -f fks.stamp fks.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

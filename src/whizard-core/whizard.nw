@@ -5672,8 +5672,6 @@ module integrations
   use dispatch_transforms, only: dispatch_evt_shower_hook
 
   use compilations, only: compile_library
-
-  use dispatch_fks, only: dispatch_fks_s
   use nlo_data
 <<Use mpi f08>>
 

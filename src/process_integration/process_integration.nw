@@ -9540,7 +9540,7 @@ module pcm
   use phs_forests, only: phs_parameters_t
   use phs_fks, only: isr_kinematics_t, real_kinematics_t
   use phs_fks, only: phs_identifier_t
-  use dispatch_fks, only: dispatch_fks_s
+  use dispatch_fks, only: dispatch_fks_setup
   use fks_regions, only: region_data_t
   use nlo_data, only: fks_template_t
   use phs_fks, only: phs_fks_generator_t
@@ -9953,7 +9953,7 @@ Initialize configuration data, using environment variables.
     pcm%id = meta%id
     pcm%has_pdfs = env%has_pdfs ()
     var_list => env%get_var_list_ptr ()
-    call dispatch_fks_s (fks_template, var_list)
+    call dispatch_fks_setup (fks_template, var_list)
     call pcm%settings%init (var_list, fks_template)
     pcm%combined_integration = &
          var_list%get_lval (var_str ('?combined_nlo_integration'))
