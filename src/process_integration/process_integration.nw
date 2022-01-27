@@ -8915,11 +8915,11 @@ may be done before this.  The actual [[mci_t]] object is an instance of the
 
 In a unit-test context, the [[mci_template]] argument may be unallocated.
 
-We obtain the number of channels and the number of parameters, separately for
+We obtain the number of channels and the number of parameters separately for
 the structure-function chain and for the associated process component.  We
 assume that the phase-space object has already been configured.
 
-We assume that there is only one process component directly associated with a
+We assume that there is only one process component directly associated with an
 MCI entry.
 <<Process mci: process mci entry: TBP>>=
   procedure :: configure => process_mci_entry_configure
@@ -11104,7 +11104,7 @@ object and the squared matrix-element collector.
           if (yorn) then
              p = pcm_work%real_kinematics%p_born_cms%phs_point(1)
           else
-             p =pcm_work%real_kinematics%p_born_lab%phs_point(1)
+             p = pcm_work%real_kinematics%p_born_lab%phs_point(1)
           end if
        else
           if (yorn) then
@@ -11538,7 +11538,7 @@ hence [[pcm]] is intent(inout).  This should be moved elsewhere, so
        end select
     end select
   end subroutine kinematics_configure
-  
+
 @ %def kinematics_configure
 @ Set the flags indicating whether the phase space shall be set up for the calculation of the real contribution. For this case, also set the emitter.
 <<Kinematics: kinematics: TBP>>=
@@ -12089,6 +12089,7 @@ module instances
   use variables
   use pdg_arrays, only: is_quark
   use sf_base
+  use pdf, only: pdf_data_t
   use physics_defs
   use process_constants
   use process_libraries
@@ -12331,7 +12332,7 @@ overall [[pcm]] and the associated [[pcm_workspace]] objects.
     term_instance%pcm_work => pcm_work
     term_instance%nlo_type = nlo_type
   end subroutine term_instance_init
-    
+
 @ %def term_instance_init
 @ The second part of term-instance configuration concerns dynamics, i.e., the
 interface to the matrix-element (interaction), and the parton-state
@@ -12910,9 +12911,9 @@ JRR: Obsolete now.
     class(term_instance_t), intent(in) :: term
     call term%k_term%return_beam_momenta ()
   end subroutine term_instance_return_beam_momenta
- 
+
 @ %def term_instance_return_beam_momenta
-@ 
+@
 Applies the real partition by computing the real partition function $F(\Phi)$
 and multiplying either $\mathcal{R}_\text{sin} = \mathcal{R} \cdot F$ or
 $\mathcal{R}_\text{fin} = \mathcal{R} \cdot (1-F)$.
@@ -13377,7 +13378,7 @@ it is only available after the [[fks_regions]] have been created.
   end subroutine term_instance_evaluate_spin_correlations
 
 @ %def term_instance_evaluate_spin_correlations
-@@
+@
 <<Instances: term instance: TBP>>=
   procedure :: apply_fks => term_instance_apply_fks
 <<Instances: procedures>>=
@@ -13436,9 +13437,9 @@ it is only available after the [[fks_regions]] have been created.
        is_subtraction = kin%emitter < 0
        if (term%connected%has_matrix) &
             call refill_evaluator (cmplx (sqme * term%weight, 0, default), &
-                pcm%get_qn (is_subtraction), &
-                pcm%region_data%get_flavor_indices (is_subtraction), &
-                term%connected%matrix)
+                 pcm%get_qn (is_subtraction), &
+                 pcm%region_data%get_flavor_indices (is_subtraction), &
+                 term%connected%matrix)
        if (term%connected%has_flows) &
             call refill_evaluator (cmplx (sqme * term%weight, 0, default), &
                  pcm%get_qn (is_subtraction), &
@@ -13475,7 +13476,7 @@ it is only available after the [[fks_regions]] have been created.
      type is (pcm_nlo_t)
         select type (pcm_work => term%pcm_work)
         type is (pcm_nlo_workspace_t)
-           alpha_coupling = [alpha_s, alpha_qed] 
+           alpha_coupling = [alpha_s, alpha_qed]
            if (debug2_active (D_VIRTUAL)) then
               print *, 'alpha_s: ', alpha_coupling (1)
               print *, 'alpha_qed: ', alpha_coupling (2)
@@ -13574,7 +13575,7 @@ it is only available after the [[fks_regions]] have been created.
        ("Trying to evaluate DGLAP remnant with unsuited term_instance.")
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "term_instance_evaluate_sqme_dglap")
     select type (pcm => term%pcm)
-    type is (pcm_nlo_t)       
+    type is (pcm_nlo_t)
        select type (pcm_work => term%pcm_work)
        type is (pcm_nlo_workspace_t)
           alpha_coupling = [alpha_s,alpha_qed]
@@ -13745,7 +13746,7 @@ method may modify the [[core_state]] workspace object.
   subroutine term_instance_evaluate_interaction_default (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in) :: core
-    real(default) :: fac_scale, ren_scale    
+    real(default) :: fac_scale, ren_scale
     integer :: i
     if (allocated (term%fac_scale)) then
        fac_scale = term%fac_scale
@@ -14273,7 +14274,7 @@ physical event.
 
 @ %def term_instance_set_fac_scale
 @ Return data that might be useful for external processing.  The
-factorization scale and renormalization scale are identical to the 
+factorization scale and renormalization scale are identical to the
 general scale if not explicitly set:
 <<Instances: term instance: TBP>>=
   procedure :: get_fac_scale => term_instance_get_fac_scale
@@ -14524,7 +14525,7 @@ information can then be retrieved.
   end type process_instance_hook_t
 
 @ %def process_instance_hook_t
-@ We have to provide a [[init]], a [[final]] procedure and, for after evaluation, the
+@ We have to provide an [[init]], a [[final]] procedure and, for after evaluation, the
 [[evaluate]] procedure.
 
 The [[init]] procedures accesses [[var_list]] and current [[instance]] object.
@@ -14532,11 +14533,12 @@ The [[init]] procedures accesses [[var_list]] and current [[instance]] object.
   public :: process_instance_hook_final, process_instance_hook_evaluate
 <<Instances: interfaces>>=
   abstract interface
-     subroutine process_instance_hook_init (hook, var_list, instance)
-       import :: process_instance_hook_t, var_list_t, process_instance_t
+     subroutine process_instance_hook_init (hook, var_list, instance, pdf_data)
+       import :: process_instance_hook_t, var_list_t, process_instance_t, pdf_data_t
        class(process_instance_hook_t), intent(inout), target :: hook
        type(var_list_t), intent(in) :: var_list
        class(process_instance_t), intent(in), target :: instance
+       type(pdf_data_t), intent(in), optional :: pdf_data
      end subroutine process_instance_hook_init
 
      subroutine process_instance_hook_final (hook)
@@ -14702,7 +14704,7 @@ to subobject of [[instance]].
                i_real_fin, process%get_model_ptr ())
        end select
     end select
-    ! TODO wk-03-01 n_terms will eventually acquire a different meaning 
+    ! TODO wk-03-01 n_terms will eventually acquire a different meaning
     allocate (instance%kin (process%get_n_terms ()))
     do i = 1, process%get_n_terms ()
        term => process%get_term_ptr (i)
@@ -14714,7 +14716,7 @@ to subobject of [[instance]].
             process%get_nlo_type_component (i_component), &
             term%i_sub == i)
     end do
-    ! TODO wk-03-01 n_terms will eventually acquire a different meaning 
+    ! TODO wk-03-01 n_terms will eventually acquire a different meaning
     allocate (instance%term (process%get_n_terms ()))
     do i = 1, process%get_n_terms ()
        call instance%term(i)%configure (process, i, instance%pcm_work, &
@@ -15969,17 +15971,19 @@ it from the MCI record.
 @ Computes the real-emission matrix element for externally supplied momenta
 for the term instance with index [[i_term]] and a phase space point set with
 index [[i_phs]]. In addition, for the real emission, each term instance
-corresponds to one emitter. Also, e.g. for Powheg, there is the possibility
-to supply an external $\alpha_s$.
+corresponds to one emitter. There is the possibility to supply an external
+$\alpha_s$ as well as an external scale to override the scale set in the
+Sindarin, e.g. for POWHEG.
 <<Instances: process instance: TBP>>=
   procedure :: compute_sqme_rad => process_instance_compute_sqme_rad
 <<Instances: procedures>>=
   subroutine process_instance_compute_sqme_rad &
-         (instance, i_term, i_phs, is_subtraction, alpha_s_external)
+         (instance, i_term, i_phs, is_subtraction, alpha_s_external, scale_forced)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: i_term, i_phs
     logical, intent(in) :: is_subtraction
     real(default), intent(in), optional :: alpha_s_external
+    real(default), intent(in), allocatable, optional :: scale_forced
     class(prc_core_t), pointer :: core
     integer :: i_real_fin
     logical :: has_pdfs
@@ -15998,10 +16002,11 @@ to supply an external $\alpha_s$.
                (term%pcm, i_phs = i_phs, born_phsp = is_subtraction))
           if (allocated (term%core_state)) &
                call term%core_state%reset_new_kinematics ()
-          if (present (alpha_s_external)) &
-               call term%set_alpha_qcd_forced (alpha_s_external)
+          if (present (alpha_s_external)) then
+             call term%set_alpha_qcd_forced (alpha_s_external)
+          end if
           call term%compute_eff_kinematics ()
-          call term%evaluate_expressions ()
+          call term%evaluate_expressions (scale_forced)
           call term%evaluate_interaction (core, kin)
           call term%evaluate_trace (kin)
           if (term%is_subtraction ()) then
@@ -16095,7 +16100,7 @@ Before calling this, we should call [[choose_mci]].
     instance%evaluation_status = STAT_EFF_KINEMATICS
     call instance%recover_hard_kinematics (i_term)
     call instance%recover_seed_kinematics (i_term)
-    call instance%select_channel (channel)    
+    call instance%select_channel (channel)
     recover = instance%pcm_work%is_nlo ()
     if (recover_phs) then
        call instance%recover_mcpar (i_term)
@@ -16449,6 +16454,9 @@ currently active state matrix, respectively.
 excess where applicable.  [[n_dropped]] is a number that can be
 nonzero when a weighted event has been generated, dropping events with
 zero weight (failed cuts) on the fly.
+If [[i_term]] is provided for [[get_sqme]], we take the first matrix
+element as we also set the first matrix element with [[set_only_matrix_element]]
+when computing the real, the dglap or the virtual contribution.
 <<Instances: process instance: TBP>>=
   procedure :: get_sqme => process_instance_get_sqme
   procedure :: get_weight => process_instance_get_weight
@@ -16986,6 +16994,7 @@ module processes_uti
   use prc_template_me, only: template_me_def_t
   use process_libraries
   use prc_test_core
+  use pdf, only: pdf_data_t
 
   use process_counter
   use process_config, only: process_term_t
@@ -19000,10 +19009,11 @@ functionality.
 
 @
 <<Processes: test auxiliary>>=
-  subroutine process_instance_hook_test_init (hook, var_list, instance)
+  subroutine process_instance_hook_test_init (hook, var_list, instance, pdf_data)
     class(process_instance_hook_test_t), intent(inout), target :: hook
     type(var_list_t), intent(in) :: var_list
     class(process_instance_t), intent(in), target :: instance
+    type(pdf_data_t), intent(in), optional :: pdf_data
   end subroutine process_instance_hook_test_init
 
   subroutine process_instance_hook_test_final (hook)

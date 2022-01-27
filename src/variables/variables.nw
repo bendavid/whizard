@@ -6713,8 +6713,8 @@ procedure with type [[V_NONE]].
     call var_list%append_string (var_str ("$select_alpha_regions"), &
          var_str (""), intrinsic = .true., &
          description=var_str ('Fixes the $\alpha_r$ in the real ' // &
-         ' subtraction component. Allows for testing in one individual ' // &
-         'singular region.'))
+         'subtraction as well as the DGLAP component. Allows for ' // &
+         'testing in a list of selected singular regions.'))
     call var_list%append_string (var_str ("$virtual_selection"), &
          var_str ("Full"), intrinsic = .true., &
          description=var_str ('String variable to select either the full ' // &

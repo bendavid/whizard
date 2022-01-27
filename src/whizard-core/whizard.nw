@@ -6297,7 +6297,8 @@ of the integration history.
   contains
     subroutine setup_hooks ()
       class(process_instance_hook_t), pointer :: hook
-      call dispatch_evt_shower_hook (hook, var_list, process_instance)
+      call dispatch_evt_shower_hook (hook, var_list, process_instance, &
+           local%beam_structure, intg%process%get_pdf_set())
       if (associated (hook)) then
          call process_instance%append_after_hook (hook)
       end if

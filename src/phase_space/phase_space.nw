@@ -418,7 +418,7 @@ Gfortran 7/8/9 bug: has to remain in the main module.
   end subroutine channel_set_resonant
 
 @ %def channel_set_resonant
-@ Identify the channel with an on-shell particle. 
+@ Identify the channel with an on-shell particle.
 Gfortran 7/8/9 bug: has to remain in the main module.
 <<PHS base: phs channel: TBP>>=
   procedure :: set_on_shell => channel_set_on_shell
@@ -3653,7 +3653,7 @@ time, implement a decay process.
 
 This module implements the flat \texttt{RAMBO} phase space for
 massless and massive particles using the minimal d.o.f $3n - 4$ in a
-straightforward parameterization with a single channel. 
+straightforward parameterization with a single channel.
 We generate $n$ mass systems $M_i$ with $M_0 = \sqrt{s}$ and $M_{n} =
 0$. We let each mass system decay $1 \rightarrow 2$ in a four-momentum
 conserving way. The four-momenta of the two particles are generated
@@ -10761,7 +10761,7 @@ branches each tree has, but not filled.
 @ %def phs_forest_init
 @ Assign the global (s-channel) mappings.
 <<PHS forests: phs forest: TBP>>=
-  procedure :: set_s_mappings => phs_forest_set_s_mappings 
+  procedure :: set_s_mappings => phs_forest_set_s_mappings
 <<PHS forests: sub interfaces>>=
     module subroutine phs_forest_set_s_mappings (forest)
       class(phs_forest_t), intent(inout) :: forest
@@ -11915,7 +11915,7 @@ different trees are recorded twice.  This is intentional.
 <<PHS forests: sub interfaces>>=
     module subroutine phs_forest_set_equivalences (forest)
       class(phs_forest_t), intent(inout) :: forest
-    end subroutine phs_forest_set_equivalences 
+    end subroutine phs_forest_set_equivalences
 <<PHS forests: procedures>>=
   module subroutine phs_forest_set_equivalences (forest)
     class(phs_forest_t), intent(inout) :: forest
@@ -13265,7 +13265,7 @@ the codes themselves.
   interface operator(.match.)
      module procedure pdg_match
   end interface
-<<Cascades: sub interfaces>>=  
+<<Cascades: sub interfaces>>=
     elemental module function pdg_match (pdg1, pdg2) result (flag)
       logical :: flag
       integer(TC), intent(in) :: pdg1, pdg2
@@ -15429,7 +15429,7 @@ module cascades2_lexer
 end module cascades2_lexer
 
 @ %def cascades2_lexer
-@ 
+@
 <<[[cascades2_lexer_sub.f90]]>>=
 <<File header>>
 
@@ -16180,7 +16180,7 @@ and simply tells us that the string continues on the next line in the file).
       type(dag_token_t), intent(in) :: dag_token
       character(len=*), intent(in) :: char_string
       logical :: flag
-    end function dag_token_ne_char_string  
+    end function dag_token_ne_char_string
 <<Cascades2 lexer: procedures>>=
   elemental module function dag_token_ne_char_string &
        (dag_token, char_string) result (flag)
@@ -17320,10 +17320,10 @@ also need a type containing a  pointer to a node, which is needed for
 creating arrays of pointers. This will be used for scattering
 processes where we can take either the first or the second particle to
 be the root of the tree. Since we need both cases for the calculations
-and O'Mega only gives us one of these, we have to perform a 
+and O'Mega only gives us one of these, we have to perform a
 transformation of the graph in which some nodes (on the line which we
 hereafter call t-line) need to know their mother and sister nodes,
-which become their daughters within this transformation. 
+which become their daughters within this transformation.
 <<Cascades2: types>>=
   type :: f_node_ptr_t
      type(f_node_t), pointer :: node => null ()
@@ -18849,8 +18849,8 @@ have to initialize the first empty element of the array.
           exit
        end if
     end do
-    !!! Since the O'Mega output uses the anti-particles instead of the 
-    !!! particles specified in the process definition, we revert this 
+    !!! Since the O'Mega output uses the anti-particles instead of the
+    !!! particles specified in the process definition, we revert this
     !!! here. An exception is the first particle in the parsable DAG output
     node%particle => node%particle%anti
   end subroutine f_node_assign_particle_properties
@@ -19992,7 +19992,7 @@ from the different dag objects.
           end if
           feyngraph_set%last%root => dag%node(dag%n_nodes)%f_node(i)%node
           !!! The first particle was correct in the O'Mega parsable DAG output.
-          !!! It was however changed to its anti-particle in 
+          !!! It was however changed to its anti-particle in
           !!! f_node_assign_particle_properties, which we revert here.
           feyngraph_set%last%root%particle => &
                feyngraph_set%last%root%particle%anti
@@ -23872,7 +23872,7 @@ extracting them.
       class(phs_wood_t), intent(inout) :: phs
       real(default), intent(in), dimension(:) :: r_in
       integer, intent(in) :: c_in
-    end subroutine phs_wood_evaluate_selected_channel    
+    end subroutine phs_wood_evaluate_selected_channel
     module subroutine phs_wood_evaluate_other_channels (phs, c_in)
       class(phs_wood_t), intent(inout) :: phs
       integer, intent(in) :: c_in
@@ -25720,6 +25720,8 @@ The input parameter [[m2]] corresponds to the squared mass of the emitter.
           (two * E_em - z * xii * q)
     case (UBF_FSR_MASSLESS_RECOIL)
        kt2 = real_kinematics%cms_energy2 / two * xii**2 * (1 - yy**2) / two
+    case (UBF_ISR)
+       kt2 = real_kinematics%cms_energy2 / four * xii**2 * (1 - yy**2) / (1 - xii)
     case default
        kt2 = zero
        call msg_bug ("kt2_type must be set to a known value")
@@ -25734,7 +25736,8 @@ matching is computed.
   integer, parameter, public :: UBF_FSR_SIMPLE = 1
   integer, parameter, public :: UBF_FSR_MASSIVE = 2
   integer, parameter, public :: UBF_FSR_MASSLESS_RECOIL = 3
-@ %def UBF_FSR_SIMPLE UBF_FSR_MASSIVE UBF_FSR_MASSLESS_RECOIL
+  integer, parameter, public :: UBF_ISR = 4
+@ %def UBF_FSR_SIMPLE UBF_FSR_MASSIVE UBF_FSR_MASSLESS_RECOIL UBF_ISR
 @
 <<PHS fks: real kinematics: TBP>>=
   procedure :: final => real_kinematics_final
@@ -27549,7 +27552,7 @@ $\xi$.
               xi_y_phi, no_jacobians)
       end if
       generator%real_kinematics%p_real_cms%phs_point(i_phs) = p_real
-      if (.not. phs%config%lab_is_cm)  p_real = phs%lt_cm_to_lab * p_real      
+      if (.not. phs%config%lab_is_cm)  p_real = phs%lt_cm_to_lab * p_real
       generator%real_kinematics%p_real_lab%phs_point(i_phs) = p_real
     end associate
   end subroutine phs_fks_generate_fsr
@@ -27894,8 +27897,17 @@ momentum vanishes. Thus we define
 
 @ %def parameters
 @ Computes $\xi_{\text{max}}$ in the case of ISR as documented in eq. \ref{eqn:xi_max_isr}.
+It is also used for the POWHEG matching.
+<<PHS fks: public>>=
+  public :: get_xi_max_isr
+<<PHS fks: sub interfaces>>=
+    module function get_xi_max_isr (xb, y) result (xi_max)
+      real(default) :: xi_max
+      real(default), dimension(2), intent(in) :: xb
+      real(default), intent(in) :: y
+    end function get_xi_max_isr
 <<PHS fks: procedures>>=
-  function get_xi_max_isr (xb, y) result (xi_max)
+  module function get_xi_max_isr (xb, y) result (xi_max)
     real(default) :: xi_max
     real(default), dimension(2), intent(in) :: xb
     real(default), intent(in) :: y
@@ -27985,7 +27997,7 @@ momentum vanishes. Thus we define
           end select
        end select
        generator%real_kinematics%p_real_lab%phs_point(i_phs) = p_real
-       if (.not. phs%config%lab_is_cm) then       
+       if (.not. phs%config%lab_is_cm) then
           sqrts_hat = (p_real(1) + p_real(2))**1
           p0 = p_real(1) + p_real(2)
           lt = boost (p0, sqrts_hat)
@@ -28112,7 +28124,7 @@ with $\Lambda$.
     type(vector4_t), dimension(4) :: p_tmp_real
     type(vector4_t) :: p_top
     type(lorentz_transformation_t) :: boost_to_rest_frame
-    integer, parameter :: nlegreal = 7 
+    integer, parameter :: nlegreal = 7
     !!! Factorized phase space so far only required for ee -> bwbw
 
     p_tmp_born = vector4_null; p_tmp_real = vector4_null
@@ -28158,10 +28170,10 @@ The sequence of Lorentz boosts required to construct [[p_real]] from
 [[p_born]] is as follows:
 \begin{enumerate}
   \item[\labelitemii] We construct the IS momenta of [[p_real]] from
-    the Born momenta via rescaling: 
+    the Born momenta via rescaling:
   [[p_real(1:2)]] $= \frac{x}{\overline{x}} \cdot$ [[p_born(1:2)]].
   If the Born momenta are imported in the lab frame, these will define
-  the real lab frame. 
+  the real lab frame.
   \item[\labelitemii] We construct the momentum of the radiated
     particle in the real CMS:
     $k_{n+1} = \frac{s \xi}{2} \cdot (1, \sin(\theta) \sin(\phi),
@@ -28272,9 +28284,9 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
     associate (jac => generator%real_kinematics%jac(i_phs))
        !!! Additional 1 / (1 - xi) factor because in the real jacobian,
        !!! there is s_real in the numerator
-       !!! We also have to adapt the flux factor, which is 1/2s_real for 
+       !!! We also have to adapt the flux factor, which is 1/2s_real for
        !!! the real component
-       !!! The reweighting factor is s_born / s_real, cancelling the 
+       !!! The reweighting factor is s_born / s_real, cancelling the
        !!! (1-x) factor from above
        jac%jac(1) = one / (one - xi)
        jac%jac(2) = one
@@ -28964,7 +28976,7 @@ has already been taken into account during its generation.
       real(default), intent(in) :: xi, y, phi
       integer, intent(in) :: emitter, i_phs
       type(vector4_t), intent(in), dimension(:) :: p_born
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
     end subroutine phs_fks_generator_generate_fsr_from_xi_and_y
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_generate_fsr_from_xi_and_y &
@@ -28974,7 +28986,7 @@ has already been taken into account during its generation.
     real(default), intent(in) :: xi, y, phi
     integer, intent(in) :: emitter, i_phs
     type(vector4_t), intent(in), dimension(:) :: p_born
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     associate (rad_var => generator%real_kinematics)
        rad_var%supply_xi_max = .false.
        rad_var%xi_tilde = xi
@@ -28986,6 +28998,42 @@ has already been taken into account during its generation.
   end subroutine phs_fks_generator_generate_fsr_from_xi_and_y
 
 @ %def phs_fks_generator_generate_fsr_from_xi_and_y
+@ Get [[xi]] and [[y]] from an external routine (e.g. [[powheg]]) and
+generate the ISR phase space.
+For this, we need to overwrite all variables of the real kinematics
+dependent on $(\xi,y,\phi)$ that we need to compute [[p_real]].
+From the [[isr_kinematics]] we just need [[sqme_born]] and [[x]].
+Both do not depend on the real radiation so we can leave them as they are.
+<<PHS fks: phs fks generator: TBP>>=
+  procedure :: generate_isr_from_xi_and_y => &
+     phs_fks_generator_generate_isr_from_xi_and_y
+<<PHS fks: sub interfaces>>=
+    module subroutine phs_fks_generator_generate_isr_from_xi_and_y &
+         (generator, xi, xi_max, y, phi, i_phs, p_born, p_real)
+      class(phs_fks_generator_t), intent(inout) :: generator
+      real(default), intent(in) :: xi, xi_max, y, phi
+      integer, intent(in) :: i_phs
+      type(vector4_t), intent(in), dimension(:) :: p_born
+      type(vector4_t), intent(out), dimension(:) :: p_real
+    end subroutine phs_fks_generator_generate_isr_from_xi_and_y
+<<PHS fks: procedures>>=
+  module subroutine phs_fks_generator_generate_isr_from_xi_and_y &
+       (generator, xi, xi_max, y, phi, i_phs, p_born, p_real)
+    class(phs_fks_generator_t), intent(inout) :: generator
+    real(default), intent(in) :: xi, xi_max, y, phi
+    integer, intent(in) :: i_phs
+    type(vector4_t), intent(in), dimension(:) :: p_born
+    type(vector4_t), intent(out), dimension(:) :: p_real
+    associate (rad_var => generator%real_kinematics)
+       rad_var%xi_max(i_phs) = xi_max
+       rad_var%xi_tilde = xi / xi_max
+       rad_var%y(i_phs) = y
+       rad_var%phi = phi
+    end associate
+    call generator%generate_isr (i_phs, p_born, p_real)
+  end subroutine phs_fks_generator_generate_isr_from_xi_and_y
+
+@ %def phs_fks_generator_generate_isr_from_xi_and_y
 @
 <<PHS fks: phs fks generator: TBP>>=
   procedure :: get_radiation_variables => &
@@ -29922,7 +29970,7 @@ end module phs_fks_uti
     pb1 = generator%real_kinematics%p_born_cms%phs_point(1)
     call threshold_projection_born (mtop, L_to_cms, pb1, p_born_onshell)
     generator%real_kinematics%p_born_onshell%phs_point(1) = p_born_onshell
-    
+
     call generator%real_kinematics%p_born_onshell%write &
         (1, unit = u, testflag = .true., ultra = .true.)
 
@@ -30296,7 +30344,7 @@ end submodule dispatch_phase_space_s
 @
 Allocate a phase-space object according to the variable [[$phs_method]].
 <<Dispatch phs: public>>=
-  public :: dispatch_phs  
+  public :: dispatch_phs
 <<Dispatch phs: sub interfaces>>=
     module subroutine dispatch_phs (phs, var_list, os_data, process_id, &
            mapping_defaults, phs_par, phs_method_in)

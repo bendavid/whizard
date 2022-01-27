@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.2+
 
+2022-01-27
+	Infrastructure for POWHEG matching for hadron collisions
+
 2021-12-16
 	Event files can be written/read also for decay processes
 	Implementation of running QED coupling alpha

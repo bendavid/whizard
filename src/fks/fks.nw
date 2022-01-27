@@ -18,6 +18,8 @@ These are the modules:
   Handle the real-subtraction matrix element.
 \item[nlo\_data]
   Manage the subtraction objects.
+\item[dglap\_remnant]
+  Handle the DGLAP Remnant matrix element.
 \end{description}
 
 This chapter deals with next-to-leading order contributions to cross sections.
@@ -2913,7 +2915,7 @@ must be compatible with the resonance.
 @ This subroutine splits up the ftuple-list of the singular regions
 into interference-free lists, i.e. lists which only contain the same
 emitter. This is relevant for factorized NLO calculations. In the
-current implementation, it is hand-tailored for the threshold 
+current implementation, it is hand-tailored for the threshold
 computation, but should be generalized further in the future.
 <<FKS regions: reg data: TBP>>=
   procedure :: split_up_interference_regions_for_threshold => &
@@ -4673,7 +4675,7 @@ and up to $3n$ ftuples with $i$ in the initial state.
     write (u, "(A)") "\item[$f_r$] Real flavor structure"
     write (u, "(A)") "\item[$i_r$] Index of the associated real flavor structure"
     write (u, "(A)") "\item[$\varepsilon$] Emitter"
-    write (u, "(A)") "\item[$\varsigma$] Multiplicity" 
+    write (u, "(A)") "\item[$\varsigma$] Multiplicity"
                           !!! The symbol used by 0908.4272 for multiplicities
     write (u, "(A)") "\item[$\mathcal{P}_{\rm{FKS}}$] The set of singular FKS-pairs"
     write (u, "(A)") "\item[$i_b$] Underlying Born index"
@@ -5481,9 +5483,9 @@ modification of the mapping functions. Recall that there, the ratios of
 the $d$-functions must approach either $1$ or $0$. This means
 \begin{equation*}
   \frac{d_{lm}}{d_{0m}} = \frac{(2k_l \cdot k_m) \left[E_lE_m /(E_l +
-      E_m)^2\right]}{E_m^2 (1-y^2)} 
+      E_m)^2\right]}{E_m^2 (1-y^2)}
     \overset {k_m = E_m \hat{k}} {=} \frac{E_l E_m^2}{(E_l + E_m)^2}
-    \frac{2k_l \cdot \hat{k}}{E_m^2 (1-y^2)} 
+    \frac{2k_l \cdot \hat{k}}{E_m^2 (1-y^2)}
     \overset {E_m \to 0}{=} \frac{2k_l \cdot \hat{k}}{E_l}{(1-y^2)},
 \end{equation*}
 where we have written the gluon momentum in terms of the soft momentum
@@ -7384,7 +7386,7 @@ constants, listed below:
   \gamma(g) &= \frac{11}{6} C_A - \frac{2}{3} T_F N_f,\\
   \label{eqn:gammap(q)}
   \gamma'(q) = \gamma'(\bar{q}) &= \left(\frac{13}{2} -
-  \frac{2\pi^2}{3}\right) C_F, \\ 
+  \frac{2\pi^2}{3}\right) C_F, \\
   \label{eqn:gammap(g)}
   \gamma'(g) &= \left(\frac{67}{9} - \frac{2\pi^2}{3}\right) C_A -
   \frac{23}{9} T_F N_f.
@@ -7757,9 +7759,9 @@ virtual corrections.
     integer :: i, j
     real(default) :: I_ij, BI_tmp
     BI_tmp = zero
-    ! TODO vincent_r: Split the procedure into one computing QCD eikonals 
+    ! TODO vincent_r: Split the procedure into one computing QCD eikonals
     ! and one computing QED eikonals.
-    ! TODO vincent_r: In the best case, remove the dependency on 
+    ! TODO vincent_r: In the best case, remove the dependency on
     ! reg_data completely.
     associate (flst_born => reg_data%flv_born(i_flv))
        do i = 1, virtual%n_legs
@@ -7896,8 +7898,8 @@ the virtual component. Its general structure is $\mathcal{Q} \cdot
 simply given by
 \begin{equation}
   \label{eqn:virt_Q_isr}
-  \mathcal{Q} = -\log\frac{\mu_F^2}{Q^2} \left(\gamma(\mathcal{I}_1) + 2 C 
-  (\mathcal{I}_1) \log(\xi_{\text{cut}}) + \gamma(\mathcal{I}_2) + 2 C (\mathcal{I}_2) 
+  \mathcal{Q} = -\log\frac{\mu_F^2}{Q^2} \left(\gamma(\mathcal{I}_1) + 2 C
+  (\mathcal{I}_1) \log(\xi_{\text{cut}}) + \gamma(\mathcal{I}_2) + 2 C (\mathcal{I}_2)
   \log(\xi_{\text{cut}}) \right),
 \end{equation}
 where $Q^2$ is the Ellis-Sexton scale and $\gamma$ is as in eqns. \ref{eqn:gamma(q)}
@@ -7935,7 +7937,7 @@ initial-initial interactions.
        end if
     end if
     sqme_born_virt = zero
-    if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 & 
+    if (reg_data%nlo_correction_type == "EW" .and. i_corr == 1 &
        .and. qcd_ew_interferences (reg_data%flv_born(i_flv)%flst)) then
        do i = 1, size (reg_data%flv_born(i_flv)%flst)
           if (is_quark (reg_data%flv_born(i_flv)%flst (i))) then
@@ -7993,9 +7995,9 @@ $\mathcal{Q}$ is given by
    \mathcal{Q} = \sum_{k=n_{in}}^{n_L^{(B)}} \left[\gamma'(\mathcal{I}_k)
      - \log\frac{s\delta_o}{2Q^2}\left(\gamma(\mathcal{I}_k)
      - 2C(\mathcal{I}_k)
-     \log\frac{2E_k}{\xi_{\text{cut}}\sqrt{s}}\right) \right.\\ 
+     \log\frac{2E_k}{\xi_{\text{cut}}\sqrt{s}}\right) \right.\\
      + \left. 2C(\mathcal{I}_k) \left( \log^2\frac{2E_k}{\sqrt{s}} -
-     \log^2 \xi_{\text{cut}} \right) 
+     \log^2 \xi_{\text{cut}} \right)
      - 2\gamma(\mathcal{I}_k)\log\frac{2E_k}{\sqrt{s}}\right].
   \end{split}
 \end{equation}
@@ -8008,9 +8010,9 @@ resonance-aware $\xi_{max}$ yields
     \mathcal{Q} = \sum_{k=n_{in}}^{n_L^{(B)}} \left[\gamma'(\mathcal{I}_k)
       + 2\left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max}\right)
       \left(\log\frac{\sqrt{s}}{2E_{em}} + \log\xi_{max} +
-      \log\frac{Q^2}{s}\right) C(\mathcal{I}_k) \right.\\ 
+      \log\frac{Q^2}{s}\right) C(\mathcal{I}_k) \right.\\
       + \left. 2 \log\xi_{max} \left(\log\xi_{max} -
-      \log\frac{Q^2}{k_{res}^2}\right) C(\mathcal{I}_k) 
+      \log\frac{Q^2}{k_{res}^2}\right) C(\mathcal{I}_k)
       + \left(\log\frac{Q^2}{k_{res}^2} - 2 \log\xi_{max}\right)
       \gamma(\mathcal{I}_k)\right].
   \end{split}
@@ -8124,7 +8126,7 @@ only implements the second one.
 
 @ %def virtual_compute_collinear_contribution
 @ For the massless-massive case and $i = j$ we get the massive
-self-eikonal of (A.10) in arXiv:0908.4272, given as 
+self-eikonal of (A.10) in arXiv:0908.4272, given as
 \begin{equation}
   \mathcal{I}_{ii} = \log \frac{\xi^2_{\text{cut}}s}{Q^2} -
   \frac{1}{\beta} \log \frac{1 + \beta}{1 - \beta}.
@@ -8667,10 +8669,10 @@ is the same for all initial state emitters.
 usual FSR, except for the scaling with the total gluon
 energy. Moreover, the resulting vector is rotated into the frame where
 the 3-axis points along the direction of the emitter. This is
-necessary because in the collinear limit, the approximation 
+necessary because in the collinear limit, the approximation
 \begin{equation*}
   k_i = \frac{k_i^0}{\bar{k}_j^0} \bar{k}_j =
-  \frac{\xi\sqrt{s}}{2\bar{k}_j^0}\bar{k}_j 
+  \frac{\xi\sqrt{s}}{2\bar{k}_j^0}\bar{k}_j
 \end{equation*}
 is used. The collinear limit is not included in the soft mismatch yet,
 but we keep the rotation for future usage here already (the
@@ -9127,13 +9129,13 @@ numerical value of the soft mismatch.
 @ Computes the soft mismatch in a given $\alpha_r$,
 \begin{align*}
   I_{s+,\alpha_r} &= \int d\Phi_B \int_0^\infty d\xi \int_{-1}^1 dy
-  \int_0^{2\pi} d\phi 
+  \int_0^{2\pi} d\phi
   \frac{s\xi}{(4\pi)^3} \\
   &\times \left\lbrace\tilde{R}_{\alpha_r}
   \left(e^{-\frac{2k_\gamma \cdot k_{res}}{k_{res}}^2} - e^{-\xi}\right)
   - \frac{32 \pi \alpha_s C_{em}}{s\xi^2} B_{f_b(\alpha_r)} (1-y)^{-1}
     \left[e^{-\frac{2\bar{k}_{em} \cdot k_{res}}{k_{res}^2}
-        \frac{k_\gamma^0}{k_{em}^0}} - e^{-\xi}\right]\right\rbrace. 
+        \frac{k_\gamma^0}{k_{em}^0}} - e^{-\xi}\right]\right\rbrace.
 \end{align*}
 <<Real subtraction: soft mismatch: TBP>>=
   procedure :: compute => soft_mismatch_compute
@@ -9267,7 +9269,7 @@ quantities.
 We have to compute
 \begin{equation*}
   \frac{J(\Phi_n,\xi,y,\phi)}{\xi}
-  \left[(1-y)\xi^2\mathcal{R}^\alpha(\Phi_{n+1})\right]|_{y = 1}. 
+  \left[(1-y)\xi^2\mathcal{R}^\alpha(\Phi_{n+1})\right]|_{y = 1}.
 \end{equation*}
 The Jacobian $J$ is proportional to $\xi$, due to the $d^3 k_{n+1} /
 k_{n+1}^0$ factor in the integration measure. It cancels the factor of
@@ -9279,7 +9281,7 @@ Inserting the splitting functions exemplarily for $q \to qg$ yields
   \frac{1+(1-z)^2}{z} \mathcal{B},
 \end{equation*}
 where we have chosen $z = E_\mathrm{rad} / \bar{E}_\mathrm{em}$ and
-$\bar{E}_\mathrm{em}$ denotes the emitter energy in the Born frame. 
+$\bar{E}_\mathrm{em}$ denotes the emitter energy in the Born frame.
 The collinear final state imposes $\bar{k}_n = k_{n} + k_{n + 1}$ for the
 connection between $\Phi_n$- and $\Phi_{n+1}$-phasepace and we get $1
 - z = E_\mathrm{em} / \bar{E}_\mathrm{em}$. The denominator can be
@@ -9295,24 +9297,24 @@ the whole expression is indeed collinear-finite. We can further transform
 so that in total we have
 \begin{equation*}
   g^\alpha = \frac{4\pi\alpha_s}{1-z} \frac{1}{\bar{k}_{\text{em}}^2}
-  C_F \left(\frac{\xi}{z}\right)^2 
+  C_F \left(\frac{\xi}{z}\right)^2
   (1 + (1-z)^2) \mathcal{B}
 \end{equation*}
 Follow up calculations give us
 \begin{align*}
   g^{\alpha, g \rightarrow gg} & =
-  \frac{4\pi\alpha_s}{1-z}\frac{1}{\bar{k}_{\text{em}}^2} 
+  \frac{4\pi\alpha_s}{1-z}\frac{1}{\bar{k}_{\text{em}}^2}
   C_{\mathrm{A}} \frac{\xi}{z} \left\lbrace 2 \left( \frac{z}{1 - z}
   \xi + \frac{1 - z}{\frac{z}{\xi}} \right) \mathcal{B} + 4\xi z(1 -
   z) \hat{k}_{\perp}^{\mu} \hat{k}_{\perp}^{\nu} \mathcal{B}_{\mu\nu}
-  \right\rbrace, \\ 
+  \right\rbrace, \\
   g^{\alpha, g \rightarrow qq} & = \frac{4\pi\alpha_s}{1-z}
-  \frac{1}{\bar{k}_{\text{em}}^2} T_{\mathrm{R}} 
+  \frac{1}{\bar{k}_{\text{em}}^2} T_{\mathrm{R}}
   \frac{\xi}{z} \left\lbrace \xi
   \mathcal{B} - 4\xi z(1 - z)
   \hat{k}_{\perp}^{\mu}
   \hat{k}_{\perp}^{\nu}
-  \mathcal{B}_{\mu\nu} \right\rbrace. 
+  \mathcal{B}_{\mu\nu} \right\rbrace.
 \end{align*}
 The ratio $z / \xi$ is finite in the soft limit
 \begin{equation*}
@@ -9732,7 +9734,6 @@ is true).
              sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, &
                   alpha_coupling)
              if (rsub%purpose == INTEGRATION .or. rsub%purpose == FIXED_ORDER_EVENTS) then
-                !!! (PS-2021-09-13) This is always executed as purpose is never set.
                 i_con = rsub%get_i_contributor (alr)
                 sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
              end if
@@ -9849,7 +9850,7 @@ Born momenta. For each summand of [[sum_s_alpha_soft]] we take
 for ftuples in which the first integer [[i1]] does not coincide with
 the emitter. This is necessary because only if we keep [[p_soft]]
 fixed, all soft S functions are computed with the same denominator and
-thus add up to 1. 
+thus add up to 1.
 <<Real subtraction: real subtraction: TBP>>=
   procedure :: sum_up_s_alpha_soft => real_subtraction_sum_up_s_alpha_soft
 <<Real subtraction: sub interfaces>>=
@@ -9931,8 +9932,7 @@ the corresponding Jacobians.
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, &
               rsub%real_kinematics, alr, i_phs, emitter, i_res)
          call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, &
-              rsub%real_kinematics, i_phs, .false., &
-              rsub%reg_data%has_pseudo_isr (), emitter)
+              rsub%real_kinematics, i_phs)
       end if
       if (rsub%subtraction_event .and. .not. (rsub%subtraction_deactivated &
             .or. region%nlo_correction_type == "none")) then
@@ -9953,18 +9953,9 @@ the corresponding Jacobians.
             sqme_cs = sqme_cs * symm_factor_fs
          end associate
          sqme_remn = compute_sqme_remnant_fsr (sqme_soft, sqme_cs, &
-              rsub%real_kinematics%xi_max(i_phs), &
-              template%xi_cut, rsub%real_kinematics%xi_tilde)
-         select case (rsub%purpose)
-         case (INTEGRATION)
-            sqme_tot = sqme_rad - sqme_soft - sqme_coll + sqme_cs + sqme_remn
-         case (FIXED_ORDER_EVENTS)
-            sqme_tot = - sqme_soft - sqme_coll + sqme_cs + sqme_remn
-         case default
-            sqme_tot = zero
-            call msg_bug ("real_subtraction_evaluate_region_fsr: " // &
-                 "Undefined rsub%purpose")
-         end select
+              rsub%real_kinematics%xi_max(i_phs), template%xi_cut, &
+              rsub%real_kinematics%xi_tilde)
+         sqme_tot = - sqme_soft - sqme_coll + sqme_cs + sqme_remn
       else
          sqme_tot = sqme_rad
       end if
@@ -10216,8 +10207,7 @@ However, it still remains to be motivated analytically.
          sqme_rad = rsub%sqme_real_non_sub (rsub%reg_data%get_matrix_element_index (alr), i_phs)
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, rsub%real_kinematics, &
               alr, i_phs, emitter, i_res)
-         call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, rsub%real_kinematics, &
-              i_phs, .true., .false.)
+         call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, rsub%real_kinematics, i_phs)
       end if
       if (rsub%subtraction_event .and. .not. (rsub%subtraction_deactivated &
             .or. region%nlo_correction_type == "none")) then
@@ -10235,7 +10225,7 @@ However, it still remains to be motivated analytically.
          sqme_remn = compute_sqme_remnant_isr (rsub%isr_kinematics%isr_mode, &
               sqme_soft, sqme_cs_plus, sqme_cs_minus, &
               rsub%isr_kinematics, rsub%real_kinematics, i_phs, template%xi_cut)
-         sqme_tot = sqme_rad - sqme_soft - sqme_coll_plus - sqme_coll_minus &
+         sqme_tot = - sqme_soft - sqme_coll_plus - sqme_coll_minus &
               + sqme_cs_plus + sqme_cs_minus + sqme_remn
       else
          sqme_tot = sqme_rad
@@ -10427,34 +10417,36 @@ However, it still remains to be motivated analytically and to be validated.
   end subroutine evaluate_fks_factors
 
 @ %def evaluate_fks_factors
-@
+@ Applies the Jacobian to the squared matrix element. During
+integration and when generating fixed order events, the non-kinematic
+part $\frac{s}{(4\pi)^3}$ is applied in [[real_subtraction_compute]] via
+[[get_phs_factor]]. For the purpose of generating POWHEG events, we do
+it here. The additional factor $\frac{\xi}{\tilde\xi}$ during
+integration comes from eq.~(4.19f) in arXiv:1002.2581.
+During integration, we sample $\tilde\xi \in [0,1]$ while we sample
+$\xi \in [p_T^2,\xi_\text{max}]$ for POWHEG matching.
+Thus, we are taking into account that $d\xi = d\tilde\xi
+\frac{\xi}{\tilde\xi}$. 
 <<Real subtraction: procedures>>=
-  subroutine apply_kinematic_factors_radiation (sqme, purpose, real_kinematics, &
-         i_phs, isr, threshold, emitter)
+  subroutine apply_kinematic_factors_radiation (sqme, purpose, &
+       real_kinematics, i_phs)
     real(default), intent(inout) :: sqme
     integer, intent(in) :: purpose
     type(real_kinematics_t), intent(in) :: real_kinematics
     integer, intent(in) :: i_phs
-    logical, intent(in) :: isr, threshold
-    integer, intent(in), optional :: emitter
-    real(default) :: xi, xi_tilde, s
+    real(default) :: xi, xi_tilde, s_b
     xi_tilde = real_kinematics%xi_tilde
     xi = xi_tilde * real_kinematics%xi_max (i_phs)
     select case (purpose)
     case (INTEGRATION, FIXED_ORDER_EVENTS)
        sqme = sqme * xi**2 / xi_tilde * real_kinematics%jac(i_phs)%jac(1)
     case (POWHEG)
-       !!! (PS 2021-09-21) This has been implemented but is never executed so far.
-       if (.not. isr) then
-          s = real_kinematics%cms_energy2
-          sqme = sqme * real_kinematics%jac(i_phs)%jac(1) * s / (8 * twopi3) * xi
-       else
-          call msg_fatal ("POWHEG with initial-state radiation not implemented yet")
-       end if
+       s_b = real_kinematics%cms_energy2
+       sqme = sqme * xi * s_b / (8 * twopi3) * real_kinematics%jac(i_phs)%jac(1)
     end select
   end subroutine apply_kinematic_factors_radiation
 
-@ %def apply_kinematics_factors_radiation
+@ %def apply_kinematic_factors_radiation
 @ This routine applies the factors in the integrand of eq. 4.20
 in arXiv:1002.2581 to the matrix elements.
 <<Real subtraction: procedures>>=
@@ -10522,7 +10514,7 @@ gluon. This only leads to a divergence collinear to the emitter
 because for anti-collinear quark emission, there are simply no
 divergent diagrams in the same region as two collinear quarks that
 cannot originate in the same splitting are non-divergent. This means
-that in case the emitter is 1, we need non-zero [[sqme_coll_plus]] 
+that in case the emitter is 1, we need non-zero [[sqme_coll_plus]]
 and in case the emitter is 2, we need non-zero [[sqme_coll_minus]].
 
 At this point, we want to remind ourselves that in case of initial
@@ -10612,8 +10604,7 @@ to be more consistent with the evaluation of the Born phase space.
 We specifically use the Born center-of-mass energy here.
 The real center-of-mass energy is only different from the Born center-of-mass
 energy in case of ISR. The missing factor $\frac{1}{1 - \xi}$ for this
-conversion is supplied in [[apply_kinematic_factors_radiation]] and
-[[phs_fks_generator_generate_isr]].
+conversion is supplied in [[phs_fks_generator_generate_isr]].
 <<Real subtraction: real subtraction: TBP>>=
   procedure :: get_phs_factor => real_subtraction_get_phs_factor
 <<Real subtraction: sub interfaces>>=
@@ -11466,7 +11457,7 @@ where $\Gamma$ are the DGLAP evolution kernels for an $a \to d$ splitting,
 \end{equation}
 $K_{ad}$ is a renormalization scheme matching factor, which is exactly
 zero in $\overline{\text{MS}}$. Let the leading-order hadronic cross
-section be given by 
+section be given by
 \begin{equation}
   \label{eqn:xsec_hadro_lo}
   d\sigma^{(0)}(s) = \int dx_\oplus dx_\ominus f_\oplus (x_\oplus)
@@ -11476,10 +11467,10 @@ then the NLO hadronic cross section is
 \begin{equation}
   \label{eqn:xsec_hadro_nlo}
   d\sigma^{(1)}(s) = \int dx_\oplus dx_\ominus dz_\oplus dz_\ominus
-  f_\oplus (x_\oplus) f_\ominus (x_\ominus) 
+  f_\oplus (x_\oplus) f_\ominus (x_\ominus)
   \underbrace{\Gamma_\oplus (z_\oplus) \Gamma_\ominus (z_\ominus)
     d\tilde{\sigma}^{(1)} (z_\oplus z_\ominus
-    s)}_{d\hat{\sigma}^{(1)}}. 
+    s)}_{d\hat{\sigma}^{(1)}}.
 \end{equation}
 $d\hat{\sigma}$ is called the subtracted partonic cross
 section. Expanding in $\alpha_s$ we find
@@ -11488,12 +11479,12 @@ section. Expanding in $\alpha_s$ we find
   d\hat{\sigma}^{(1)}_{ab}(k_1, k_2) &= d\tilde{\sigma}_{ab}^{(1)} (k_1, k_2) \\
   &+ \frac{\alpha_s}{2\pi} \sum_d
   \int dx \left (\frac{1}{\epsilon} P_{da}(x,0) - K_{da}(x)\right)
-  d\tilde{\sigma}_{db}^{(0)}(xk_1, k_2)\\ 
+  d\tilde{\sigma}_{db}^{(0)}(xk_1, k_2)\\
   &+ \frac{\alpha_s}{2\pi} \sum_d \int \left (\frac{1}{\epsilon}
   P_{db} (x, 0) - K_{db}(x)\right) d\tilde{\sigma}_{ad}^{(0)}(k_1,
-  xk_2).\\ 
+  xk_2).\\
   &= d\tilde{\sigma}_{ab}^{(1)} + d\tilde{\sigma}_{ab}^{(cnt,+)} +
-  d\tilde{\sigma}_{ab}^{(cnt,-)} 
+  d\tilde{\sigma}_{ab}^{(cnt,-)}
 \end{align}
 
 Let us now turn to the soft-subtracted real part of the cross
@@ -11503,46 +11494,46 @@ region,
   \label{eqn:R-in}
   d\sigma^{(in)}_\alpha &= \left[\left(\frac{1}{\xi}\right)_{c} -
     2\epsilon\left(\frac{\log \xi}{\xi}\right)_{c}\right] (1-y^2)\xi^2
-  \mathcal{R}_\alpha \mathcal{S}_\alpha \\ 
+  \mathcal{R}_\alpha \mathcal{S}_\alpha \\
   &\times  \frac{1}{2(2\pi)^{3-2\epsilon}}
   \left(\frac{\sqrt{s}}{2}\right)^{2-2\epsilon} \left( 1 -
-  y^2\right)^{-1-\epsilon} d\phi d\xi dy d\Omega^{2-2\epsilon}, 
+  y^2\right)^{-1-\epsilon} d\phi d\xi dy d\Omega^{2-2\epsilon},
 \end{align*}
 where we regularize collinear divergencies using the identity
 \begin{equation*}
   \left (1 - y^2 \right)^{-1-\epsilon} =
   -\frac{2^{-\epsilon}}{2\epsilon} \left (\delta(1-y) +
-  \delta(1+y)\right) 
+  \delta(1+y)\right)
      + \underbrace{\frac{1}{2} \left[ \left (\frac {1}{1-y}\right)_{c}
-         + \left (\frac{1}{1+y}\right)_{c} \right]}_{\mathcal{P}(y)}. 
+         + \left (\frac{1}{1+y}\right)_{c} \right]}_{\mathcal{P}(y)}.
 \end{equation*}
 This enables us to split the cross section into a finite and a
 singular part. The latter can further be separated into a contribution
 of the incoming and of the outgoing particles,
 \begin{equation*}
   d\sigma^{(in)}_\alpha = d\sigma^{(in,+)}_\alpha +
-  d\sigma^{(in,-)}_\alpha + d\sigma^{(in,f)}_\alpha. 
+  d\sigma^{(in,-)}_\alpha + d\sigma^{(in,f)}_\alpha.
 \end{equation*}
 They are given by
 \begin{align}
   d\sigma^{(in,f)}_\alpha = & \mathcal{P}(y)
   \left[\left(\frac{1}{\xi}\right)_{c} - 2\epsilon
     \left(\frac{\log\xi}{\xi}\right)_{c}\right]
-  \frac{1}{2(2\pi)^{3-2\epsilon}} 
+  \frac{1}{2(2\pi)^{3-2\epsilon}}
   \left(\frac{\sqrt{s}}{2}\right)^{2-2\epsilon} \nonumber\\
   & \times (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi
-  d\xi dy d\Omega^{2-2\epsilon} 
+  d\xi dy d\Omega^{2-2\epsilon}
   \label{eqn:sigma-f}
 \end{align}
 and
 \begin{align}
   d\sigma^{(in,\pm)}_\alpha &= -\frac{2^{-\epsilon}}{2\epsilon} \delta
   (1 \mp y) \left[ \left( \frac{1}{\xi}\right)_{c} - 2\epsilon
-    \left(\frac{\log\xi}{\xi}\right)_{c}\right] \nonumber\\ 
+    \left(\frac{\log\xi}{\xi}\right)_{c}\right] \nonumber\\
   & \times \frac{1}{2(2\pi)^{3-2\epsilon}} \left(
   \frac{\sqrt{s}}{2}\right)^{2-2\epsilon} (1-y^2)\xi^2
   \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy
-  d\Omega^{2-2\epsilon}. 
+  d\Omega^{2-2\epsilon}.
   \label{eqn:sigma-pm}
 \end{align}
 Equation \ref{eqn:sigma-f} is the contribution to the real cross
@@ -11558,7 +11549,7 @@ collinear limit, obtaining
 \begin{equation*}
   \lim_{y \to 1} (1-y^2)\xi^2\mathcal{R}_\alpha = 8\pi\alpha_s
   \mu^{2\epsilon} \left(\frac{2}{\sqrt{s}}\right)^2 \xi P^<(1-\xi,
-  \epsilon) \mathcal{R}_\alpha, 
+  \epsilon) \mathcal{R}_\alpha,
 \end{equation*}
 with the Altarelli-Parisi splitting kernel for $z < 1$,
 $P^<(z,\epsilon)$. Moreover, $\lim_{\vec{k} \parallel \vec{k}_1} d\phi
@@ -11580,9 +11571,9 @@ which yields
 \begin{equation} \label{eqn:sigma-cnt}
   d\tilde{\sigma}^{(cnt,+)}_{\alpha} = \frac{\alpha_s}{2\pi} \sum_d
   \left\lbrace -K_{da}(1-\xi) + \frac{1}{\epsilon}
-  \left[\left(\frac{1}{\xi}\right)_+ \xi P_{da}^<(1-\xi,0) 
+  \left[\left(\frac{1}{\xi}\right)_+ \xi P_{da}^<(1-\xi,0)
     + \delta_{da}\delta(\xi)\gamma(d)\right]\right\rbrace
-  \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy. 
+  \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy.
 \end{equation}
 This term has the same pole structure as eqn. \ref{eqn:sigma-pm}. This
 makes clear that the quantity
@@ -11602,18 +11593,18 @@ involving the first derivative,
 \begin{equation*}
   P_{ab}^<(z,\epsilon) = P_{ab}^<(z,0) + \epsilon \frac{\partial
     P_{ab}^<(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} +
-  \mathcal{O}(\alpha_s^2). 
+  \mathcal{O}(\alpha_s^2).
 \end{equation*}
 This finally gives us the equation for the collinear remnant. Note
 that there is still one soft $1/\epsilon$-pole, which cancels out with
 the corresponding expression in the soft-virtual terms.
 \begin{align} \label{eqn:sigma-in-p-final}
   d\hat{\sigma}^{(in,+)} &= \frac{\alpha_s}{2\pi} \frac{1}{\epsilon}
-  \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \nonumber\\ 
+  \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \nonumber\\
   &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z)
   P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_{c}
     \log\frac{s\delta_{\mathrm{I}}}{2\mu^2} + 2
-    \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right. \nonumber\\ 
+    \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right. \nonumber\\
   &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial
     \epsilon} \left(\frac{1}{1-z}\right)_{c} - K_{da}(z)\right\rbrace
   \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy
@@ -11743,9 +11734,9 @@ Explicitly, this means (see JHEP 06(2010)043, (4.11)-(4.12))
   \log \frac{1-\bar{x}_\oplus}{\xi_{\text{cut}}} f(1) + \int_{\bar{x}_\oplus}^1
   \frac{f(z) - f(1)}{1-z}, \\
   \int_{\bar{x}_\oplus}^1 dz
-  \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & = 
+  \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & =
   \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - \log^2
-  (\xi_{\text{cut}}) \right)f(1) + 
+  (\xi_{\text{cut}}) \right)f(1) +
   \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
 \end{align}
 and the same of course for $\bar{x}_\ominus$. These two terms are

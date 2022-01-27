@@ -9004,7 +9004,7 @@ end module shower
 [[POWHEG_TESTING]] allows to disable the parton shower for validation
 and testing of the POWHEG procedure.
 <<Shower: parameters>>=
-  logical, parameter :: POWHEG_TESTING = .false.
+  logical, parameter :: POWHEG_TESTING = .true.
 
 @ %def POWHEG_TESTING
 @
@@ -9195,11 +9195,11 @@ we mark the particle set as invalid. This procedure directly takes the
   subroutine evt_shower_generate_weighted (evt, probability)
     class(evt_shower_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
-    logical :: valid, vetoed
+    logical :: valid, vetoed, is_powheg_matching
     if (debug_on) call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
     if (signal_is_pending ())  return
     evt%particle_set = evt%previous%particle_set
-    valid = .true.;  vetoed = .false.
+    valid = .true.;  vetoed = .false.; is_powheg_matching = .false.
     if (evt%is_first_event)  call evt%first_event ()
     call evt%shower%import_particle_set (evt%particle_set)
     if (allocated (evt%matching)) then
@@ -9209,12 +9209,20 @@ we mark the particle set as invalid. This procedure directly takes the
           call evt%matching%write ()
        end if
     end if
-    if (.not. (vetoed .or. POWHEG_TESTING)) then
-       if (evt%shower%settings%method == PS_PYTHIA6 .or. &
-           evt%shower%settings%hadronization_active) then
-          call assure_heprup (evt%particle_set)
+    if (allocated (evt%matching)) then
+       select type (matching => evt%matching)
+       type is (powheg_matching_t)
+          is_powheg_matching = .true.
+       end select
+    end if
+    if (.not. vetoed) then
+       if (.not. POWHEG_TESTING .or. .not. is_powheg_matching) then
+          if (evt%shower%settings%method == PS_PYTHIA6 .or. &
+              evt%shower%settings%hadronization_active) then
+             call assure_heprup (evt%particle_set)
+          end if
+          call evt%shower%generate_emissions (valid)
        end if
-       call evt%shower%generate_emissions (valid)
     end if
     probability = 1
     evt%particle_set_exists = valid .and. .not. vetoed
@@ -13525,6 +13533,7 @@ module dispatch_transforms
   use system_defs, only: LF
   use system_dependencies, only: LHAPDF6_AVAILABLE
   use sf_lhapdf, only: lhapdf_initialize
+  use pdf, only: pdf_data_t
   use diagnostics
   use models
   use os_interface
@@ -13777,8 +13786,10 @@ implementation requires the handler modes of ISR and EPA to coincide.
             'not implemented!')
        end select
        call evt%shower%init (settings, taudec_settings, evt%pdf_data, os_data)
+       call dispatch_matching (evt, settings, var_list, process_name, evt%pdf_data)
+    class default
+       call dispatch_matching (evt, settings, var_list, process_name)
     end select
-    call dispatch_matching (evt, settings, var_list, process_name)
   end subroutine dispatch_evt_shower
 
 @ %def dispatch_evt_shower
@@ -13786,14 +13797,29 @@ implementation requires the handler modes of ISR and EPA to coincide.
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_shower_hook
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_shower_hook (hook, var_list, process_instance)
+  subroutine dispatch_evt_shower_hook (hook, var_list, process_instance, beam_structure, pdf_set)
     class(process_instance_hook_t), pointer, intent(out) :: hook
     type(var_list_t), intent(in) :: var_list
     class(process_instance_t), intent(in), target :: process_instance
+    type(beam_structure_t), intent(in) :: beam_structure
+    integer, intent(in) :: pdf_set
+    type(pdf_data_t) :: pdf_data
+    type(string_t) :: lhapdf_file, lhapdf_dir
+    integer :: lhapdf_member
     if (var_list%get_lval (var_str ('?powheg_matching'))) then
        call msg_message ("Integration hook: add POWHEG hook")
        allocate (powheg_matching_hook_t :: hook)
-       call hook%init (var_list, process_instance)
+       select type (hook)
+       type is (powheg_matching_hook_t)
+          lhapdf_member = var_list%get_ival (var_str ("lhapdf_member"))
+          if (LHAPDF6_AVAILABLE) then
+             lhapdf_dir = var_list%get_sval (var_str ("$lhapdf_dir"))
+             lhapdf_file = var_list%get_sval (var_str ("$lhapdf_file"))
+             call lhapdf_initialize (1, lhapdf_dir, lhapdf_file, lhapdf_member, pdf_data%pdf)
+          end if
+          call pdf_data%setup ("Shower", beam_structure, lhapdf_member, pdf_set)
+          call hook%init (var_list, process_instance, pdf_data)
+       end select
     else
        hook => null ()
     end if
@@ -13804,11 +13830,12 @@ implementation requires the handler modes of ISR and EPA to coincide.
 <<Dispatch transforms: public>>=
   public :: dispatch_matching
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_matching (evt, settings, var_list, process_name)
+  subroutine dispatch_matching (evt, settings, var_list, process_name, pdf_data)
     class(evt_t), intent(inout) :: evt
+    type(shower_settings_t), intent(in) :: settings
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in) :: process_name
-    type(shower_settings_t), intent(in) :: settings
+    type(pdf_data_t), intent(in), optional :: pdf_data
     select type (evt)
     type is (evt_shower_t)
        if (settings%mlm_matching .and. settings%ckkw_matching) then
@@ -13827,8 +13854,15 @@ implementation requires the handler modes of ISR and EPA to coincide.
           call msg_warning ("Simulate: CKKW(-L) matching not yet supported")
           allocate (ckkw_matching_t :: evt%matching)
        end if
-       if (allocated (evt%matching)) &
-            call evt%matching%init (var_list, process_name)
+       if (allocated (evt%matching)) then
+          call evt%matching%init (var_list, process_name)
+          if (present(pdf_data)) then
+             select type (matching => evt%matching)
+             type is (powheg_matching_t)
+                matching%process_deps%pdf_data = pdf_data
+             end select
+          end if
+       end if
     end select
   end subroutine dispatch_matching
 

@@ -6359,8 +6359,9 @@ is possible.  The reconstructed momentum is not projected on-shell.
 @ %def particle_set_parent_add_child
 @ Given the [[particle_set]] before radiation, the new momenta
 [[p_radiated]], the [[emitter]] and the [[flv_radiated]] as well as the
-[[model]] and a random number [[r_color]] for chosing a color, we update
-the [[particle_set]].
+[[model]] and a random number [[r_color]] for chosing a color in
+ambiguous cases, we update the [[particle_set]].
+The reference for this procedure is [0709.2092], Sec. 4.5.1.
 <<Particles: particle set: TBP>>=
   procedure :: build_radiation => particle_set_build_radiation
 <<Particles: sub interfaces>>=
@@ -6384,10 +6385,9 @@ the [[particle_set]].
     real(default), intent(in) :: r_color
     type(particle_set_t) :: new_particle_set
     type(particle_t) :: new_particle
-    integer :: i
-    integer :: pdg_index_emitter, pdg_index_radiation
+    integer :: i, pdg_index_emitter, pdg_index_radiation
     integer, dimension(:), allocatable :: parents, children
-    type(flavor_t) :: new_flv
+    type(flavor_t) :: new_flv, real_emitter_flavor
     logical, dimension(:), allocatable :: status_mask
     integer, dimension(:), allocatable :: &
          i_in1, i_beam1, i_remnant1, i_virt1, i_out1
@@ -6395,8 +6395,8 @@ the [[particle_set]].
          i_in2, i_beam2, i_remnant2, i_virt2, i_out2
     integer :: n_in1, n_beam1, n_remnant1, n_virt1, n_out1
     integer :: n_in2, n_beam2, n_remnant2, n_virt2, n_out2
-    integer :: n, n_tot
-    integer :: i_emitter
+    integer :: n, n_tot, i_emitter
+    logical :: is_fsr
 
     n = particle_set%get_n_tot ()
     allocate (status_mask (n))
@@ -6484,11 +6484,19 @@ the [[particle_set]].
     pdg_index_emitter = flv_radiated (emitter)
     pdg_index_radiation = flv_radiated (n_in2 + n_out2)
     call new_flv%init (pdg_index_radiation, model)
-    i_emitter = emitter + n_virt2 + n_remnant2 + n_beam2
+    is_fsr = emitter > n_in1
+    if (is_fsr) then
+       i_emitter = emitter + n_virt2 + n_remnant2 + n_beam2
+    else
+       i_emitter = emitter + n_beam2
+    end if
+
+    call real_emitter_flavor%init (pdg_index_emitter, model)
+    call new_particle_set%prt(i_emitter)%set_flavor(real_emitter_flavor)
 
     call reassign_colors (new_particle, new_particle_set%prt(i_emitter), &
-         pdg_index_radiation, pdg_index_emitter, r_color)
-    
+         pdg_index_radiation, pdg_index_emitter, is_fsr, r_color)
+
     call new_particle%set_flavor (new_flv)
     new_particle_set%prt(n_tot) = new_particle
 
@@ -6508,25 +6516,40 @@ the [[particle_set]].
   contains
 
     <<build radiation: set color offset>>
-    subroutine reassign_colors (prt_radiated, prt_emitter, i_rad, i_em, r_col)
+    subroutine reassign_colors (prt_radiated, prt_emitter, flv_rad, flv_em, is_fsr, r_col)
       type(particle_t), intent(inout) :: prt_radiated, prt_emitter
-      integer, intent(in) :: i_rad, i_em
+      integer, intent(in) :: flv_rad, flv_em
+      logical, intent(in) :: is_fsr
       real(default), intent(in) :: r_col
       type(color_t) :: col_rad, col_em
-      if (is_quark (i_em) .and. is_gluon (i_rad)) then
-         call reassign_colors_qg (prt_emitter, col_rad, col_em)
-      else if (is_gluon (i_em) .and. is_gluon (i_rad)) then
-         call reassign_colors_gg (prt_emitter, r_col, col_rad, col_em)
-      else if (is_gluon (i_em) .and. is_quark (i_rad)) then
-         call reassign_colors_qq (prt_emitter, i_em, col_rad, col_em)
+      if (is_fsr) then
+         if (is_quark (flv_em) .and. is_gluon (flv_rad)) then
+            call reassign_colors_q_to_qg_fsr (prt_emitter, col_rad, col_em)
+         else if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
+            call reassign_colors_g_to_gg_fsr (prt_emitter, r_col, col_rad, col_em)
+         else if (is_quark (flv_em) .and. is_quark (flv_rad)) then
+            call reassign_colors_g_to_qq_fsr (prt_emitter, flv_em, col_rad, col_em)
+         else
+            call msg_fatal ("reassign_colors: invalid splitting")
+         end if
       else
-         call msg_fatal ("Invalid splitting")
+         if (is_quark (flv_em) .and. is_gluon (flv_rad)) then
+            call reassign_colors_q_to_qg_isr (prt_emitter, col_rad, col_em)
+         else if (is_quark (flv_em) .and. is_quark (flv_rad)) then
+            call reassign_colors_g_to_qq_isr (prt_emitter, flv_rad, col_rad, col_em)
+         else if (is_gluon (flv_em) .and. is_quark (flv_rad)) then
+            call reassign_colors_q_to_gq_isr (prt_emitter, col_rad, col_em)
+         else if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
+            call reassign_colors_g_to_gg_isr (prt_emitter, r_col, col_rad, col_em)
+         else
+            call msg_fatal ("reassign_colors: invalid splitting")
+         end if
       end if
       call prt_emitter%set_color (col_em)
       call prt_radiated%set_color (col_rad)
     end subroutine reassign_colors
 
-    subroutine reassign_colors_qg (prt_emitter, col_rad, col_em)
+    subroutine reassign_colors_q_to_qg_fsr (prt_emitter, col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
       type(color_t), intent(out) :: col_rad, col_em
       integer, dimension(2) :: color_rad, color_em
@@ -6546,10 +6569,9 @@ the [[particle_set]].
       color_em(i1) = new_color_index
       call col_em%init_col_acl (color_em(1), color_em(2))
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
-    end subroutine reassign_colors_qg
+    end subroutine reassign_colors_q_to_qg_fsr
 
-    subroutine reassign_colors_gg (prt_emitter, random, col_rad, col_em)
-      !!! NOT TESTED YET
+    subroutine reassign_colors_g_to_gg_fsr (prt_emitter, random, col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
       real(default), intent(in) :: random
       type(color_t), intent(out) :: col_rad, col_em
@@ -6558,7 +6580,7 @@ the [[particle_set]].
       integer :: new_color_index
 
       color_em = prt_emitter%get_color ()
-      new_color_index = maxval (abs (color_em))
+      new_color_index = maxval (abs (color_em))+1
       i1 = 1; i2 = 2
       if (random < 0.5) then
          i1 = 2; i2 = 1
@@ -6568,10 +6590,9 @@ the [[particle_set]].
       color_em(i2) = new_color_index
       call col_em%init_col_acl (color_em(1), color_em(2))
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
-    end subroutine reassign_colors_gg
+    end subroutine reassign_colors_g_to_gg_fsr
 
-    subroutine reassign_colors_qq (prt_emitter, pdg_emitter, col_rad, col_em)
-      !!! NOT TESTED YET
+    subroutine reassign_colors_g_to_qq_fsr (prt_emitter, pdg_emitter, col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
       integer, intent(in) :: pdg_emitter
       type(color_t), intent(out) :: col_rad, col_em
@@ -6590,7 +6611,93 @@ the [[particle_set]].
       color_rad(i2) = color_em(i1)
       call col_em%init_col_acl (color_em(1), color_em(2))
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
-    end subroutine reassign_colors_qq
+    end subroutine reassign_colors_g_to_qq_fsr
+
+    subroutine reassign_colors_q_to_qg_isr (prt_emitter, col_rad, col_em)
+      type(particle_t), intent(in) :: prt_emitter
+      type(color_t), intent(out) :: col_rad, col_em
+      integer, dimension(2) :: color_rad, color_em
+      integer :: i1, i2
+      integer :: new_color_index
+      logical :: is_anti_quark
+
+      color_em = prt_emitter%get_color ()
+      i1 = 1; i2 = 2
+      is_anti_quark = color_em(2) /= 0
+      if (is_anti_quark) then
+         i1 = 2; i2 = 1
+      end if
+      new_color_index = color_em(i1)+1
+      color_rad(i2) = color_em(i1)
+      color_rad(i1) = new_color_index
+      color_em(i1) = new_color_index
+      call col_em%init_col_acl (color_em(1), color_em(2))
+      call col_rad%init_col_acl (color_rad(1), color_rad(2))
+    end subroutine reassign_colors_q_to_qg_isr
+
+    subroutine reassign_colors_g_to_qq_isr (prt_emitter, pdg_rad, col_rad, col_em)
+      type(particle_t), intent(in) :: prt_emitter
+      integer, intent(in) :: pdg_rad
+      type(color_t), intent(out) :: col_rad, col_em
+      integer, dimension(2) :: color_rad, color_em
+      integer :: i1, i2
+      logical :: is_anti_quark
+
+      color_em = prt_emitter%get_color ()
+      i1 = 1; i2 = 2
+      is_anti_quark = pdg_rad < 0
+      if (is_anti_quark) then
+         i1 = 2; i1 = 1
+      end if
+      color_rad(i1) = color_em(i2)
+      color_rad(i2) = 0
+      color_em(i2) = 0
+      call col_em%init_col_acl (color_em(1), color_em(2))
+      call col_rad%init_col_acl (color_rad(1), color_rad(2))
+    end subroutine reassign_colors_g_to_qq_isr
+
+    subroutine reassign_colors_q_to_gq_isr (prt_emitter, col_rad, col_em)
+      type(particle_t), intent(in) :: prt_emitter
+      type(color_t), intent(out) :: col_rad, col_em
+      integer, dimension(2) :: color_rad, color_em
+      integer :: i1, i2
+      integer :: new_color_index
+      logical :: is_anti_quark
+
+      color_em = prt_emitter%get_color ()
+      i1 = 1; i2 = 2
+      is_anti_quark = color_em(2) /= 0
+      if (is_anti_quark) then
+         i1 = 2; i2 = 1
+      end if
+      new_color_index = color_em(i1)+1
+      color_rad(i1) = 0
+      color_rad(i2) = new_color_index
+      color_em(i2) = new_color_index
+      call col_em%init_col_acl (color_em(1), color_em(2))
+      call col_rad%init_col_acl (color_rad(1), color_rad(2))
+    end subroutine reassign_colors_q_to_gq_isr
+
+    subroutine reassign_colors_g_to_gg_isr (prt_emitter, random, col_rad, col_em)
+      type(particle_t), intent(in) :: prt_emitter
+      real(default), intent(in) :: random
+      type(color_t), intent(out) :: col_rad, col_em
+      integer, dimension(2) :: color_rad, color_em
+      integer :: i1, i2
+      integer :: new_color_index
+
+      color_em = prt_emitter%get_color ()
+      new_color_index = maxval (abs (color_em))+1
+      i1 = 1; i2 = 2
+      if (random < 0.5) then
+         i1 = 2; i2 = 1
+      end if
+      color_rad(i2) = new_color_index
+      color_rad(i1) = color_em(i2)
+      color_em(i2) = new_color_index
+      call col_em%init_col_acl (color_em(1), color_em(2))
+      call col_rad%init_col_acl (color_rad(1), color_rad(2))
+    end subroutine reassign_colors_g_to_gg_isr
   end subroutine particle_set_build_radiation
 
 @ %def particle_set_build_radiation
