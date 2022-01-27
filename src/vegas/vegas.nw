@@ -12,26 +12,25 @@
 
 module vegas
 <<Use kinds>>
-
-<<vegas: modules>>
+<<Vegas: modules>>
 
 <<Standard module head>>
 
-<<vegas: public>>
+<<Vegas: public>>
 
-<<vegas: parameters>>
+<<Vegas: parameters>>
 
-<<vegas: types>>
+<<Vegas: types>>
 
-<<vegas: interfaces>>
+<<Vegas: interfaces>>
 
 contains
 
-<<vegas: procedures>>
+<<Vegas: procedures>>
 
 end module vegas
 @ %def vegas
-<<vegas: modules>>=
+<<Vegas: modules>>=
   use diagnostics
   use io_units
   use format_utils, only: write_indent
@@ -40,7 +39,7 @@ end module vegas
   use rng_stream, only: rng_stream_t
 @
 @ MPI Module.
-<<MPI: vegas: modules>>=
+<<MPI: Vegas: modules>>=
   use request_callback, only: request_handler_t
   use mpi_f08 !NODEP!
 @
@@ -52,7 +51,7 @@ end module vegas
 The default mode is [[vegas_mode_importance]], where the algorithm decides whether if it is possible to use importance sampling or stratified sampling.
 In low dimensions VEGAS uses strict stratified sampling.
 
-<<vegas: parameters>>=
+<<Vegas: parameters>>=
   integer, parameter, public :: VEGAS_MODE_IMPORTANCE = 0, &
        & VEGAS_MODE_STRATIFIED = 1, VEGAS_MODE_IMPORTANCE_ONLY = 2
 @ %def vegas_mode_importance vegas_mode_stratified vegas_mode_importance_only
@@ -62,9 +61,9 @@ In low dimensions VEGAS uses strict stratified sampling.
 
 We define a abstract [[func]] type which only gives an interface to an [[evaluate]] procedure.
 The inside of implementation and also the optimization of are not a concern of the [[vegas]] implementation.
-<<vegas: public>>=
+<<Vegas: public>>=
   public :: vegas_func_t
-<<vegas: types>>=
+<<Vegas: types>>=
   type, abstract :: vegas_func_t
      !
    contains
@@ -74,7 +73,7 @@ The inside of implementation and also the optimization of are not a concern of t
 @ %def vegas_func_t
 @ The only procedure called in [[vegas]] is [[vegas_func_evaluate]].
 It takes a real value [[x]] and returns a real value [[f]].
-<<vegas: interfaces>>=
+<<Vegas: interfaces>>=
   abstract interface
      real(default) function vegas_func_evaluate (self, x) result (f)
        import :: default, vegas_func_t
@@ -94,9 +93,9 @@ We provide a get method which returns a copy of the [[vegas_config_t]] object.
 
 Apart from the options which can be set by the constructor of [[vegas_t]] object, we store the run-time configuration [[n_calls]], [[calls_per_box]], [[n_bins]] and [[n_boxes]].
 Those are calculated and set accordingly by VEGAS.
-<<vegas: public>>=
+<<Vegas: public>>=
   public :: vegas_config_t
-<<vegas: types>>=
+<<Vegas: types>>=
   type :: vegas_config_t
      integer :: n_dim = 0
      real(default) :: alpha = 1.5
@@ -109,14 +108,14 @@ Those are calculated and set accordingly by VEGAS.
      integer :: n_boxes = 1
      integer :: n_bins = 1
    contains
-   <<vegas: vegas config: TBP>>
+   <<Vegas: vegas config: TBP>>
   end type vegas_config_t
 
 @ %def vegas_config_t, n_calls, calls_per_box, n_bins, n_boxes
 @ Write out the configuration of the grid.
-<<vegas: vegas config: TBP>>=
+<<Vegas: vegas config: TBP>>=
   procedure, public :: write => vegas_config_write
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_config_write (self, unit, indent)
     class(vegas_config_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -163,9 +162,9 @@ Those are calculated and set accordingly by VEGAS.
 
 We provide a simple and transparent grid container. The container can then later
 be used, to export the actual grid.
-<<vegas: public>>=
+<<Vegas: public>>=
   public :: vegas_grid_t
-<<vegas: types>>=
+<<Vegas: types>>=
   type :: vegas_grid_t
      integer :: n_dim = 1
      integer :: n_bins = 1
@@ -174,17 +173,17 @@ be used, to export the actual grid.
      real(default), dimension(:), allocatable :: delta_x
      real(default), dimension(:,:), allocatable :: xi
    contains
-   <<vegas: vegas grid: TBP>>
+   <<Vegas: vegas grid: TBP>>
   end type vegas_grid_t
 
 @ %def vegas_grid_t
 @ Initialise grid.
-<<vegas: interfaces>>=
+<<Vegas: interfaces>>=
   interface vegas_grid_t
      module procedure vegas_grid_init
   end interface vegas_grid_t
 
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   type(vegas_grid_t) function vegas_grid_init (n_dim, n_bins_max) result (self)
     integer, intent(in) :: n_dim
     integer, intent(in) :: n_bins_max
@@ -198,9 +197,9 @@ be used, to export the actual grid.
 
 @ %def vegas_grid_init
 @ Output.
-<<vegas: vegas grid: TBP>>=
+<<Vegas: vegas grid: TBP>>=
   procedure, public :: write => vegas_grid_write
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_grid_write (self, unit, pacify)
     class(vegas_grid_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -255,13 +254,13 @@ be used, to export the actual grid.
 
 @ %def vegas_grid_write
 @ Compare two grids, if they match up to an given precision.
-<<vegas: public>>=
+<<Vegas: public>>=
   public :: operator (==)
-<<vegas: interfaces>>=
+<<Vegas: interfaces>>=
   interface operator (==)
      module procedure vegas_grid_equal
   end interface operator (==)
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   logical function vegas_grid_equal (grid_a, grid_b) result (yorn)
     type(vegas_grid_t), intent(in) :: grid_a, grid_b
     yorn = .true.
@@ -283,9 +282,9 @@ we resize the grid under consideration of [[w]]. If each element of [[w]] equals
 one, then the bins are resized preserving their original bin density.
 
 Anytime else, we refine the grid accordingly to [[w]].
-<<vegas: vegas grid: TBP>>=
+<<Vegas: vegas grid: TBP>>=
   procedure, private :: resize => vegas_grid_resize
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_grid_resize (self, n_bins, w)
     class(vegas_grid_t), intent(inout) :: self
     integer, intent(in) :: n_bins
@@ -328,9 +327,9 @@ Anytime else, we refine the grid accordingly to [[w]].
 For the case [[n_bins < N_BINARY_SEARCH]], we utilize linear search which is faster for short arrays.
 Else we make use of a binary search. Furthermore, we calculate the inverse of
 the probability and invert the result only at the end (saving some time on division).
-<<vegas: vegas grid: TBP>>=
+<<Vegas: vegas grid: TBP>>=
   procedure, public :: get_probability => vegas_grid_get_probability
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   function vegas_grid_get_probability (self, x) result (g)
     class(vegas_grid_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
@@ -374,9 +373,9 @@ change during different iterations. If we reuse a grid, we have to take that,
 every grid uses the same [[n_bins]]. We expect, that the number of dimension
 does not change, which is in principle possible, but will be checked onto in
 [[vegas_set_grid]].
-<<MPI: vegas: vegas grid: TBP>>=
+<<MPI: Vegas: vegas grid: TBP>>=
   procedure, public :: broadcast => vegas_grid_broadcast
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_grid_broadcast (self, comm)
     class(vegas_grid_t), intent(inout) :: self
     type(MPI_COMM), intent(in) :: comm
@@ -411,9 +410,9 @@ We export the a copy of the result via a get-method of the [[vegas_t]] object.
 We store latest event weight in [[evt_weight]] and a (possible) evebt weight
 excess in [[evt_weight_excess]], if the event weight is larger than
 [[max_abs_f]].
-<<vegas: public>>=
+<<Vegas: public>>=
   public :: vegas_result_t
-<<vegas: types>>=
+<<Vegas: types>>=
   type :: vegas_result_t
      integer :: it_start = 0
      integer :: it_num = 0
@@ -433,14 +432,14 @@ excess in [[evt_weight_excess]], if the event weight is larger than
      real(default) :: evt_weight = 0.
      real(default) :: evt_weight_excess = 0.
    contains
-   <<vegas: vegas result: TBP>>
+   <<Vegas: vegas result: TBP>>
   end type vegas_result_t
 
 @ %def vegas_results_t
 @ Write out the current status of the integration result.
-<<vegas: vegas result: TBP>>=
+<<Vegas: vegas result: TBP>>=
   procedure, public :: write => vegas_result_write
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_result_write (self, unit, indent)
     class(vegas_result_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -508,10 +507,10 @@ We define
 \end{equation}
 In the implementation we have to factor out [[n_calls]] in the jacobian.
 Also, during event generation.
-<<vegas: vegas result: TBP>>=
+<<Vegas: vegas result: TBP>>=
   procedure, public :: update => vegas_result_update
   procedure, public :: update_efficiency => vegas_result_update_efficiency
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_result_update (result, integral, variance)
     class(vegas_result_t), intent(inout) :: result
     real(default), intent(in) :: integral
@@ -581,9 +580,9 @@ Also, during event generation.
 
 @ %def vegas_result_update, vegas_result_update_efficiency
 @ Reset results.
-<<vegas: vegas result: TBP>>=
+<<Vegas: vegas result: TBP>>=
   procedure, public :: reset => vegas_result_reset
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_result_reset (result)
     class(vegas_result_t), intent(inout) :: result
     result%sum_int_wgtd = 0
@@ -604,9 +603,9 @@ Also, during event generation.
 @ Send the result object to specified rank, internally in a non-blocking way.
 
 We do not need to handle the event results, because each event result is atomic.
-<<MPI: vegas: vegas result: TBP>>=
+<<MPI: Vegas: vegas result: TBP>>=
   procedure, public :: send => vegas_result_send
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_result_send (self, receiver, tag, comm, request)
     class(vegas_result_t), intent(in) :: self
     integer, intent(in) :: receiver
@@ -649,9 +648,9 @@ We do not need to handle the event results, because each event result is atomic.
 
 @ %def vegas_result_communicate
 @ Receive the result object from a specified rank, internally in a non-blocking way.
-<<MPI: vegas: vegas result: TBP>>=
+<<MPI: Vegas: vegas result: TBP>>=
   procedure, public :: receive => vegas_result_receive
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_result_receive (self, sender, tag, comm, request)
     class(vegas_result_t), intent(inout) :: self
     integer, intent(in) :: sender
@@ -694,9 +693,9 @@ We do not need to handle the event results, because each event result is atomic.
 
 @ %def vegas_result_receive
 @
-<<MPI: vegas: vegas result: TBP>>=
+<<MPI: Vegas: vegas result: TBP>>=
   procedure, private :: get_n_requests => vegas_result_get_n_requests
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   pure integer function vegas_result_get_n_requests (result) result (n_requests)
     class(vegas_result_t), intent(in) :: result
     n_requests = 15
@@ -708,27 +707,27 @@ We do not need to handle the event results, because each event result is atomic.
 
 Callback handler for VEGAS result and grid.
 
-<<MPI: vegas: public>>=
+<<MPI: Vegas: public>>=
   public :: vegas_handler_t
-<<MPI: vegas: types>>=
+<<MPI: Vegas: types>>=
   type, extends(request_handler_t) :: vegas_handler_t
      type(vegas_result_t), pointer :: result => null ()
      real(default), dimension(:, :), pointer :: d => null ()
    contains
-   <<vegas: vegas handler: TBP>>
+   <<Vegas: vegas handler: TBP>>
   end type vegas_handler_t
 @ %def vegas_handler_t
 @ Provide the actual communication between master and client.
 
 The communication for [[vegas_result_t]] is done in a separate procedure, where we only have to pass the MPI requests.
 Collecting of the distribution array is done directly.
-<<MPI: vegas: vegas handler: TBP>>=
+<<MPI: Vegas: vegas handler: TBP>>=
   procedure :: init => vegas_handler_init
   procedure :: write => vegas_handler_write
   procedure :: handle => vegas_handler_handle
   procedure :: client_handle => vegas_handler_client_handle
   final :: vegas_handler_final
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_handler_init (handler, handler_id, result, d)
     class(vegas_handler_t), intent(inout) :: handler
     integer, intent(in) :: handler_id
@@ -809,9 +808,9 @@ transparent containers alongside with the actual grid and the distribution.
 The values of the distribution depend on the chosen mode whether the function
 value or the variance is stored. The distribution is used after each iteration
 to refine the grid.
-<<vegas: public>>=
+<<Vegas: public>>=
   public :: vegas_t
-<<vegas: types>>=
+<<Vegas: types>>=
   type :: vegas_t
      private
      type(vegas_config_t) :: config
@@ -822,24 +821,24 @@ to refine the grid.
      integer, dimension(:), allocatable :: bin
      integer, dimension(:), allocatable :: box
      type(vegas_result_t) :: result
-   <<vegas: vegas: type>>
+   <<Vegas: vegas: type>>
    contains
-   <<vegas: vegas: TBP>>
+   <<Vegas: vegas: TBP>>
   end type vegas_t
 
 @ %def vegas_t
 @ Add members for MPI communication and parallel mode.
 Must be set before calling to [[vegas_integrate]], likewise [[vegas_set_calls]].
-<<MPI: vegas: vegas: type>>=
+<<MPI: Vegas: vegas: type>>=
   type(MPI_COMM) :: comm
   logical :: parallel_mode = .false.
 @ We overload the type constructor of [[vegas_t]] which initialises the
 mandatory argument [[n_dim]] and allocate memory for the grid.
-<<vegas: interfaces>>=
+<<Vegas: interfaces>>=
   interface vegas_t
      module procedure vegas_init
   end interface vegas_t
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   type(vegas_t) function vegas_init (n_dim, alpha, n_bins_max, iterations, mode) result (self)
     integer, intent(in) :: n_dim
     integer, intent(in), optional :: n_bins_max
@@ -860,22 +859,22 @@ mandatory argument [[n_dim]] and allocate memory for the grid.
     call self%set_limits (self%grid%x_lower, self%grid%x_upper)
     call self%reset_grid ()
     call self%reset_result ()
-  <<vegas: vegas init>>
+  <<Vegas: vegas init>>
   end function vegas_init
 
 @ %def vegas_init
-<<vegas: vegas init>>=
+<<Vegas: vegas init>>=
 @
 @ Prepare VEGAS to be run in parallel modues (when compiled with MPI).
-<<MPI: vegas: vegas init>>=
+<<MPI: Vegas: vegas init>>=
   call self%prepare_parallel_integrate (MPI_COMM_WORLD, &
        duplicate_comm = .false., &
        parallel_mode = .true.)
 @
 @ Finalize the grid. Deallocate grid memory.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: final => vegas_final
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_final (self)
     class(vegas_t), intent(inout) :: self
     deallocate (self%grid%x_upper)
@@ -897,9 +896,9 @@ correspong the $n$-dimensionl unit hypercube.
 
 \textit{Remark:} After setting the limits, the grid is initialised, again.
 Previous results are lost due to recalculation of the overall jacobian.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: set_limits => vegas_set_limits
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_set_limits (self, x_lower, x_upper)
     class(vegas_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x_lower
@@ -931,9 +930,9 @@ passes, we resize the grid preserving the probability density. We should reset
 the results after changing the number of calls which change the size of the grid
 and the running mode of VEGAS. But, this is a set method only for the number of
 calls.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: set_calls => vegas_set_n_calls
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_set_n_calls (self, n_calls)
     class(vegas_t), intent(inout) :: self
     integer, intent(in) :: n_calls
@@ -955,9 +954,9 @@ calls.
 
 @ %def vegas_set_n_calls
 @ Get the grid object and set [[n_bins]], [[n_dim]] inside grid container.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_grid => vegas_get_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   type(vegas_grid_t) function vegas_get_grid (self) result (grid)
     class(vegas_t), intent(in) :: self
     grid = self%grid
@@ -971,9 +970,9 @@ checks before copying the object. Be careful, we do not check on [[n_bins]],
 because the number of bins can change after setting [[n_calls]]. We remind you,
 that you will loose all your current progress, if you use set the grid. Hence,
 it will only be used when compiled with [[MPI]].
-<<MPI: vegas: vegas: TBP>>=
+<<MPI: Vegas: vegas: TBP>>=
   procedure, public :: set_grid => vegas_set_grid
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_set_grid (self, grid)
     class(vegas_t), intent(inout) :: self
     type(vegas_grid_t), intent(in) :: grid
@@ -1001,9 +1000,9 @@ it will only be used when compiled with [[MPI]].
 
 A parallel integration requires a communicator, which may be duplicated in order to provide a safe communication context for the current VEGAS instance.
 Furthermore, given an optional parameter, the behavior with regards to the parallel evaluation can be changed (e.g. embbed integration).
-<<MPI: vegas: vegas: TBP>>=
+<<MPI: Vegas: vegas: TBP>>=
   procedure, public :: prepare_parallel_integrate => vegas_prepare_parallel_integrate
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_prepare_parallel_integrate (self, comm, duplicate_comm, parallel_mode)
     class(vegas_t), intent(inout) :: self
     type(MPI_COMM), intent(in) :: comm
@@ -1025,9 +1024,9 @@ Furthermore, given an optional parameter, the behavior with regards to the paral
 means that [[n_boxes]] has to be larger than 2. With the result that we could
 have an actual superimposed stratified grid. In advance, we can give the size of
 communicator [[n_size]] and check whether we have enough boxes to distribute.
-<<MPI: vegas: vegas: TBP>>=
+<<MPI: Vegas: vegas: TBP>>=
   procedure, public :: is_parallelizable => vegas_is_parallelizable
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   elemental logical function vegas_is_parallelizable (self, opt_n_size) result (flag)
     class(vegas_t), intent(in) :: self
     integer, intent(in), optional :: opt_n_size
@@ -1038,9 +1037,9 @@ communicator [[n_size]] and check whether we have enough boxes to distribute.
 
 @ %def vegas_is_parallelizable
 @ Get the config object.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_config => vegas_get_config
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_get_config (self, config)
     class(vegas_t), intent(in) :: self
     type(vegas_config_t), intent(out) :: config
@@ -1050,9 +1049,9 @@ communicator [[n_size]] and check whether we have enough boxes to distribute.
 @ %def vegas_get_config
 @ Set non-runtime dependent configuration. It will no be possible to change
 [[n_bins_max]].
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: set_config => vegas_set_config
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_set_config (self, config)
     class(vegas_t), intent(inout) :: self
     class(vegas_config_t), intent(in) :: config
@@ -1064,9 +1063,9 @@ communicator [[n_size]] and check whether we have enough boxes to distribute.
 
 @ %def vegas_set_config
 @ Get the result object.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_result => vegas_get_result
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   type(vegas_result_t) function vegas_get_result (self) result (result)
     class(vegas_t), intent(in) :: self
     result = self%result
@@ -1076,9 +1075,9 @@ communicator [[n_size]] and check whether we have enough boxes to distribute.
 @ Set the result object. Be reminded, that you will loose your current results,
 if you are not careful! Hence, it will only be avaible during usage with
 [[MPI]].
-<<MPI: vegas: vegas: TBP>>=
+<<MPI: Vegas: vegas: TBP>>=
   procedure, public :: set_result => vegas_set_result
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_set_result (self, result)
     class(vegas_t), intent(inout) :: self
     type(vegas_result_t), intent(in) :: result
@@ -1087,9 +1086,9 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_set_result
 @ Get (actual) number of calls.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_calls => vegas_get_n_calls
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_n_calls (self) result (n_calls)
     class(vegas_t), intent(in) :: self
     n_calls = self%config%n_calls
@@ -1097,9 +1096,9 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_get_n_calls
 @ Get the cumulative result of the integration. Recalculate weighted average of the integration.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_integral => vegas_get_integral
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_integral (self) result (integral)
     class(vegas_t), intent(in) :: self
     integral = 0.
@@ -1110,9 +1109,9 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_get_integral
 @ Get the cumulative variance of the integration. Recalculate the variance.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_variance => vegas_get_variance
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_variance (self) result (variance)
     class(vegas_t), intent(in) :: self
     variance = 0.
@@ -1123,9 +1122,9 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_get_variance
 @ Get efficiency.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_efficiency => vegas_get_efficiency
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_efficiency (self) result (efficiency)
     class(vegas_t), intent(in) :: self
     efficiency = 0.
@@ -1136,9 +1135,9 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_get_efficiency
 @ Get [[f_max]].
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_max_abs_f => vegas_get_max_abs_f
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_max_abs_f (self) result (max_abs_f)
     class(vegas_t), intent(in) :: self
     max_abs_f = 0.
@@ -1149,10 +1148,10 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_get_max_abs_f
 @ Get sum of absolute (positive and negative) values.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_sum_abs_f_pos => vegas_get_sum_abs_f_pos
   procedure, public :: get_sum_abs_f_neg => vegas_get_sum_abs_f_neg
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_sum_abs_f_pos (self) result (sum_abs_f)
     class(vegas_t), intent(in) :: self
     sum_abs_f = self%result%efficiency_pos * self%result%max_abs_f_pos
@@ -1165,9 +1164,9 @@ if you are not careful! Hence, it will only be avaible during usage with
 
 @ %def vegas_get_sum_abs_f_pos, vegas_get_sum_abs_f_neg
 @ Get [[f_max_pos]].
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
 procedure, public :: get_max_abs_f_pos => vegas_get_max_abs_f_pos
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
 elemental real(default) function vegas_get_max_abs_f_pos (self) result (max_abs_f)
   class(vegas_t), intent(in) :: self
   max_abs_f = 0.
@@ -1178,9 +1177,9 @@ end function vegas_get_max_abs_f_pos
 
 @ %def vegas_get_max_abs_f_pos
 @ Get [[f_max_neg]].
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_max_abs_f_neg => vegas_get_max_abs_f_neg
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   elemental real(default) function vegas_get_max_abs_f_neg (self) result (max_abs_f)
     class(vegas_t), intent(in) :: self
     max_abs_f = 0.
@@ -1191,10 +1190,10 @@ end function vegas_get_max_abs_f_pos
 
 @ %def vegas_get_max_abs_f_neg
 @ Get event weight and excess.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_evt_weight => vegas_get_evt_weight
   procedure, public :: get_evt_weight_excess => vegas_get_evt_weight_excess
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   real(default) function vegas_get_evt_weight (self) result (evt_weight)
     class(vegas_t), intent(in) :: self
     evt_weight = self%result%evt_weight
@@ -1211,10 +1210,10 @@ end function vegas_get_max_abs_f_pos
 We allow the distribution to be manipulated by an external call.
 The integration result cannot be changed by this, however, the error behavior may worsen and the efficiency may fall pretty low.
 But, also, the opposite is possible, see [[vamp2_equivalences]].
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: get_distribution => vegas_get_distribution
   procedure, public :: set_distribution => vegas_set_distribution
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   function vegas_get_distribution (self) result (d)
     class(vegas_t), intent(in) :: self
     real(default), dimension(:, :), allocatable :: d
@@ -1235,9 +1234,9 @@ But, also, the opposite is possible, see [[vamp2_equivalences]].
 
 @ %def vegas_get_distribution, vegas_set_distribution
 @ Allocate result handler from VEGAS integrator object.
-<<MPI: vegas: vegas: TBP>>=
+<<MPI: Vegas: vegas: TBP>>=
   procedure, public :: allocate_handler => vegas_allocate_handler
-<<MPI: vegas: procedures>>=
+<<MPI: Vegas: procedures>>=
   subroutine vegas_allocate_handler (self, handler_id, handler)
     class(vegas_t), intent(in), target :: self
     integer, intent(in) :: handler_id
@@ -1267,9 +1266,9 @@ dimensions, the algorithm switches to stratified sampling. Otherwise, we are
 still using importance sampling, but keep the boxes for book keeping. If the
 number of bins changes from the previous invocation, bins are expanded or
 contracted accordingly, while preserving bin density.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, private :: init_grid => vegas_init_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_init_grid (self)
     class(vegas_t), intent(inout) :: self
     integer :: n_bins, n_boxes, box_per_bin, n_total_boxes
@@ -1304,9 +1303,9 @@ contracted accordingly, while preserving bin density.
 
 @ %def vegas_init_grid
 @ Reset the cumulative result, and efficiency and max. grid values.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: reset_result => vegas_reset_result
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_reset_result (self)
     class(vegas_t), intent(inout) :: self
     call self%result%reset ()
@@ -1318,9 +1317,9 @@ Furthermore, reset the results. The maximal size of the grid remains.
 
 Note: Handle [[vegas_reset_grid]] with great care! Instead of reusing an old
 object, create a new one.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: reset_grid => vegas_reset_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_reset_grid (self)
     class(vegas_t), intent(inout) :: self
     self%config%n_bins = 1
@@ -1339,9 +1338,9 @@ The averaging dampens high fluctuations amog the integrand or the variance.
 
 We make the type-bound procedure public accessible because the multi-channel
 integration refines each grid after integration over all grids.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: refine => vegas_refine_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_refine_grid (self, average)
     class(vegas_t), intent(inout) :: self
     logical, intent(in), optional :: average
@@ -1371,9 +1370,9 @@ Another issue arises when [[NaN]]s appear during sampling.
 A single [[NaN]] may spoil the complete adaption as the refinement depends on all weights for a single axis, c.f. [[vegas_grid_resize]] for the details of the mechanism.
 Therefore, if we find a single (or more) [[NaN]]s in the distribution of an axis, then we won't adapt that specific axis by setting the weights to one.
 Hence, we skip the adaption for parts of the grid, where [[NaN]] appeared during evaluation.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, private :: average_distribution => vegas_average_distribution
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_average_distribution (self)
     !! use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     class(vegas_t), intent(inout) :: self
@@ -1441,9 +1440,9 @@ p \ll r \ll k.
 We divide the intgeration into a parallel and
 a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
 \lfloor \frac{D}{2} \rfloor$.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: integrate => vegas_integrate
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_integrate (self, func, rng, iterations, reset_result,&
        & refine_grid, verbose, result, abserr)
     class(vegas_t), intent(inout) :: self
@@ -1468,7 +1467,7 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
     integer :: n_size
     integer :: n_dim_par
     logical :: box_success
-  <<vegas: vegas integrate: variables>>
+  <<Vegas: vegas integrate: variables>>
     call set_options ()
     call self%init_grid ()
     if (opt_reset_result) call self%result%reset ()
@@ -1477,7 +1476,7 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
     cumulative_std = 0.
     n_dim_par = floor (self%config%n_dim / 2.)
     n_size = 1
-  <<vegas: vegas integrate: init>>
+  <<Vegas: vegas integrate: init>>
     if (opt_verbose) then
        call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
     end if
@@ -1497,7 +1496,7 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
        type is (rng_stream_t)
           call rng%next_substream ()
        end select
-     <<vegas: vegas integrate: presampling>>
+     <<Vegas: vegas integrate: presampling>>
        loop_over_par_boxes: do while (box_success)
           loop_over_perp_boxes: do while (box_success)
              fval_box = 0._default
@@ -1536,9 +1535,9 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
              call increment_box_coord (self%box(1:n_dim_par), box_success)
              if (.not. box_success) exit shift
           end do shift
-        <<vegas: vegas integrate: loop>>
+        <<Vegas: vegas integrate: loop>>
        end do loop_over_par_boxes
-     <<vegas: vegas integrate: postsampling>>
+     <<Vegas: vegas integrate: postsampling>>
        associate (result => self%result)
          ! Compute final results for this iterations
          call result%update (total_integral, variance = &
@@ -1567,12 +1566,12 @@ a perpendicular subspace. The number of parallel dimensions is $D_{\parallel} =
     if (present(result)) result = cumulative_int
     if (present(abserr)) abserr = abs(cumulative_std)
   contains
-  <<vegas: vegas integrate: procedures>>
+  <<Vegas: vegas integrate: procedures>>
   end subroutine vegas_integrate
 
 @ %def vegas_integrate
 @ Set optional arguments of [[vegas_integrate]].
-<<vegas: vegas integrate: procedures>>=
+<<Vegas: vegas integrate: procedures>>=
   subroutine set_options ()
     if (present (iterations)) self%config%iterations = iterations
     opt_reset_result = .true.
@@ -1589,24 +1588,24 @@ not compiled with the correspondig compiler flag.
 
 Overall variables, some additionally introduced due to the MPI parallelization
 and needed in sequentiell verison.
-<<vegas: vegas integrate: variables>>=
+<<Vegas: vegas integrate: variables>>=
 @
 @ Overall initialization.
-<<vegas: vegas integrate: init>>=
+<<Vegas: vegas integrate: init>>=
 @
 @ Reset all last-iteration results before sampling.
-<<vegas: vegas integrate: presampling>>=
+<<Vegas: vegas integrate: presampling>>=
 @
 @ Adjust rng between parallel and perpendicular loops.
-<<vegas: vegas integrate: loop>>=
+<<Vegas: vegas integrate: loop>>=
 @
-<<vegas: vegas integrate: postsampling>>=
+<<Vegas: vegas integrate: postsampling>>=
 @ Increment the box coordinates by 1. If we reach the largest value for the
 current axis (starting with the largest dimension number), we reset the counter
 to 1 and increment the next axis counter by 1. And so on, until we reach the
 maximum counter value of the axis with the lowest dimension, then we set
 [[success]] to false and the box coord is set to 1.
-<<vegas: vegas integrate: procedures>>=
+<<Vegas: vegas integrate: procedures>>=
   subroutine increment_box_coord (box, success)
     integer, dimension(:), intent(inout) :: box
     logical, intent(out) :: success
@@ -1631,14 +1630,14 @@ buffers for [[MPI_Ireduce]], because we cannot use the same send or receive
 buffer.
 
 We temporarily store a (empty) grid, before communicating.
-<<MPI: vegas: vegas integrate: variables>>=
+<<MPI: Vegas: vegas integrate: variables>>=
   integer :: rank
   logical :: parallel_mode
   type(vegas_grid_t) :: grid
 @ MPI procedure-specific initialization.
 
 Allow for (external) veto on parallel mode.
-<<MPI: vegas: vegas integrate: init>>=
+<<MPI: Vegas: vegas integrate: init>>=
   parallel_mode = self%parallel_mode .and. self%is_parallelizable ()
   if (parallel_mode) then
      call MPI_Comm_size (self%comm, n_size)
@@ -1652,7 +1651,7 @@ Allow for (external) veto on parallel mode.
 We make a copy of the (actual) grid, which is unfilled when non-root.
 The actual grid is then broadcasted among the workers and inserted into the
 [[VEGAS]] object.
-<<MPI: vegas: vegas integrate: presampling>>=
+<<MPI: Vegas: vegas integrate: presampling>>=
   if (parallel_mode) then
      grid = self%get_grid ()
      call grid%broadcast (self%comm)
@@ -1661,7 +1660,7 @@ The actual grid is then broadcasted among the workers and inserted into the
 is RngStream, we can advance the current stream in such a way, that we will
 getting matching numbers. Iff [[n_boxes]] is larger than 2, otherwise
 parallelization is useless.
-<<MPI: vegas: vegas integrate: presampling>>=
+<<MPI: Vegas: vegas integrate: presampling>>=
      do k = 1, rank
         call increment_box_coord (self%box(1:n_dim_par), box_success)
         if (.not. box_success) exit
@@ -1673,7 +1672,7 @@ parallelization is useless.
      end select
   end if
 @ Increment [[n_size]] times the box coordinates.
-<<MPI: vegas: vegas integrate: loop>>=
+<<MPI: Vegas: vegas integrate: loop>>=
   if (parallel_mode) then
      select type (rng)
      type is (rng_stream_t)
@@ -1682,13 +1681,13 @@ parallelization is useless.
      end select
   end if
 @ Call to [[vegas_integrate_collect]].
-<<MPI: vegas: vegas integrate: postsampling>>=
+<<MPI: Vegas: vegas integrate: postsampling>>=
   if (parallel_mode) then
      call vegas_integrate_collect ()
      if (rank /= 0) cycle iteration
   end if
 @ Reduce (in an non-blocking fashion) all sampled information via [[MPI_SUM]] or [[MPI_MAX]].
-<<MPI: vegas: vegas integrate: procedures>>=
+<<MPI: Vegas: vegas integrate: procedures>>=
   subroutine vegas_integrate_collect ()
     integer :: j
     real(default) :: root_total_integral, root_total_sq_integral
@@ -1732,9 +1731,9 @@ parallelization is useless.
 
 @ %def vegas_integrate_collect
 @ Obtain a random point inside the $n$-dimensional hypercube, transform onto the correct interval and calculate the bin volume. The additional factor [[n_bins]] is already applied to the [[jacobian]] (per dimension).
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, private :: random_point => vegas_random_point
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_random_point (self, rng, x, bin_volume)
     class(vegas_t), intent(inout) :: self
     class(rng_t), intent(inout) :: rng
@@ -1764,9 +1763,9 @@ parallelization is useless.
 stratification and generate the random point in the most simple way. Hence, we
 do not need to know in which box we are actually sampling. This is useful for
 only for event generation.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, private :: simple_random_point => vegas_simple_random_point
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_simple_random_point (self, rng, x, bin_volume)
     class(vegas_t), intent(inout) :: self
     class(rng_t), intent(inout) :: rng
@@ -1793,9 +1792,9 @@ only for event generation.
 
 @ %def vegas_simple_random_point
 @
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, private :: accumulate_distribution => vegas_accumulate_distribution
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_accumulate_distribution (self, y)
     class(vegas_t), intent(inout) :: self
     real(default), intent(in) :: y
@@ -1816,9 +1815,9 @@ includes the overall non-changing factors $\frac{1}{N_{\text{calls}}}$-factor (d
 expensive) and $N_{\text{bins}}^{d}$, the latter combined with [[bin_volume]]
 gives rise to the probability, see [[vegas_init_grid]] for details.
 We have to factor out $N_{\text{calls}}$ to retrieve the correct weight.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure :: generate_weighted => vegas_generate_weighted_event
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_generate_weighted_event (self, func, rng, x)
     class(vegas_t), intent(inout) :: self
     class(vegas_func_t), intent(inout) :: func
@@ -1840,9 +1839,9 @@ We keep separate maximum weights for positive and negative weights, and use
 them, accordingly.
 In the case of unweighted event generation, if the current weight exceeds the
 the maximum weight, we update the maximum, accordingly.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: generate_unweighted=> vegas_generate_unweighted_event
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_generate_unweighted_event (self, func, rng, x)
     class(vegas_t), intent(inout) :: self
     class(vegas_func_t), intent(inout) :: func
@@ -1874,7 +1873,7 @@ the maximum weight, we update the maximum, accordingly.
 \section{I/0 operation}
 \label{sec:i0-operation}
 @ Write grid to file. We use the original VAMP formater.
-<<vegas: parameters>>=
+<<Vegas: parameters>>=
   character(len=*), parameter, private :: &
      descr_fmt =         "(1X,A)", &
      integer_fmt =       "(1X,A18,1X,I15)", &
@@ -1888,9 +1887,9 @@ the maximum weight, we update the maximum, accordingly.
 
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: write_grid => vegas_write_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_write_grid (self, unit)
     class(vegas_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -1971,9 +1970,9 @@ the maximum weight, we update the maximum, accordingly.
 
 @ %def vegas_write_grid
 @ Read grid configuration from file.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure, public :: read_grid => vegas_read_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_read_grid (self, unit)
     class(vegas_t), intent(out) :: self
     integer, intent(in) :: unit
@@ -2059,10 +2058,10 @@ the maximum weight, we update the maximum, accordingly.
 
 @ %def vegas_read_grid
 Read and write a grid from an unformatted file.
-<<vegas: vegas: TBP>>=
+<<Vegas: vegas: TBP>>=
   procedure :: write_binary_grid => vegas_write_binary_grid
   procedure :: read_binary_grid => vegas_read_binary_grid
-<<vegas: procedures>>=
+<<Vegas: procedures>>=
   subroutine vegas_write_binary_grid (self, unit)
     class(vegas_t), intent(in) :: self
     integer, intent(in) :: unit
@@ -2205,10 +2204,10 @@ module vegas_ut
 
 <<Standard module head>>
 
-<<vegas: public test>>
+<<Vegas: public test>>
 
 contains
-<<vegas: test driver>>
+<<Vegas: test driver>>
 end module vegas_ut
 @ %def vegas_ut
 @
@@ -2226,22 +2225,22 @@ module vegas_uti
 
 <<Standard module head>>
 
-<<vegas: test declaration>>
+<<Vegas: test declaration>>
 
-<<vegas: test types>>
+<<Vegas: test types>>
 
 contains
-<<vegas: tests>>
+<<Vegas: tests>>
 end module vegas_uti
 @ %def vegas_uti
 @ API: driver for the unit tests below.
-<<vegas: public test>>=
+<<Vegas: public test>>=
   public :: vegas_test
-<<vegas: test driver>>=
+<<Vegas: test driver>>=
   subroutine vegas_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-    <<vegas: execute tests>>
+    <<Vegas: execute tests>>
   end subroutine vegas_test
 
 @ %def vegas_test
@@ -2254,18 +2253,18 @@ We use the example from the Monte Carlo Examples of the GSL library
   I = \int_{-pi}^{+pi} {dk_x/(2 pi)}  \int_{-pi}^{+pi} {dk_y/(2 pi)}  \int_{-pi}^{+pi} {dk_z/(2 pi)}  1 / (1 - cos(k_x)cos(k_y)cos(k_z)).
 \end{equation}
 The integral is reduced to region (0,0,0) $\rightarrow$ ($\pi$, $\pi$, $\pi$) and multiplied by 8.
-<<vegas: test types>>=
+<<Vegas: test types>>=
   type, extends (vegas_func_t) :: vegas_test_func_t
      !
    contains
-   <<vegas: vegas test func: TBP>>
+   <<Vegas: vegas test func: TBP>>
   end type vegas_test_func_t
 
 @ %def vegas_test_func_t
 @ Evaluate the integrand.
-<<vegas: vegas test func: TBP>>=
+<<Vegas: vegas test func: TBP>>=
   procedure, public :: evaluate => vegas_test_func_evaluate
-<<vegas: tests>>=
+<<Vegas: tests>>=
   real(default) function vegas_test_func_evaluate (self, x) result (f)
     class(vegas_test_func_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -2275,18 +2274,18 @@ The integral is reduced to region (0,0,0) $\rightarrow$ ($\pi$, $\pi$, $\pi$) an
 
 @ %def vegas_test_func_evaluate
 @ The second test function is the normalised n-dim.\@ gaussian distribution.
-<<vegas: test types>>=
+<<Vegas: test types>>=
   type, extends (vegas_func_t) :: vegas_gaussian_test_func_t
      !
    contains
-   <<vegas: vegas gaussian test func: TBP>>
+   <<Vegas: vegas gaussian test func: TBP>>
   end type vegas_gaussian_test_func_t
 
 @ %def vegas_gaussian_test_func_t
 @ Evaluate the integrand.
-<<vegas: vegas gaussian test func: TBP>>=
+<<Vegas: vegas gaussian test func: TBP>>=
   procedure, public :: evaluate => vegas_gaussian_evaluate
-<<vegas: tests>>=
+<<Vegas: tests>>=
   real(default) function vegas_gaussian_evaluate (self, x) result (f)
     class(vegas_gaussian_test_func_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -2302,17 +2301,17 @@ range is normalised to zero.
 \begin{equation}
   f(x) = - \frac{8}{3} (x + 1)*(y-1)*z
 \end{equation}
-<<vegas: test types>>=
+<<Vegas: test types>>=
   type, extends (vegas_func_t) :: vegas_polynomial_func_t
      !
    contains
-   <<vegas: vegas polynomial func: TBP>>
+   <<Vegas: vegas polynomial func: TBP>>
    end type vegas_polynomial_func_t
 
 @ %def vegas_polynomial_func_t
-<<vegas: vegas polynomial func: TBP>>=
+<<Vegas: vegas polynomial func: TBP>>=
   procedure, public :: evaluate => vegas_polynomial_evaluate
-<<vegas: tests>>=
+<<Vegas: tests>>=
   real(default) function vegas_polynomial_evaluate (self, x) result (f)
     class(vegas_polynomial_func_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -2326,12 +2325,12 @@ range is normalised to zero.
 
 Initialise the VEGAS MC integrator and call to [[vegas_init_grid]] for the
 initialisation of the grid.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   call test (vegas_1, "vegas_1", "VEGAS initialisation and&
        & grid preparation", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_1
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_1 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2395,11 +2394,11 @@ initialisation of the grid.
 \label{sec:conf-result-check}
 
 Initialise the MC integrator. Get and write the config object, also the (empty) result object.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   call test (vegas_2, "vegas_2", "VEGAS configuration and result object", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_2
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_2 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2451,11 +2450,11 @@ Initialise the MC integrator. Get and write the config object. Integrate the gau
 Get and write the result object. Before and after integration get the grid
 object and output both.
 Repeat with different number of dimensions.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   call test (vegas_3, "vegas_3", "VEGAS integration of multi-dimensional gaussian", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_3
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_3 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2553,12 +2552,12 @@ Repeat with different number of dimensions.
 Initialise the MC integrator. Get and write the config object. Integrate the
 factorisable polynomial function. Get and write the result object. Repeat with
 different number of dimensions.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   call test (vegas_4, "vegas_4", "VEGAS integration of three&
        &-dimensional factorisable polynomial function", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_4
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_4 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2634,12 +2633,12 @@ different number of dimensions.
 Initialise the MC integrator. Integrate the gaussian distribution.
 Get and write the result object. Finally, generate events in accordance to the
 adapted grid and print them out.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   call test (vegas_5, "vegas_5", "VEGAS integration and event&
        & generation of multi-dimensional gaussian", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_5
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_5 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2732,12 +2731,12 @@ adapted grid and print them out.
 Initialise the MC integrator. Get and write the config object. Integrate the
 factorisable polynomial function. Get and write the result object. Write grid to
 file and start with fresh grid.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   call test (vegas_6, "vegas_6", "VEGAS integrate and write grid, &
        & read grid and continue", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_6
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_6 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2833,19 +2832,19 @@ file and start with fresh grid.
 \label{sec:numeric-stability}
 
 We wrap a previous testing function to produce a single [[NaN]].
-<<vegas: test types>>=
+<<Vegas: test types>>=
   type, extends (vegas_test_func_t) :: vegas_nan_test_func_t
     private
     logical :: evaluate_to_nan = .true.
    contains
-   <<vegas: vegas nan test func: TBP>>
+   <<Vegas: vegas nan test func: TBP>>
   end type vegas_nan_test_func_t
 
 @ %def vegas_nan_test_func_t
 @ Evaluate the integrand.
-<<vegas: vegas nan test func: TBP>>=
+<<Vegas: vegas nan test func: TBP>>=
   procedure, public :: evaluate => vegas_nan_test_func_evaluate
-<<vegas: tests>>=
+<<Vegas: tests>>=
   real(default) function vegas_nan_test_func_evaluate (self, x) result (f)
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     class(vegas_nan_test_func_t), intent(inout) :: self
@@ -2865,12 +2864,12 @@ Initialise the VEGAS MC integrator. Run a integration pass and insert a single
 fine.
 
 Proceed with a second pass, and get the correct result.
-<<vegas: execute tests>>=
+<<Vegas: execute tests>>=
   !!! Disabled for the moment as NAGFOR stops execution on NaNs as intended
   ! call test (vegas_7, "vegas_7", "VEGAS NaN stability test", u, results)
-<<vegas: test declaration>>=
+<<Vegas: test declaration>>=
   public :: vegas_7
-<<vegas: tests>>=
+<<Vegas: tests>>=
   subroutine vegas_7 (u)
     integer, intent(in) :: u
     type(vegas_t) :: mc_integrator
@@ -2955,27 +2954,27 @@ module vamp2
 
   use vegas
 
-<<vamp2: modules>>
+<<VAMP2: modules>>
 
 <<Standard module head>>
 
-<<vamp2: public>>
+<<VAMP2: public>>
 
-<<vamp2: parameters>>
+<<VAMP2: parameters>>
 
-<<vamp2: types>>
+<<VAMP2: types>>
 
-<<vamp2: interfaces>>
+<<VAMP2: interfaces>>
 
 contains
 
-<<vamp2: procedures>>
+<<VAMP2: procedures>>
 
 end module vamp2
 @ %def vamp2
-<<vamp2: modules>>=
+<<VAMP2: modules>>=
 @
-<<MPI: vamp2: modules>>=
+<<MPI: VAMP2: modules>>=
   use request_base
   use request_simple
   use request_caller
@@ -2994,9 +2993,9 @@ We add an additional logicial [[valid_x]], if it is set to [[.false.]], we do
 not compute weighted function and just set the weighted integrand to zero.
 This behavior is in particular very useful, if a mapping is prohibited or fails.
 Or in the case of WHIZARD, a phase cut is applied.
-<<vamp2: public>>=
+<<VAMP2: public>>=
   public :: vamp2_func_t
-<<vamp2: types>>=
+<<VAMP2: types>>=
   type, abstract, extends(vegas_func_t) :: vamp2_func_t
      integer :: current_channel = 0
      integer :: n_dim = 0
@@ -3010,14 +3009,14 @@ Or in the case of WHIZARD, a phase cut is applied.
      type(vegas_grid_t), dimension(:), allocatable :: grids
      real(default) :: g = 0.
    contains
-   <<vamp2: vamp2 func: TBP>>
+   <<VAMP2: vamp2 func: TBP>>
   end type vamp2_func_t
 
 @ %def vamp2_func_t
 @ Init.
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure, public :: init => vamp2_func_init
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_func_init (self, n_dim, n_channel)
     class(vamp2_func_t), intent(out) :: self
     integer, intent(in) :: n_dim
@@ -3033,9 +3032,9 @@ Or in the case of WHIZARD, a phase cut is applied.
 
 @ %def vamp2_func_init
 @ Set current channel.
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure, public :: set_channel => vamp2_func_set_channel
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_func_set_channel (self, channel)
     class(vamp2_func_t), intent(inout) :: self
     integer, intent(in) :: channel
@@ -3044,9 +3043,9 @@ Or in the case of WHIZARD, a phase cut is applied.
 
 @ %def vamp2_func_set_channel
 @ Get number of function calls for which $f \neq 0$.
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure, public :: get_n_calls => vamp2_func_get_n_calls
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   integer function vamp2_func_get_n_calls (self) result (n_calls)
     class(vamp2_func_t), intent(in) :: self
     n_calls = self%n_calls
@@ -3054,9 +3053,9 @@ Or in the case of WHIZARD, a phase cut is applied.
 
 @ %def vamp2_func_get_func_calls
 @ Reset number of calls.
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure, public :: reset_n_calls => vamp2_func_reset_n_calls
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_func_reset_n_calls (self)
     class(vamp2_func_t), intent(inout) :: self
     self%n_calls = 0
@@ -3071,9 +3070,9 @@ different mappings of the hypercube $U_{i}$, such that $x_{i} \in U_{i}$.
 
 The mapping should determine, whether [[x]] is a valid point, e.g. can be
 mapped, or is restricted otherwise.
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure(vamp2_func_evaluate_maps), deferred :: evaluate_maps
-<<vamp2: interfaces>>=
+<<VAMP2: interfaces>>=
  abstract interface
     subroutine vamp2_func_evaluate_maps (self, x)
       import :: vamp2_func_t, default
@@ -3087,9 +3086,9 @@ mapped, or is restricted otherwise.
 
 The calling procedure must handle the case of a vanishing overall probability
 density where either a channel weight or a channel probability vanishes.
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure, private :: evaluate_weight => vamp2_func_evaluate_weight
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_func_evaluate_weight (self)
     class(vamp2_func_t), intent(inout) :: self
     integer :: ch
@@ -3114,9 +3113,9 @@ density where either a channel weight or a channel probability vanishes.
 
 @ %def vamp2_func_evaluate_weight
 @ Evaluate function at [[x]]. We call this procedure in [[vamp2_func_evaluate]].
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure(vamp2_func_evaluate_func), deferred :: evaluate_func
-<<vamp2: interfaces>>=
+<<VAMP2: interfaces>>=
   abstract interface
      real(default) function vamp2_func_evaluate_func (self, x) result (f)
        import :: vamp2_func_t, default
@@ -3126,9 +3125,9 @@ density where either a channel weight or a channel probability vanishes.
   end interface
 
 @ %def vamp2_func_evaluate_func
-<<vamp2: vamp2 func: TBP>>=
+<<VAMP2: vamp2 func: TBP>>=
   procedure, public :: evaluate => vamp2_func_evaluate
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   real(default) function vamp2_func_evaluate (self, x) result (f)
     class(vamp2_func_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -3156,9 +3155,9 @@ multi-channel implementation of VAMP2.
 [[n_calls_min]] is calculated by [[n_calls_min_per_channel]] and [[n_channel]].
 The channels weights (and the result [[n_calls]] for each channel) are
 calculated regarding [[n_calls_threshold]].
-<<vamp2: public>>=
+<<VAMP2: public>>=
   public :: vamp2_config_t
-<<vamp2: types>>=
+<<VAMP2: types>>=
   type, extends(vegas_config_t) :: vamp2_config_t
      integer :: n_channel = 0
      integer :: n_calls_min_per_channel = 20
@@ -3171,14 +3170,14 @@ calculated regarding [[n_calls_threshold]].
      real(default) :: error_goal = 0._default
      real(default) :: rel_error_goal = 0._default
    contains
-   <<vamp2: vamp2 config: TBP>>
+   <<VAMP2: vamp2 config: TBP>>
   end type vamp2_config_t
 
 @ %def vamp2_config_t
 @ Write.
-<<vamp2: vamp2 config: TBP>>=
+<<VAMP2: vamp2 config: TBP>>=
   procedure, public :: write => vamp2_config_write
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_config_write (self, unit, indent)
     class(vamp2_config_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -3235,19 +3234,19 @@ calculated regarding [[n_calls_threshold]].
 This is a transparent container which incorporates and extends the definitions
 of [[vegas_result_t]].
 
-<<vamp2: public>>=
+<<VAMP2: public>>=
   public :: vamp2_result_t
-<<vamp2: types>>=
+<<VAMP2: types>>=
   type, extends(vegas_result_t) :: vamp2_result_t
    contains
-   <<vamp2: vamp2 result: TBP>>
+   <<VAMP2: vamp2 result: TBP>>
   end type vamp2_result_t
 
 @ %def vamp2_result_t
 @ Output.
-<<vamp2: vamp2 result: TBP>>=
+<<VAMP2: vamp2 result: TBP>>=
   procedure, public :: write => vamp2_result_write
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_result_write (self, unit, indent)
     class(vamp2_result_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -3263,26 +3262,26 @@ of [[vegas_result_t]].
 \subsection{Type: vamp2\_equivalences\_t}
 \label{sec:vamp2-eqv}
 
-<<vamp2: parameters>>=
+<<VAMP2: parameters>>=
 integer, parameter, public :: &
      VEQ_IDENTITY = 0, VEQ_INVERT = 1, VEQ_SYMMETRIC = 2, VEQ_INVARIANT = 3
 @
 @ Channel equivalences. Store retrieving and sourcing channel.
-<<vamp2: types>>=
+<<VAMP2: types>>=
   type :: vamp2_equi_t
      integer :: ch
      integer :: ch_src
      integer, dimension(:), allocatable :: perm
      integer, dimension(:), allocatable :: mode
    contains
-   <<vamp2: vamp2 equi: TBP>>
+   <<VAMP2: vamp2 equi: TBP>>
   end type vamp2_equi_t
 
 @ %def vamp2_equi_t
 @ Write equivalence.
-<<vamp2: vamp2 equi: TBP>>=
+<<VAMP2: vamp2 equi: TBP>>=
   procedure :: write => vamp2_equi_write
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_equi_write (self, unit, indent)
     class(vamp2_equi_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -3300,9 +3299,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_equi_write
 @
-<<vamp2: public>>=
+<<VAMP2: public>>=
   public :: vamp2_equivalences_t
-<<vamp2: types>>=
+<<VAMP2: types>>=
   type :: vamp2_equivalences_t
       private
       integer :: n_eqv = 0
@@ -3316,17 +3315,17 @@ integer, parameter, public :: &
       integer, dimension(:), allocatable :: equivalent_to_ch
       logical, dimension(:, :), allocatable :: dim_is_invariant
    contains
-   <<vamp2: vamp2 equivalences: TBP>>
+   <<VAMP2: vamp2 equivalences: TBP>>
   end type vamp2_equivalences_t
 
 @ %def vamp2_equivalences_t
 @ Constructor.
-<<vamp2: interfaces>>=
+<<VAMP2: interfaces>>=
   interface vamp2_equivalences_t
      module procedure vamp2_equivalences_init
   end interface vamp2_equivalences_t
 
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   type(vamp2_equivalences_t) function vamp2_equivalences_init (&
        n_eqv, n_channel, n_dim) result (eqv)
     integer, intent(in) :: n_eqv, n_channel, n_dim
@@ -3344,9 +3343,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_equivlences_init
 @ Write equivalences.
-<<vamp2: vamp2 equivalences: TBP>>=
+<<VAMP2: vamp2 equivalences: TBP>>=
   procedure :: write => vamp2_equivalences_write
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_equivalences_write (self, unit, indent)
     class(vamp2_equivalences_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -3381,9 +3380,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_equivalences_write
 @ Is allocated.
-<<vamp2: vamp2 equivalences: TBP>>=
+<<VAMP2: vamp2 equivalences: TBP>>=
   procedure, public :: is_allocated => vamp2_equivalences_is_allocated
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   logical function vamp2_equivalences_is_allocated (self) result (yorn)
     class(vamp2_equivalences_t), intent(in) :: self
     yorn = allocated (self%eqv)
@@ -3391,9 +3390,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_equivalences_is_allocated
 @ Get source channel and destination channel for given equivalence.
-<<vamp2: vamp2 equivalences: TBP>>=
+<<VAMP2: vamp2 equivalences: TBP>>=
   procedure, public :: get_channels => vamp2_equivalences_get_channels
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_equivalences_get_channels (eqv, i_eqv, dest, src)
    class(vamp2_equivalences_t), intent(in) :: eqv
    integer, intent(in) :: i_eqv
@@ -3404,10 +3403,10 @@ integer, parameter, public :: &
 
 @ %def vamp2_equivalences_get_channels
 @
-<<vamp2: vamp2 equivalences: TBP>>=
+<<VAMP2: vamp2 equivalences: TBP>>=
   procedure, public :: get_mode => vamp2_equivalences_get_mode
   procedure, public :: get_perm => vamp2_equivalences_get_perm
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   function vamp2_equivalences_get_mode (eqv, i_eqv) result (mode)
     class(vamp2_equivalences_t), intent(in) :: eqv
     integer, intent(in) :: i_eqv
@@ -3424,9 +3423,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_equivalences_get_perm, vamp2_equivalences_get_mode
 @
-<<vamp2: vamp2 equivalences: TBP>>=
+<<VAMP2: vamp2 equivalences: TBP>>=
   procedure, public :: set_equivalence => vamp2_equivalences_set_equivalence
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_equivalences_set_equivalence &
        (eqv, i_eqv, dest, src, perm, mode)
     class(vamp2_equivalences_t), intent(inout) :: eqv
@@ -3456,9 +3455,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_equivalences_set_equivalence
 @ Freeze equivalences.
-<<vamp2: vamp2 equivalences: TBP>>=
+<<VAMP2: vamp2 equivalences: TBP>>=
   procedure, public :: freeze => vamp2_equivalences_freeze
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_equivalences_freeze (self)
     class(vamp2_equivalences_t), intent(inout) :: self
     integer :: i_eqv, ch, upper, lower
@@ -3506,9 +3505,9 @@ integer, parameter, public :: &
 \subsection{Type: vamp2\_t}
 \label{sec:vamp2-t}
 
-<<vamp2: public>>=
+<<VAMP2: public>>=
   public :: vamp2_t
-<<vamp2: types>>=
+<<VAMP2: types>>=
   type :: vamp2_t
      private
      type(vamp2_config_t) :: config
@@ -3522,20 +3521,20 @@ integer, parameter, public :: &
      type(vamp2_equivalences_t) :: equivalences
      logical :: event_prepared
      real(default), dimension(:), allocatable :: event_weight
-   <<vamp2: vamp2: type>>
+   <<VAMP2: vamp2: type>>
    contains
-   <<vamp2: vamp2: TBP>>
+   <<VAMP2: vamp2: TBP>>
   end type vamp2_t
-<<MPI: vamp2: vamp2: type>>=
+<<MPI: VAMP2: vamp2: type>>=
   class(request_base_t), allocatable :: request
-<<vamp2: interfaces>>=
+<<VAMP2: interfaces>>=
   interface vamp2_t
      module procedure vamp2_init
   end interface vamp2_t
 
 @ %def vamp2_t
 @ Constructor.
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   type(vamp2_t) function vamp2_init (n_channel, n_dim, alpha, beta, n_bins_max,&
        & n_calls_min_per_channel, iterations, mode) result (self)
     integer, intent(in) :: n_channel
@@ -3572,9 +3571,9 @@ integer, parameter, public :: &
   end function vamp2_init
 
 @ %def vamp2_init
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: final => vamp2_final
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_final (self)
     class(vamp2_t), intent(inout) :: self
     integer :: ch
@@ -3585,9 +3584,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_final
 @ Output.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: write => vamp2_write
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_write (self, unit, indent)
     class(vamp2_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -3604,9 +3603,9 @@ integer, parameter, public :: &
 
 @ %def vamp2_write
 @ Get the config object.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: get_config => vamp2_get_config
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_get_config (self, config)
     class(vamp2_t), intent(in) :: self
     type(vamp2_config_t), intent(out) :: config
@@ -3616,9 +3615,9 @@ integer, parameter, public :: &
 @ %def vamp2_get_config
 @ Set non-runtime dependent configuration. It will no be possible to change
 [[n_bins_max]].
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: set_config => vamp2_set_config
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_set_config (self, config)
     class(vamp2_t), intent(inout) :: self
     class(vamp2_config_t), intent(in) :: config
@@ -3642,9 +3641,9 @@ the channel weights
 \begin{equation}
   N_i = \alpha_i N.
 \end{equation}
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: set_calls => vamp2_set_n_calls
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_set_n_calls (self, n_calls)
     class(vamp2_t), intent(inout) :: self
     integer, intent(in) :: n_calls
@@ -3665,9 +3664,9 @@ the channel weights
 
 @ %def vamp2_set_n_calls
 @ Set limits. We only support same limits for all channels.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: set_limits => vamp2_set_limits
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_set_limits (self, x_upper, x_lower)
     class(vamp2_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x_upper
@@ -3684,9 +3683,9 @@ the channel weights
 This means, that channels with equal index correspond to the same chain, and we
 refer to those as chained weights, where we average the contributions of the
 chained weights in [[vamp2_adapt_weights]].
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: set_chain => vamp2_set_chain
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_set_chain (self, n_chains, chain)
     class(vamp2_t), intent(inout) :: self
     integer, intent(in) :: n_chains
@@ -3702,9 +3701,9 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_set_chain
 @ Set channel equivalences.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: set_equivalences => vamp2_set_equivalences
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_set_equivalences (self, equivalences)
     class(vamp2_t), intent(inout) :: self
     type(vamp2_equivalences_t), intent(in) :: equivalences
@@ -3713,12 +3712,12 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_set_equivalences
 @ Move allocated (and prepared!) request object into VAMP2.
-<<MPI: vamp2: vamp2: TBP>>=
+<<MPI: VAMP2: vamp2: TBP>>=
   generic, public :: allocate_request => allocate_request_by_method, &
      allocate_request_by_object
   procedure, private :: allocate_request_by_method => vamp2_allocate_request_by_method
   procedure, private :: allocate_request_by_object => vamp2_allocate_request_by_object
-<<MPI: vamp2: procedures>>=
+<<MPI: VAMP2: procedures>>=
   subroutine vamp2_allocate_request_by_method (self, method)
     class(vamp2_t), intent(inout) :: self
     character(len=*), intent(in) :: method
@@ -3759,9 +3758,9 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_allocate_request
 @ Get [[n_calls]] calculated by [[VEGAS]].
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: get_n_calls => vamp2_get_n_calls
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   elemental real(default) function vamp2_get_n_calls (self) result (n_calls)
     class(vamp2_t), intent(in) :: self
     n_calls = sum (self%integrator%get_calls ())
@@ -3769,9 +3768,9 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_get_n_calls
 @ Get the cumulative result of the integration. Recalculate weighted average of the integration.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: get_integral => vamp2_get_integral
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   elemental real(default) function vamp2_get_integral (self) result (integral)
     class(vamp2_t), intent(in) :: self
     integral = 0.
@@ -3782,9 +3781,9 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_get_integral
 @ Get the cumulative variance of the integration. Recalculate the variance.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: get_variance => vamp2_get_variance
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   elemental real(default) function vamp2_get_variance (self) result (variance)
     class(vamp2_t), intent(in) :: self
     variance = 0.
@@ -3795,9 +3794,9 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_get_variance
 @ Get efficiency.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: get_efficiency => vamp2_get_efficiency
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   elemental real(default) function vamp2_get_efficiency (self) result (efficiency)
     class(vamp2_t), intent(in) :: self
     efficiency = 0.
@@ -3808,10 +3807,10 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_get_efficiency
 @ Get event weight and event weight excess.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure :: get_evt_weight => vamp2_get_evt_weight
   procedure :: get_evt_weight_excess => vamp2_get_evt_weight_excess
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   real(default) function vamp2_get_evt_weight (self) result (evt_weight)
     class(vamp2_t), intent(in) :: self
     evt_weight = self%result%evt_weight
@@ -3824,9 +3823,9 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_get_evt_weight, vamp2_get_evt_weight_excess
 @ Get procedure to retrieve channel-th grid.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure :: get_grid => vamp2_get_grid
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   type(vegas_grid_t) function vamp2_get_grid (self, channel) result (grid)
     class(vamp2_t), intent(in) :: self
     integer, intent(in) :: channel
@@ -3846,9 +3845,9 @@ If [[n_calls_threshold]] is set, we rescale the weights in such a way, that the
 We calculate the distance of the weights to the [[weight_min]] and reset those weights
 which are less than [[weight_mins]] to this value. The other values are
 accordingly resized to fit the boundary condition of the partition of unity.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, private :: adapt_weights => vamp2_adapt_weights
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_adapt_weights (self)
     class(vamp2_t), intent(inout) :: self
     integer :: n_weights_underflow
@@ -3873,12 +3872,12 @@ accordingly resized to fit the boundary condition of the partition of unity.
     end if
     call self%set_calls (self%config%n_calls)
   contains
-  <<vamp2: vamp2 adapt weights: procedures>>
+  <<VAMP2: vamp2 adapt weights: procedures>>
   end subroutine vamp2_adapt_weights
 
 @ %def vamp2_adapt_weights
 @ We average the weights over their respective chain members.
-<<vamp2: vamp2 adapt weights: procedures>>=
+<<VAMP2: vamp2 adapt weights: procedures>>=
   subroutine chain_weights ()
     integer :: ch
     real(default) :: average
@@ -3894,9 +3893,9 @@ accordingly resized to fit the boundary condition of the partition of unity.
   end subroutine chain_weights
 
 @ %def chain_weights
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, private :: apply_equivalences => vamp2_apply_equivalences
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_apply_equivalences (self)
     class(vamp2_t), intent(inout) :: self
     integer :: ch, ch_src, j, j_src, i_eqv
@@ -3940,9 +3939,9 @@ accordingly resized to fit the boundary condition of the partition of unity.
 
 @ %def vamp2_apply_equivalences
 @ Reset the cumulative result.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: reset_result => vamp2_reset_result
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_reset_result (self)
     class(vamp2_t), intent(inout) :: self
     call self%result%reset ()
@@ -3975,9 +3974,9 @@ which gives an unbiased error estimate.
 Beside those adaption to multichannel, the overall processing of
 [[total_integral]], [[total_sq_integral]] and [[total_variance]] is the same as
 in [[vegas_integrate]].
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: integrate => vamp2_integrate
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_integrate (self, func, rng, iterations, reset_result,&
        & refine_grids, adapt_weights, verbose, result, abserr)
     class(vamp2_t), intent(inout) :: self
@@ -3996,26 +3995,26 @@ in [[vegas_integrate]].
     logical :: opt_adapt_weights
     logical :: opt_refine_grids
     logical :: opt_verbose
-  <<vamp2: vamp2 integrate: variables>>
+  <<VAMP2: vamp2 integrate: variables>>
     call set_options ()
     if (opt_verbose) then
        call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
     end if
     if (opt_reset_result) call self%reset_result ()
-  <<vamp2: vamp2 integrate: init>>
+  <<VAMP2: vamp2 integrate: init>>
     iteration: do it = 1, self%config%iterations
        call channel_iterator%init (1, self%config%n_channel)
        call self%prepare_integrate_iteration (func)
-     <<vamp2: vamp2 integrate: presampling>>
+     <<VAMP2: vamp2 integrate: presampling>>
      channel: do
-        <<vamp2: vamp2 integrate: sampling>>
+        <<VAMP2: vamp2 integrate: sampling>>
           call func%set_channel (ch)
           call self%integrator(ch)%integrate ( &
                & func, rng, iterations, refine_grid = .false., verbose = .false.)
-        <<vamp2: vamp2 integrate: callback>>
+        <<VAMP2: vamp2 integrate: callback>>
           call channel_iterator%next_step ()
        end do channel
-     <<vamp2: vamp2 integrate: postsampling>>
+     <<VAMP2: vamp2 integrate: postsampling>>
        call self%compute_result_and_efficiency ()
        associate (result => self%result)
          cumulative_int = result%sum_int_wgtd / result%sum_wgts
@@ -4044,12 +4043,12 @@ in [[vegas_integrate]].
     if (present (result)) result = cumulative_int
     if (present (abserr)) abserr = abs (cumulative_std)
   contains
-  <<vamp2: vamp2 integrate: procedures>>
+  <<VAMP2: vamp2 integrate: procedures>>
   end subroutine vamp2_integrate
 
 @ %def vamp2_integrate
 @ Set optional parameters.
-<<vamp2: vamp2 integrate: procedures>>=
+<<VAMP2: vamp2 integrate: procedures>>=
   subroutine set_options ()
     if (present (iterations)) self%config%iterations = iterations
     opt_reset_result = .true.
@@ -4065,32 +4064,32 @@ in [[vegas_integrate]].
 @ %def set_options
 @
 We define additional chunks, which we use to insert parallel/MPI code.
-<<vamp2: vamp2 integrate: variables>>=
+<<VAMP2: vamp2 integrate: variables>>=
 @
-<<vamp2: vamp2 integrate: init>>=
+<<VAMP2: vamp2 integrate: init>>=
 @
-<<vamp2: vamp2 integrate: presampling>>=
+<<VAMP2: vamp2 integrate: presampling>>=
 @ Conditional handling.
 We introduce a different behavior for the MPI-/non-MPI variant.
-<<NOMPI: vamp2: vamp2 integrate: sampling>>=
+<<NOMPI: VAMP2: vamp2 integrate: sampling>>=
   if (.not. channel_iterator%is_iterable ()) exit channel
   ch = channel_iterator%get_current ()
 @
-<<vamp2: vamp2 integrate: callback>>=
+<<VAMP2: vamp2 integrate: callback>>=
 @
-<<vamp2: vamp2 integrate: postsampling>>=
+<<VAMP2: vamp2 integrate: postsampling>>=
 @
-<<MPI: vamp2: vamp2 integrate: variables>>=
+<<MPI: VAMP2: vamp2 integrate: variables>>=
   type(request_t) :: request
 @
 Verify that we have an allocated request object, else fallback to simple method.
 Be aware that we keep the fallback silent (!) in order to keep any possible testing output uninterrupted.
-<<MPI: vamp2: vamp2 integrate: init>>=
+<<MPI: VAMP2: vamp2 integrate: init>>=
   if (.not. allocated (self%request)) then
      call self%allocate_request_by_method ("simple")
   end if
 @
-<<MPI: vamp2: vamp2 integrate: presampling>>=
+<<MPI: VAMP2: vamp2 integrate: presampling>>=
   if (self%request%is_master ()) then
      select type (req => self%request)
      type is (request_caller_t)
@@ -4113,7 +4112,7 @@ When the [[channel_iterator]] is drained by [[update_iter_and_rng]], we send a t
 and await in the next cycle of channel loop the terminated request.
 When the request is terminated, we can gracefully exit the channel loop as [[channel_iterator]] and [[rng]] are already advanced by [[update_iter_and_rng]].
 When we received a genuine request, then, we proceed as prophisied.
-<<MPI: vamp2: vamp2 integrate: sampling>>=
+<<MPI: VAMP2: vamp2 integrate: sampling>>=
   select type (req => self%request)
   type is (request_caller_t)
      if (self%request%is_master ()) exit channel
@@ -4137,7 +4136,7 @@ When we received a genuine request, then, we proceed as prophisied.
        duplicate_comm = .false., &
        parallel_mode = request%group)
 @
-<<MPI: vamp2: vamp2 integrate: callback>>=
+<<MPI: VAMP2: vamp2 integrate: callback>>=
   if (request%group_master) then
      if (.not. self%request%is_master ())  &
           call allocate_handler (self%request, ch)
@@ -4146,13 +4145,13 @@ When we received a genuine request, then, we proceed as prophisied.
      call self%request%release_workload (request)
   end if
 @
-<<MPI: vamp2: vamp2 integrate: postsampling>>=
+<<MPI: VAMP2: vamp2 integrate: postsampling>>=
   call reduce_func_calls (func)
   call self%request%await_handler ()
   call self%request%barrier ()
   if (.not. self%request%is_master ()) cycle
 @
-<<MPI: vamp2: vamp2 integrate: procedures>>=
+<<MPI: VAMP2: vamp2 integrate: procedures>>=
   subroutine allocate_handler (req, ch)
     class(request_base_t), intent(inout) :: req
     integer, intent(in) :: ch
@@ -4204,14 +4203,14 @@ When we received a genuine request, then, we proceed as prophisied.
 @ Prepeare current integration's iteration.
 
 Prepare iteration, i.e. provide weights and grids to function object.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, private :: prepare_integrate_iteration => &
        vamp2_prepare_integrate_iteration
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_prepare_integrate_iteration (self, func)
     class(vamp2_t), intent(inout) :: self
     class(vamp2_func_t), intent(inout) :: func
-  <<vamp2: vamp2 prepare integrate iteration: body>>
+  <<VAMP2: vamp2 prepare integrate iteration: body>>
     call fill_func_with_weights_and_grids (func)
   contains
     subroutine fill_func_with_weights_and_grids (func)
@@ -4223,15 +4222,15 @@ Prepare iteration, i.e. provide weights and grids to function object.
          func%grids(ch) = self%integrator(ch)%get_grid ()
       end do
     end subroutine fill_func_with_weights_and_grids
-  <<vamp2: vamp2 prepare integrate iteration: procedures>>
+  <<VAMP2: vamp2 prepare integrate iteration: procedures>>
   end subroutine vamp2_prepare_integrate_iteration
 
 @ %def vamp2_prepare_integrate_iteration
-<<vamp2: vamp2 prepare integrate iteration: body>>=
+<<VAMP2: vamp2 prepare integrate iteration: body>>=
 @
-<<vamp2: vamp2 prepare integrate iteration: procedures>>=
+<<VAMP2: vamp2 prepare integrate iteration: procedures>>=
 @
-<<MPI: vamp2: vamp2 prepare integrate iteration: body>>=
+<<MPI: VAMP2: vamp2 prepare integrate iteration: body>>=
   if (.not. allocated (self%request)) then
      call msg_bug ("VAMP2: prepare integration iteration failed: unallocated request.")
   end if
@@ -4253,7 +4252,7 @@ Prepare iteration, i.e. provide weights and grids to function object.
      call msg_bug ("VAMP2: prepare integration iteration failed: unknown request type.")
   end select
 @
-<<MPI: vamp2: vamp2 prepare integrate iteration: procedures>>=
+<<MPI: VAMP2: vamp2 prepare integrate iteration: procedures>>=
   subroutine broadcast_weights_and_grids ()
     type(vegas_grid_t) :: grid
     type(MPI_COMM) :: comm
@@ -4298,10 +4297,10 @@ Prepare iteration, i.e. provide weights and grids to function object.
   end subroutine call_all_handler
 @
 @ Compute the result and efficiency of the current status of the integrator.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, private :: compute_result_and_efficiency => &
        vamp2_compute_result_and_efficiency
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_compute_result_and_efficiency (self)
     class(vamp2_t), intent(inout) :: self
     real(default) :: total_integral, total_variance
@@ -4356,9 +4355,9 @@ We select a channel using the a-priori weights and $f_{i}^{\text{max}}$, to
 flatten possible unbalanced channel weight(s).
 
 An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff set.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: generate_weighted => vamp2_generate_weighted_event
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_generate_weighted_event (&
        self, func, rng, x)
     class(vamp2_t), intent(inout) :: self
@@ -4382,7 +4381,7 @@ An additional rescale factor [[opt_event_rescale]] is applied to [[f_max]], iff 
     self%result%evt_weight = self%integrator(ch)%get_evt_weight () &
          * self%weight(ch) / self%event_weight(ch)
   contains
-  <<vamp2: vamp2 generate event: procedures>>
+  <<VAMP2: vamp2 generate event: procedures>>
   end subroutine vamp2_generate_weighted_event
 
 @ %def vamp2_generate_weighted_event
@@ -4397,9 +4396,9 @@ we try for an event from the previously selected channel.
 If the event is rejected, we also reject the selected channel.
 
 The inversion method is implemented as a loop over the channel weights \(\alpha_i\) until \(\sum_{c}^{c^prime} \alpha_c - r \leq 0\), the last value of the loop index [[ch]] is then \(c^\prime\).
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: generate_unweighted => vamp2_generate_unweighted_event
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_generate_unweighted_event ( &
        & self, func, rng, x, opt_event_rescale)
     class(vamp2_t), intent(inout) :: self
@@ -4442,7 +4441,7 @@ The inversion method is implemented as a loop over the channel weights \(\alpha_
        end if
     end do generate
   contains
-  <<vamp2: vamp2 generate event: procedures>>
+  <<VAMP2: vamp2 generate event: procedures>>
   end subroutine vamp2_generate_unweighted_event
 
 @ %def vamp2_generate_event
@@ -4467,7 +4466,7 @@ We generate an unweighted event by
 after we have selected a channel by the rescaled event channel weights.
 The overall normalization $\operatorname*{max}_{i, x}$ is not needed because we normalize the event channel weights
 to one and therefore the overall normalization cancels.
-<<vamp2: vamp2 generate event: procedures>>=
+<<VAMP2: vamp2 generate event: procedures>>=
   subroutine prepare_event ()
     integer :: i
     self%event_prepared = .false.
@@ -4486,7 +4485,7 @@ to one and therefore the overall normalization cancels.
 
 @ %def prepare_event
 @ Write grids to unit.
-<<vamp2: parameters>>=
+<<VAMP2: parameters>>=
   character(len=*), parameter, private :: &
      descr_fmt =         "(1X,A)", &
      integer_fmt =       "(1X,A18,1X,I15)", &
@@ -4499,9 +4498,9 @@ to one and therefore the overall normalization cancels.
      double_array2_pac_fmt = "(1X,2(1X,I8),1X,E16.8E4)"
 @ %def descr_fmt integer_fmt integer_array_fmt logical_fmt
 @ %def double_fmt double_array_fmt double_array2_fmt
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: write_grids => vamp2_write_grids
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_write_grids (self, unit)
     class(vamp2_t), intent(in) :: self
     integer, intent(in), optional :: unit
@@ -4557,9 +4556,9 @@ to one and therefore the overall normalization cancels.
 
 @ %def vamp2_write_grids
 @ Read grids from unit.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
   procedure, public :: read_grids => vamp2_read_grids
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_read_grids (self, unit)
     class(vamp2_t), intent(out) :: self
     integer, intent(in), optional :: unit
@@ -4619,10 +4618,10 @@ to one and therefore the overall normalization cancels.
 
 @ %def vamp2_read_grids
 @ Read and write grids from an unformatted file.
-<<vamp2: vamp2: TBP>>=
+<<VAMP2: vamp2: TBP>>=
 procedure :: write_binary_grids => vamp2_write_binary_grids
 procedure :: read_binary_grids => vamp2_read_binary_grids
-<<vamp2: procedures>>=
+<<VAMP2: procedures>>=
   subroutine vamp2_write_binary_grids (self, unit)
     class(vamp2_t), intent(in) :: self
     integer, intent(in) :: unit
@@ -4731,10 +4730,10 @@ module vamp2_ut
 
 <<Standard module head>>
 
-<<vamp2: public test>>
+<<VAMP2: public test>>
 
 contains
-<<vamp2: test driver>>
+<<VAMP2: test driver>>
 end module vamp2_ut
 @ %def vamp2_ut
 @
@@ -4754,22 +4753,22 @@ module vamp2_uti
 
 <<Standard module head>>
 
-<<vamp2: test declaration>>
+<<VAMP2: test declaration>>
 
-<<vamp2: test types>>
+<<VAMP2: test types>>
 
 contains
-<<vamp2: tests>>
+<<VAMP2: tests>>
 end module vamp2_uti
 @ %def vamp2_uti
 @ API: driver for the unit tests below.
-<<vamp2: public test>>=
+<<VAMP2: public test>>=
   public :: vamp2_test
-<<vamp2: test driver>>=
+<<VAMP2: test driver>>=
   subroutine vamp2_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-    <<vamp2: execute tests>>
+    <<VAMP2: execute tests>>
   end subroutine vamp2_test
 
 @ %def vamp2_test
@@ -4782,18 +4781,18 @@ We use the example from the Monte Carlo Examples of the GSL library
   I = \int_{-pi}^{+pi} {dk_x/(2 pi)}  \int_{-pi}^{+pi} {dk_y/(2 pi)}  \int_{-pi}^{+pi} {dk_z/(2 pi)}  1 / (1 - cos(k_x)cos(k_y)cos(k_z)).
 \end{equation}
 The integral is reduced to region (0,0,0) $\rightarrow$ ($\pi$, $\pi$, $\pi$) and multiplied by 8.
-<<vamp2: test types>>=
+<<VAMP2: test types>>=
    type, extends (vamp2_func_t) :: vamp2_test_func_t
      !
    contains
-   <<vamp2: vamp2 test func: TBP>>
+   <<VAMP2: vamp2 test func: TBP>>
 end type vamp2_test_func_t
 
 @ %def vegas_test_func_t
 @
-<<vamp2: vamp2 test func: TBP>>=
+<<VAMP2: vamp2 test func: TBP>>=
   procedure, public :: evaluate_maps => vamp2_test_func_evaluate_maps
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_test_func_evaluate_maps (self, x)
     class(vamp2_test_func_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -4804,9 +4803,9 @@ end type vamp2_test_func_t
 
 @ %def vamp2_test_func_evaluate_maps
 @ Evaluate the integrand.
-<<vamp2: vamp2 test func: TBP>>=
+<<VAMP2: vamp2 test func: TBP>>=
   procedure, public :: evaluate_func => vamp2_test_func_evaluate
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   real(default) function vamp2_test_func_evaluate (self, x) result (f)
     class(vamp2_test_func_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
@@ -4826,18 +4825,18 @@ where
 \end{align}
 The jacobian is $\frac{\partial (x, y)}{\partial (u, v)}$.
 
-<<vamp2: test types>>=
+<<VAMP2: test types>>=
   type, extends(vamp2_func_t) :: vamp2_test_func_2_t
      !
    contains
-   <<vamp2: vamp2 test func 2: TBP>>
+   <<VAMP2: vamp2 test func 2: TBP>>
   end type vamp2_test_func_2_t
 
 @ %def vamp2_test_func_2_t
 @ Evaluate maps.
-<<vamp2: vamp2 test func 2: TBP>>=
+<<VAMP2: vamp2 test func 2: TBP>>=
   procedure :: evaluate_maps => vamp2_test_func_2_evaluate_maps
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_test_func_2_evaluate_maps (self, x)
     class(vamp2_test_func_2_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -4858,9 +4857,9 @@ The jacobian is $\frac{\partial (x, y)}{\partial (u, v)}$.
 
 @ %def vamp2_test_func_2_evaluate_maps
 @ Evaluate func.
-<<vamp2: vamp2 test func 2: TBP>>=
+<<VAMP2: vamp2 test func 2: TBP>>=
   procedure :: evaluate_func => vamp2_test_func_2_evaluate_func
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   real(default) function vamp2_test_func_2_evaluate_func (self, x) result (f)
     class(vamp2_test_func_2_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
@@ -4880,18 +4879,18 @@ where
 The jacobians are $\frac{\partial x_1}{\partial u} = \frac{1}{5}
 u^{-\frac{4}{5}}$ and $\frac{\partial x_1}{\partial v} = \frac{1}{5}
 v^{-\frac{4}{5}}$.
-<<vamp2: test types>>=
+<<VAMP2: test types>>=
   type, extends(vamp2_func_t) :: vamp2_test_func_3_t
      !
    contains
-   <<vamp2: vamp2 test func 3: TBP>>
+   <<VAMP2: vamp2 test func 3: TBP>>
   end type vamp2_test_func_3_t
 
 @ %def vamp2_test_func_3_t
 @ Evaluate maps.
-<<vamp2: vamp2 test func 3: TBP>>=
+<<VAMP2: vamp2 test func 3: TBP>>=
   procedure :: evaluate_maps => vamp2_test_func_3_evaluate_maps
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_test_func_3_evaluate_maps (self, x)
     class(vamp2_test_func_3_t), intent(inout) :: self
     real(default), dimension(:), intent(in) :: x
@@ -4915,9 +4914,9 @@ v^{-\frac{4}{5}}$.
 
 @ %def vamp2_test_func_3_evaluate_maps
 @ Evaluate func.
-<<vamp2: vamp2 test func 3: TBP>>=
+<<VAMP2: vamp2 test func 3: TBP>>=
   procedure :: evaluate_func => vamp2_test_func_3_evaluate_func
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   real(default) function vamp2_test_func_3_evaluate_func (self, x) result (f)
     class(vamp2_test_func_3_t), intent(in) :: self
     real(default), dimension(:), intent(in) :: x
@@ -4938,12 +4937,12 @@ v^{-\frac{4}{5}}$.
 
 We reproduce the first test case of VEGAS.
 Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initialisation of the grid.
-<<vamp2: execute tests>>=
+<<VAMP2: execute tests>>=
   call test (vamp2_1, "vamp2_1", "VAMP2 initialisation and&
        & grid preparation", u, results)
-<<vamp2: test declaration>>=
+<<VAMP2: test declaration>>=
   public :: vamp2_1
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_1 (u)
     integer, intent(in) :: u
     type(vamp2_t) :: mc_integrator
@@ -5006,12 +5005,12 @@ Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initi
 
 @ %def vamp2_1
 @ Integrate a function with two-dimensional argument and two channels.
-<<vamp2: execute tests>>=
+<<VAMP2: execute tests>>=
   call test (vamp2_2, "vamp2_2", "VAMP2 intgeration of two-dimensional &
        & function with two channels", u, results)
-<<vamp2: test declaration>>=
+<<VAMP2: test declaration>>=
   public :: vamp2_2
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_2 (u)
     integer, intent(in) :: u
     type(vamp2_t) :: mc_integrator
@@ -5075,12 +5074,12 @@ Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initi
 
 @ %def vamp2_2
 @ Integrate a function with two-dimensional argument and two channels.
-<<vamp2: execute tests>>=
+<<VAMP2: execute tests>>=
   call test (vamp2_3, "vamp2_3", "VAMP2 intgeration of two-dimensional &
        & function with two channels", u, results)
-<<vamp2: test declaration>>=
+<<VAMP2: test declaration>>=
   public :: vamp2_3
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_3 (u)
     integer, intent(in) :: u
     type(vamp2_t) :: mc_integrator
@@ -5168,12 +5167,12 @@ Initialise the VAMP2 MC integrator and call to [[vamp2_init_grid]] for the initi
 @ %def vamp2_3
 @ Integrate a function with two-dimensional argument and two channels.
 Use chained weights, although we average over each weight itself.
-<<vamp2: execute tests>>=
+<<VAMP2: execute tests>>=
   call test (vamp2_4, "vamp2_4", "VAMP2 intgeration of two-dimensional &
        & function with two channels with chains", u, results)
-<<vamp2: test declaration>>=
+<<VAMP2: test declaration>>=
   public :: vamp2_4
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_4 (u)
     integer, intent(in) :: u
     type(vamp2_t) :: mc_integrator
@@ -5261,12 +5260,12 @@ Use chained weights, although we average over each weight itself.
 
 @ %def vamp2_4
 @
-<<vamp2: execute tests>>=
+<<VAMP2: execute tests>>=
   call test (vamp2_5, "vamp2_5", "VAMP2 intgeration of two-dimensional &
        & function with two channels with equivalences", u, results)
-<<vamp2: test declaration>>=
+<<VAMP2: test declaration>>=
   public :: vamp2_5
-<<vamp2: tests>>=
+<<VAMP2: tests>>=
   subroutine vamp2_5 (u)
     integer, intent(in) :: u
     type(vamp2_t) :: mc_integrator
@@ -5390,21 +5389,29 @@ Use chained weights, although we average over each weight itself.
 
 \begin{description}
 \item[Request] Direct interface for requests.
-\item[Balancer] Sublidiary interfaces and types for implementation into [[request]].
-\item[Callback] Direct interface for non-blocking communication in callback fashion used in subsidiary in [[request]].
+\item[Balancer] Sublidiary interfaces and types for implementation
+  into [[request]].
+\item[Callback] Direct interface for non-blocking communication in
+  callback fashion used in subsidiary in [[request]].
 \end{description}
 
 \subsection{Request Base}
 
 \begin{description}
-\item[request] Container type for current request, contains handler index and status of request.
-\item[request group cache] Caching for commnunicator groups, tries to reduce the costly calls to [[MPI_CREATE_COMM_GROUP]].
-\item[request base] Base type for request handling, defines procedures and basic request scheme for direct implementation into [[VAMP2]].
+\item[request] Container type for current request, contains handler
+  index and status of request.
+\item[request group cache] Caching for commnunicator groups, tries to
+  reduce the costly calls to [[MPI_CREATE_COMM_GROUP]].
+\item[request base] Base type for request handling, defines procedures
+  and basic request scheme for direct implementation into [[VAMP2]].
 \end{description}
 
-When a data type has an associated communicator field, it always must duplicate the communicator in order to ensure communication encapsulation.
-Only in special case (e.g. outside of object communication is required) the parent communicator should be directly used.
-For example, that is the case for the group cache, as it exports its newly created communicator to the outside of the request library.
+When a data type has an associated communicator field, it always must
+duplicate the communicator in order to ensure communication
+encapsulation. Only in special case (e.g. outside of object
+communication is required) the parent communicator should be directly
+used. For example, that is the case for the group cache, as it exports
+its newly created communicator to the outside of the request library.
 
 <<[[request_base.f90]]>>=
 <<File header>>
@@ -5417,10 +5424,24 @@ module request_base
   use request_callback
   use mpi_f08 !NODEP!
 
-  implicit none
+<<Standard module head>>
 
-  private
+<<Request base: public>>
 
+<<Request base: types>>
+
+<<Request base: interfaces>>
+
+contains
+
+<<Request base: procedures>>
+
+end module request_base
+@ %def request_base
+@
+<<Request base: public>>=
+  public :: request_t
+<<Request base: types>>=
   type :: request_t
      integer :: handler_id = 0
      logical :: terminate = .false.
@@ -5430,6 +5451,9 @@ module request_base
      type(MPI_COMM) :: comm
   end type request_t
 
+@ %def request_t
+@
+<<Request base: types>>=
   type :: request_group_cache_t
      private
      type(MPI_COMM) :: parent_comm
@@ -5438,31 +5462,39 @@ module request_base
      type(MPI_GROUP) :: group
      integer, dimension(:), allocatable :: rank
    contains
-     procedure :: init => request_group_cache_init
-     procedure :: reset => request_group_cache_reset
-     procedure :: update => request_group_cache_update
-     procedure :: get_comm => request_group_cache_get_comm
-     procedure :: is_master => request_group_cache_is_master
+   <<Request base: group cache: TBP>>
   end type request_group_cache_t
 
-  !> Base type for requesting and back calling.
-  !!
-  !! A short remark on the semantics of point-to-point communication (as its intended use in this implemenation):
-  !! MPI is strict regarding the order of the messages (for blocking communication), as those can not overtake each other, p. 41.
-  !! For non-blocking communication, the standard extends it such that the order depends on "the execution order of the calls that initiate the communication".
-  !! The non-overtaking requirement is then extended to this definition of order.
-  !!
-  !! Color method for tracking communication?
-  !! We restrict each slave to a single callback (at once), which can communicate during the next request computation.
-  !! Before handling the next (current) callback, the former one has to finish (with a wait call on the client-side).
-  !! On the server-side, we only test on the finishing, reporting a communication failure.
-  !!
-  !! Furthermore, the implementation has to take care that the order of the communication calls on the master and slave code always matches!
-  !!
-  !! Therefore, we need to secure the order of communication calls.
-  !! First, we let the master initiate all callback communication *before* polling.
-  !! This fixiates the order.
-  !! Second, we require that the implementation of the polling honors this order.
+@ %def request_group_cache_t
+@
+Base type for requesting and back calling.
+
+A short remark on the semantics of point-to-point communication (as
+its intended use in this implemenation): MPI is strict regarding the
+order of the messages (for blocking communication), as those can not
+overtake each other, p. 41. For non-blocking communication, the
+standard extends it such that the order depends on "the execution
+order of the calls that initiate the communication". The
+non-overtaking requirement is then extended to this definition of
+order. 
+
+Color method for tracking communication? We restrict each slave to a
+single callback (at once), which can communicate during the next
+request computation. Before handling the next (current) callback, the
+former one has to finish (with a wait call on the client-side). On the
+server-side, we only test on the finishing, reporting a communication
+failure. 
+
+Furthermore, the implementation has to take care that the order of
+the communication calls on the master and slave code always matches!
+
+Therefore, we need to secure the order of communication calls. First,
+we let the master initiate all callback communication *before*
+polling. This fixiates the order. Second, we require that the
+implementation of the polling honors this order.
+<<Request base: public>>=
+  public :: request_base_t
+<<Request base: types>>=
   type, abstract :: request_base_t
      type(MPI_COMM) :: comm
      type(MPI_COMM) :: external_comm !! communicator for use outside of request, however, just a duplicate of comm.
@@ -5470,24 +5502,12 @@ module request_base
      type(request_group_cache_t) :: cache
      type(request_handler_manager_t) :: handler
    contains
-     procedure :: base_init => request_base_init
-     procedure :: base_write => request_base_write
-     procedure(request_base_deferred_write), deferred :: write
-     procedure :: is_master => request_base_is_master
-     procedure(request_base_has_workers), deferred :: has_workers
-     procedure :: get_external_comm => request_base_get_external_comm
-     procedure :: add_balancer => request_base_add_balancer
-     procedure :: add_handler => request_base_add_handler
-     procedure :: reset => request_base_reset
-     procedure :: call_handler => request_base_call_handler
-     procedure :: call_client_handler => request_base_call_client_handler
-     procedure :: await_handler => request_base_await_handler
-     procedure :: barrier => request_base_barrier
-     procedure(request_base_request_workload), deferred :: request_workload
-     procedure(request_base_release_workload), deferred :: release_workload
-     procedure(request_base_handle_and_release_workload), deferred :: handle_and_release_workload
+   <<Request base: base: TBP>>
   end type request_base_t
 
+@ %def request_base_t
+@
+<<Request base: interfaces>>=
   !> The basic idea behind the request mechanism is that each associated worker can request a workload either from a predefined local stack, from local stealing or from a global queue.
   !!
   !! We note that it is not necessary to differentiate between master and worker on this level of abstraction.
@@ -5507,7 +5527,11 @@ module request_base
        import :: request_base_t
        class(request_base_t), intent(in) :: req
      end function request_base_has_workers
+  end interface
 
+@ %def request_base_has_workers
+@
+<<Request base: interfaces>>=
      !> Request workload and returns an request_t object.
      !!
      !! The request_t object has an associated handler_id and provide several ways
@@ -5515,23 +5539,33 @@ module request_base
      !! Finally, whether we expect that the handler id will be connected to an callback.
      !!
      !! \param[out] request Request container.
+  abstract interface
      subroutine request_base_request_workload (req, request)
        import :: request_base_t, request_t
        class(request_base_t), intent(inout) :: req
        type(request_t), intent(out) :: request
      end subroutine request_base_request_workload
+  end interface
 
+@ %def request_base_request_workload
+@
+<<Request base: interfaces>>=
      !> Release workload with the information from the request container.
      !!
      !! The release procedure may notify the master about the finishing of the workload associated with the handler_id.
      !! Or, it may just bookkeep whether the workload has finished.
      !! Additionally, if request%callback was true, it could handle the callback (from client side.)
+  abstract interface
      subroutine request_base_release_workload (req, request)
        import :: request_base_t, request_t
        class(request_base_t), intent(inout) :: req
        type(request_t), intent(in) :: request
      end subroutine request_base_release_workload
+  end interface
 
+@ %def request_base_release_workload
+@ 
+<<Request base: interfaces>>=
      !> Handle associated callback and release workload with the information from the request container.
      !!
      !! The procedure must call the associated callback handler using the handler_id.
@@ -5539,6 +5573,7 @@ module request_base
      !!         The procedure has to take care whether the callback was actually successful.
      !! The further release of the workload can then be deferred to the release_workload procedure.
      !! \param[in] request.
+  abstract interface
      subroutine request_base_handle_and_release_workload (req, request)
        import :: request_base_t, request_t
        class(request_base_t), intent(inout) :: req
@@ -5546,9 +5581,11 @@ module request_base
      end subroutine request_base_handle_and_release_workload
   end interface
 
-  public :: request_t, request_base_t
-contains
-
+@ %def request_base_handle_and_release_workload
+@
+<<Request base: group cache: TBP>>=
+  procedure :: init => request_group_cache_init
+<<Request base: procedures>>=
   subroutine request_group_cache_init (cache, comm)
     class(request_group_cache_t), intent(inout) :: cache
     type(MPI_COMM), intent(in) :: comm
@@ -5559,12 +5596,22 @@ contains
     cache%comm = MPI_COMM_NULL
   end subroutine request_group_cache_init
 
+@ %def request_group_cache_init
+@
+<<Request base: group cache: TBP>>=
+  procedure :: reset => request_group_cache_reset
+<<Request base: procedures>>=
   subroutine request_group_cache_reset (cache)
     class(request_group_cache_t), intent(inout) :: cache
     cache%group = MPI_GROUP_EMPTY
     cache%comm = MPI_COMM_NULL
   end subroutine request_group_cache_reset
 
+@ %def request_group_cache_reset
+@
+<<Request base: group cache: TBP>>=
+  procedure :: update => request_group_cache_update
+<<Request base: procedures>>=
   subroutine request_group_cache_update (cache, tag, rank)
     class(request_group_cache_t), intent(inout) :: cache
     integer, intent(in) :: tag
@@ -5588,12 +5635,22 @@ contains
     end if
   end subroutine request_group_cache_update
 
+@ %def request_group_cache_update
+@
+<<Request base: group cache: TBP>>=
+  procedure :: get_comm => request_group_cache_get_comm
+<<Request base: procedures>>=
   subroutine request_group_cache_get_comm (cache, comm)
     class(request_group_cache_t), intent(in) :: cache
     type(MPI_COMM), intent(out) :: comm
     comm = cache%comm
   end subroutine request_group_cache_get_comm
 
+@ %def request_group_cache_get_comm
+@
+<<Request base: group cache: TBP>>=
+  procedure :: is_master => request_group_cache_is_master
+<<Request base: procedures>>=
   logical function request_group_cache_is_master (cache) result (flag)
     class(request_group_cache_t), intent(in) :: cache
     integer :: rank, error
@@ -5604,6 +5661,11 @@ contains
     flag = (rank == 0)
   end function request_group_cache_is_master
 
+@ %def request_group_cache_is_master
+@
+<<Request base: base: TBP>>=
+  procedure :: base_init => request_base_init
+<<Request base: procedures>>=
   !! =================================================
   !! request_base_t
   !! =================================================
@@ -5623,6 +5685,12 @@ contains
     call req%handler%init (comm)
   end subroutine request_base_init
 
+@ %def request_base_init
+@
+<<Request base: base: TBP>>=
+  procedure :: base_write => request_base_write
+  procedure(request_base_deferred_write), deferred :: write
+<<Request base: procedures>>=
   subroutine request_base_write (req, unit)
     class(request_base_t), intent(in) :: req
     integer, intent(in), optional :: unit
@@ -5637,6 +5705,12 @@ contains
     call req%handler%write (u)
   end subroutine request_base_write
 
+@ %def request_base_write
+@
+<<Request base: base: TBP>>=
+  procedure :: is_master => request_base_is_master
+  procedure(request_base_has_workers), deferred :: has_workers
+<<Request base: procedures>>=
   !> Check whether current worker is master rank in object communicator.
   !!
   !! Do not confuse with a group's master !!!
@@ -5652,6 +5726,11 @@ contains
     flag = (rank == 0)
   end function request_base_is_master
 
+@ %def request_base_is_master
+@
+<<Request base: base: TBP>>=
+  procedure :: get_external_comm => request_base_get_external_comm
+<<Request base: procedures>>=
   !> Provide external communicator.
   !!
   !! The external communicator is just a duplicate of request%comm,
@@ -5663,6 +5742,11 @@ contains
     comm = req%external_comm
   end subroutine request_base_get_external_comm
 
+@ %def request_base_get_external_comm
+@
+<<Request base: base: TBP>>=
+  procedure :: add_balancer => request_base_add_balancer
+<<Request base: procedures>>=
   !> Add balancer to request.
   !!
   !! \param[inout] balancer
@@ -5673,6 +5757,11 @@ contains
     call move_alloc (balancer, req%balancer)
   end subroutine request_base_add_balancer
 
+@ %def request_base_add_balancer
+@
+<<Request base: base: TBP>>=
+  procedure :: add_handler => request_base_add_handler
+<<Request base: procedures>>=
   !> Add request handler with handler_id.
   !!
   !! \param[in] handler_id
@@ -5684,6 +5773,11 @@ contains
     call req%handler%add (handler_id, handler)
   end subroutine request_base_add_handler
 
+@ %def request_base_add_handler
+@
+<<Request base: base: TBP>>=
+  procedure :: reset => request_base_reset
+<<Request base: procedures>>=
   !> Reset request.
   !! Clear handler manager from associated callbacks,
   !! deallocate balancer, iff allocated, and reset communicator cache.
@@ -5700,6 +5794,11 @@ contains
     call req%cache%reset ()
   end subroutine request_base_reset
 
+@ %def request_base_reset
+@
+<<Request base: base: TBP>>=
+  procedure :: call_handler => request_base_call_handler
+<<Request base: procedures>>=
   !> Call handler for master communication for handler_id.
   !!
   !! \param[in] handler_id The associated key of the callback object.
@@ -5711,6 +5810,11 @@ contains
     call req%handler%callback (handler_id, source_rank)
   end subroutine request_base_call_handler
 
+@ %def request_base_call_handler
+@
+<<Request base: base: TBP>>=
+  procedure :: call_client_handler => request_base_call_client_handler
+<<Request base: procedures>>=
   !> Call handler for slave communication for handler_id.
   !!
   !! \param[in] handler_id The associated key of the callback object.
@@ -5720,12 +5824,25 @@ contains
     call req%handler%client_callback (handler_id, 0)
   end subroutine request_base_call_client_handler
 
+@ %def request_base_call_client_handler
+@
+<<Request base: base: TBP>>=
+  procedure :: await_handler => request_base_await_handler
+<<Request base: procedures>>=
   !> Wait on all handler in request handler manager to finish communication.
   subroutine request_base_await_handler (req)
     class(request_base_t), intent(inout) :: req
     call req%handler%waitall ()
   end subroutine request_base_await_handler
 
+@ %def request_base_await_handler
+@
+<<Request base: base: TBP>>=
+  procedure :: barrier => request_base_barrier
+  procedure(request_base_request_workload), deferred :: request_workload
+  procedure(request_base_release_workload), deferred :: release_workload
+  procedure(request_base_handle_and_release_workload), deferred :: handle_and_release_workload
+<<Request base: procedures>>=
   subroutine request_base_barrier (req)
     class(request_base_t), intent(in) :: req
     integer :: error
@@ -5734,9 +5851,11 @@ contains
        call msg_fatal ("Request: Error occured during MPI_BARRIER synchronisation.")
     end if
   end subroutine request_base_barrier
-end module request_base
-@ %def request_base
-@ \subsection{Request Simple}
+
+@ %def request_base_barrier
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Request Simple}
 We implement a local request scheme, without any additional communication, except the callback communication.
 <<[[request_simple.f90]]>>=
 <<File header>>
@@ -5752,28 +5871,35 @@ module request_simple
 
   use mpi_f08 !NODEP!
 
-  implicit none
+<<Standard module head>>
 
-  private
+<<Request simple: public>>
 
+<<Request simple: types>>
+
+contains
+
+<<Request simple: procedures>>
+
+end module request_simple
+@ %def request_simple
+@
+<<Request simple: public>>=
+  public :: request_simple_t
+<<Request simple: types>>=
   type, extends (request_base_t) :: request_simple_t
      integer :: n_workers = 0
      integer :: n_channels = 0
      logical, dimension(:), allocatable :: parallel_grid
    contains
-     procedure :: init => request_simple_init
-     procedure :: write => request_simple_write
-     procedure :: has_workers => request_simple_has_workers
-     procedure :: update => request_simple_update
-     procedure :: get_request_master => request_simple_get_request_master
-     !! deferred.
-     procedure :: request_workload => request_simple_request_workload
-     procedure :: release_workload => request_simple_release_workload
-     procedure :: handle_and_release_workload => request_simple_handle_and_release_workload
+   <<Request simple: simple: TBP>>
   end type request_simple_t
 
-  public :: request_simple_t
-contains
+@ %def request_simple_t
+@
+<<Request simple: simple: TBP>>=
+  procedure :: init => request_simple_init
+<<Request simple: procedures>>=
   subroutine request_simple_init (req, comm, n_channels)
     class(request_simple_t), intent(out) :: req
     type(MPI_COMM), intent(in) :: comm
@@ -5796,6 +5922,11 @@ contains
     end subroutine allocate_balancer
   end subroutine request_simple_init
 
+@ %def request_simple_init
+@
+<<Request simple: simple: TBP>>=
+  procedure :: update => request_simple_update
+<<Request simple: procedures>>=
   !> Update number of channels and parallel grids.
   !!
   !! The simple request object does not utilize the request balancer, as the complexity of the request balancer is not required for the simple approach.
@@ -5820,6 +5951,11 @@ contains
     req%parallel_grid = parallel_grid
   end subroutine request_simple_update
 
+@ %def request_simple_update
+@
+<<Request simple: simple: TBP>>=
+  procedure :: write => request_simple_write
+<<Request simple: procedures>>=
   subroutine request_simple_write (req, unit)
     class(request_simple_t), intent(in) :: req
     integer, intent(in), optional :: unit
@@ -5833,11 +5969,21 @@ contains
     call req%base_write (u)
   end subroutine request_simple_write
 
+@ %def request_simple_write
+@
+<<Request simple: simple: TBP>>=
+  procedure :: has_workers => request_simple_has_workers
+<<Request simple: procedures>>=
   logical function request_simple_has_workers (req) result (flag)
     class(request_simple_t), intent(in) :: req
     flag = (req%n_workers > 1)
   end function request_simple_has_workers
 
+@ %def request_simple_has_workers
+@
+<<Request simple: simple: TBP>>=
+  procedure :: get_request_master => request_simple_get_request_master
+<<Request simple: procedures>>=
   integer function request_simple_get_request_master (req, channel) &
        result (rank)
     class(request_simple_t), intent(in) :: req
@@ -5851,6 +5997,12 @@ contains
     !! We have to check whether returned worker index is plausible.
   end function request_simple_get_request_master
 
+@ %def request_simple_get_request_master
+@
+<<Request simple: simple: TBP>>=
+  !! deferred.
+  procedure :: request_workload => request_simple_request_workload
+<<Request simple: procedures>>=
   !> Request workload.
   !!
   !! Depending on parallel_grid, we fill the request object differently.
@@ -5888,6 +6040,11 @@ contains
     end associate
   end subroutine request_simple_request_workload
 
+@ %def request_simple_request_workload
+@
+<<Request simple: simple: TBP>>=
+  procedure :: release_workload => request_simple_release_workload
+<<Request simple: procedures>>=
   subroutine request_simple_release_workload (req, request)
     class(request_simple_t), intent(inout) :: req
     type(request_t), intent(in) :: request
@@ -5897,16 +6054,25 @@ contains
     call req%balancer%free_worker (worker_id, request%handler_id)
   end subroutine request_simple_release_workload
 
+@ %def request_simple_release_workload
+@
+<<Request simple: simple: TBP>>=
+  procedure :: handle_and_release_workload => request_simple_handle_and_release_workload
+<<Request simple: procedures>>=
   subroutine request_simple_handle_and_release_workload (req, request)
     class(request_simple_t), intent(inout) :: req
     type(request_t), intent(in) :: request
     call req%call_client_handler (request%handler_id)
     call req%release_workload (request)
   end subroutine request_simple_handle_and_release_workload
-end module request_simple
-@ %def request_simple
-@ \subsection{Request Caller}
-We implement an global queue approach, requiring permanent communication between a governor and the worker.
+
+@ %def request_simple_handle_and_release_workload
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Request Caller}
+
+We implement an global queue approach, requiring permanent
+communication between a governor and the worker.
 <<[[request_caller.f90]]>>=
 <<File header>>
 module request_caller
@@ -5922,30 +6088,36 @@ module request_caller
 
   use mpi_f08 !NODEP!
 
-  implicit none
+<<Standard module head>>
 
-  private
+<<Request caller: public>>
 
+<<Request caller: types>>
+
+contains
+
+<<Request caller: procedures>>
+
+end module request_caller
+@ %def request_caller
+@
+<<Request caller: public>>=
+  public :: request_caller_t
+<<Request caller: types>>=
   type, extends (request_base_t):: request_caller_t
      private
      integer :: n_channels = 0
      integer :: n_workers = 0
      type(request_state_t) :: state
    contains
-     procedure :: init => request_caller_init
-     procedure :: write => request_caller_write
-     procedure :: has_workers => request_caller_has_workers
-     procedure :: update_balancer => request_caller_update_balancer
-     procedure :: handle_workload => request_caller_handle_workload
-     procedure :: request_workload => request_caller_request_workload
-     procedure :: release_workload => request_caller_release_workload
-     procedure :: handle_and_release_workload => request_caller_handle_and_release_workload
-     procedure :: request_terminate => request_caller_request_terminate
+   <<Request caller: caller: TBP>>
   end type request_caller_t
 
-  public :: request_caller_t
-contains
-
+@ %def request_caller_t
+@
+<<Request caller: caller: TBP>>=
+  procedure :: init => request_caller_init
+<<Request caller: procedures>>=
   subroutine request_caller_init (req, comm, n_channels)
     class(request_caller_t), intent(out) :: req
     type(MPI_COMM), intent(in) :: comm
@@ -5975,6 +6147,11 @@ contains
     end subroutine allocate_balancer
   end subroutine request_caller_init
 
+@ %def request_caller_init
+@
+<<Request caller: caller: TBP>>=
+  procedure :: write => request_caller_write
+<<Request caller: procedures>>=
   subroutine request_caller_write (req, unit)
     class(request_caller_t), intent(in) :: req
     integer, intent(in), optional :: unit
@@ -5986,12 +6163,22 @@ contains
        call req%state%write (u)
   end subroutine request_caller_write
 
+@ %def request_caller_write
+@
+<<Request caller: caller: TBP>>=
+  procedure :: has_workers => request_caller_has_workers
+<<Request caller: procedures>>=
   logical function request_caller_has_workers (req) result (flag)
     class(request_caller_t), intent(in) :: req
     !! n_workers excludes the master rank.
     flag = (req%n_workers > 1)
   end function request_caller_has_workers
 
+@ %def request_caller_has_workers
+@
+<<Request caller: caller: TBP>>=
+  procedure :: update_balancer => request_caller_update_balancer
+<<Request caller: procedures>>=
   subroutine request_caller_update_balancer (req, weight, parallel_grid)
     class(request_caller_t), intent(inout) :: req
     real(default), dimension(:), intent(in) :: weight
@@ -6006,6 +6193,11 @@ contains
     end select
   end subroutine request_caller_update_balancer
 
+@ %def request_caller_update_balancer
+@
+<<Request caller: caller: TBP>>=
+  procedure :: handle_workload => request_caller_handle_workload
+<<Request caller: procedures>>=
   subroutine request_caller_handle_workload (req)
     class(request_caller_t), intent(inout) :: req
     integer :: handler, tag, source, worker_id
@@ -6069,6 +6261,11 @@ contains
     end subroutine provide_request_group
   end subroutine request_caller_handle_workload
 
+@ %def request_caller_handle_workload
+@
+<<Request caller: caller: TBP>>=
+  procedure :: request_workload => request_caller_request_workload
+<<Request caller: procedures>>=
   subroutine request_caller_request_workload (req, request)
     class(request_caller_t), intent(inout) :: req
     type(request_t), intent(out) :: request
@@ -6103,12 +6300,22 @@ contains
     end subroutine retrieve_request_group
   end subroutine request_caller_request_workload
 
+@ %def request_caller_request_workload
+@
+<<Request caller: caller: TBP>>=
+  procedure :: release_workload => request_caller_release_workload
+<<Request caller: procedures>>=
   subroutine request_caller_release_workload (req, request)
     class(request_caller_t), intent(inout) :: req
     type(request_t), intent(in) :: request
     call req%state%client_free (request%handler_id, has_callback = request%group_master)
   end subroutine request_caller_release_workload
 
+@ %def request_caller_release_workload
+@
+<<Request caller: caller: TBP>>=
+  procedure :: handle_and_release_workload => request_caller_handle_and_release_workload
+<<Request caller: procedures>>=
   subroutine request_caller_handle_and_release_workload (req, request)
     class(request_caller_t), intent(inout) :: req
     type(request_t), intent(in) :: request
@@ -6119,15 +6326,24 @@ contains
     call req%call_client_handler (request%handler_id)
   end subroutine request_caller_handle_and_release_workload
 
+@ %def request_caller_handle_and_release_workload
+@
+<<Request caller: caller: TBP>>=
+  procedure :: request_terminate => request_caller_request_terminate
+<<Request caller: procedures>>=
   subroutine request_caller_request_terminate (req)
     class(request_caller_t), intent(inout) :: req
     if (req%is_master ()) return
     call req%state%client_terminate ()
   end subroutine request_caller_request_terminate
-end module request_caller
-@ %def request_caller
-@ \subsubsection{Request Caller State}
-We implement the complete communication for [[request_caller]] into a state (or in WK's nomenclature, instance) object.
+
+@ %def request_caller_request_terminate
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Request Caller State}
+
+We implement the complete communication for [[request_caller]] into a
+state (or in WK's nomenclature, instance) object.
 <<[[request_state.f90]]>>=
 <<File header>>
 module request_state
@@ -6137,10 +6353,22 @@ module request_state
 
   use mpi_f08 !NODEP!
 
-  implicit none
+<<Standard module head>>
 
-  private
+<<Request state: public>>
 
+<<Request state: parameters>>
+
+<<Request state: types>>
+
+contains
+
+<<Request state: procedures>>
+
+end module request_state
+@ %def request_state
+@
+<<Request state: parameters>>=
   integer, parameter, public :: MPI_EMPTY_HANDLER = 0
 
   integer, parameter, public :: MPI_TAG_NULL = 0, &
@@ -6155,6 +6383,10 @@ module request_state
 
   integer, parameter :: MPI_STATE_ERR = 1
 
+@
+<<Request state: public>>=
+  public :: request_state_t
+<<Request state: types>>=
   type :: request_state_t
      private
      type(MPI_COMM) :: comm
@@ -6170,28 +6402,14 @@ module request_state
      logical, dimension(:), allocatable :: terminated
      type(iterator_t) :: request_iterator
    contains
-     procedure :: init => request_state_init
-     procedure :: write => request_state_write
-     procedure :: reset => request_state_reset
-     procedure :: is_terminated => request_state_is_terminated
-     procedure, private :: set_terminated => request_state_set_terminated
-     procedure :: terminate => request_state_terminate
-     procedure :: client_terminate => request_state_client_terminate
-     procedure :: init_request => request_state_init_request
-     procedure :: receive_request => request_state_receive_request
-     procedure :: await_request => request_state_await_request
-     procedure :: has_request => request_state_has_request
-     procedure :: get_request => request_state_get_request
-     procedure :: update_request => request_state_update_request
-     procedure :: free_request => request_state_free_request
-     procedure :: provide_request_group => request_state_provide_request_group
-     procedure :: retrieve_request_group => request_state_retrieve_request_group
-     procedure :: client_serve => request_state_client_serve
-     procedure :: client_free => request_state_client_free
+   <<Request state: state: TBP>>
   end type request_state_t
 
-  public :: request_state_t
-contains
+@ %def request_state_t
+@
+<<Request state: state: TBP>>=
+  procedure :: init => request_state_init
+<<Request state: procedures>>=
   subroutine request_state_init (state, comm, n_workers)
     class(request_state_t), intent(out) :: state
     type(MPI_COMM), intent(in) :: comm
@@ -6209,6 +6427,11 @@ contains
     state%indices = [(rank, rank = 1, n_workers)]
   end subroutine request_state_init
 
+@ %def request_state_init
+@
+<<Request state: state: TBP>>=
+  procedure :: write => request_state_write
+<<Request state: procedures>>=
   subroutine request_state_write (state, unit)
     class(request_state_t), intent(in) :: state
     integer, intent(in), optional :: unit
@@ -6229,6 +6452,11 @@ contains
     write (u, "(A,999(1X,L1))") "TERMINATED", state%terminated
   end subroutine request_state_write
 
+@ %def request_state_write
+@
+<<Request state: state: TBP>>=
+  procedure :: reset => request_state_reset
+<<Request state: procedures>>=
   subroutine request_state_reset (state)
     class(request_state_t), intent(inout) :: state
     integer :: rank
@@ -6239,6 +6467,11 @@ contains
     state%terminated = .false.
   end subroutine request_state_reset
 
+@ %def request_state_reset
+@
+<<Request state: state: TBP>>=
+  procedure :: is_terminated => request_state_is_terminated
+<<Request state: procedures>>=
   ! pure function request_state_is_terminated (state) result (flag)
   function request_state_is_terminated (state) result (flag)
     class(request_state_t), intent(in) :: state
@@ -6246,6 +6479,11 @@ contains
     flag = all (state%terminated)
   end function request_state_is_terminated
 
+@ %def request_state_is_terminated
+@
+<<Request state: state: TBP>>=
+  procedure, private :: set_terminated => request_state_set_terminated
+<<Request state: procedures>>=
   !> Set rank to be terminated (however, do not communicate it).
   !!
   !! This is an EVIL procedure, as it operates only locally on the master
@@ -6258,6 +6496,11 @@ contains
     state%terminated(rank) = .true.
   end subroutine request_state_set_terminated
 
+@ %def request_state_set_terminated
+@
+<<Request state: state: TBP>>=
+  procedure :: terminate => request_state_terminate
+<<Request state: procedures>>=
   subroutine request_state_terminate (state, rank)
     class(request_state_t), intent(inout) :: state
     integer, intent(in) :: rank
@@ -6271,6 +6514,11 @@ contains
     call state%set_terminated (rank)
   end subroutine request_state_terminate
 
+@ %def request_state_terminate
+@
+<<Request state: state: TBP>>=
+  procedure :: client_terminate => request_state_client_terminate
+<<Request state: procedures>>=
   subroutine request_state_client_terminate (state)
     class(request_state_t), intent(in) :: state
     integer :: error
@@ -6282,6 +6530,11 @@ contains
     end if
   end subroutine request_state_client_terminate
 
+@ %def request_state_client_terminate
+@
+<<Request state: state: TBP>>=
+  procedure :: init_request => request_state_init_request
+<<Request state: procedures>>=
   !> Init persistent requests.
   !!
   !! Must be called before first receive_request.
@@ -6302,6 +6555,11 @@ contains
     end do
   end subroutine request_state_init_request
 
+@ %def request_state_init_request
+@
+<<Request state: state: TBP>>=
+  procedure :: receive_request => request_state_receive_request
+<<Request state: procedures>>=
   !> Receive requests from non-terminated workers.
   !!
   !! Before receiving new requests, santize arrays of received ranks from terminated ones.
@@ -6334,6 +6592,11 @@ contains
     end subroutine sanitize_from_terminated_ranks
   end subroutine request_state_receive_request
 
+@ %def request_state_receive_request
+@
+<<Request state: state: TBP>>=
+  procedure :: await_request => request_state_await_request
+<<Request state: procedures>>=
   subroutine request_state_await_request (state)
     class(request_state_t), intent(inout) :: state
     integer :: error
@@ -6366,12 +6629,22 @@ contains
     call state%request_iterator%init (1, state%n_workers_done)
   end subroutine request_state_await_request
 
+@ %def request_state_await_request
+@
+<<Request state: state: TBP>>=
+  procedure :: has_request => request_state_has_request
+<<Request state: procedures>>=
   pure function request_state_has_request (state) result (flag)
     class(request_state_t), intent(in) :: state
     logical :: flag
     flag = state%request_iterator%is_iterable ()
   end function request_state_has_request
 
+@ %def request_state_has_request
+@
+<<Request state: state: TBP>>=
+  procedure :: get_request => request_state_get_request
+<<Request state: procedures>>=
   subroutine request_state_get_request (state, rank, tag, handler)
     class(request_state_t), intent(inout) :: state
     integer, intent(out) :: rank
@@ -6392,6 +6665,11 @@ contains
     handler = state%handler(rank)
   end subroutine request_state_get_request
 
+@ %def request_state_get_request
+@
+<<Request state: state: TBP>>=
+  procedure :: update_request => request_state_update_request
+<<Request state: procedures>>=
   subroutine request_state_update_request (state, rank, tag, handler)
     class(request_state_t), intent(inout) :: state
     integer, intent(in) :: rank
@@ -6408,6 +6686,11 @@ contains
     end if
   end subroutine request_state_update_request
 
+@ %def request_state_update_request
+@
+<<Request state: state: TBP>>=
+  procedure :: free_request => request_state_free_request
+<<Request state: procedures>>=
   subroutine request_state_free_request (state)
     class(request_state_t), intent(inout) :: state
     integer :: rank
@@ -6417,6 +6700,11 @@ contains
     end do
   end subroutine request_state_free_request
 
+@ %def request_state_free_request
+@
+<<Request state: state: TBP>>=
+  procedure :: provide_request_group => request_state_provide_request_group
+<<Request state: procedures>>=
   subroutine request_state_provide_request_group (state, dest_rank, worker)
     class(request_state_t), intent(in) :: state
     integer, intent(in) :: dest_rank
@@ -6425,6 +6713,11 @@ contains
          dest_rank, MPI_TAG_COMMUNICATOR_GROUP, state%comm)
   end subroutine request_state_provide_request_group
 
+@ %def request_state_provide_request_group
+@
+<<Request state: state: TBP>>=
+  procedure :: retrieve_request_group => request_state_retrieve_request_group
+<<Request state: procedures>>=
   subroutine request_state_retrieve_request_group (state, worker)
     class(request_state_t), intent(inout) :: state
     integer, dimension(:), allocatable, intent(out) :: worker
@@ -6437,6 +6730,11 @@ contains
          0, MPI_TAG_COMMUNICATOR_GROUP, state%comm, status)
   end subroutine request_state_retrieve_request_group
 
+@ %def request_state_retrieve_request_group
+@
+<<Request state: state: TBP>>=
+  procedure :: client_serve => request_state_client_serve
+<<Request state: procedures>>=
   !> Query for a request (send an request tag, then receive a handler).
   subroutine request_state_client_serve (state, handler_id, status)
     class(request_state_t), intent(in) :: state
@@ -6448,6 +6746,11 @@ contains
          0, MPI_ANY_TAG, state%comm, status)
   end subroutine request_state_client_serve
 
+@ %def request_state_client_rate
+@
+<<Request state: state: TBP>>=
+  procedure :: client_free => request_state_client_free
+<<Request state: procedures>>=
   !> Free handler from worker.
   subroutine request_state_client_free (state, handler_id, has_callback)
     class(request_state_t), intent(in) :: state
@@ -6458,9 +6761,11 @@ contains
     call MPI_SEND (handler_id, 1, MPI_INTEGER, &
          0, tag, state%comm)
   end subroutine request_state_client_free
-end module request_state
-@ %def request_state
-@ \subsection{Balancer Base}
+
+@ %def request_state_client_free
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Balancer Base}
 \begin{description}
 \item[Balancer Base] Base type for usage for extensions of [[request_base]].
 \end{description}
@@ -6470,10 +6775,29 @@ module balancer_base
   use diagnostics
   use array_list
 
-  implicit none
+<<Standard module head>>
 
-  private
+<<Balancer base: public>>
 
+<<Balancer base: parameters>>
+
+<<Balancer base: types>>
+
+<<Balancer base: interfaces>>
+
+contains
+
+<<Balancer base: procedures>>
+
+end module balancer_base
+@ %def balancer_base
+@
+<<Balancer base: parameters>>=
+  integer, parameter, public :: STATE_SINGLE = 1, &
+       STATE_ALL = 2
+
+@
+<<Balancer base: types>>=
   type :: worker_t
      private
      integer :: resource = 0
@@ -6481,52 +6805,44 @@ module balancer_base
      integer :: n_resources = 0
      logical :: assigned = .false.
    contains
-     procedure :: write => worker_write
-     procedure :: is_assigned => worker_is_assigned
-     procedure :: get_resource => worker_get_resource
-     procedure :: get_state => worker_get_state
-     procedure :: add_resource => worker_add_resource
-     procedure :: free => worker_free
+   <<Balancer base: worker: TBP>>
   end type worker_t
 
+@ %def worker_t
+@
+<<Balancer base: types>>=
   type :: resource_t
      private
      integer :: resource_id = 0
      logical :: active = .false.
      integer :: n_assigned_workers = 0
    contains
-     procedure :: write => resource_write
-     procedure :: is_active => resource_is_active
-     procedure :: set_active => resource_set_active
-     procedure :: set_inactive => resource_set_inactive
+   <<Balancer base: resource: TBP>>
   end type resource_t
 
-  integer, parameter, public :: STATE_SINGLE = 1, &
-       STATE_ALL = 2
-
+@ %def resource_t
+@
+<<Balancer base: public>>=
+  public :: resource_state_t
+<<Balancer base: types>>=
   type :: resource_state_t
      integer :: n_workers = 0
      integer :: mode = 0
      type(array_list_t) :: resource_stack
      type(array_list_t) :: finished_stack
    contains
-     procedure :: write => resource_state_write
-     procedure :: init => resource_state_init
-     procedure :: add_resource => resource_state_add_resource
-     procedure :: freeze => resource_state_freeze
-     procedure :: clear => resource_state_clear
-     procedure :: has_resource => resource_state_has_resource
-     procedure :: assign_resource => resource_state_assign_resource
-     procedure :: free_resource => resource_state_free_resource
+   <<Balancer base: resource state: TBP>>
   end type resource_state_t
 
-  !> Dynamic load balancer.
-  !!
-  !! We organize resources and workers in a transparent way using indices.
-  !! These indices replace pointer magic.
-  !!
-  !! The balancer aggregates a dynamic state, however, we allow the state by
-  !! the use of a pointer, to access the static fields of the balancer.
+@ %def resource_state_t
+@
+Dynamic load balancer. We organize resources and workers in a
+transparent way using indices. These indices replace pointer magic.
+The balancer aggregates a dynamic state, however, we allow the state
+by the use of a pointer, to access the static fields of the balancer.
+<<Balancer base: public>>=
+  public :: balancer_base_t
+<<Balancer base: types>>=
   type, abstract :: balancer_base_t
      integer :: n_workers = 0
      integer :: n_resources = 0
@@ -6535,85 +6851,103 @@ module balancer_base
      type(resource_t), dimension(:), allocatable :: resource
      type(resource_state_t), dimension(:), allocatable :: state
    contains
-     procedure :: base_init => balancer_base_base_init
-     procedure :: base_write => balancer_base_write
-     procedure(balancer_base_deferred_write), deferred :: write
-     procedure :: add_state => balancer_base_add_state
-     procedure, private :: link_worker_and_state => balancer_base_link_worker_and_state
-     procedure :: is_assignable => balancer_base_is_assignable
-     procedure :: is_worker_pending => balancer_base_is_worker_pending
-     procedure :: is_pending => balancer_base_is_pending
-     procedure(balancer_base_has_resource_group), deferred :: has_resource_group
-     procedure(balancer_base_get_resource_group), deferred :: get_resource_group
-     procedure(balancer_base_get_resource_master), deferred :: get_resource_master
-     procedure(balancer_base_assign_worker), deferred :: assign_worker
-     procedure(balancer_base_free_worker), deferred :: free_worker
+   <<Balancer base: base: TBP>>
   end type balancer_base_t
 
+@ %def balancer_base_t
+@
+<<Balancer base: interfaces>>=
   abstract interface
      subroutine balancer_base_deferred_write (balancer, unit)
        import :: balancer_base_t
        class(balancer_base_t), intent(in) :: balancer
        integer, intent(in), optional :: unit
      end subroutine balancer_base_deferred_write
+   end interface
 
+@ %def balancer_base_deferred_write
+@
+<<Balancer base: interfaces>>=
      !> Has resource an associated resource group.
      !!
      !! \note .true. only on an active resource, else .false.
+  abstract interface
      pure logical function balancer_base_has_resource_group (balancer, resource_id) &
           result (flag)
        import :: balancer_base_t
        class(balancer_base_t), intent(in) :: balancer
        integer, intent(in) :: resource_id
      end function balancer_base_has_resource_group
+   end interface
 
+@ %def balancer_base_has_resource_group
+@
+<<Balancer base: interfaces>>=
      !> Get resource group.
      !!
      !! \note Implementation must check against group existence.
      !! \return group (allocated|NOT allocated for (inactive|non-group) resource)
+  abstract interface
      pure subroutine balancer_base_get_resource_group (balancer, resource_id, group)
        import :: balancer_base_t
        class(balancer_base_t), intent(in) :: balancer
        integer, intent(in) :: resource_id
        integer, dimension(:), allocatable, intent(out) :: group
      end subroutine balancer_base_get_resource_group
+   end interface
 
+@ %def balancer_base_get_resource_group
+@
+<<Balancer base: interfaces>>=
      !> Get resource master (worker).
      !!
      !! Return worker as given, however, if extended type is used in a non-local
      !! or in combination with a commnuicative request type, then check on activation status of associated resource.
      !!
      !! \return worker Valid worker index (\in {1, …, N}) only on active resource*, else -1.
+  abstract interface
      pure integer function balancer_base_get_resource_master (balancer, resource_id) &
           result (worker)
        import :: balancer_base_t
        class(balancer_base_t), intent(in) :: balancer
        integer, intent(in) :: resource_id
      end function balancer_base_get_resource_master
+  end interface
 
+@ %def balancer_base_get_resource_master
+@
+<<Balancer base: interfaces>>=
      !> Assign resource to a given worker or retrieve current assigned resource.
      !!
      !! If worker has already a resource assigned, return resource.
      !! If worker has not been assigned a resource, retrieve new resource from state.
      !!
      !! \note Each call must check if a worker is assignable, if not, the procedure must return resource_id = -1.
+  abstract interface
      subroutine balancer_base_assign_worker (balancer, worker_id, resource_id)
        import :: balancer_base_t
        class(balancer_base_t), intent(inout) :: balancer
        integer, intent(in) :: worker_id
        integer, intent(out) :: resource_id
      end subroutine balancer_base_assign_worker
+   end interface
 
-     !> Free assignment of worker.
-     !!
-     !! If worker is not assigned, this procedure is idempotent.
-     !! If worker is assigned, alter state correspondingly.
-     !! \note In order to correctly free a worker from a resource, we have to explicitly keep track of the association status of a worker and a resource.
-     !! This feature is mostly relevant for resources with a worker group.
-     ! The resource may be disassociated from their worker by earlier calls or the former worker may be already assigned to a new resource.
-     !! In the latter case, we are not allowed to free them (as the new resource is still active).
-     !! Therefore, each call must check if a worker and resource are still associated and the resource is still active.
-     !! Only, in this case, disassociating workers and resource is allowed.
+@ %def balancer_base_assign_worker
+@
+Free assignment of worker. If the worker is not assigned, this
+procedure is idempotent. If the worker is assigned, alter state
+correspondingly. In order to correctly free a worker from a resource,
+we have to explicitly keep track of the association status of a worker
+and a resource. This feature is mostly relevant for resources with a
+worker group. The resource may be disassociated from their worker by
+earlier calls or the former worker may be already assigned to a new
+resource. In the latter case, we are not allowed to free them (as the
+new resource is still active). Therefore, each call must check if a
+worker and resource are still associated and the resource is still
+active. Only, in this case, disassociating workers and resource is
+allowed.
+<<Balancer base: interfaces>>=
+  abstract interface
      subroutine balancer_base_free_worker (balancer, worker_id, resource_id)
        import :: balancer_base_t
        class(balancer_base_t), intent(inout) :: balancer
@@ -6622,9 +6956,12 @@ module balancer_base
      end subroutine balancer_base_free_worker
   end interface
 
-  public :: balancer_base_t, resource_state_t
-  public :: shift_rank_to_worker, shift_worker_to_rank
-contains
+@ %def balancer_base_free_worker
+@
+<<Balancer base: public>>=
+  public :: shift_rank_to_worker
+@ 
+<<Balancer base: procedures>>=
   !> Shift rank index to worker index.
   !! Proof: rank \in {0, …, N - 1}, worker \in {1, …, N}
   elemental integer function shift_rank_to_worker (rank) result (worker)
@@ -6632,6 +6969,11 @@ contains
     worker = rank + 1
   end function shift_rank_to_worker
 
+@ %def shift_rank_to_worker
+@
+<<Balancer base: public>>=
+  public :: shift_worker_to_rank
+<<Balancer base: procedures>>=
   !> Shift worker index to rank index.
   !! Proof: rank \in {0, …, N - 1}, worker \in {1, …, N}
   elemental integer function shift_worker_to_rank (worker) result (rank)
@@ -6639,6 +6981,11 @@ contains
     rank = worker - 1
   end function shift_worker_to_rank
 
+@ %def shift_worker_to_rank
+@
+<<Balancer base: worker: TBP>>=
+  procedure :: write => worker_write
+<<Balancer base: procedures>>=
   subroutine worker_write (worker, unit)
     class(worker_t), intent(in) :: worker
     integer, intent(in), optional :: unit
@@ -6650,21 +6997,41 @@ contains
          "ASSIGNED", worker%assigned
   end subroutine worker_write
 
+@ %def worker_write
+@
+<<Balancer base: worker: TBP>>=
+  procedure :: is_assigned => worker_is_assigned
+<<Balancer base: procedures>>=
   elemental logical function worker_is_assigned (worker) result (flag)
     class(worker_t), intent(in) :: worker
     flag = worker%assigned
   end function worker_is_assigned
 
+@ %def worker_is_assigned
+@
+<<Balancer base: worker: TBP>>=
+  procedure :: get_resource => worker_get_resource
+<<Balancer base: procedures>>=
   elemental integer function worker_get_resource (worker) result (resource_id)
     class(worker_t), intent(in) :: worker
     resource_id = worker%resource
   end function worker_get_resource
 
+@ %def worker_get_resource
+@
+<<Balancer base: worker: TBP>>=
+  procedure :: get_state => worker_get_state
+<<Balancer base: procedures>>=
   elemental integer function worker_get_state (worker) result (i_state)
     class(worker_t), intent(in) :: worker
     i_state = worker%state
   end function worker_get_state
 
+@ %def worker_get_state
+@
+<<Balancer base: worker: TBP>>=
+  procedure :: add_resource => worker_add_resource
+<<Balancer base: procedures>>=
   elemental subroutine worker_add_resource (worker, resource_id)
     class(worker_t), intent(inout) :: worker
     integer, intent(in) :: resource_id
@@ -6673,12 +7040,22 @@ contains
     worker%resource = resource_id
   end subroutine worker_add_resource
 
+@ %def worker_add_resource
+@
+<<Balancer base: worker: TBP>>=
+  procedure :: free => worker_free
+<<Balancer base: procedures>>=
   elemental subroutine worker_free (worker)
     class(worker_t), intent(inout) :: worker
     worker%assigned = .false.
     worker%resource = 0
   end subroutine worker_free
 
+@ %def worker_free
+@
+<<Balancer base: resource: TBP>>=
+  procedure :: write => resource_write
+<<Balancer base: procedures>>=
   subroutine resource_write (resource, unit)
     class(resource_t), intent(in) :: resource
     integer, intent(in), optional :: unit
@@ -6690,11 +7067,21 @@ contains
          "N_ASSIGNED_WORKERS", resource%n_assigned_workers
   end subroutine resource_write
 
+@ %def resource_write
+@
+<<Balancer base: resource: TBP>>=
+  procedure :: is_active => resource_is_active
+<<Balancer base: procedures>>=
   elemental logical function resource_is_active (resource) result (flag)
     class(resource_t), intent(in) :: resource
     flag = resource%active
   end function resource_is_active
 
+@ %def resource_is_active
+@
+<<Balancer base: resource: TBP>>=
+  procedure :: set_active => resource_set_active
+<<Balancer base: procedures>>=
   subroutine resource_set_active (resource, n_workers)
     class(resource_t), intent(inout) :: resource
     integer, intent(in) :: n_workers
@@ -6702,11 +7089,21 @@ contains
     resource%n_assigned_workers = n_workers
   end subroutine resource_set_active
 
+@ %def resource_set_active
+@
+<<Balancer base: resource: TBP>>=
+  procedure :: set_inactive => resource_set_inactive
+<<Balancer base: procedures>>=
   subroutine resource_set_inactive (resource)
     class(resource_t), intent(inout) :: resource
     resource%active = .false.
   end subroutine resource_set_inactive
 
+@ %def resource_set_inactive
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: write => resource_state_write
+<<Balancer base: procedures>>=
   subroutine resource_state_write (state, unit)
     class(resource_state_t), intent(in) :: state
     integer, intent(in), optional :: unit
@@ -6727,6 +7124,11 @@ contains
     call state%finished_stack%write (u)
   end subroutine resource_state_write
 
+@ %def resource_state_write
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: init => resource_state_init
+<<Balancer base: procedures>>=
   subroutine resource_state_init (state, mode, n_workers)
     class(resource_state_t), intent(out) :: state
     integer, intent(in) :: mode
@@ -6737,30 +7139,55 @@ contains
     call state%finished_stack%init ()
   end subroutine resource_state_init
 
+@ %def resource_state_init
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: add_resource => resource_state_add_resource
+<<Balancer base: procedures>>=
   subroutine resource_state_add_resource (state, i_resource)
     class(resource_state_t), intent(inout) :: state
     integer, intent(in) :: i_resource
     call state%resource_stack%add (i_resource)
   end subroutine resource_state_add_resource
 
+@ %def resource_state_add_resource
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: freeze => resource_state_freeze
+<<Balancer base: procedures>>=
   subroutine resource_state_freeze (state)
     class(resource_state_t), intent(inout) :: state
     call state%resource_stack%sort ()
     call state%resource_stack %reverse_order ()
   end subroutine resource_state_freeze
 
+@ %def resource_state_freeze
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: clear => resource_state_clear
+<<Balancer base: procedures>>=
   subroutine resource_state_clear (state)
     class(resource_state_t), intent(inout) :: state
     call state%resource_stack%clear ()
     call state%finished_stack%clear ()
   end subroutine resource_state_clear
 
+@ %def resource_state_clear
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: has_resource => resource_state_has_resource
+<<Balancer base: procedures>>=
   elemental function resource_state_has_resource (state) result (flag)
     class(resource_state_t), intent(in) :: state
     logical :: flag
     flag = .not. state%resource_stack%is_empty ()
   end function resource_state_has_resource
 
+@ %def resource_state_has_resoruce
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: assign_resource => resource_state_assign_resource
+<<Balancer base: procedures>>=
   function resource_state_assign_resource (state) result (i_resource)
     class(resource_state_t), intent(inout) :: state
     integer :: i_resource
@@ -6772,6 +7199,11 @@ contains
     i_resource = state%resource_stack%remove () !! Pop last element from stack.
   end function resource_state_assign_resource
 
+@ %def resource_state_assign_ressource
+@
+<<Balancer base: resource state: TBP>>=
+  procedure :: free_resource => resource_state_free_resource
+<<Balancer base: procedures>>=
   subroutine resource_state_free_resource (state, i_resource)
     class(resource_state_t), intent(inout) :: state
     integer, intent(in) :: i_resource
@@ -6781,6 +7213,12 @@ contains
     call state%finished_stack%add (i_resource)
   end subroutine resource_state_free_resource
 
+@ %def resource_state_free_resource
+@
+<<Balancer base: base: TBP>>=
+  procedure :: base_write => balancer_base_write
+  procedure(balancer_base_deferred_write), deferred :: write
+<<Balancer base: procedures>>=
   subroutine balancer_base_write (balancer, unit)
     class(balancer_base_t), intent(in) :: balancer
     integer, intent(in), optional :: unit
@@ -6804,6 +7242,11 @@ contains
     end do
   end subroutine balancer_base_write
 
+@ %def balancer_base_write
+@
+<<Balancer base: base: TBP>>=
+  procedure :: base_init => balancer_base_base_init
+<<Balancer base: procedures>>=
   subroutine balancer_base_base_init (balancer, n_workers, n_resources)
     class(balancer_base_t), intent(out) :: balancer
     integer, intent(in) :: n_workers
@@ -6822,6 +7265,11 @@ contains
     end subroutine init_resource
   end subroutine balancer_base_base_init
 
+@ %def balancer_base_base_init
+@
+<<Balancer base: base: TBP>>=
+  procedure :: add_state => balancer_base_add_state
+<<Balancer base: procedures>>=
   !> Add partition of workers and link with workers.
   !! We move the allocated partition object into the balancer.
   !! We then assign each partition its respective number of workers in a incrementing linear fashion.
@@ -6834,6 +7282,11 @@ contains
     call balancer%link_worker_and_state ()
   end subroutine balancer_base_add_state
 
+@ %def balancer_base_add_state
+@
+<<Balancer base: base: TBP>>=
+  procedure, private :: link_worker_and_state => balancer_base_link_worker_and_state
+<<Balancer base: procedures>>=
   subroutine balancer_base_link_worker_and_state (balancer)
     class(balancer_base_t), intent(inout) :: balancer
     integer :: i, j, i_worker
@@ -6859,6 +7312,11 @@ contains
     end do
   end subroutine balancer_base_link_worker_and_state
 
+@ %def balancer_base_link_worker_and_state
+@
+<<Balancer base: base: TBP>>=
+  procedure :: is_assignable => balancer_base_is_assignable
+<<Balancer base: procedures>>=
   !> Is a worker unassigned, or is a worker assigned, but already assigned to an active resource?
   !!
   !! \note Fence for assign_worker TBP.
@@ -6880,6 +7338,11 @@ contains
     end if
   end function balancer_base_is_assignable
 
+@ %def balancer_base_is_assignable
+@
+<<Balancer base: base: TBP>>=
+  procedure :: is_worker_pending => balancer_base_is_worker_pending
+<<Balancer base: procedures>>=
   !> Is a worker still pending.
   !!
   !! Test worker assignment, and if there is a (valid) resource and if it is still active.
@@ -6894,14 +7357,25 @@ contains
     end if
   end function balancer_base_is_worker_pending
 
+@ %def balancer_base_is_worker_pending
+@
+<<Balancer base: base: TBP>>=
+  procedure :: is_pending => balancer_base_is_pending
+  procedure(balancer_base_has_resource_group), deferred :: has_resource_group
+  procedure(balancer_base_get_resource_group), deferred :: get_resource_group
+  procedure(balancer_base_get_resource_master), deferred :: get_resource_master
+  procedure(balancer_base_assign_worker), deferred :: assign_worker
+  procedure(balancer_base_free_worker), deferred :: free_worker
+<<Balancer base: procedures>>=
   logical function balancer_base_is_pending (balancer) result (flag)
     class(balancer_base_t), intent(in) :: balancer
     flag = all (balancer%state%has_resource ())
   end function balancer_base_is_pending
 
-end module balancer_base
-@ %def balancer_base
-@ \subsection{Balancer Simple}
+@ %def balancer_base_is_pending
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Balancer Simple}
 <<[[balancer_simple.f90]]>>=
 <<File header>>
 module balancer_simple
@@ -6910,12 +7384,9 @@ module balancer_simple
 
   use balancer_base
 
-  implicit none
+<<Standard module head>>
 
-  private
-
-  integer, parameter :: N_BALANCER_SIMPLE_STATES = 1, &
-       BALANCER_SIMPLE_CHANNEL = 1
+<<Balancer simple: parameters>>
 
   !> Simple balancer.
   !!
@@ -6926,22 +7397,36 @@ module balancer_simple
   !! and fills it with the respecting resources.
   !!
   !! We defer possible checks (or sentinels) to the request module, e.g. such as checking whether all channels are computed globally.
+
+<<Balancer simple: public>>
+
+<<Balancer simple: types>>
+
+contains
+
+<<Balancer simple: procedures>>
+
+end module balancer_simple
+@ %def balancer_simple
+@
+<<Balancer simple: parameters>>=
+  integer, parameter :: N_BALANCER_SIMPLE_STATES = 1, &
+       BALANCER_SIMPLE_CHANNEL = 1
+@ 
+<<Balancer simple: public>>=
+  public :: balancer_simple_t
+<<Balancer simple: types>>=
   type, extends (balancer_base_t) :: balancer_simple_t
      logical, dimension(:), allocatable :: parallel_grid
    contains
-     procedure :: init => balancer_simple_init
-     procedure :: write => balancer_simple_write
-     procedure :: update_state => balancer_simple_update_state
-     procedure :: has_resource_group => balancer_simple_has_resource_group
-     procedure :: get_resource_group => balancer_simple_get_resource_group
-     procedure :: get_resource_master => balancer_simple_get_resource_master
-     procedure, private :: map_channel_to_worker => balancer_simple_map_channel_to_worker
-     procedure :: assign_worker => balancer_simple_assign_worker
-     procedure :: free_worker => balancer_simple_free_worker
+   <<Balancer simple: simple: TBP>>
   end type balancer_simple_t
 
-  public :: balancer_simple_t
-contains
+@ %def balancer_simple_t
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: init => balancer_simple_init
+<<Balancer simple: procedures>>=
   subroutine balancer_simple_init (balancer, n_workers, n_resources)
     class(balancer_simple_t), intent(out) :: balancer
     integer, intent(in) :: n_workers
@@ -6956,6 +7441,11 @@ contains
     call balancer%add_state (state)
   end subroutine balancer_simple_init
 
+@ %def balancer_simple_init
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: write => balancer_simple_write
+<<Balancer simple: procedures>>=
   subroutine balancer_simple_write (balancer, unit)
     class(balancer_simple_t), intent(in) :: balancer
     integer, intent(in), optional :: unit
@@ -6966,6 +7456,11 @@ contains
     write (u, "(A,25(1X,L1))") "Parallel Grids:", balancer%parallel_grid(:n_size)
   end subroutine balancer_simple_write
 
+@ %def balancer_simple_write
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: update_state => balancer_simple_update_state
+<<Balancer simple: procedures>>=
   !> Update balancer state.
   !!
   !! Each worker update its own balancer state requiring information about the worker_id.
@@ -6994,6 +7489,11 @@ contains
     end associate
   end subroutine balancer_simple_update_state
 
+@ %def balancer_simple_update_state
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: has_resource_group => balancer_simple_has_resource_group
+<<Balancer simple: procedures>>=
   pure logical function balancer_simple_has_resource_group (balancer, resource_id) &
        result (flag)
     class(balancer_simple_t), intent(in) :: balancer
@@ -7005,6 +7505,11 @@ contains
     flag = balancer%parallel_grid (resource_id)
   end function balancer_simple_has_resource_group
 
+@ %def balancer_simple_has_resource_group
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: get_resource_group => balancer_simple_get_resource_group
+<<Balancer simple: procedures>>=
   pure subroutine balancer_simple_get_resource_group (balancer, resource_id, group)
     class(balancer_simple_t), intent(in) :: balancer
     integer, intent(in) :: resource_id
@@ -7015,6 +7520,11 @@ contains
          mask = balancer%worker%get_resource () == resource_id)
   end subroutine balancer_simple_get_resource_group
 
+@ %def balancer_simple_get_resource_group
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: get_resource_master => balancer_simple_get_resource_master
+<<Balancer simple: procedures>>=
   !> Retrieve resource master holding the results to be communicated.
   !!
   !! As the simple balancer operates locally on each worker, we do not need to check whether a resource is currently active.
@@ -7031,6 +7541,11 @@ contains
     end if
   end function balancer_simple_get_resource_master
 
+@ %def balancer_simple_get_resource_master
+@
+<<Balancer simple: simple: TBP>>=
+  procedure, private :: map_channel_to_worker => balancer_simple_map_channel_to_worker
+<<Balancer simple: procedures>>=
   pure integer function balancer_simple_map_channel_to_worker (balancer, channel) &
        result (worker)
     class(balancer_simple_t), intent(in) :: balancer
@@ -7041,6 +7556,11 @@ contains
     worker = mod (channel - 1, balancer%n_workers) + 1
   end function balancer_simple_map_channel_to_worker
 
+@ %def balancer_simple_map_channel_to_worker
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: assign_worker => balancer_simple_assign_worker
+<<Balancer simple: procedures>>=
   subroutine balancer_simple_assign_worker (balancer, worker_id, resource_id)
     class(balancer_simple_t), intent(inout) :: balancer
     integer, intent(in) :: worker_id
@@ -7076,6 +7596,11 @@ contains
     end associate
   end subroutine balancer_simple_assign_worker
 
+@ %def balancer_simple_assign_worker
+@
+<<Balancer simple: simple: TBP>>=
+  procedure :: free_worker => balancer_simple_free_worker
+<<Balancer simple: procedures>>=
   subroutine balancer_simple_free_worker (balancer, worker_id, resource_id)
     class(balancer_simple_t), intent(inout) :: balancer
     integer, intent(in) :: worker_id
@@ -7097,9 +7622,11 @@ contains
       end if
     end associate
   end subroutine balancer_simple_free_worker
-end module balancer_simple
-@ %def balancer_simple
-@ \subsection{Balancer Channel}
+
+@ %def balancer_simple_free_worker
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Balancer Channel}
 <<[[balancer_channel.f90]]>>=
 <<File header>>
 module balancer_channel
@@ -7109,16 +7636,32 @@ module balancer_channel
 
   use balancer_base
 
-  implicit none
+<<Standard module head>>
 
-  private
+<<Balancer channel: public>>
 
+<<Balancer channel: parameters>>
+
+<<Balancer channel: types>>
+
+contains
+
+<<Balancer channel: procedures>>
+
+end module balancer_channel
+@ %def balancer_channel
+@
+<<Balancer channel: parameters>>=
   real(default), parameter :: BETA = 1.5_default
 
   integer, parameter :: N_BALANCER_CHANNEL_STATE = 2, &
        CHANNEL_STATE = 1, &
        GRID_STATE = 2
 
+@
+<<Balancer channel: public>>=
+  public :: balancer_channel_t
+<<Balancer channel: types>>=
   type, extends(balancer_base_t) :: balancer_channel_t
      private
      integer :: n_parallel_grids = 0
@@ -7127,18 +7670,14 @@ module balancer_channel
      integer :: n_channel_workers = 0
      logical, dimension(:), allocatable :: parallel_grid
    contains
-     procedure :: init => balancer_channel_init
-     procedure :: write => balancer_channel_write
-     procedure :: update_state => balancer_channel_update_state
-     procedure :: has_resource_group => balancer_channel_has_resource_group
-     procedure :: get_resource_group => balancer_channel_get_resource_group
-     procedure :: get_resource_master => balancer_channel_get_resource_master
-     procedure :: assign_worker => balancer_channel_assign_worker
-     procedure :: free_worker => balancer_channel_free_worker
+   <<Balancer channel: base: TBP>>
   end type balancer_channel_t
 
-  public :: balancer_channel_t
-contains
+@ %def balancer_channel_t
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: init => balancer_channel_init
+<<Balancer channel: procedures>>=
   subroutine balancer_channel_init (balancer, n_workers, n_resources)
     class(balancer_channel_t), intent(out), target :: balancer
     integer, intent(in) :: n_workers
@@ -7147,6 +7686,11 @@ contains
     allocate (balancer%parallel_grid(n_resources), source = .false.)
   end subroutine balancer_channel_init
 
+@ %def balancer_channel_init
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: write => balancer_channel_write
+<<Balancer channel: procedures>>=
   subroutine balancer_channel_write (balancer, unit)
     class(balancer_channel_t), intent(in) :: balancer
     integer, intent(in), optional :: unit
@@ -7162,6 +7706,11 @@ contains
     call balancer%base_write (u)
   end subroutine balancer_channel_write
 
+@ %def balancer_channel_write
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: update_state => balancer_channel_update_state
+<<Balancer channel: procedures>>=
   subroutine balancer_channel_update_state (balancer, weight, parallel_grid)
     class(balancer_channel_t), intent(inout) :: balancer
     real(default), dimension(:), intent(in) :: weight
@@ -7265,6 +7814,11 @@ contains
     end subroutine allocate_state
   end subroutine balancer_channel_update_state
 
+@ %def balancer_channel_update_state
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: has_resource_group => balancer_channel_has_resource_group
+<<Balancer channel: procedures>>=
   pure function balancer_channel_has_resource_group (balancer, resource_id) &
        result (flag)
     class(balancer_channel_t), intent(in) :: balancer
@@ -7277,6 +7831,11 @@ contains
     flag = balancer%parallel_grid(resource_id)
   end function balancer_channel_has_resource_group
 
+@ %def balancer_channel_has_resource_group
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: get_resource_group => balancer_channel_get_resource_group
+<<Balancer channel: procedures>>=
   pure subroutine balancer_channel_get_resource_group (balancer, resource_id, group)
     class(balancer_channel_t), intent(in) :: balancer
     integer, intent(in) :: resource_id
@@ -7287,6 +7846,11 @@ contains
          mask = balancer%worker%get_resource () == resource_id)
   end subroutine balancer_channel_get_resource_group
 
+@ %def balancer_channel_get_resource_group
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: get_resource_master => balancer_channel_get_resource_master
+<<Balancer channel: procedures>>=
   pure integer function balancer_channel_get_resource_master (balancer, resource_id) &
        result (worker_id)
     class(balancer_channel_t), intent(in) :: balancer
@@ -7308,6 +7872,11 @@ contains
     end associate
   end function balancer_channel_get_resource_master
 
+@ %def balancer_channel_get_resource_master
+@
+<<Balancer channel: base: TBP>>=
+  procedure :: assign_worker => balancer_channel_assign_worker
+<<Balancer channel: procedures>>=
   subroutine balancer_channel_assign_worker (balancer, worker_id, resource_id)
     class(balancer_channel_t), intent(inout) :: balancer
     integer, intent(in) :: worker_id
@@ -7358,11 +7927,17 @@ contains
     end subroutine fill_resource_group
   end subroutine balancer_channel_assign_worker
 
-  !> Free worker from associated resource.
-  !!
-  !! Idempotent. Depending on state association, given resource must equal worker's resource (check) for single state.
-  !! For all state, the *current* resource of the worker may differ (grouping behavior!), only in case, that the older resource is inactive, return as idempotent.
-  !! Else, free all worker from resource group.
+@ %def balancer_channel_assign_worker
+@  
+Free worker from associated resource. Idempotent. Depending on state
+association, given resource must equal worker's resource (check) for
+single state. For all state, the *current* resource of the worker may
+differ (grouping behavior!), only in case, that the older resource is
+inactive, return as idempotent. Else, free all worker from resource
+group.
+<<Balancer channel: base: TBP>>=
+  procedure :: free_worker => balancer_channel_free_worker
+<<Balancer channel: procedures>>=
   subroutine balancer_channel_free_worker (balancer, worker_id, resource_id)
     class(balancer_channel_t), intent(inout) :: balancer
     integer, intent(in) :: worker_id
@@ -7400,11 +7975,15 @@ contains
       end select
     end associate
   end subroutine balancer_channel_free_worker
-end module balancer_channel
-@ %def balancer_channel
-@ \subsection{Request Callback}
+
+@ %def balancer_channel_free_worker
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Request Callback}
+
 \begin{description}
-\item[request handler] Base type and interface for providing two-sided communication in a callback fashion.
+\item[request handler] Base type and interface for providing two-sided
+  communication in a callback fashion. 
 \item[request handler manager] Manages handler with a binary tree.
 \end{description}
 <<[[request_callback.f90]]>>=
@@ -7415,9 +7994,7 @@ module request_callback
 
   use mpi_f08 !NODEP!
 
-  implicit none
-
-  private
+<<Standard module head>>
 
   !> Request handler.
   !!
@@ -7439,6 +8016,23 @@ module request_callback
   !!         tag = tag_offset + {1, …, N_requests} where tag_offsets are multiple of N_requests.
   !!         The latter condition should checked by a modulo.
   !! What happens if the communication is out of order (is this a problem? check with standard)?
+
+<<Request callback: public>>
+
+<<Request callback: types>>
+
+<<Request callback: interfaces>>
+
+contains
+
+<<Request callback: procedures>>
+
+end module request_callback
+@ %def request_callback
+@
+<<Request callback: public>>=
+  public :: request_handler_t
+<<Request callback: types>>=
   type, abstract :: request_handler_t
      integer :: n_requests = 0
      integer :: tag_offset = 0
@@ -7459,32 +8053,34 @@ module request_callback
      procedure :: free => request_handler_free
   end type request_handler_t
 
+@ %def request_handler_t
+@
+<<Request callback: public>>=
+  public :: request_handler_manager_t
+<<Request callback: types>>=
   type :: request_handler_manager_t
      private
      type(MPI_COMM) :: comm
      type(binary_tree_t) :: tree
    contains
-     procedure :: init => request_handler_manager_init
-     procedure :: write => request_handler_manager_write
-     procedure :: add => request_handler_manager_add
-     procedure :: clear => request_handler_manager_clear
-     procedure :: has_handler => request_handler_manager_has_handler
-     procedure :: test => request_handler_manager_test
-     procedure :: wait => request_handler_manager_wait
-     procedure :: waitall => request_handler_manager_waitall
-     procedure, private :: fill_status => request_handler_manager_fill_status
-     procedure, private :: handler_at => request_handler_manager_handler_at
-     procedure :: callback => request_handler_manager_callback
-     procedure :: client_callback => request_handler_manager_client_callback
+   <<Request handler: handler manager: TBP>>
   end type request_handler_manager_t
 
+@ %def request_handler_manager_t
+@
+<<Request callback: interfaces>>=
   abstract interface
      subroutine request_handler_write (handler, unit)
        import :: request_handler_t
        class(request_handler_t), intent(in) :: handler
        integer, intent(in), optional :: unit
      end subroutine request_handler_write
+  end interface
 
+@ %def request_handler_write
+@
+<<Request callback: interfaces>>=
+  abstract interface
      !> Handle a request from server side.
      !!
      !! The message tag can be used in order to uniquify the respective messages between master and slave.
@@ -7500,7 +8096,12 @@ module request_callback
        integer, intent(in) :: source_rank
        type(MPI_COMM), intent(in) :: comm
      end subroutine request_handler_handle
+  end interface
 
+@ %def request_handler_handle
+@
+<<Request callback: interfaces>>=
+  abstract interface
      !> Handle a request from client side.
      !!
      !! Must set *activated* to .true. when called.
@@ -7515,8 +8116,9 @@ module request_callback
      end subroutine request_handler_client_handle
   end interface
 
-  public :: request_handler_t, request_handler_manager_t
-contains
+@ %def request_handler_client_handle
+@
+<<Request callback: procedures>>=
   !!
   !! Request handler.
   !!
@@ -7539,6 +8141,9 @@ contains
     end do
   end subroutine request_handler_base_write
 
+@ %def request_handler_base_write
+@
+<<Request callback: procedures>>=
   !> Allocate MPI request and status object.
   !!
   !! Must be called during or after object-initialization.
@@ -7562,6 +8167,9 @@ contains
     handler%finished = .false.
   end subroutine request_handler_allocate
 
+@ %def request_handler_allocate
+@
+<<Request callback: procedures>>=
   !> Get status from request objects in a non-destructive way.
   subroutine request_handler_get_status (handler)
     class(request_handler_t), intent(inout) :: handler
@@ -7576,6 +8184,9 @@ contains
     end do
   end subroutine request_handler_get_status
 
+@ %def request_handler_get_status
+@
+<<Request callback: procedures>>=
   !> Call MPI_WATIALL and raise finished flag.
   subroutine request_handler_waitall (handler)
     class(request_handler_t), intent(inout) :: handler
@@ -7588,6 +8199,9 @@ contains
     handler%finished = .true.
   end subroutine request_handler_waitall
 
+@ %def request_handler_waitall
+@
+<<Request callback: procedures>>=
   logical function request_handler_testall (handler) result (flag)
     class(request_handler_t), intent(inout) :: handler
     integer :: error
@@ -7611,6 +8225,9 @@ contains
     end subroutine print_status
   end function request_handler_testall
 
+@ %def request_handler_testall
+@
+<<Request callback: procedures>>=
   subroutine request_handler_free (handler)
     class(request_handler_t), intent(inout) :: handler
     integer :: i, error
@@ -7623,6 +8240,11 @@ contains
     end do
   end subroutine request_handler_free
 
+@ %def request_handler_free
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: init => request_handler_manager_init
+<<Request callback: procedures>>=
   !!
   !! Request handler manager.
   !!
@@ -7632,6 +8254,11 @@ contains
     call MPI_COMM_DUP (comm, rhm%comm)
   end subroutine request_handler_manager_init
 
+@ %def request_handler_manager_init 
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: write => request_handler_manager_write
+<<Request callback: procedures>>=
   subroutine request_handler_manager_write (rhm, unit)
     class(request_handler_manager_t), intent(in) :: rhm
     integer, intent(in), optional :: unit
@@ -7641,6 +8268,11 @@ contains
     call rhm%tree%write (u)
   end subroutine request_handler_manager_write
 
+@ %def request_handler_manager_write
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: add => request_handler_manager_add
+<<Request callback: procedures>>=
   subroutine request_handler_manager_add (rhm, handler_id, handler)
     class(request_handler_manager_t), intent(inout) :: rhm
     integer, intent(in) :: handler_id
@@ -7650,11 +8282,21 @@ contains
     call rhm%tree%insert (handler_id, obj)
   end subroutine request_handler_manager_add
 
+@ %def request_handler_manager_add
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: clear => request_handler_manager_clear
+<<Request callback: procedures>>=
   subroutine request_handler_manager_clear (rhm)
     class(request_handler_manager_t), intent(inout) :: rhm
     call rhm%tree%clear ()
   end subroutine request_handler_manager_clear
 
+@ %def request_handler_manager_clear
+@
+<<Request handler: handler manager: TBP>>=
+  procedure, private :: fill_status => request_handler_manager_fill_status
+<<Request callback: procedures>>=
   !> Get status (in a non-destructive way) for all associated handler.
   subroutine request_handler_manager_fill_status (rhm)
     class(request_handler_manager_t), intent(inout) :: rhm
@@ -7669,6 +8311,11 @@ contains
     end do
   end subroutine request_handler_manager_fill_status
 
+@ %def request_handler_manager_fill_status
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: test => request_handler_manager_test
+<<Request callback: procedures>>=
   logical function request_handler_manager_test (rhm, handler_id) result (flag)
     class(request_handler_manager_t), intent(inout) :: rhm
     integer, intent(in) :: handler_id
@@ -7677,6 +8324,11 @@ contains
     flag = handler%testall ()
   end function request_handler_manager_test
 
+@ %def request_handler_manager_test
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: wait => request_handler_manager_wait
+<<Request callback: procedures>>=
   subroutine request_handler_manager_wait (rhm, handler_id)
     class(request_handler_manager_t), intent(inout) :: rhm
     integer, intent(in) :: handler_id
@@ -7685,6 +8337,11 @@ contains
     call handler%waitall ()
   end subroutine request_handler_manager_wait
 
+@ %def request_handler_manager_wait
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: waitall => request_handler_manager_waitall
+<<Request callback: procedures>>=
   subroutine request_handler_manager_waitall (rhm)
     class(request_handler_manager_t), intent(inout) :: rhm
     type(binary_tree_iterator_t) :: iterator
@@ -7698,6 +8355,11 @@ contains
     end do
   end subroutine request_handler_manager_waitall
 
+@ %def request_handler_manager_waitall
+@
+<<Request handler: handler manager: TBP>>=
+  procedure, private :: handler_at => request_handler_manager_handler_at
+<<Request callback: procedures>>=
   subroutine request_handler_manager_handler_at (rhm, handler_id, handler)
     class(request_handler_manager_t), intent(in) :: rhm
     integer, intent(in) :: handler_id
@@ -7712,6 +8374,11 @@ contains
     end select
   end subroutine request_handler_manager_handler_at
 
+@ %def request_handler_manager_handler_at
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: has_handler => request_handler_manager_has_handler
+<<Request callback: procedures>>=
   function request_handler_manager_has_handler (rhm, handler_id) result (flag)
     class(request_handler_manager_t), intent(inout) :: rhm
     integer, intent(in) :: handler_id
@@ -7719,6 +8386,11 @@ contains
     flag = rhm%tree%has_key (handler_id)
   end function request_handler_manager_has_handler
 
+@ %def request_handler_manager_has_handler
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: callback => request_handler_manager_callback
+<<Request callback: procedures>>=
   !> Call server-sided procedure of callback with handler_id.
   !!
   !! \param[in] handler_id
@@ -7733,6 +8405,11 @@ contains
     call handler%handle (source_rank = source_rank, comm = rhm%comm)
   end subroutine request_handler_manager_callback
 
+@ %def request_handler_manager_callback
+@
+<<Request handler: handler manager: TBP>>=
+  procedure :: client_callback => request_handler_manager_client_callback
+<<Request callback: procedures>>=
   !> Call client-sided procedure of callback with handler_id.
   !!
   !! \param[in] handler_id
@@ -7746,5 +8423,6 @@ contains
     call rhm%handler_at (handler_id, handler)
     call handler%client_handle (dest_rank = dest_rank, comm = rhm%comm)
   end subroutine request_handler_manager_client_callback
-end module request_callback
-@ %def request_callback
+
+@ %def request_handlder_manager_client_callback
+@

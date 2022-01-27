@@ -35,75 +35,54 @@ check_LTLIBRARIES = libvegas_ut.la
 COMMON_F90 =
 
 MPI_F90 = \
-	vegas.f90_mpi \
-	vamp2.f90_mpi \
-	request_base.f90_mpi \
-	request_simple.f90_mpi \
-	request_caller.f90_mpi \
-	request_state.f90_mpi \
-	balancer_base.f90_mpi \
-	balancer_simple.f90_mpi \
-	balancer_channel.f90_mpi \
-	request_callback.f90_mpi
+  vegas.f90_mpi \
+  vamp2.f90_mpi
+
+LOAD_BALANCER_MODULES = \
+  request_base.f90 \
+  request_simple.f90 \
+  request_caller.f90 \
+  request_state.f90 \
+  balancer_base.f90 \
+  balancer_simple.f90 \
+  balancer_channel.f90 \
+  request_callback.f90
 
 SERIAL_F90 = \
-	vegas.f90_serial \
-	vamp2.f90_serial
+  vegas.f90_serial \
+  vamp2.f90_serial
 
 EXTRA_DIST = \
-	$(COMMON_F90) \
-	$(SERIAL_F90) \
-	$(MPI_F90)
+  $(COMMON_F90) \
+  $(SERIAL_F90) \
+  $(MPI_F90) \
+  $(LOAD_BALANCER_MODULES)
 
 nodist_libvegas_la_SOURCES = \
-	$(COMMON_F90) \
-	vegas.f90 \
-	vamp2.f90
+  $(COMMON_F90) \
+  vegas.f90 \
+  vamp2.f90
 
 if FC_USE_MPI
 nodist_libvegas_la_SOURCES += \
-	request_base.f90 \
-	request_simple.f90 \
-	request_caller.f90 \
-	request_state.f90 \
-	balancer_base.f90 \
-	balancer_simple.f90 \
-	balancer_channel.f90 \
-	request_callback.f90
+  request_base.f90 \
+  request_simple.f90 \
+  request_caller.f90 \
+  request_state.f90 \
+  balancer_base.f90 \
+  balancer_simple.f90 \
+  balancer_channel.f90 \
+  request_callback.f90
 endif
 
 DISTCLEANFILES = \
-	vegas.f90 \
-	vamp2.f90 \
-	request_base.f90 \
-	request_simple.f90 \
-	request_caller.f90 \
-	request_state.f90 \
-	balancer_base.f90 \
-	balancer_simple.f90 \
-	balancer_channel.f90 \
-	request_callback.f90
+  vegas.f90 \
+  vamp2.f90
 
 if FC_USE_MPI
 vegas.f90: vegas.f90_mpi
 	-cp -f $< $@
 vamp2.f90: vamp2.f90_mpi
-	-cp -f $< $@
-request_base.f90: request_base.f90_mpi
-	-cp -f $< $@
-request_simple.f90: request_simple.f90_mpi
-	-cp -f $< $@
-request_caller.f90: request_caller.f90_mpi
-	-cp -f $< $@
-request_state.f90: request_state.f90_mpi
-	-cp -f $< $@
-balancer_base.f90: balancer_base.f90_mpi
-	-cp -f $< $@
-balancer_simple.f90: balancer_simple.f90_mpi
-	-cp -f $< $@
-balancer_channel.f90: balancer_channel.f90_mpi
-	-cp -f $< $@
-request_callback.f90: request_callback.f90_mpi
 	-cp -f $< $@
 else
 vegas.f90: vegas.f90_serial
@@ -113,8 +92,8 @@ vamp2.f90: vamp2.f90_serial
 endif
 
 libvegas_ut_la_SOURCES = \
-	vegas_uti.f90 vegas_ut.f90 \
-	vamp2_uti.f90 vamp2_ut.f90
+  vegas_uti.f90 vegas_ut.f90 \
+  vamp2_uti.f90 vamp2_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = vegas.nw
@@ -140,12 +119,12 @@ BUILT_SOURCES = Modules
 ## Fortran module dependencies
 # Get module lists from other directories
 module_lists = \
-	../basics/Modules \
-	../utilities/Modules \
-	../testing/Modules \
-	../system/Modules \
-	../rng/Modules \
-	../phase_space/Modules
+  ../basics/Modules \
+  ../utilities/Modules \
+  ../testing/Modules \
+  ../system/Modules \
+  ../rng/Modules \
+  ../phase_space/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -237,9 +216,12 @@ vegas.stamp: $(PRELUDE) $(srcdir)/vegas.nw $(POSTLUDE)
 	for src in $(MPI_F90:.f90_mpi=.f90); do \
 		$(NOTANGLE) -R[[$$src]] $(MPI_FILTER) $^ | $(CPIF) $$src'_mpi'; \
 		done
+	for src in $(LOAD_BALANCER_MODULES); do \
+		$(NOTANGLE) -R[[$$src]] $(MPI_FILTER) $^ | $(CPIF) $$src; \
+		done
 	@mv -f vegas.tmp vegas.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libvegas_ut_la_SOURCES): vegas.stamp
+$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(LOAD_BALANCER_MODULES) $(libvegas_ut_la_SOURCES): vegas.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 		rm -f vegas.stamp; \
@@ -270,7 +252,7 @@ clean-local: clean-noweb
 	-rm -f vegas.stamp vegas.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
