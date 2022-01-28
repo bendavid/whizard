@@ -69,7 +69,7 @@ nodist_libcombinatorics_la_SOURCES = \
   $(COMBINATORICS_MODULES) \
   $(COMBINATORICS_SUBMODULES)
 
-DISTCLEANFILES = grids.f90
+DISTCLEANFILES = grids.f90 grids_sub.f90
 
 if FC_USE_MPI
 grids.f90: grids.f90_mpi
