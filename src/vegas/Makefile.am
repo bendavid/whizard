@@ -35,8 +35,15 @@ check_LTLIBRARIES = libvegas_ut.la
 COMMON_F90 =
 
 MPI_F90 = \
+  $(MPI_MODULES) \
+  $(MPI_SUBMODULES)
+
+MPI_MODULES = \
   vegas.f90_mpi \
   vamp2.f90_mpi
+MPI_SUBMODULES = \
+  vegas_sub.f90_mpi \
+  vamp2_sub.f90_mpi
 
 LOAD_BALANCER_MODULES = \
   request_base.f90 \
@@ -48,46 +55,77 @@ LOAD_BALANCER_MODULES = \
   balancer_channel.f90 \
   request_callback.f90
 
+LOAD_BALANCER_SUBMODULES = \
+  request_base_sub.f90 \
+  request_simple_sub.f90 \
+  request_caller_sub.f90 \
+  request_state_sub.f90 \
+  balancer_base_sub.f90 \
+  balancer_simple_sub.f90 \
+  balancer_channel_sub.f90 \
+  request_callback_sub.f90
+
 SERIAL_F90 = \
+  $(SERIAL_MODULES) \
+  $(SERIAL_SUBMODULES)
+
+SERIAL_MODULES = \
   vegas.f90_serial \
   vamp2.f90_serial
+SERIAL_SUBMODULES = \
+  vegas_sub.f90_serial \
+  vamp2_sub.f90_serial
 
 EXTRA_DIST = \
   $(COMMON_F90) \
   $(SERIAL_F90) \
   $(MPI_F90) \
-  $(LOAD_BALANCER_MODULES)
+  $(LOAD_BALANCER_MODULES) \
+  $(LOAD_BALANCER_SUBMODULES)
 
 nodist_libvegas_la_SOURCES = \
   $(COMMON_F90) \
+  $(VEGAS_MODULES) \
+  $(VEGAS_SUBMODULES)
+
+VEGAS_MODULES = \
   vegas.f90 \
   vamp2.f90
 
+VEGAS_SUBMODULES = \
+  vegas_sub.f90 \
+  vamp2_sub.f90
+
 if FC_USE_MPI
-nodist_libvegas_la_SOURCES += \
-  request_base.f90 \
-  request_simple.f90 \
-  request_caller.f90 \
-  request_state.f90 \
-  balancer_base.f90 \
-  balancer_simple.f90 \
-  balancer_channel.f90 \
-  request_callback.f90
+VEGAS_MODULES += \
+  $(LOAD_BALANCER_MODULES)
+VEGAS_SUBMODULES += \
+  $(LOAD_BALANCER_SUBMODULES)
 endif
 
 DISTCLEANFILES = \
   vegas.f90 \
-  vamp2.f90
+  vegas_sub.f90 \
+  vamp2.f90 \
+  vamp2_sub.f90
 
 if FC_USE_MPI
 vegas.f90: vegas.f90_mpi
 	-cp -f $< $@
+vegas_sub.f90: vegas_sub.f90_mpi
+	-cp -f $< $@
 vamp2.f90: vamp2.f90_mpi
+	-cp -f $< $@
+vamp2_sub.f90: vamp2_sub.f90_mpi
 	-cp -f $< $@
 else
 vegas.f90: vegas.f90_serial
 	-cp -f $< $@
+vegas_sub.f90: vegas_sub.f90_serial
+	-cp -f $< $@
 vamp2.f90: vamp2.f90_serial
+	-cp -f $< $@
+vamp2_sub.f90: vamp2_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -102,9 +140,9 @@ dist_noinst_DATA = vegas.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${nodist_libvegas_la_SOURCES:.f90=.$(FCMOD)}
+  ${VEGAS_MODULES:.f90=.$(FCMOD)}
 
-libvegas_Modules = $(nodist_libvegas_la_SOURCES:.f90=) $(libvegas_ut_la_SOURCES:.f90=)
+libvegas_Modules = $(VEGAS_MODULES:.f90=) $(libvegas_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libvegas_Modules); do \
 		echo $$module >> $@.new; \
@@ -175,6 +213,20 @@ rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FCMOD)
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../phase_space -I../expr_base -I../variables -I../../vamp/src -I../mci
 
 ########################################################################
+vegas_sub.lo: vegas.lo
+vamp2_sub.lo: vamp2.lo
+if FC_USE_MPI
+request_base_sub.lo: request_base.lo
+request_simple_sub.lo: request_simple.lo
+request_caller_sub.lo: request_caller.lo
+request_state_sub.lo: request_state.lo
+balancer_base_sub.lo: balancer_base.lo
+balancer_simple_sub.lo: balancer_simple.lo
+balancer_channel_sub.lo: balancer_channel.lo
+request_callback_sub.lo: request_callback.lo
+endif
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -216,12 +268,12 @@ vegas.stamp: $(PRELUDE) $(srcdir)/vegas.nw $(POSTLUDE)
 	for src in $(MPI_F90:.f90_mpi=.f90); do \
 		$(NOTANGLE) -R[[$$src]] $(MPI_FILTER) $^ | $(CPIF) $$src'_mpi'; \
 		done
-	for src in $(LOAD_BALANCER_MODULES); do \
+	for src in $(LOAD_BALANCER_MODULES) $(LOAD_BALANCER_SUBMODULES); do \
 		$(NOTANGLE) -R[[$$src]] $(MPI_FILTER) $^ | $(CPIF) $$src; \
 		done
 	@mv -f vegas.tmp vegas.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(LOAD_BALANCER_MODULES) $(libvegas_ut_la_SOURCES): vegas.stamp
+$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(LOAD_BALANCER_MODULES) $(LOAD_BALANCER_SUBMODULES) $(libvegas_ut_la_SOURCES): vegas.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 		rm -f vegas.stamp; \
