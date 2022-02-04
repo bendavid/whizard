@@ -39,28 +39,43 @@ COMMON_F90 = \
   mci_none.f90 \
   mci_midpoint.f90 \
   mci_vamp.f90 \
+  mci_vamp2.f90 \
   dispatch_mci.f90
 MPI_F90 = \
-  mci_vamp2.f90_mpi
+  mci_vamp2_sub.f90_mpi
 SERIAL_F90 = \
-  mci_vamp2.f90_serial
+  mci_vamp2_sub.f90_serial
+COMMON_SUBMODULES = \
+  mci_base_sub.f90 \
+  iterations_sub.f90 \
+  integration_results_sub.f90 \
+  mci_none_sub.f90 \
+  mci_midpoint_sub.f90 \
+  mci_vamp_sub.f90 \
+  dispatch_mci_sub.f90
+MCI_MODULES = \
+  $(COMMON_F90)
+MCI_SUBMODULES = \
+  $(COMMON_SUBMODULES) \
+  mci_vamp2_sub.f90
 
 EXTRA_DIST = \
   $(COMMON_F90) \
+  $(COMMON_SUBMODULES) \
   $(SERIAL_F90) \
   $(MPI_F90)
 
 nodist_libmci_la_SOURCES = \
-  $(COMMON_F90) \
-  mci_vamp2.f90
+  $(MCI_MODULES) \
+  $(MCI_SUBMODULES)
 
-DISTCLEANFILES = mci_vamp2.f90
+DISTCLEANFILES = mci_vamp2_sub.f90
 
 if FC_USE_MPI
-mci_vamp2.f90: mci_vamp2.f90_mpi
+mci_vamp2_sub.f90: mci_vamp2_sub.f90_mpi
 	-cp -f $< $@
 else
-mci_vamp2.f90: mci_vamp2.f90_serial
+mci_vamp2_sub.f90: mci_vamp2_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -81,9 +96,10 @@ dist_noinst_DATA = mci.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${nodist_libmci_la_SOURCES:.f90=.$(FCMOD)}
+  ${MCI_MODULES:.f90=.$(FCMOD)}
 
-libmci_Modules = $(nodist_libmci_la_SOURCES:.f90=) $(libmci_ut_la_SOURCES:.f90=)
+# Submodules must not be included here
+libmci_Modules = $(MCI_MODULES:.f90=) $(libmci_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libmci_Modules); do \
           echo $$module >> $@.new; \
@@ -155,6 +171,15 @@ mci_vamp.lo: ../../vamp/src/vamp.$(FCMOD)
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../phase_space -I../expr_base -I../variables -I../../vamp/src -I../vegas
 
+########################################################################
+mci_base_sub.lo: mci_base.lo
+iterations_sub.lo: iterations.lo
+integration_results_sub.lo: integration_results.lo
+mci_none_sub.lo: mci_none.lo
+mci_midpoint_sub.lo: mci_midpoint.lo
+mci_vamp_sub.lo: mci_vamp.lo
+mci_vamp2_sub.lo: mci_vamp2.lo
+dispatch_mci_sub.lo: dispatch_mci.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -191,6 +216,9 @@ mci.stamp: $(PRELUDE) $(srcdir)/mci.nw $(POSTLUDE)
 	for src in $(COMMON_F90) $(libmci_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
+	for src in $(COMMON_SUBMODULES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
@@ -199,7 +227,7 @@ mci.stamp: $(PRELUDE) $(srcdir)/mci.nw $(POSTLUDE)
         done
 	@mv -f mci.tmp mci.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libmci_ut_la_SOURCES): mci.stamp
+$(COMMON_F90) $(COMMON_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libmci_ut_la_SOURCES): mci.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f mci.stamp; \
@@ -230,7 +258,7 @@ clean-local: clean-noweb
 	-rm -f mci.stamp mci.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

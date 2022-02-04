@@ -5668,7 +5668,7 @@ module integrations
   use dispatch_beams, only: dispatch_qcd, sf_prop_t, dispatch_sf_config
   use dispatch_phase_space, only: dispatch_sf_channels
   use dispatch_phase_space, only: dispatch_phs
-  use dispatch_mci, only: dispatch_mci_s, setup_grid_path
+  use dispatch_mci, only: dispatch_mci_setup, setup_grid_path
   use dispatch_transforms, only: dispatch_evt_shower_hook
 
   use compilations, only: compile_library
@@ -5899,7 +5899,7 @@ local changes to currently inactive models.
          if (verb)  call process%sf_startup_message (sf_string)
       end if
 
-      call process%setup_mci (dispatch_mci_s)
+      call process%setup_mci (dispatch_mci_setup)
 
       call setup_expressions ()
 
