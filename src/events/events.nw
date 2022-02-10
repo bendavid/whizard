@@ -179,11 +179,11 @@ is valid, i.e., has been filled with meaningful data.
       class(generic_event_t), intent(in) :: event
       logical :: flag
     end function generic_event_has_valid_particle_set
-    
+
     module subroutine generic_event_accept_particle_set (event)
       class(generic_event_t), intent(inout) :: event
     end subroutine generic_event_accept_particle_set
-    
+
     module subroutine generic_event_discard_particle_set (event)
       class(generic_event_t), intent(inout) :: event
     end subroutine generic_event_discard_particle_set
@@ -1150,7 +1150,7 @@ the communication object is a very light-weight one.
 <<File header>>
 
 module event_handles
-  
+
 <<Standard module head>>
 
 <<Event handle: public>>
@@ -1166,7 +1166,7 @@ There is only one abstract type.
 <<Event handle: types>>=
   type, abstract :: event_handle_t
   end type event_handle_t
-  
+
 @ %def event_handle_t
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1267,7 +1267,7 @@ there is a configuration MD5 sum for each of them.
       class(event_sample_data_t), intent(out) :: data
       integer, intent(in) :: n_proc
       integer, intent(in), optional :: n_alt
-    end subroutine event_sample_data_init  
+    end subroutine event_sample_data_init
 <<EIO data: procedures>>=
   module subroutine event_sample_data_init (data, n_proc, n_alt)
     class(event_sample_data_t), intent(out) :: data
@@ -3355,7 +3355,7 @@ of the current status.
          nint (t / (eio%i_evt - eio%n_read) * (eio%n_events - eio%i_evt))
     time_string = time_remaining%to_string_ms (blank = testflag)
     write (msg_buffer, checkpoint_fmt) &
-         100 * (eio%i_evt - eio%n_read) / real (eio%n_events - eio%n_read), &
+         100 * ((eio%i_evt - eio%n_read) / real (eio%n_events - eio%n_read)), &
          eio%i_evt - eio%n_read, &
          eio%n_events - eio%i_evt, &
          char (time_string)
@@ -10426,7 +10426,7 @@ interface only.
     type(c_ptr) :: p
     p = evt%obj
   end function hepmc_event_get_c_ptr
-  
+
 @ %def hepmc_event_get_c_ptr
 @ Screen output.  Printing to file is possible in principle (using a
 C++ output channel), by allowing an argument.  Printing to an open
@@ -11941,7 +11941,7 @@ interface only.
     type(c_ptr) :: p
     p = evt%obj
   end function lcio_event_get_c_ptr
-  
+
 @ %def lcio_event_get_c_ptr
 @
 <<LCIO interface: interfaces>>=
