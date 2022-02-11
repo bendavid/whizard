@@ -31,17 +31,34 @@ noinst_LTLIBRARIES = libprocess_integration.la
 check_LTLIBRARIES = libprocess_integration_ut.la
 
 libprocess_integration_la_SOURCES = \
+  $(PROCINT_MODULES) \
+  $(PROCINT_SUBMODULES)
+
+PROCINT_MODULES = \
   subevt_expr.f90 \
   parton_states.f90 \
   pcm_base.f90 \
   pcm.f90 \
   process_counter.f90 \
   process_config.f90 \
-  process.f90 \
-  instances.f90 \
   process_mci.f90 \
+  process.f90 \
   kinematics.f90 \
+  instances.f90 \
   process_stacks.f90
+
+PROCINT_SUBMODULES = \
+  subevt_expr_sub.f90 \
+  parton_states_sub.f90 \
+  pcm_base_sub.f90 \
+  pcm_sub.f90 \
+  process_counter_sub.f90 \
+  process_config_sub.f90 \
+  process_mci_sub.f90 \
+  process_sub.f90 \
+  kinematics_sub.f90 \
+  instances_sub.f90 \
+  process_stacks_sub.f90
 
 libprocess_integration_ut_la_SOURCES = \
   processes_uti.f90 processes_ut.f90 \
@@ -55,10 +72,10 @@ dist_noinst_DATA = process_integration.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libprocess_integration_la_SOURCES:.f90=.$(FCMOD)}
+  ${PROCINT_MODULES:.f90=.$(FCMOD)}
 
 libprocess_integration_Modules = \
-  ${libprocess_integration_la_SOURCES:.f90=} \
+  ${PROCINT_MODULES:.f90=} \
   ${libprocess_integration_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libprocess_integration_Modules); do \
@@ -152,6 +169,19 @@ DISTCLEANFILES += Makefile.depend
 AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet
 
 ########################################################################
+subevt_expr_sub.lo: subevt_expr.lo
+parton_states_sub.lo: parton_states.lo
+pcm_base_sub.lo: pcm_base.lo
+pcm_sub.lo: pcm.lo
+process_counter_sub.lo: process_counter.lo
+process_config_sub.lo: process_config.lo
+process_mci_sub.lo: process_mci.lo
+process_sub.lo: process.lo
+kinematics_sub.lo: kinematics.lo
+instances_sub.lo: instances.lo
+process_stacks_sub.lo: process_stacks.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -223,7 +253,7 @@ clean-local: clean-noweb
 	-rm -f process_integration.stamp process_integration.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
