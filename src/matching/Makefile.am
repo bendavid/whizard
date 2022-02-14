@@ -33,29 +33,39 @@ check_LTLIBRARIES = libmatching_ut.la
 
 COMMON_F90 = \
   matching_base.f90 \
+  mlm_matching.f90 \
   ckkw_matching.f90 \
-  mlm_matching.f90
+  powheg_matching.f90
 MPI_F90 = \
-  powheg_matching.f90_mpi
+  powheg_matching_sub.f90_mpi
 SERIAL_F90 = \
-  powheg_matching.f90_serial
+  powheg_matching_sub.f90_serial
+MATCHING_SUBMODULES = \
+  matching_base_sub.f90 \
+  mlm_matching_sub.f90 \
+  ckkw_matching_sub.f90
+
+MATCHING_MODULES = \
+  $(COMMON_F90)
 
 EXTRA_DIST = \
   $(COMMON_F90) \
+  $(MATCHING_SUBMODULES) \
   $(SERIAL_F90) \
   $(MPI_F90)
 
 nodist_libmatching_la_SOURCES = \
-  $(COMMON_F90) \
-  powheg_matching.f90
+  $(MATCHING_MODULES) \
+  $(MATCHING_SUBMODULES) \
+  powheg_matching_sub.f90
 
-DISTCLEANFILES = powheg_matching.f90
+DISTCLEANFILES = powheg_matching_sub.f90
 
 if FC_USE_MPI
-powheg_matching.f90: powheg_matching.f90_mpi
+powheg_matching_sub.f90: powheg_matching_sub.f90_mpi
 	-cp -f $< $@
 else
-powheg_matching.f90: powheg_matching.f90_serial
+powheg_matching_sub.f90: powheg_matching_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -69,11 +79,11 @@ dist_noinst_DATA = matching.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${nodist_libmatching_la_SOURCES:.f90=.$(FCMOD)}
+  ${MATCHING_MODULES:.f90=.$(FCMOD)}
 
 # Dump module names into file Modules
 libmatching_Modules = \
-  $(nodist_libmatching_la_SOURCES:.f90=) \
+  $(MATCHING_MODULES:.f90=) \
   $(libmatching_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libmatching_Modules); do \
@@ -164,6 +174,12 @@ DISTCLEANFILES += Makefile.depend
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../beams -I../matrix_elements -I../me_methods -I../events -I../muli -I../phase_space -I../mci -I../blha -I../gosam -I../openloops -I../recola -I../fks -I../model_features -I../variables -I../tauola -I../shower -I../threshold -I../process_integration -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src
 
 ########################################################################
+matching_base_sub.lo: matching_base.lo
+mlm_matching_sub.lo: mlm_matching.lo
+ckkw_matching_sub.lo: ckkw_matching.lo
+powheg_matching_sub.lo: powheg_matching.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -203,6 +219,9 @@ matching.stamp: $(PRELUDE) $(srcdir)/matching.nw $(POSTLUDE)
           $(COMMON_F90) $(libmatching_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
+	for src in $(MATCHING_SUBMODULES); do \
+          $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
 	for src in $(SERIAL_F90:.f90_serial=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
@@ -211,7 +230,7 @@ matching.stamp: $(PRELUDE) $(srcdir)/matching.nw $(POSTLUDE)
         done
 	@mv -f matching.tmp matching.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libmatching_ut_la_SOURCES): matching.stamp
+$(COMMON_F90) $(MATCHING_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libmatching_ut_la_SOURCES): matching.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f matching.stamp; \
@@ -242,7 +261,7 @@ clean-local: clean-noweb
 	-rm -f matching.stamp matching.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
