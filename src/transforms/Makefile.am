@@ -33,29 +33,46 @@ noinst_LTLIBRARIES = libtransforms.la
 check_LTLIBRARIES = libtransforms_ut.la
 
 libtransforms_la_SOURCES = \
-   event_transforms.f90 \
-   resonance_insertion.f90 \
-   hadrons.f90 \
-   recoil_kinematics.f90 \
-   isr_epa_handler.f90 \
-   decays.f90 \
-   tau_decays.f90 \
-   shower.f90 \
-   evt_nlo.f90 \
-   events.f90 \
-   eio_raw.f90 \
-   dispatch_transforms.f90
+  $(TRANSFORMS_MODULES) \
+  $(TRANSFORMS_SUBMODULES)
+
+TRANSFORMS_MODULES = \
+  event_transforms.f90 \
+  hadrons.f90 \
+  resonance_insertion.f90 \
+  recoil_kinematics.f90 \
+  isr_epa_handler.f90 \
+  decays.f90 \
+  tau_decays.f90 \
+  shower.f90 \
+  evt_nlo.f90 \
+  events.f90 \
+  eio_raw.f90 \
+  dispatch_transforms.f90
+
+TRANSFORMS_SUBMODULES = \
+  event_transforms_sub.f90 \
+  hadrons_sub.f90 \
+  resonance_insertion_sub.f90 \
+  recoil_kinematics_sub.f90 \
+  isr_epa_handler_sub.f90 \
+  decays_sub.f90 \
+  tau_decays_sub.f90 \
+  shower_sub.f90 \
+  evt_nlo_sub.f90 \
+  events_sub.f90 \
+  eio_raw_sub.f90
 
 libtransforms_ut_la_SOURCES = \
-   event_transforms_uti.f90 event_transforms_ut.f90 \
-   resonance_insertion_uti.f90 resonance_insertion_ut.f90 \
-   recoil_kinematics_uti.f90 recoil_kinematics_ut.f90 \
-   isr_epa_handler_uti.f90 isr_epa_handler_ut.f90 \
-   decays_uti.f90 decays_ut.f90 \
-   shower_uti.f90 shower_ut.f90 \
-   events_uti.f90 events_ut.f90 \
-   eio_raw_uti.f90 eio_raw_ut.f90 \
-   dispatch_transforms_uti.f90 dispatch_transforms_ut.f90
+  event_transforms_uti.f90 event_transforms_ut.f90 \
+  resonance_insertion_uti.f90 resonance_insertion_ut.f90 \
+  recoil_kinematics_uti.f90 recoil_kinematics_ut.f90 \
+  isr_epa_handler_uti.f90 isr_epa_handler_ut.f90 \
+  decays_uti.f90 decays_ut.f90 \
+  shower_uti.f90 shower_ut.f90 \
+  events_uti.f90 events_ut.f90 \
+  eio_raw_uti.f90 eio_raw_ut.f90 \
+  dispatch_transforms_uti.f90 dispatch_transforms_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = transforms.nw
@@ -64,10 +81,10 @@ dist_noinst_DATA = transforms.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${libtransforms_la_SOURCES:.f90=.$(FCMOD)}
+  ${TRANSFORMS_MODULES:.f90=.$(FCMOD)}
 
 libtransforms_Modules = \
-  ${libtransforms_la_SOURCES:.f90=} \
+  ${TRANSFORMS_MODULES:.f90=} \
   ${libtransforms_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libtransforms_Modules); do \
@@ -158,6 +175,19 @@ DISTCLEANFILES += Makefile.depend
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../matching -I../model_features -I../events -I../tauola -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../threshold -I../fks -I../openloops -I../gosam -I../recola -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../fastjet -I../../vamp/src -I../pythia8
 
 ########################################################################
+event_transforms_sub.lo: event_transforms.lo
+hadrons_sub.lo: hadrons.lo
+resonance_insertion_sub.lo: resonance_insertion.lo
+recoil_kinematics_sub.lo: recoil_kinematics.lo
+isr_epa_handler_sub.lo: isr_epa_handler.lo
+decays_sub.lo: decays.lo
+tau_decays_sub.lo: tau_decays.lo
+shower_sub.lo: shower.lo
+evt_nlo_sub.lo: evt_nlo.lo
+events_sub.lo: events.lo
+eio_raw_sub.lo: eio_raw.lo
+
+########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
@@ -229,7 +259,7 @@ clean-local: clean-noweb
 	-rm -f transforms.stamp transforms.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files
