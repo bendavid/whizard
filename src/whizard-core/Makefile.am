@@ -37,47 +37,70 @@ COMMON_F90 = \
   dispatch_me_methods.f90 \
   process_configurations.f90 \
   compilations.f90 \
+  integrations.f90 \
   event_streams.f90 \
+  restricted_subprocesses.f90 \
+  commands.f90 \
   whizard.f90 \
   features.f90
 MPI_F90 = \
-  integrations.f90_mpi \
-  restricted_subprocesses.f90_mpi \
+  integrations_sub.f90_mpi \
   simulations.f90_mpi \
-  commands.f90_mpi
+  simulations_sub.f90_mpi \
+  commands_sub.f90_mpi
 SERIAL_F90 = \
-  integrations.f90_serial \
-  restricted_subprocesses.f90_serial \
+  integrations_sub.f90_serial \
   simulations.f90_serial \
-  commands.f90_serial
+  simulations_sub.f90_serial \
+  commands_sub.f90_serial
+COMMON_SUBMODULES = \
+  user_files_sub.f90 \
+  rt_data_sub.f90 \
+  dispatch_me_methods_sub.f90 \
+  process_configurations_sub.f90 \
+  compilations_sub.f90 \
+  event_streams_sub.f90 \
+  restricted_subprocesses_sub.f90 \
+  whizard_sub.f90 \
+  features_sub.f90
+WHIZARD_CORE_SUBMODULES = \
+  $(COMMON_SUBMODULES) \
+  integrations_sub.f90 \
+  simulations_sub.f90 \
+  commands_sub.f90
+WHIZARD_CORE_MODULES = \
+  $(COMMON_F90) \
+  simulations.f90
+
+EXTRA_DIST = \
+  $(COMMON_F90) \
+  $(COMMON_SUBMODULES) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
 
 nodist_libwhizard_core_la_SOURCES = \
-  $(COMMON_F90) \
-  integrations.f90 \
-  restricted_subprocesses.f90 \
-  simulations.f90 \
-  commands.f90
+  $(WHIZARD_CORE_MODULES) \
+  $(WHIZARD_CORE_SUBMODULES)
 
-DISTCLEANFILES = integrations.f90 restricted_subprocesses.f90 \
-	simulations.f90 commands.f90
+DISTCLEANFILES = integrations_sub.f90 simulations.f90 simulations_sub.f90 commands_sub.f90
 
 if FC_USE_MPI
-integrations.f90: integrations.f90_mpi
-	-cp -f $< $@
-restricted_subprocesses.f90: restricted_subprocesses.f90_mpi
+integrations_sub.f90: integrations_sub.f90_mpi
 	-cp -f $< $@
 simulations.f90: simulations.f90_mpi
 	-cp -f $< $@
-commands.f90: commands.f90_mpi
+simulations_sub.f90: simulations_sub.f90_mpi
+	-cp -f $< $@
+commands_sub.f90: commands_sub.f90_mpi
 	-cp -f $< $@
 else
-integrations.f90: integrations.f90_serial
-	-cp -f $< $@
-restricted_subprocesses.f90: restricted_subprocesses.f90_serial
+integrations_sub.f90: integrations_sub.f90_serial
 	-cp -f $< $@
 simulations.f90: simulations.f90_serial
 	-cp -f $< $@
-commands.f90: commands.f90_serial
+simulations_sub.f90: simulations_sub.f90_serial
+	-cp -f $< $@
+commands_sub.f90: commands_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -93,11 +116,6 @@ libwhizard_core_ut_la_SOURCES = \
   simulations_uti.f90 simulations_ut.f90 \
   commands_uti.f90 commands_ut.f90
 
-EXTRA_DIST = \
-  $(COMMON_F90) \
-  $(SERIAL_F90) \
-  $(MPI_F90)
-
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = whizard.nw
 
@@ -105,12 +123,11 @@ dist_noinst_DATA = whizard.nw
 # Dump module names into file Modules
 execmoddir = $(fmoddir)/whizard
 nodist_execmod_HEADERS = \
-  ${nodist_libwhizard_core_la_SOURCES:.f90=.$(FCMOD)} \
+  ${WHIZARD_CORE_MODULES:.f90=.$(FCMOD)} \
   ${libwhizard_core_la_SOURCES:.f90=.$(FCMOD)}
 
 libwhizard_core_Modules = \
-  ${libwhizard_core_la_SOURCES:.f90=} \
-  ${nodist_libwhizard_core_la_SOURCES:.f90=} \
+  ${WHIZARD_CORE_MODULES:.f90=} \
   ${libwhizard_core_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libwhizard_core_Modules); do \
@@ -210,6 +227,20 @@ SUFFIXES = .lo .$(FCMOD)
 #	touch $@
 
 AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qed_pdf -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../vegas  -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../pythia8 -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola -I../recola
+
+########################################################################
+user_files_sub.lo: user_files.lo
+rt_data_sub.lo: rt_data.lo
+dispatch_me_methods_sub.lo: dispatch_me_methods.lo
+process_configurations_sub.lo: process_configurations.lo
+compilations_sub.lo: compilations.lo
+event_streams_sub.lo: event_streams.lo
+restricted_subprocesses_sub.lo: restricted_subprocesses.lo
+simulations_sub.lo: simulations.lo
+commands_sub.lo: commands.lo
+whizard_sub.lo: whizard.lo
+features_sub.lo: features.lo
+
 ########################################################################
 ## Default Fortran compiler options
 
@@ -254,6 +285,9 @@ whizard.stamp: $(PRELUDE) $(srcdir)/whizard.nw $(POSTLUDE)
 	for src in $(COMMON_SRC); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
+	for src in $(COMMON_SUBMODULES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+	done
 	for src in $(MPI_F90:.f90_mpi=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
@@ -262,7 +296,7 @@ whizard.stamp: $(PRELUDE) $(srcdir)/whizard.nw $(POSTLUDE)
         done
 	@mv -f whizard.tmp whizard.stamp
 
-$(MPI_F90) $(SERIAL_F90) $(COMMON_SRC): whizard.stamp
+$(MPI_F90) $(SERIAL_F90) $(COMMON_SRC) $(COMMON_SUBMODULES): whizard.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f whizard.stamp; \
@@ -292,7 +326,7 @@ clean-local: clean-noweb
 	-rm -f whizard.stamp whizard.tmp
 	-rm -f *.$(FCMOD)
 if FC_SUBMODULES
-	-rm -f *.smod
+	-rm -f *.smod *.sub
 endif
 
 ## Remove backup files

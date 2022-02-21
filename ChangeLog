@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.2+
 
+2022-02-21
+	WHIZARD core now uses Fortran modules and submodules
+
 2022-01-27
 	Infrastructure for POWHEG matching for hadron collisions
 

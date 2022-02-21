@@ -66,7 +66,7 @@ AC_MSG_NOTICE([**************************************************************])
 ###---------------------------------------------------------------------
 ### shared library versioning (not the same as the package version!)
 
-LIBRARY_VERSION="-version-info 2:1:0"
+LIBRARY_VERSION="-version-info 2:2:0"
 AC_SUBST([LIBRARY_VERSION])
 
 ########################################################################
