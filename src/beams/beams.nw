@@ -17659,6 +17659,11 @@ when convoluting with the beam, but there are still two
 states with different outgoing polarization but identical
 structure-function value.  This leads to double-counting for the
 overall cross section.
+
+Fix 2022-02-18: The above fix was wrong!  The structure function was divided
+by 4 because there are four entries in the complete electron density
+matrix.  Now it is divided by 2 if there is more than one entry, unchanged
+otherwise.
 <<SF epa: epa: TBP>>=
   procedure :: apply => epa_apply
 <<SF epa: sub interfaces>>=
@@ -17731,7 +17736,9 @@ overall cross section.
             f = 0
          end if
       end select
-      f = f / sf_int%get_n_matrix_elements ()
+      if (sf_int%get_n_matrix_elements () > 1) then
+         f = f / 2
+      end if
       call sf_int%set_matrix_element &
            (cmplx (f, kind=default) * sf_int%charge2)
     end associate
