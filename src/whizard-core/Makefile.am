@@ -235,6 +235,7 @@ dispatch_me_methods_sub.lo: dispatch_me_methods.lo
 process_configurations_sub.lo: process_configurations.lo
 compilations_sub.lo: compilations.lo
 event_streams_sub.lo: event_streams.lo
+integrations_sub.lo: integrations.lo
 restricted_subprocesses_sub.lo: restricted_subprocesses.lo
 simulations_sub.lo: simulations.lo
 commands_sub.lo: commands.lo

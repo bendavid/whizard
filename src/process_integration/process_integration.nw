@@ -4391,7 +4391,7 @@ recorded in the [[meta]] block.  Delegate to the [[pcm]].
             if (component%get_nlo_type () == NLO_REAL) then
                select type (pcm => process%pcm)
                type is (pcm_nlo_t)
-                  if (component%component_type /= COMP_REAL_FIN) &
+                  if (pcm%component_type(i) /= COMP_REAL_FIN) &
                        n_entry(i) = n_entry(i) + pcm%region_data%get_n_phs ()
                end select
             end if
@@ -4413,8 +4413,13 @@ recorded in the [[meta]] block.  Delegate to the [[pcm]].
          if (.not. component%active)  cycle
            allocate (component%i_term (n_entry(i)))
            do j = 1, n_entry(i)
-              singular_real = component%get_nlo_type () == NLO_REAL &
-                   .and. component%component_type /= COMP_REAL_FIN
+              select type (pcm => process%pcm)
+              type is (pcm_nlo_t)
+                 singular_real = component%get_nlo_type () == NLO_REAL &
+                      .and. pcm%component_type(i) /= COMP_REAL_FIN
+              class default
+                 singular_real = .false.
+              end select
               setup_subtraction_component = singular_real .and. j == n_entry(i)
               i_term = k + j
               component%i_term(j) = i_term
@@ -4975,7 +4980,7 @@ parameterizing an s-channel resonance.
                   call check_and_extend_phs (component)
                case (NLO_REAL, NLO_MISMATCH, NLO_DGLAP)
                   i_born = component%config%get_associated_born ()
-                  if (component%component_type /= COMP_REAL_FIN) &
+                  if (pcm%component_type(i) /= COMP_REAL_FIN) &
                        call check_and_extend_phs (component)
                   call process%component(i_born)%get_phs_config &
                        (phs_config_born)
@@ -7499,22 +7504,6 @@ has changed after process initialization.
   end subroutine process_reset_library_ptr
 
 @ %def process_reset_library_ptr
-@
-<<Process: process: TBP>>=
-  procedure :: set_component_type => process_set_component_type
-<<Process: sub interfaces>>=
-    module subroutine process_set_component_type (process, i_component, i_type)
-      class(process_t), intent(inout) :: process
-      integer, intent(in) :: i_component, i_type
-    end subroutine process_set_component_type
-<<Process: procedures>>=
-  module subroutine process_set_component_type (process, i_component, i_type)
-    class(process_t), intent(inout) :: process
-    integer, intent(in) :: i_component, i_type
-    process%component(i_component)%component_type = i_type
-  end subroutine process_set_component_type
-
-@ %def process_set_component_type
 @
 <<Process: process: TBP>>=
   procedure :: set_counter_mci_entry => process_set_counter_mci_entry
@@ -15866,62 +15855,54 @@ $\mathcal{R}_\text{fin} = \mathcal{R} \cdot (1-F)$.
 <<Instances: term instance: TBP>>=
   procedure :: apply_real_partition => term_instance_apply_real_partition
 <<Instances: sub interfaces>>=
-    module subroutine term_instance_apply_real_partition (term, kin, process)
+    module subroutine term_instance_apply_real_partition (term, kin)
       class(term_instance_t), intent(inout) :: term
       type(kinematics_t), intent(in) :: kin
-      type(process_t), intent(in) :: process
     end subroutine term_instance_apply_real_partition
 <<Instances: procedures>>=
-  module subroutine term_instance_apply_real_partition (term, kin, process)
+  module subroutine term_instance_apply_real_partition (term, kin)
     class(term_instance_t), intent(inout) :: term
     type(kinematics_t), intent(in) :: kin
-    type(process_t), intent(in) :: process
     real(default) :: f, sqme
     integer :: i_component
     integer :: i_amp, n_amps, qn_index
     logical :: is_subtraction
     i_component = term%config%i_component
-    if (process%component_is_selected (i_component) .and. &
-           process%get_component_nlo_type (i_component) == NLO_REAL) then
-       is_subtraction = process%get_component_type (i_component) == &
-            COMP_REAL_SING .and. kin%emitter < 0
-       if (is_subtraction) return
-       select case (process%get_component_type (i_component))
-       case (COMP_REAL_FIN)
-          call term%connected%trace%set_duplicate_flv_zero()
-       end select
-       select type (pcm => process%get_pcm_ptr ())
-       type is (pcm_nlo_t)
-          f = pcm%real_partition%get_f (term%p_hard)
-       end select
-       n_amps = term%connected%trace%get_n_matrix_elements ()
-       do i_amp = 1, n_amps
-          qn_index = term%connected%trace%get_qn_index (i_amp, i_sub = 0)
-          sqme = real (term%connected%trace%get_matrix_element (qn_index))
-          if (debug_on)  call msg_debug2 &
-               (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
-          select type (pcm => term%pcm)
-          type is (pcm_nlo_t)
-             select case (process%get_component_type (i_component))
-             case (COMP_REAL_FIN, COMP_REAL_SING)
-                select case (process%get_component_type (i_component))
-                case (COMP_REAL_FIN)
-                   if (debug_on)  call msg_debug2 &
-                        (D_PROCESS_INTEGRATION, "Real finite")
-                   sqme = sqme * (one - f)
-                case (COMP_REAL_SING)
-                   if (debug_on)  call msg_debug2 &
-                        (D_PROCESS_INTEGRATION, "Real singular")
-                   sqme = sqme * f
-                end select
-             end select
+    select type (pcm => term%pcm)
+    type is (pcm_nlo_t)
+       if (pcm%component_selected (i_component) .and. &
+           pcm%nlo_type (i_component) == NLO_REAL) then
+          is_subtraction = pcm%component_type (i_component) == &
+               COMP_REAL_SING .and. kin%emitter < 0
+          if (is_subtraction) return
+          select case (pcm%component_type (i_component))
+          case (COMP_REAL_FIN)
+             call term%connected%trace%set_duplicate_flv_zero()
           end select
-          if (debug_on)  call msg_debug2 &
-               (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
-          call term%connected%trace%set_matrix_element &
-               (qn_index, cmplx (sqme, zero, default))
-       end do
-    end if
+          f = pcm%real_partition%get_f (term%p_hard)
+          n_amps = term%connected%trace%get_n_matrix_elements ()
+          do i_amp = 1, n_amps
+             qn_index = term%connected%trace%get_qn_index (i_amp, i_sub = 0)
+             sqme = real (term%connected%trace%get_matrix_element (qn_index))
+             if (debug_on)  call msg_debug2 &
+                  (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
+             select case (pcm%component_type (i_component))
+             case (COMP_REAL_FIN)
+                if (debug_on)  call msg_debug2 &
+                     (D_PROCESS_INTEGRATION, "Real finite")
+                sqme = sqme * (one - f)
+             case (COMP_REAL_SING)
+                if (debug_on)  call msg_debug2 &
+                     (D_PROCESS_INTEGRATION, "Real singular")
+                sqme = sqme * f
+             end select
+             if (debug_on)  call msg_debug2 &
+                  (D_PROCESS_INTEGRATION, "apply_damping: sqme", sqme)
+             call term%connected%trace%set_matrix_element &
+                  (qn_index, cmplx (sqme, zero, default))
+          end do
+       end if
+    end select
   end subroutine term_instance_apply_real_partition
 
 @ %def term_instance_apply_real_partition
@@ -19027,7 +19008,7 @@ terms, iterating over all active process components.
                call term%evaluate_trace (kin)
                i_real_fin = instance%process%get_associated_real_fin (1)
                if (instance%process%uses_real_partition ()) &
-                    call term%apply_real_partition (kin, instance%process)
+                    call term%apply_real_partition (kin)
                if (term%config%i_component /= i_real_fin) then
                   if ((term%nlo_type == NLO_REAL .and. kin%emitter < 0) &
                        .or. term%nlo_type == NLO_MISMATCH &
@@ -19247,8 +19228,7 @@ in this way should hold up in these cases as well, however.
           i_terms = process%get_component_i_terms (i_component)
           do i_term = 1, size (i_terms)
              call instance%term(i_terms(i_term))%apply_real_partition ( &
-                  instance%kin(i_terms(i_term)), &
-                  process)
+                  instance%kin(i_terms(i_term)))
           end do
        end if
        if (allocated (i_terms)) deallocate (i_terms)
