@@ -191,8 +191,6 @@ let assert_equal ?(cmp = ( = )) ?printer ?pp_diff ?msg expected actual =
 
 let assert_command 
     ?(exit_code=Unix.WEXITED 0)
-    ?(sinput=Stream.of_list [])
-    ?(foutput=ignore)
     ?(use_stderr=true)
     ?env
     ?verbose
@@ -253,19 +251,6 @@ let assert_command
            Unix.close out_read; 
            Unix.close in_write
          in
-         let () =
-           (* Dump sinput into the process stdin *)
-           let buff = Bytes.make 1 ' ' in
-             Stream.iter 
-               (fun c ->
-                  let _i : int =
-                    Bytes.set buff 0 c;
-                    Unix.write out_write buff 0 1
-                  in
-                    ())
-               sinput;
-             Unix.close out_write
-         in
          let _, real_exit_code =
            let rec wait_intr () = 
              try 
@@ -309,18 +294,7 @@ let assert_command
                           "@[Exit status of command '%t'@]" cmd_print))
              ~printer:exit_code_printer
              exit_code
-             real_exit_code;
-
-           begin
-             let chn =
-               open_in fn_out
-             in
-               try 
-                 foutput (Stream.of_channel chn)
-               with e ->
-                 close_in chn;
-                 raise e
-           end)
+             real_exit_code)
       ()
 
 let raises f =

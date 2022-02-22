@@ -109,8 +109,8 @@ let quote s =
   end else
     s
 
-let uppercase = String.uppercase
-let lowercase = String.lowercase
+let uppercase = String.uppercase_ascii
+let lowercase = String.lowercase_ascii
 
 let compare_caseless s1 s2 =
   String.compare (lowercase s1) (lowercase s2)

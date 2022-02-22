@@ -95,28 +95,14 @@ let unsafe_output oc s i j =
 i*)
 
 let pp_setup ff =
-  let out, flush =
-    Format.pp_get_formatter_output_functions ff.formatter () in
-  Format.pp_set_all_formatter_output_functions
-    ff.formatter ~out ~flush
-    ~newline:(pp_fortran_newline ff) ~spaces:(pp_display_blanks ff);
+  let formatter_out_functions =
+    Format.pp_get_formatter_out_functions ff.formatter () in
+  Format.pp_set_formatter_out_functions
+    ff.formatter
+    { formatter_out_functions with
+      out_newline = pp_fortran_newline ff;
+      out_spaces = pp_display_blanks ff };
   Format.pp_set_margin ff.formatter (ff.width - 2)
-
-(* This is bit of a headache, since [out_indent] was added to
-   [type formatter_out_functions] in version 4.06 in an incompatible
-   change. *)
-
-(*i
-    let setup width oc =
-      let formatter_out_functions = get_formatter_out_functions () in
-      set_formatter_out_functions
-        { formatter_out_functions with
-          out_string = output oc;
-          out_flush = (fun () -> flush oc);
-          out_newline = fortran_newline oc;
-          out_spaces = display_blanks oc };
-      set_margin (width - 2)
- i*)
 
 let std_formatter =
   let ff = formatter_of_formatter Format.std_formatter in
