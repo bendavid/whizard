@@ -1,4 +1,4 @@
-(* circe2/oUnit.mli --  *)
+(* oUnit.mli -- *)
 
 (***********************************************************************)
 (* The OUnit library                                                   *)
@@ -71,9 +71,6 @@ val assert_string : string -> unit
 (** [assert_command prg args] Run the command provided.
 
     @param exit_code expected exit code
-    @param sinput provide this [char Stream.t] as input of the process
-    @param foutput run this function on output, it can contains an
-                   [assert_equal] to check it
     @param use_stderr redirect [stderr] to [stdout]
     @param env Unix environment
     @param verbose if a failure arise, dump stdout/stderr of the process to stderr
@@ -82,8 +79,6 @@ val assert_string : string -> unit
   *)
 val assert_command : 
     ?exit_code:Unix.process_status ->
-    ?sinput:char Stream.t ->
-    ?foutput:(char Stream.t -> unit) ->
     ?use_stderr:bool ->
     ?env:string array ->
     ?verbose:bool ->

@@ -57,7 +57,7 @@ let exp10_xy = map_xy (fun x -> 10.0 ** x) (fun y -> 10.0 ** y)
 (* \subsubsection{Histogramming} *)
 
 let scan_string s =
-  let tokens = Events.lexer (Stream.of_string s) in
+  let tokens = Lexing.from_string s in
   let t1 = Events.next_float tokens in
   let t2 = Events.next_float tokens in
   let t3 = Events.next_float tokens in
@@ -246,7 +246,7 @@ let regression_data n reader =
 (* \subsubsection{Visually Adapting Powermaps} *)
 
 let power_map beta eta =
-  Diffmap.Power.create (1.0 /. (1.0 +. beta)) eta 0.0 1.0
+  Diffmap.Power.create ~alpha:(1.0 /. (1.0 +. beta)) ~eta 0.0 1.0
 
 let power_data to_file n center resolution reader suffix =
   let histograms = reader

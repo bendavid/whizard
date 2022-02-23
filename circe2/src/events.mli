@@ -44,8 +44,7 @@ val to_binary_file : string -> t -> unit
 val rescale : float -> float -> t -> unit
 
 (* Utilities for reading ASCII representations. *)
-val lexer : char Stream.t -> Genlex.token Stream.t
-val next_float : Genlex.token Stream.t -> float
+val next_float : Lexing.lexbuf -> float
 
 (*i
  *  Local Variables:

@@ -99,8 +99,8 @@ let to_channel oc h =
         +. (h.x_max -. h.x_min) *. (float i +. 0.5) /. h.n_bins_float in
     if h.n.(i) > 1 then
       let n = float h.n.(i) in
-      let var1 = (h.w2.(i) /. n -. (h.w.(i) /. n) ** 2.0) /. (n -. 1.0)
-      and var2 = h.w.(i) ** 2.0 /. (n *. (n -. 1.0)) in
+      (* [let var1 = (h.w2.(i) /. n -. (h.w.(i) /. n) ** 2.0) /. (n -. 1.0)] *)
+      let var2 = h.w.(i) ** 2.0 /. (n *. (n -. 1.0)) in
       let var = var2 in
       fprintf oc " %.17E %.17E %.17E\n" x_mid h.w.(i) (sqrt var)
     else if h.n.(i) = 1 then

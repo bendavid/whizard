@@ -193,6 +193,9 @@ circe2.top: $(CIRCE2_CMO)
 lexer.mli: lexer.ml parser.cmi
 	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
 
+events_lexer.mli: events_lexer.ml
+	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
+
 endif OCAML_AVAILABLE
 
 
@@ -244,6 +247,8 @@ Makefile.depend_ocaml: $(CIRCE2_SRC) $(CIRCE2TOOL_SRC)
 	echo lexer.cmx: lexer.cmi parser.cmx >>$@
 	echo parser.cmo: parser.cmi syntax.cmi >>$@
 	echo parser.cmx: parser.cmi syntax.cmi syntax.cmx >>$@
+	echo events_lexer.cmo: events_lexer.cmi >>$@
+	echo events_lexer.cmx: events_lexer.cmi >>$@
 
 DISTCLEANFILES += Makefile.depend_ocaml
 

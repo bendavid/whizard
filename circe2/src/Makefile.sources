@@ -41,10 +41,10 @@
 CIRCE2_ML_SRC_1 = \
 	OUnit.ml OUnitDiff.ml thoArray.ml thoMatrix.ml \
 	float.ml diffmap.ml diffmaps.ml filter.ml division.ml grid.ml \
-	events.ml syntax.ml
-CIRCE2_LEXER = lexer.mll
+	syntax.ml
+CIRCE2_LEXER = lexer.mll events_lexer.mll
 CIRCE2_PARSER = parser.mly
-CIRCE2_ML_SRC_2 = commands.ml histogram.ml
+CIRCE2_ML_SRC_2 = events.ml commands.ml histogram.ml
 
 CIRCE2_ML_SRC = $(CIRCE2_ML_SRC_1) $(CIRCE2_ML_SRC_2)
 CIRCE2_MLI_SRC = $(CIRCE2_ML_SRC:.ml=.mli)

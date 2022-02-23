@@ -45,34 +45,25 @@ let read_lines ic reader array i2_first i2_last =
   with
   | End_of_file -> raise (Incomplete (pred !i2, array))
 
+let next_float lexbuf =
+  match Events_lexer.token lexbuf with
+  | None -> invalid_arg ("Events.next_float: expected float")
+  | Some x -> x
+
 (* Decode a line of floating point numbers into a column of
    a bigarray. *)
 
-(* Fortran allows ['d'] and ['D'] as exponent starter, but
-   O'Caml's [Genlex] doesn't accept it.  *)
-
-let normalize_ascii_floats orig =
-  let normalized = Bytes.of_string orig in
-  for i = 0 to Bytes.length normalized - 1 do
-    let c = Bytes.get normalized i in
-    if c = 'd' || c = 'D' then
-      Bytes.set normalized i 'E'
-  done;
-  Bytes.to_string normalized
-  
-let lexer = Genlex.make_lexer []
-
-let next_float s =
-  match Stream.next s with
-  | Genlex.Int n -> float n
-  | Genlex.Float x -> x
-  | _ -> invalid_arg "Events.int_as_float"
-
 let read_floats array i2 line =
-  let tokens = lexer (Stream.of_string (normalize_ascii_floats line)) in
-  for i1 = 1 to Array2.dim1 array do
-    Array2.set array i1 i2 (next_float tokens)
-  done
+  let lexbuf = Lexing.from_string line in
+  try
+    for i1 = 1 to Array2.dim1 array do
+      match Events_lexer.token lexbuf with
+      | None -> invalid_arg ("not enough floats in \"" ^ line ^ "\"")
+      | Some x -> Array2.set array i1 i2 x
+    done
+  with
+  | Failure t ->
+      invalid_arg ("invalid token '" ^ t ^ "' in \"" ^ line ^ "\"")
 
 (*i
 let read_floats array i2 line =
