@@ -1080,11 +1080,11 @@ $(i,j)$ is accepted as valid.
 @ This function checks whether two flavor arrays are the same up to a
 permutation of the final-state particles
 <<FKS regions: procedures>>=
-  function flv_structure_equivalent (flv1, flv2, with_tag) result(equiv)
+  function flv_structure_equivalent (flv1, flv2, with_tag) result (equiv)
     logical :: equiv
     type(flv_structure_t), intent(in) :: flv1, flv2
     logical, intent(in) :: with_tag
-    type(flavor_permutation_t) :: perm
+    type(flv_perm_t) :: perm
     integer :: n
     n = size (flv1%flst)
     equiv = .true.
@@ -1096,7 +1096,7 @@ permutation of the final-state particles
             ('flv_structure_equivalent: flavor arrays do not have equal n_in')
     else
        call perm%init (flv1, flv2, flv1%n_in, flv1%nlegs, with_tag)
-       equiv = perm%test (flv2, flv1, with_tag)
+       equiv = perm%eqv (flv2, flv1, with_tag)
        call perm%final ()
     end if
   end function flv_structure_equivalent
@@ -1583,31 +1583,29 @@ structure if the particle at position \texttt{emitter} is removed
 
 @ %def flv_structure_final
 @
-<<FKS regions: public>>=
-  public :: flavor_permutation_t
 <<FKS regions: types>>=
-  type :: flavor_permutation_t
+  type :: flv_perm_t
     integer, dimension(:,:), allocatable :: perms
   contains
   <<FKS regions: flavor permutation: TBP>>
-  end type flavor_permutation_t
+  end type flv_perm_t
 
-@ %def flavor_permutation_t
+@ %def flv_perm_t
 @
 <<FKS regions: flavor permutation: TBP>>=
-  procedure :: init => flavor_permutation_init
+  procedure :: init => flv_perm_init
 <<FKS regions: sub interfaces>>=
-    module subroutine flavor_permutation_init &
+    module subroutine flv_perm_init &
          (perm, flv_in, flv_ref, n_first, n_last, with_tag)
-      class(flavor_permutation_t), intent(out) :: perm
+      class(flv_perm_t), intent(out) :: perm
       type(flv_structure_t), intent(in) :: flv_in, flv_ref
       integer, intent(in) :: n_first, n_last
       logical, intent(in) :: with_tag
-    end subroutine flavor_permutation_init
+    end subroutine flv_perm_init
 <<FKS regions: procedures>>=
-  module subroutine flavor_permutation_init &
+  module subroutine flv_perm_init &
        (perm, flv_in, flv_ref, n_first, n_last, with_tag)
-    class(flavor_permutation_t), intent(out) :: perm
+    class(flv_perm_t), intent(out) :: perm
     type(flv_structure_t), intent(in) :: flv_in, flv_ref
     integer, intent(in) :: n_first, n_last
     logical, intent(in) :: with_tag
@@ -1654,20 +1652,20 @@ structure if the particle at position \texttt{emitter} is removed
     perm%perms = perm_list_tmp (1 : i_perm, :)
     deallocate (perm_list_tmp)
     call flv_copy%final ()
-  end subroutine flavor_permutation_init
+  end subroutine flv_perm_init
 
-@ %def flavor_permutation_init
+@ %def flv_perm_init
 @
 <<FKS regions: flavor permutation: TBP>>=
-  procedure :: write => flavor_permutation_write
+  procedure :: write => flv_perm_write
 <<FKS regions: sub interfaces>>=
-    module subroutine flavor_permutation_write (perm, unit)
-      class(flavor_permutation_t), intent(in) :: perm
+    module subroutine flv_perm_write (perm, unit)
+      class(flv_perm_t), intent(in) :: perm
       integer, intent(in), optional :: unit
-    end subroutine flavor_permutation_write
+    end subroutine flv_perm_write
 <<FKS regions: procedures>>=
-  module subroutine flavor_permutation_write (perm, unit)
-    class(flavor_permutation_t), intent(in) :: perm
+  module subroutine flv_perm_write (perm, unit)
+    class(flv_perm_t), intent(in) :: perm
     integer, intent(in), optional :: unit
     integer :: i, n, u
     u = given_output_unit (unit); if (u < 0) return
@@ -1683,68 +1681,44 @@ structure if the particle at position \texttt{emitter} is removed
     else
        write (u, "(A)") "[Empty]"
     end if
-  end subroutine flavor_permutation_write
+  end subroutine flv_perm_write
 
-@ %def flavor_permutation_write
+@ %def flv_perm_write
 @
 <<FKS regions: flavor permutation: TBP>>=
-  procedure :: reset => flavor_permutation_final
-  procedure :: final => flavor_permutation_final
+  procedure :: reset => flv_perm_final
+  procedure :: final => flv_perm_final
 <<FKS regions: sub interfaces>>=
-    module subroutine flavor_permutation_final (perm)
-      class(flavor_permutation_t), intent(inout) :: perm
-    end subroutine flavor_permutation_final
+    module subroutine flv_perm_final (perm)
+      class(flv_perm_t), intent(inout) :: perm
+    end subroutine flv_perm_final
 <<FKS regions: procedures>>=
-  module subroutine flavor_permutation_final (perm)
-    class(flavor_permutation_t), intent(inout) :: perm
+  module subroutine flv_perm_final (perm)
+    class(flv_perm_t), intent(inout) :: perm
     if (allocated (perm%perms)) deallocate (perm%perms)
-  end subroutine flavor_permutation_final
+  end subroutine flv_perm_final
 
-@ %def flavor_permutation_final
+@ %def flv_perm_final
 @
 <<FKS regions: flavor permutation: TBP>>=
-  generic :: apply => apply_permutation, &
-         apply_flavor, apply_integer, apply_ftuple
-  procedure :: apply_permutation => flavor_permutation_apply_permutation
-  procedure :: apply_flavor => flavor_permutation_apply_flavor
-  procedure :: apply_integer => flavor_permutation_apply_integer
-  procedure :: apply_ftuple => flavor_permutation_apply_ftuple
+  generic :: apply => &
+         apply_flv_structure, apply_index, apply_ftuple
+  procedure :: apply_flv_structure => flv_perm_apply_flv_structure
+  procedure :: apply_index => flv_perm_apply_index
+  procedure :: apply_ftuple => flv_perm_apply_ftuple
 <<FKS regions: sub interfaces>>=
-    elemental module function flavor_permutation_apply_permutation &
-         (perm_1, perm_2) result (perm_out)
-      type(flavor_permutation_t) :: perm_out
-      class(flavor_permutation_t), intent(in) :: perm_1
-      type(flavor_permutation_t), intent(in) :: perm_2
-    end function flavor_permutation_apply_permutation
-<<FKS regions: procedures>>=
-  elemental module function flavor_permutation_apply_permutation &
-       (perm_1, perm_2) result (perm_out)
-    type(flavor_permutation_t) :: perm_out
-    class(flavor_permutation_t), intent(in) :: perm_1
-    type(flavor_permutation_t), intent(in) :: perm_2
-    integer :: n1, n2
-    n1 = size (perm_1%perms, dim = 1)
-    n2 = size (perm_2%perms, dim = 1)
-    allocate (perm_out%perms (n1 + n2, 2))
-    perm_out%perms (1 : n1, :) = perm_1%perms
-    perm_out%perms (n1 + 1: n1 + n2, :) = perm_2%perms
-  end function flavor_permutation_apply_permutation
-
-@ %def flavor_permutation_apply_permutation
-@
-<<FKS regions: sub interfaces>>=
-    elemental module function flavor_permutation_apply_flavor &
+    elemental module function flv_perm_apply_flv_structure &
          (perm, flv_in, invert) result (flv_out)
       type(flv_structure_t) :: flv_out
-      class(flavor_permutation_t), intent(in) :: perm
+      class(flv_perm_t), intent(in) :: perm
       type(flv_structure_t), intent(in) :: flv_in
       logical, intent(in), optional :: invert
-    end function flavor_permutation_apply_flavor
+    end function flv_perm_apply_flv_structure
 <<FKS regions: procedures>>=
-  elemental module function flavor_permutation_apply_flavor &
+  elemental module function flv_perm_apply_flv_structure &
        (perm, flv_in, invert) result (flv_out)
     type(flv_structure_t) :: flv_out
-    class(flavor_permutation_t), intent(in) :: perm
+    class(flv_perm_t), intent(in) :: perm
     type(flv_structure_t), intent(in) :: flv_in
     logical, intent(in), optional :: invert
     integer :: i, i1, i2
@@ -1772,22 +1746,22 @@ structure if the particle at position \texttt{emitter} is removed
        flv_out%tag(i1) = flv_out%tag(i2)
        flv_out%tag(i2) = tag_tmp
     end do
-  end function flavor_permutation_apply_flavor
+  end function flv_perm_apply_flv_structure
 
-@ %def flavor_permutation_apply_flavor
+@ %def flv_perm_apply_flv_structure
 @
 <<FKS regions: sub interfaces>>=
-    elemental module function flavor_permutation_apply_integer &
+    elemental module function flv_perm_apply_index &
          (perm, i_in) result (i_out)
       integer :: i_out
-      class(flavor_permutation_t), intent(in) :: perm
+      class(flv_perm_t), intent(in) :: perm
       integer, intent(in) :: i_in
-    end function flavor_permutation_apply_integer
+    end function flv_perm_apply_index
 <<FKS regions: procedures>>=
-  elemental module function flavor_permutation_apply_integer &
+  elemental module function flv_perm_apply_index &
        (perm, i_in) result (i_out)
     integer :: i_out
-    class(flavor_permutation_t), intent(in) :: perm
+    class(flv_perm_t), intent(in) :: perm
     integer, intent(in) :: i_in
     integer :: i, i1, i2
     i_out = i_in
@@ -1800,22 +1774,22 @@ structure if the particle at position \texttt{emitter} is removed
           i_out = i1
        end if
     end do
-  end function flavor_permutation_apply_integer
+  end function flv_perm_apply_index
 
-@ %def flavor_permutation_apply_integer
+@ %def flv_perm_apply_index
 @
 <<FKS regions: sub interfaces>>=
-    elemental module function flavor_permutation_apply_ftuple &
+    elemental module function flv_perm_apply_ftuple &
          (perm, f_in) result (f_out)
       type(ftuple_t) :: f_out
-      class(flavor_permutation_t), intent(in) :: perm
+      class(flv_perm_t), intent(in) :: perm
       type(ftuple_t), intent(in) :: f_in
-    end function flavor_permutation_apply_ftuple
+    end function flv_perm_apply_ftuple
 <<FKS regions: procedures>>=
-  elemental module function flavor_permutation_apply_ftuple &
+  elemental module function flv_perm_apply_ftuple &
        (perm, f_in) result (f_out)
     type(ftuple_t) :: f_out
-    class(flavor_permutation_t), intent(in) :: perm
+    class(flv_perm_t), intent(in) :: perm
     type(ftuple_t), intent(in) :: f_in
     integer :: i, i1, i2
     f_out = f_in
@@ -1834,35 +1808,35 @@ structure if the particle at position \texttt{emitter} is removed
        end if
     end do
     if (f_out%ireg(1) > f_out%ireg(2)) f_out%ireg = f_out%ireg([2,1])
-  end function flavor_permutation_apply_ftuple
+  end function flv_perm_apply_ftuple
 
-@ %def flavor_permutation_apply_ftuple
+@ %def flv_perm_apply_ftuple
 @
 <<FKS regions: flavor permutation: TBP>>=
-  procedure :: test => flavor_permutation_test
+  procedure :: eqv => flv_perm_eqv
 <<FKS regions: sub interfaces>>=
-    module function flavor_permutation_test &
+    module function flv_perm_eqv &
          (perm, flv1, flv2, with_tag) result (valid)
       logical :: valid
-      class(flavor_permutation_t), intent(in) :: perm
+      class(flv_perm_t), intent(in) :: perm
       type(flv_structure_t), intent(in) :: flv1, flv2
       logical, intent(in) :: with_tag
-    end function flavor_permutation_test
+    end function flv_perm_eqv
 <<FKS regions: procedures>>=
-  module function flavor_permutation_test &
+  module function flv_perm_eqv &
        (perm, flv1, flv2, with_tag) result (valid)
     logical :: valid
-    class(flavor_permutation_t), intent(in) :: perm
+    class(flv_perm_t), intent(in) :: perm
     type(flv_structure_t), intent(in) :: flv1, flv2
     logical, intent(in) :: with_tag
-    type(flv_structure_t) :: flv_test
-    flv_test = perm%apply (flv2, invert = .true.)
-    valid = all (flv_test%flst == flv1%flst)
-    if (with_tag) valid = valid .and. all (flv_test%tag == flv1%tag)
-    call flv_test%final ()
-  end function flavor_permutation_test
+    type(flv_structure_t) :: flv_tmp
+    flv_tmp = perm%apply (flv2, invert = .true.)
+    valid = all (flv_tmp%flst == flv1%flst)
+    if (with_tag) valid = valid .and. all (flv_tmp%tag == flv1%tag)
+    call flv_tmp%final ()
+  end function flv_perm_eqv
 
-@ %def flavor_permutation_test
+@ %def flv_perm_eqv
 @ A singular region is a partition of phase space which is associated with
 an individual emitter and, if relevant, resonance. It is associated with
 an $\alpha_r$- and resonance-index, with a real flavor structure and
@@ -3824,9 +3798,11 @@ of the present one is increased.
              !!! Check for equivalent flavor structures
              do i_reg_prev = 1, i_reg - 1
                 if (emitter(i) == flst_emitter(i_reg_prev) .and. emitter(i) > reg_data%n_in) then
-                   valid_fs_splitting = check_fs_splitting (flv_alr(i)%get_last_two(n_legs), &
+                   valid_fs_splitting = check_fs_splitting &
+                         (flv_alr(i)%get_last_two(n_legs), &
                           flv_alr_registered(i_reg_prev)%get_last_two(n_legs), &
-                          flv_alr(i)%tag(n_legs - 1), flv_alr_registered(i_reg_prev)%tag(n_legs - 1))
+                          flv_alr(i)%tag(n_legs - 1), &
+                          flv_alr_registered(i_reg_prev)%tag(n_legs - 1))
                    if (nlo_correction_type == "EW" .and. reg_data%alphas_power > 0) then
                       nlo_correction_type_dyn (i_reg) = set_dynamic_correction_type (i)
                    end if
@@ -3912,7 +3888,6 @@ of the present one is increased.
       type(ftuple_list_t), intent(inout), dimension(:), allocatable :: ftuples
       integer :: alr1, alr2, i
       type(ftuple_t), dimension(:), allocatable :: ftuples_alr1, ftuples_alr2
-      type(flavor_permutation_t) :: perm_list
       logical, dimension(:,:), allocatable :: equivalences
       do alr1 = 1, n_regions
          do alr2 = 1, n_regions
@@ -3952,23 +3927,23 @@ of the present one is increased.
     end subroutine setup_region_mappings
 
     subroutine check_permutation (perm, flv_perm, flv_orig, i_reg)
-      type(flavor_permutation_t), intent(in) :: perm
+      type(flv_perm_t), intent(in) :: perm
       type(flv_structure_t), intent(in) :: flv_perm, flv_orig
       integer, intent(in) :: i_reg
-      type(flv_structure_t) :: flv_test
-      flv_test = perm%apply (flv_orig, invert = .true.)
-      if (.not. all (flv_test%flst == flv_perm%flst)) then
+      type(flv_structure_t) :: flv_tmp
+      flv_tmp = perm%apply (flv_orig, invert = .true.)
+      if (.not. all (flv_tmp%flst == flv_perm%flst)) then
          print *, 'Fail at: ', i_reg
          print *, 'Original flavor structure: ', flv_orig%flst
          call perm%write ()
          print *, 'Permuted flavor: ', flv_perm%flst
-         print *, 'Should be: ', flv_test%flst
+         print *, 'Should be: ', flv_tmp%flst
          call msg_fatal ("Permutation does not reproduce original flavor!")
       end if
     end subroutine check_permutation
 
     subroutine init_regions_with_permuted_flavors ()
-       type(flavor_permutation_t) :: perm_list
+       type(flv_perm_t) :: perm_list
        type(ftuple_t), dimension(:), allocatable :: ftuple_array
        logical, dimension(:,:), allocatable :: equivalences
        integer :: i, j
@@ -4028,15 +4003,6 @@ of the present one is increased.
       end associate
       deallocate (these_flv)
     end subroutine assign_real_indices
-
-    subroutine write_perm_list (perm_list)
-      integer, intent(in), dimension(:,:) :: perm_list
-      integer :: i
-      do i = 1, size (perm_list(:,1))
-         write (*,'(I1,1x,I1,A)', advance = "no" ) perm_list(i,1), perm_list(i,2), '/'
-      end do
-      print *, ''
-    end subroutine write_perm_list
 
     function check_fs_splitting (flv1, flv2, tag1, tag2) result (valid)
       logical :: valid
