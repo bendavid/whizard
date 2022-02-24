@@ -79,10 +79,11 @@ let parse specs anonymous usage =
   | Arg.Help msg -> Printf.printf "%s\n" msg; exit 0
 i*)
 
-(* Starting with O'Caml version 3.12.1 we can provide a better
-   \verb*--help* option using [Arg.usage_string].  Alas, we
-   must disable it if we want to remain compatible with O'Caml versions
-   up to 3.12.0.  *)
+(* \begin{dubious}
+     Starting with O'Caml version 3.12.1 we can provide a better
+     \verb*--help* option using [Arg.usage_string].  We can finally
+     do this!
+   \end{dubious} *)
     
 let parse specs anonymous usage =
   let help () =

@@ -22,13 +22,15 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let (@@) f g x =
-  f (g x)
-
 (* \thocwmodulesection{Generating Code for UFO Lorentz Structures} *)
 
-(* O'Caml before 4.02 had a module typing bug that forces us to put this
-   definition outside [Lorentz_Fusion]. *)
+(* \begin{dubious}
+     O'Caml before 4.02 had a module typing bug that forced us to put
+     these definitions outside of [Lorentz_Fusion].  Since then, they
+     might have appeared in more places.  Investigate, if it is
+     worthwhile to encapsulate them again.
+   \end{dubious} *)
+
 module Q = Algebra.Q
 module QC = Algebra.QC
 

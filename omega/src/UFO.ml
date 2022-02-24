@@ -24,10 +24,11 @@
 
 (* Unfortunately, \texttt{ocamlweb} will not typeset all multi character
    operators nicely. E.\,g.~\verb+f @< g+ comes out as [f @< g]. *)
-let (@@) f g x =
+
+let (<*>) f g x =
  f (g x)
 
-let (@@@) f g x y =
+let (<**>) f g x y =
   f (g x y)
 
 module SMap = Map.Make (struct type t = string let compare = compare end)
@@ -276,7 +277,7 @@ let dependencies_to_strings map =
   List.map dependency_to_string (CMap.bindings map)
 
 let expr_to_string =
-  UFOx.Value.to_string @@ UFOx.Value.of_expr
+  UFOx.Value.to_string <*> UFOx.Value.of_expr
 
 let value_to_string = function
   | Integer i -> Printf.sprintf "%d" i
@@ -975,7 +976,7 @@ module Vertex : Vertex =
            let indices = classify_color_indices particle_map particles in
 	   Array.of_list
 	     (List.map
-                (force_identity indices @@ UFOx.Color.of_string)
+                (force_identity indices <*> UFOx.Color.of_string)
                 (required string_list_attrib "color"))
 	 and lorentz =
 	   Array.of_list (required (name_list_attrib ~strip:"L") "lorentz")
@@ -1352,7 +1353,7 @@ let collect_spinor_reps_of_vertices particles lorentz vertices =
     vertices (SSet.empty, SSet.empty)
 
 let lorentz_reps_of_vertex particles v =
-  ThoList.alist_of_list ~predicate:(not @@ UFOx.Lorentz.rep_trivial) ~offset:1
+  ThoList.alist_of_list ~predicate:(not <*> UFOx.Lorentz.rep_trivial) ~offset:1
     (List.map
        (fun p ->
 	 (* Why do we need to conjugate??? *)
@@ -1391,7 +1392,7 @@ let check_lorentz_reps_of_vertex particles lorentz v =
     v.Vertex.lcc
 
 let color_reps_of_vertex particles v =
-  ThoList.alist_of_list ~predicate:(not @@ UFOx.Color.rep_trivial) ~offset:1
+  ThoList.alist_of_list ~predicate:(not <*> UFOx.Color.rep_trivial) ~offset:1
     (List.map
        (fun p -> (SMap.find p particles).Particle.color)
        (Array.to_list v.Vertex.particles))
@@ -1889,22 +1890,22 @@ let parse_directory dir =
 
 let dump model =
   Printf.printf "NC = %d\n" model.nc;
-  SMap.iter (print_endline @@@ Particle.to_string) model.particles;
-  SMap.iter (print_endline @@@ UFO_Coupling.to_string) model.couplings;
-  SMap.iter (print_endline @@@ Coupling_Order.to_string) model.coupling_orders;
-  (* [SMap.iter (print_endline @@@ Vertex.to_string) model.vertices;] *)
+  SMap.iter (print_endline <**> Particle.to_string) model.particles;
+  SMap.iter (print_endline <**> UFO_Coupling.to_string) model.couplings;
+  SMap.iter (print_endline <**> Coupling_Order.to_string) model.coupling_orders;
+  (* [SMap.iter (print_endline <**> Vertex.to_string) model.vertices;] *)
   SMap.iter
     (fun symbol v ->
-      (print_endline @@@ Vertex.to_string) symbol v;
+      (print_endline <**> Vertex.to_string) symbol v;
       print_endline
         (Vertex.to_string_expanded model.lorentz_UFO model.couplings v))
     model.vertices;
-  SMap.iter (print_endline @@@ Lorentz_UFO.to_string) model.lorentz_UFO;
-  SMap.iter (print_endline @@@ Lorentz.to_string) model.lorentz;
-  SMap.iter (print_endline @@@ Parameter.to_string) model.parameters;
-  SMap.iter (print_endline @@@ Propagator_UFO.to_string) model.propagators_UFO;
-  SMap.iter (print_endline @@@ Propagator.to_string) model.propagators;
-  SMap.iter (print_endline @@@ Decay.to_string) model.decays;
+  SMap.iter (print_endline <**> Lorentz_UFO.to_string) model.lorentz_UFO;
+  SMap.iter (print_endline <**> Lorentz.to_string) model.lorentz;
+  SMap.iter (print_endline <**> Parameter.to_string) model.parameters;
+  SMap.iter (print_endline <**> Propagator_UFO.to_string) model.propagators_UFO;
+  SMap.iter (print_endline <**> Propagator.to_string) model.propagators;
+  SMap.iter (print_endline <**> Decay.to_string) model.decays;
   SMap.iter
     (fun symbol d ->
       List.iter (fun (_, w) -> ignore (UFOx.Expr.of_string w)) d.Decay.widths)
@@ -2265,7 +2266,7 @@ module Model =
         Array.of_list (values physical_particles) in
       let physical_vertices =
 	Vertex.filter
-	  (not @@ (Vertex.contains model.particles (not @@ Particle.is_physical)))
+	  (not <*> (Vertex.contains model.particles (not <*> Particle.is_physical)))
 	  model.vertices in
       { model with
         particles = physical_particles;

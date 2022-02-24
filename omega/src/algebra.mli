@@ -266,12 +266,3 @@ module Term : Term
 
 module Make_Ring (C : Rational) (T : Term) : Ring
 module Make_Linear (C : Ring) : Linear with module C = C
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  compile-command:"ocamlc -o vertex thoList.ml{i,} pmap.ml{i,} vertex.ml"
- *  End:
-i*)

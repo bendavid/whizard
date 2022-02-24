@@ -609,11 +609,3 @@ module Test =
          suite_complement]
 
   end
-
-(*i
- *  Local Variables:
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  compile-command:"ocamlc -o vertex thoList.ml{i,} pmap.ml{i,} vertex.ml"
- *  End:
-i*)

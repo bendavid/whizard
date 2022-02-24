@@ -79,8 +79,7 @@ module Make (M : Map_S) : (T with type key = M.key list) =
     let empty = Trie (None, M.empty)
 
     let is_empty = function
-      | Trie (None, m) ->
-          m = M.empty (* after O'Caml 3.08: [M.is_empty m] *)
+      | Trie (None, m) -> M.is_empty m
       | _ -> false
 
     let rec add key data trie =
