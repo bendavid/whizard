@@ -48,8 +48,8 @@ module Make (D : Map.OrderedType) : T with type domain = D.t =
 	(try
 	   List.map2 (fun d v -> (d, v)) domain values
 	 with
-	    | Invalid_argument "List.map2" ->
-	      invalid_arg "Partial.of_lists: length mismatch")
+	 | Invalid_argument _ (* ["List.map2"] *) ->
+	    invalid_arg "Partial.of_lists: length mismatch")
 
     let auto partial d =
       try

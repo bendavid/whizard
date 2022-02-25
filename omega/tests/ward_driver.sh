@@ -152,8 +152,8 @@ cat <<EOF
   print *, "checking process '$process'"
   call check (load_physical_$module (), load_unphysical_$module (), &
               roots = real ($roots, kind=default), &
-	      m1 = real ($m1, kind=default), m2 = real ($m2, kind=default), &
-	      m3 = real ($m3, kind=default), m4 = real ($m4, kind=default), &
+              m1 = real ($m1, kind=default), m2 = real ($m2, kind=default), &
+              m3 = real ($m3, kind=default), m4 = real ($m4, kind=default), &
               threshold = real ($threshold, kind=default), &
               n = $n, seed = SEED, &
               failures = failures, attempts = attempts)

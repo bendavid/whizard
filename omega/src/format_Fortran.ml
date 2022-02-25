@@ -100,8 +100,8 @@ let pp_setup ff =
   Format.pp_set_formatter_out_functions
     ff.formatter
     { formatter_out_functions with
-      out_newline = pp_fortran_newline ff;
-      out_spaces = pp_display_blanks ff };
+      Format.out_newline = pp_fortran_newline ff;
+      Format.out_spaces = pp_display_blanks ff };
   Format.pp_set_margin ff.formatter (ff.width - 2)
 
 let std_formatter =
