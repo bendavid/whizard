@@ -644,6 +644,17 @@ so RECOLA can initialize itself for integration.
 @ %def rclwrap_get_alpha_s
 @
 <<Recola wrapper: public>>=
+  public :: rclwrap_get_alpha
+<<Recola wrapper: procedures>>=
+  function rclwrap_get_alpha () result (alpha)
+    real(double) :: alpha
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "get_alpha_rcl")
+    call get_alpha_rcl (alpha)
+  end function rclwrap_get_alpha
+
+@ %def rclwrap_get_alpha
+@
+<<Recola wrapper: public>>=
   public :: rclwrap_get_helicity_configurations
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_get_helicity_configurations (id, hel)
@@ -1511,6 +1522,15 @@ end module recola_wrapper
   end function rclwrap_get_alpha_s
 
 @ %def rclwrap_get_alpha_s
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_get_alpha
+<<Recola wrapper dummy: procedures>>=
+  function rclwrap_get_alpha () result (alpha)
+    real(double) :: alpha
+  end function rclwrap_get_alpha
+
+@ %def rclwrap_get_alpha
 @
 <<Recola wrapper dummy: public>>=
   public :: rclwrap_get_helicity_configurations
@@ -2825,7 +2845,9 @@ the Recola workflow, however.
     call rclwrap_set_pole_mass (25, dble(model%get_real (var_str ('mH'))), &
          dble(model%get_real (var_str ('wH'))))
 
+    !!! TODO PB 03-03-2022: Automatize EW input schemes
     call rclwrap_use_gfermi_scheme (dble(model%get_real (var_str ('GF'))))
+    !!! TODO PB 03-03-2022: Automatize mass threshold for light fermions
     call rclwrap_set_light_fermions (0._double)
     call rclwrap_set_delta_ir (0._double, dble(pi**2 / 6))
   end subroutine prc_recola_set_parameters
@@ -3058,7 +3080,8 @@ implementation can fail due to missing helicity initialization.
          p_recola
     real(double) :: sqme_dble
     real(default) :: alpha_s
-    integer :: i
+    integer :: i, as_coupling_power
+    logical :: ew_corr
     ! TODO sbrass Helicity for RECOLA
     if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt")
     sqme = zero
@@ -3069,9 +3092,19 @@ implementation can fail due to missing helicity initialization.
     alpha_s = object%qcd%alpha%get (ren_scale)
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
     call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'NLO')
-    !!! JRR, TODO: generalize for EW corrections
+    if (associated (object%def)) then
+       select type (def => object%def)
+       type is (recola_def_t)
+          ew_corr = def%corr == RECOLA_EW
+       end select
+    end if
+    if (ew_corr) then
+       as_coupling_power = object%get_alphas_power ()
+    else
+       as_coupling_power = object%get_alphas_power () + 1
+    end if
     call rclwrap_get_squared_amplitude (object%recola_ids(i_flv), &
-         object%get_alphas_power () + 1, 'NLO', sqme_dble)
+         as_coupling_power, 'NLO', sqme_dble)
     sqme(3) = sqme_dble 
     call rclwrap_get_squared_amplitude &
          (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
@@ -3080,6 +3113,27 @@ implementation can fail due to missing helicity initialization.
   end subroutine prc_recola_compute_sqme_virt
 
 @ %def prc_recola_compute_sqme_virt
+@
+<<Prc recola: prc recola: TBP>>=
+  procedure :: get_alpha_qed => prc_recola_get_alpha_qed
+<<Prc recola: sub interfaces>>=
+    module function prc_recola_get_alpha_qed &
+         (object, core_state) result (alpha_qed)
+      class(prc_recola_t), intent(in) :: object
+      class(prc_core_state_t), intent(in), allocatable :: core_state
+      real(default) :: alpha_qed
+    end function prc_recola_get_alpha_qed
+<<Prc recola: procedures>>=
+  module function prc_recola_get_alpha_qed &
+       (object, core_state) result (alpha_qed)
+    class(prc_recola_t), intent(in) :: object
+    class(prc_core_state_t), intent(in), allocatable :: core_state
+    real(double) :: value
+    real(default) :: alpha_qed
+       alpha_qed = rclwrap_get_alpha ()
+  end function prc_recola_get_alpha_qed
+
+@ %def prc_recola_get_alpha_qed
 @ For RECOLA, explicit color factors need to multiplied to the
 off-diagonal elements of the color correlation matrix. The factor 1/2
 from the normalization accoring to the RECOLA manual is covered by the
