@@ -198,6 +198,7 @@ libwhizard_ut_la_LIBADD = \
   matrix_elements/libmatrix_elements_ut.la \
   types/libtypes_ut.la \
   qft/libqft_ut.la \
+  qed_pdf/libqed_pdf_ut.la \
   physics/libphysics_ut.la \
   rng/librng_ut.la \
   parsing/libparsing_ut.la \

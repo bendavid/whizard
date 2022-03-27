@@ -29,6 +29,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libqed_pdf.la
+check_LTLIBRARIES = libqed_pdf_ut.la
 
 libqed_pdf_la_SOURCES = \
   $(QED_MODULES) \
@@ -38,6 +39,9 @@ QED_MODULES = \
   electron_pdfs.f90
 QED_SUBMODULES = \
   electron_pdfs_sub.f90
+
+libqed_pdf_ut_la_SOURCES = \
+  electron_pdfs_uti.f90 electron_pdfs_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = qed_pdf.nw
@@ -50,7 +54,7 @@ nodist_execmod_HEADERS = \
   ${QED_MODULES:.f90=.$(FCMOD)}
 
 # Submodules must not be included here
-libqed_pdf_Modules = ${QED_MODULES:.f90=}
+libqed_pdf_Modules = ${QED_MODULES:.f90=} ${libqed_pdf_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libqed_pdf_Modules); do \
           echo $$module >> $@.new; \
@@ -67,12 +71,14 @@ BUILT_SOURCES = Modules
 module_lists = \
   ../basics/Modules \
   ../utilities/Modules \
+  ../system/Modules \
+  ../testing/Modules \
   ../physics/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libqed_pdf_la_SOURCES)
+Module_dependencies.sed: $(libqed_pdf_la_SOURCES) $(libqed_pdf_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
@@ -94,7 +100,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libqed_pdf_la_SOURCES)
+Makefile.depend: $(libqed_pdf_la_SOURCES) $(libqed_pdf_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -111,7 +117,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../system -I../combinatorics -I../physics
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../physics
 
 ########################################################################
 # For the moment, the submodule dependencies will be hard-coded
@@ -147,12 +153,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 qed_pdf.stamp: $(PRELUDE) $(srcdir)/qed_pdf.nw $(POSTLUDE)
 	@rm -f qed_pdf.tmp
 	@touch qed_pdf.tmp
-	for src in $(libqed_pdf_la_SOURCES); do \
+	for src in $(libqed_pdf_la_SOURCES) $(libqed_pdf_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f qed_pdf.tmp qed_pdf.stamp
 
-$(libqed_pdf_la_SOURCES): qed_pdf.stamp
+$(libqed_pdf_la_SOURCES) $(libqed_pdf_ut_la_SOURCES): qed_pdf.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f qed_pdf.stamp; \

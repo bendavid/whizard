@@ -1,7 +1,7 @@
-* Test outout: Binary tree
+* Test output: Binary tree
 *   Purpose: test interface and implementation of binary tree and its iterator using polymorph objects.
 
-* Insert fixed number of object into tree...
+* Insert fixed number of objects into tree...
 * Search for all added objects in tree...
 - Has key   0 T
 - NDX   0 OBJ  10

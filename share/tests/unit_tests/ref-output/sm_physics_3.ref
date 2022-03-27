@@ -11,7 +11,7 @@
 * Complex polygamma function:
 
   z1        = ( 0.75, 1.25)
-  psi(z1,1) = ( 0.18785,-0.80371)
+  psi(z1,1) = ( 0.18787,-0.80371)
   z2        = ( 1.33,11.25)
   psi(z2,1) = ( 0.00654,-0.08846)
 
@@ -34,6 +34,11 @@
   psi(z1,5) = (11.28657, 1.79522)
   z2        = ( 1.33,11.25)
   psi(z2,5) = ( 0.00005,-0.00012)
+
+* Real polygamma function:
+
+  x1        = ( 0.04585)
+  psir      = (477.2759)
 
 * Generalized Nielsen polylogarithm:
 

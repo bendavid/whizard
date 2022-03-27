@@ -58,9 +58,10 @@ UTILITIES_SUBMODULES = \
   iterator_sub.f90
 
 libutilities_ut_la_SOURCES = \
-	binary_tree_ut.f90 binary_tree_uti.f90 \
-	array_list_ut.f90 array_list_uti.f90 \
-	iterator_ut.f90 iterator_uti.f90
+  numeric_utils_ut.f90 numeric_utils_uti.f90 \
+  binary_tree_ut.f90 binary_tree_uti.f90 \
+  array_list_ut.f90 array_list_uti.f90 \
+  iterator_ut.f90 iterator_uti.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = utilities.nw

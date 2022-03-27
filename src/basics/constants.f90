@@ -47,7 +47,8 @@ module constants
        sqrt2 = sqrt (two)
 
   real(default), parameter, public :: &
-       pi = 3.1415926535897932384626433832795028841972_default
+       pi = 3.1415926535897932384626433832795028841972_default, &
+       pi2 = pi**2
 
   real(default), parameter, public :: &
        twopi = 2*pi, &

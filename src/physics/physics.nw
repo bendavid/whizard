@@ -268,6 +268,13 @@ single beam described by a structure function.
 
 @ %def n_beams_rescaled
 @
+Orders of the electron PDFs.
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: EPDF_LL = 0
+  integer, parameter, public :: EPDF_NLL = 1
+
+@ %def EPDF_LL EPDF_NLL
+@
 <<Physics defs: public>>=
   public :: component_status
 <<Physics defs: interfaces>>=
@@ -4805,11 +4812,16 @@ Eq. (6.3.6):
 \end{equation}
 <<SM physics: public>>=
   public :: psic
+  public :: psir
 <<SM physics: sub interfaces>>=
     elemental module function psic (z) result (psi)
       complex(default), intent(in) :: z
       complex(default) :: psi
     end function psic
+    elemental module function psir (x) result (psi)
+      real(default), intent(in) :: x
+      real(default) :: psi
+    end function psir
 <<SM physics: procedures>>=
   elemental module function psic (z) result (psi)
     complex(default), intent(in) :: z
@@ -4829,7 +4841,13 @@ Eq. (6.3.6):
          zi2 * ( -42._default + zi2 * (20._default - 21._default * zi2)))
   end function psic
 
-@ %def psic
+  elemental module function psir (x) result (psi)
+    real(default), intent(in) :: x
+    real(default) :: psi
+    psi = real (psic (cmplx (x,0,kind=default)), kind=default)
+  end function psir
+
+@ %def psic psir
 @ Complex polygamma function. For this we use the asymptotic formula in
 Abramoqicz/Stegun, Eq. (6.4.11), and the recurrence formula
 Eq. (6.4.11):
@@ -4839,12 +4857,18 @@ Eq. (6.4.11):
 \end{equation}
 <<SM physics: public>>=
   public :: psim
+  public :: psimr
 <<SM physics: sub interfaces>>=
     elemental module function psim (z, m) result (psi)
       complex(default), intent(in) :: z
       integer, intent(in) :: m
       complex(default) :: psi
     end function psim
+    elemental module function psimr (x, m) result (psi)
+      real(default), intent(in) :: x
+      integer, intent(in) :: m
+      real(default) :: psi
+    end function psimr
 <<SM physics: procedures>>=
   elemental module function psim (z, m) result (psi)
     complex(default), intent(in) :: z
@@ -4859,7 +4883,7 @@ Eq. (6.4.11):
        shift = 0
        zz = z
        if (abs (aimag (zz)) < 10._default) then
-          CHECK_ABS: do i = 1, m
+          CHECK_ABS: do
              rec = (-1)**m * factorial (m) / zz**(m+1)
              shift = shift - rec
              zz = zz + 1
@@ -4885,11 +4909,18 @@ Eq. (6.4.11):
        zi  = 1/zz
        zi2 = zi*zi
        psi = shift + (-1)**(m-1) * zi**m * ( c1 + zi * ( c2 + zi * ( &
-            c3 + zi2 * ( c4 + zi2 * ( c5 + zi2 * ( c6 + zi2 * ( c7 * zi2)))))))
+            c3 + zi2 * ( c4 + zi2 * ( c5 + zi2 * ( c6 + ( c7 * zi2)))))))
     end if
   end function psim
 
-@ %def psim
+  elemental module function psimr (x, m) result (psi)
+    real(default), intent(in) :: x
+    integer, intent(in) :: m
+    real(default) :: psi
+    psi = real (psim (cmplx (x,0,kind=default), m), kind=default)
+  end function psimr
+
+@ %def psim psimr
 @ Nielsen's generalized polylogarithms, 
 \begin{equation*}
   S_{n,m}(x) = \frac{(-1)^{n+m-1}}{(n-1)!m!} \int_0^1 t^{-1}
@@ -7042,6 +7073,8 @@ end module sm_physics_uti
     complex(default) :: z1 = (0.75_default, 1.25_default)
     complex(default) :: z2 = (1.33_default, 11.25_default)
     complex(default) :: psiz
+    real(default) :: x1 = 0.045847700_default
+    real(default) :: psir
 
     write (u, "(A)")  "* Test output: sm_physics_3"
     write (u, "(A)")  "*   Purpose: check special functions"
@@ -7127,6 +7160,14 @@ end module sm_physics_uti
          real(z2), aimag(z2)
     write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,5) = ", &
          real(psiz), aimag(psiz)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Real polygamma function:"
+    write (u, "(A)")
+
+    psir = psimr (x1,1)
+    write (u, "(1x,A,'(',F8.5,')')")  " x1        = ", x1
+    write (u, "(1x,A,'(',F8.4,')')")  " psir      = ", psir
 
     write (u, "(A)")
     write (u, "(A)")  "* Generalized Nielsen polylogarithm:"

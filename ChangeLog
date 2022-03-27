@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.2+
 
+2022-03-27
+	Complete implementation/validation of NLL electron PDFs
+
 2022-02-22
 	Bug fix: correct normalization for CIRCE2+EPA+polarization
 

@@ -102,6 +102,7 @@ module_lists = \
   ../parsing/Modules \
   ../rng/Modules \
   ../physics/Modules \
+  ../qed_pdf/Modules \
   ../qft/Modules \
   ../expr_base/Modules \
   ../types/Modules \

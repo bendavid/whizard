@@ -3858,7 +3858,7 @@ procedure with type [[V_NONE]].
           'QED radiation (ISR). If not set, the mass for the initial beam ' // &
           'particle is taken from the model in use. (cf. also \ttt{isr}, ' // &
           '\ttt{isr\_q\_max}, \ttt{isr\_alpha}, \ttt{isr\_order}, \ttt{?isr\_recoil}, ' // &
-          '\ttt{?isr\_keep\_energy})'))
+          '\ttt{?isr\_keep\_energy}, \ttt{isr\_log\_order})'))
     call var_list%append_int (var_str ("isr_order"), 3, &
           intrinsic=.true., &
           description=var_str ('For lepton collider initial-state QED ' // &
@@ -3866,13 +3866,27 @@ procedure with type [[V_NONE]].
           'up to which hard-collinear radiation is taken into account. ' // &
           'Default is the highest available, namely third order. (cf. ' // &
           'also \ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_mass}, \ttt{isr\_alpha}, ' // &
-          '\ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy})'))
+          '\ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy}, \ttt{isr\_log\_order})'))
+    call var_list%append_int (var_str ("isr_log_order"), 0, &
+          intrinsic=.true., &
+          description=var_str ('For lepton collider initial-state QED ' // &
+          'radiation (ISR), this integer parameters sets the logarithmic ' // &
+          'order: 0 (default) is LL, 1 is NLL. (cf. ' // &
+          'also \ttt{isr}, \ttt{isr\_q\_max}, \ttt{isr\_mass}, \ttt{isr\_alpha}, ' // &
+          '\ttt{?isr\_recoil}, \ttt{?isr\_keep\_energy}, \ttt{isr\_order})'))
+    call var_list%append_real (var_str ("isr_q_in"), -1._default, &
+          intrinsic=.true., &
+          description=var_str ('This is the starting scale for the running ' // &
+          'of the QED coupling alpha. If negative, the electron mass is taken. ' // &
+          '(cf. also \ttt{isr}, ' // &
+          '\ttt{isr\_q\_max}, \ttt{isr\_alpha}, \ttt{isr\_order}, \ttt{?isr\_recoil}, ' // &
+          '\ttt{?isr\_keep\_energy}, \ttt{isr\_log\_order})'))
     call var_list%append_log (var_str ("?isr_recoil"), .false., &
           intrinsic=.true., &
           description=var_str ('Flag to switch on recoil, i.e. a non-vanishing ' // &
           '$p_T$-kick for the lepton collider initial-state QED radiation ' // &
           '(ISR).  (cf. also \ttt{isr}, \ttt{isr}, \ttt{isr\_alpha}, \ttt{isr\_mass}, ' // &
-          '\ttt{isr\_order}, \ttt{isr\_q\_max})'))
+          '\ttt{isr\_order}, \ttt{isr\_q\_max}, \ttt{isr\_log\_order})'))
     call var_list%append_log (var_str ("?isr_keep_energy"), .false., &
           intrinsic=.true., &
           description=var_str ('As the splitting kinematics for the ISR ' // &

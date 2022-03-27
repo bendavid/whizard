@@ -211,6 +211,12 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/eio_weights_1.ref \
     unit_tests/ref-output/eio_weights_2.ref \
     unit_tests/ref-output/eio_weights_3.ref \
+    unit_tests/ref-output/electron_pdfs_1.ref \
+    unit_tests/ref-output/electron_pdfs_2.ref \
+    unit_tests/ref-output/electron_pdfs_3.ref \
+    unit_tests/ref-output/electron_pdfs_4.ref \
+    unit_tests/ref-output/electron_pdfs_5.ref \
+    unit_tests/ref-output/electron_pdfs_6.ref \
     unit_tests/ref-output/epa_handler_1.ref \
     unit_tests/ref-output/epa_handler_2.ref \
     unit_tests/ref-output/epa_handler_3.ref \
@@ -322,6 +328,8 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/models_8.ref \
     unit_tests/ref-output/models_9.ref \
     unit_tests/ref-output/models_10.ref \
+    unit_tests/ref-output/numeric_utils_1.ref \
+    unit_tests/ref-output/numeric_utils_2.ref \
     unit_tests/ref-output/os_interface_1.ref \
     unit_tests/ref-output/parse_1.ref \
     unit_tests/ref-output/particle_specifiers_1.ref \

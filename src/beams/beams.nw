@@ -15641,8 +15641,8 @@ singularity which should in principle be resummed.
     if (data%eps > 1) then
        data%error = EPS_TOO_LARGE;  return
     end if
-    call data%pdf%init &
-         (data%mass, data%alpha, charge, data%q_max, data%order)
+    call data%pdf%init (data%mass, data%alpha, charge, data%q_max, data%order, &
+         0, 1)
   end subroutine isr_data_init
 
 @ %def isr_data_init

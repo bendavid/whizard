@@ -40,6 +40,7 @@ UNIT_TESTS = \
     su_algebra.run \
     bloch_vectors.run \
     polarizations.run \
+    numeric_utils.run \
     binary_tree.run \
     array_list.run \
     iterator.run \
@@ -61,6 +62,7 @@ UNIT_TESTS = \
     sm_qcd.run \
     sm_qed.run \
     sm_physics.run \
+    electron_pdfs.run \
     models.run \
     auto_components.run \
     radiation_generator.run \

@@ -1135,6 +1135,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call format_test (u, results)
 @
+\subsubsection{Numeric utilities}
+<<Main: use tests>>=
+  use numeric_utils_ut, only: numeric_utils_test
+<<Main: test cases>>=
+  case ("numeric_utils")
+     call numeric_utils_test (u, results)
+<<Main: all tests>>=
+  call numeric_utils_test (u, results)
+@
 \subsubsection{Binary Tree}
 <<Main: use tests>>=
   use binary_tree_ut, only: binary_tree_test
@@ -1251,6 +1260,15 @@ This is for developers only, but needs a well-defined interface.
      call sm_physics_test (u, results)
 <<Main: all tests>>=
   call sm_physics_test (u, results)
+@
+\subsubsection{Electron PDFs}
+<<Main: use tests>>=
+  use electron_pdfs_ut, only: electron_pdfs_test
+<<Main: test cases>>=
+  case ("electron_pdfs")
+     call electron_pdfs_test (u, results)
+<<Main: all tests>>=
+  call electron_pdfs_test (u, results)
 @
 \subsubsection{Lexers}
 <<Main: use tests>>=
