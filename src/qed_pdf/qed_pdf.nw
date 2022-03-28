@@ -3517,13 +3517,13 @@ end module electron_pdfs_uti
     write (u, "(A)")  "* Check singlet-nonsinglet linear combination"
     write (u, "(A)")
     write (u, "(1x,A,F11.6)")  " ePDF (x = 0.950, e- - [S + NS]/2) = ", &
-         elec_pdf (pdf, EPDF_ELE, x(10), Q, alpha, .true., .true.) - &
+         abs(elec_pdf (pdf, EPDF_ELE, x(10), Q, alpha, .true., .true.) - &
          (elec_pdf (pdf, EPDF_S, x(10), Q, alpha, .true., .true.) + &
-          elec_pdf (pdf, EPDF_NS, x(10), Q, alpha, .true., .true.))/two
+          elec_pdf (pdf, EPDF_NS, x(10), Q, alpha, .true., .true.))/two)
     write (u, "(1x,A,F11.6)")  " ePDF (x = 0.950, e+ - [S - NS]/2) = ", &
-         elec_pdf (pdf, EPDF_POS, x(10), Q, alpha, .true., .true.) - &
+         abs(elec_pdf (pdf, EPDF_POS, x(10), Q, alpha, .true., .true.) - &
          (elec_pdf (pdf, EPDF_S, x(10), Q, alpha, .true., .true.) - &
-          elec_pdf (pdf, EPDF_NS, x(10), Q, alpha, .true., .true.))/two
+          elec_pdf (pdf, EPDF_NS, x(10), Q, alpha, .true., .true.))/two)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: electron_pdfs_6"
