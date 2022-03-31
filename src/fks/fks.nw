@@ -8357,9 +8357,15 @@ The implemented formulas are then defined as follows:
   function I_mm_0 (k1, k2) result (I)
     type(vector4_t), intent(in) :: k1, k2
     real(default) :: I
-    real(default) :: beta
-    beta = sqrt (one - k1**2 * k2**2 / (k1 * k2)**2)
-    I = log ((one + beta) / (one - beta)) / beta
+    real(default) :: beta, kquotient
+    kquotient = k1**2 * k2**2 / (k1 * k2)**2
+    if (kquotient > tiny_13) then
+       beta = sqrt (one - kquotient)
+       I = log ((one + beta) / (one - beta)) / beta
+    else
+       beta = one - kquotient / two
+       I = log (two * (one + beta) / kquotient) / beta
+    end if
   end function I_mm_0
 
 @ %def I_mm_0

@@ -12021,6 +12021,9 @@ based on the flavors chosen here.
              select type (core)
              class is (prc_external_t)
                 do i_flv = 1, size (sqme_flv)
+                   if (allocated (term%passed_array)) then
+                      if (term%passed .and. .not. term%passed_array(i_flv)) cycle
+                   end if
                    sqme_flv(i_flv) = sqme_flv(i_flv) &
                         + real (term%connected%matrix%get_matrix_element ( &
                         term%connected%matrix%get_qn_index (i_flv, i_sub = 0)))

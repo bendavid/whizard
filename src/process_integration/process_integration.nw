@@ -632,6 +632,35 @@ in this initialization step.
   end subroutine parton_expr_setup_subevt
 
 @ %def parton_expr_setup_subevt
+<<Subevt expr: parton expr: TBP>>=
+  procedure :: renew_flv_content_subevt => parton_expr_renew_flv_content_subevt
+<<Subevt expr: sub interfaces>>=
+    module subroutine parton_expr_renew_flv_content_subevt (expr, int, &
+         i_beam, i_in, i_out, f_beam, f_in, f_out)
+      class(parton_expr_t), intent(inout) :: expr
+      type(interaction_t), intent(in), target :: int
+      integer, dimension(:), intent(in) :: i_beam, i_in, i_out
+      type(flavor_t), dimension(:), intent(in) :: f_beam, f_in, f_out
+    end subroutine parton_expr_renew_flv_content_subevt
+<<Subevt expr: procedures>>=
+  module subroutine parton_expr_renew_flv_content_subevt (expr, int, &
+       i_beam, i_in, i_out, f_beam, f_in, f_out)
+    class(parton_expr_t), intent(inout) :: expr
+    type(interaction_t), intent(in), target :: int
+    integer, dimension(:), intent(in) :: i_beam, i_in, i_out
+    type(flavor_t), dimension(:), intent(in) :: f_beam, f_in, f_out
+    expr%i_beam = i_beam
+    expr%i_in = i_in
+    expr%i_out = i_out
+    call expr%set_pdg_beam (f_beam%get_pdg ())
+    call expr%set_pdg_incoming (f_in%get_pdg ())
+    call expr%set_pdg_outgoing (f_out%get_pdg ())
+    expr%n_in  = size (i_in)
+    expr%n_out = size (i_out)
+    expr%n_tot = expr%n_in + expr%n_out
+  end subroutine parton_expr_renew_flv_content_subevt
+
+@ %def parton_expr_renew_flv_content_subevt
 @ Transfer PDG codes, masses (initalization) and momenta to a
 predefined subevent.  We use the flavor assignment of the first
 branch in the interaction state matrix.  Only incoming and outgoing
@@ -2097,6 +2126,46 @@ structure-function chain.
          i_beam, i_in, i_out, f_beam, f_in, f_out)
     state%has_expr = .true.
   end subroutine connected_state_setup_subevt
+
+@ %def connected_state_setup_subevt
+<<Parton states: connected state: TBP>>=
+  procedure :: renew_flv_content_subevt => &
+       connected_state_renew_flv_content_subevt
+<<Parton states: sub interfaces>>=
+    module subroutine connected_state_renew_flv_content_subevt &
+         (state, sf_chain, f_beam, f_in, f_out)
+      class(connected_state_t), intent(inout), target :: state
+      type(sf_chain_instance_t), intent(in), target :: sf_chain
+      type(flavor_t), dimension(:), intent(in) :: f_beam, f_in, f_out
+    end subroutine connected_state_renew_flv_content_subevt
+<<Parton states: procedures>>=
+  module subroutine connected_state_renew_flv_content_subevt &
+       (state, sf_chain, f_beam, f_in, f_out)
+    class(connected_state_t), intent(inout), target :: state
+    type(sf_chain_instance_t), intent(in), target :: sf_chain
+    type(flavor_t), dimension(:), intent(in) :: f_beam, f_in, f_out
+    integer :: n_beam, n_in, n_out, n_vir, n_tot, i, j
+    integer, dimension(:), allocatable :: i_beam, i_in, i_out
+    integer :: sf_out_i
+    type(interaction_t), pointer :: sf_int
+    sf_int => sf_chain%get_out_int_ptr ()
+    n_beam = size (f_beam)
+    n_in = size (f_in)
+    n_out = size (f_out)
+    n_vir = state%trace%get_n_vir ()
+    n_tot = state%trace%get_n_tot ()
+    allocate (i_beam (n_beam), i_in (n_in), i_out (n_out))
+    i_beam = [(i, i = 1, n_beam)]
+    do j = 1, n_in
+       sf_out_i = sf_chain%get_out_i (j)
+       i_in(j) = interaction_find_link &
+            (state%trace%interaction_t, sf_int, sf_out_i)
+    end do
+    i_out = [(i, i = n_vir + 1, n_tot)]
+    call state%expr%renew_flv_content_subevt (state%trace%interaction_t, &
+         i_beam, i_in, i_out, f_beam, f_in, f_out)
+    state%has_expr = .true.
+  end subroutine connected_state_renew_flv_content_subevt
 
 @ %def connected_state_setup_subevt
 @ Initialize the variable list specific for this state/term.  We insert event
@@ -14930,7 +14999,7 @@ submodule (instances) instances_s
   use numeric_utils
   use helicities
   use flavors
-  use pdg_arrays, only: is_quark
+  use pdg_arrays, only: is_quark, is_charged_lepton, flv_eqv_expr_class
 
   !!! We should depend less on these modules (move it to pcm_nlo_t e.g.)
   use phs_wood, only: phs_wood_t
@@ -14996,6 +15065,8 @@ to fulfill their signature.
      class(prc_core_state_t), allocatable :: core_state
      logical :: checked = .false.
      logical :: passed = .false.
+     logical, dimension(:), allocatable :: passed_array
+     integer, dimension(:), allocatable :: i_flv_to_i_flv_rep
      real(default) :: scale = 0
      real(default), allocatable :: fac_scale
      real(default), allocatable :: ren_scale
@@ -15007,6 +15078,7 @@ to fulfill their signature.
      integer :: nlo_type = BORN
      integer, dimension(:), allocatable :: same_kinematics
      logical :: negative_sf = .false.
+     logical :: flv_dep_cut_eval = .false.
    contains
    <<Instances: term instance: TBP>>
   end type term_instance_t
@@ -15359,6 +15431,12 @@ relevant for a NLO algorithm.
     end do
 
     beam_config = process%get_beam_config ()
+    select type (pcm => term%pcm)
+    type is (pcm_nlo_t)
+       term%flv_dep_cut_eval = pcm%settings%nlo_correction_type == "EW" &
+                               .and. pcm%region_data%alphas_power > 0 &
+                               .and. any(is_charged_lepton(f_out%get_pdg()))
+    end select
 
     call term%connected%setup_subevt (term%isolated%sf_chain_eff, &
          beam_config%data%flv, f_in, f_out)
@@ -15369,6 +15447,7 @@ relevant for a NLO algorithm.
          process%get_model_ptr (), is_polarized = .false.)
     call term%init_interaction_qn_index &
          (core, term%int_hard, n_sub, process%get_model_ptr ())
+    call term%init_eqv_expr_classes ()
     if (requires_extended_sf) then
        select type (pcm => term%pcm)
        type is (pcm_nlo_t)
@@ -15517,6 +15596,78 @@ flavor, helicity and subtraction indices correctly to their matrix element.
   end subroutine setup_interaction_qn_hel
 
 @ %def setup_interaction_qn_hel
+@ Initialization of equivalent cut expression classes.
+
+Each flavor index [[i_flv]] here is assigned to the corresponding one
+representative for an equivalent cut expression class. This class describes
+the set of flavor quantum numbers for which the phase space cut expression
+evaluation yield the same output. The representative [[i_flv]] for one class
+correspond to the first flavor quantum numbers of that kind occuring in the
+state matrix.
+<<Instances: term instance: TBP>>=
+  procedure :: init_eqv_expr_classes => term_instance_init_eqv_expr_classes
+<<Instances: sub interfaces>>=
+    module subroutine term_instance_init_eqv_expr_classes (term)
+      class(term_instance_t), intent(inout), target :: term
+    end subroutine term_instance_init_eqv_expr_classes
+<<Instances: procedures>>=
+  module subroutine term_instance_init_eqv_expr_classes (term)
+    class(term_instance_t), intent(inout), target :: term
+    type(interaction_t), pointer :: src_int
+    type(state_matrix_t), pointer :: state_matrix
+    type(flavor_t), dimension(:), allocatable :: flv_src
+    logical, dimension(:,:,:), allocatable :: eqv_expr_class
+    logical, dimension (:), allocatable :: evaluated
+    integer :: n_in, n_vir, n_out
+    integer :: k, j, i
+    n_in = term%connected%trace%get_n_in ()
+    n_vir = term%connected%trace%get_n_vir ()
+    n_out = term%connected%trace%get_n_out ()
+    allocate (eqv_expr_class (3, n_out, &
+         term%connected%trace%get_qn_index_n_flv ()))
+    do k = 1, term%connected%trace%get_qn_index_n_flv ()
+       do j = 1, n_out
+          call term%connected%trace%find_source &
+               (n_in + n_vir + j, src_int, i)
+          if (associated (src_int)) then
+             state_matrix => src_int%get_state_matrix_ptr ()
+             flv_src = quantum_numbers_get_flavor &
+                  (state_matrix%get_quantum_number (k))
+             eqv_expr_class (:, j, k) = flv_eqv_expr_class (flv_src(i)%get_pdg())
+             deallocate (flv_src)
+          end if
+       end do
+    end do
+    if (term%flv_dep_cut_eval) then
+       allocate (evaluated (term%connected%trace%get_qn_index_n_flv ()))
+       evaluated = .false.
+       allocate (term%i_flv_to_i_flv_rep (term%connected%trace%get_qn_index_n_flv ()))
+       do i = 1, term%connected%trace%get_qn_index_n_flv ()
+          if (.not. evaluated (i)) then
+             do k = i, term%connected%trace%get_qn_index_n_flv ()
+                if (same_eqv_expr_class(eqv_expr_class (:,:,i), eqv_expr_class (:,:,k))) then
+                   term%i_flv_to_i_flv_rep (k) = i
+                   evaluated (k) = .true.
+                end if
+             end do
+          end if
+       end do
+    end if
+
+  contains
+
+     function same_eqv_expr_class (flv_mask1, flv_mask2) result (same)
+        logical, dimension (:,:), intent(in) :: flv_mask1, flv_mask2
+        logical :: same
+        integer :: l
+        same = .true.
+        do l = 1, size (flv_mask1, dim = 2)
+           same = same .and. all (flv_mask1(:,l) .eqv. flv_mask2(:,l))
+        end do
+     end function same_eqv_expr_class
+  end subroutine term_instance_init_eqv_expr_classes
+
+@ %def term_instance_init_eqv_expr_classes
 @
 <<Instances: term instance: TBP>>=
   procedure :: init_interaction_qn_index => &
@@ -15883,7 +16034,11 @@ $\mathcal{R}_\text{fin} = \mathcal{R} \cdot (1-F)$.
           n_amps = term%connected%trace%get_n_matrix_elements ()
           do i_amp = 1, n_amps
              qn_index = term%connected%trace%get_qn_index (i_amp, i_sub = 0)
-             sqme = real (term%connected%trace%get_matrix_element (qn_index))
+             if (term%passed_array(i_amp) .or. .not. term%passed) then
+                sqme = real (term%connected%trace%get_matrix_element (qn_index))
+             else
+                sqme = zero
+             end if
              if (debug_on)  call msg_debug2 &
                   (D_PROCESS_INTEGRATION, "term_instance_apply_real_partition")
              select case (pcm%component_type (i_component))
@@ -16187,8 +16342,9 @@ the threshold computation where the process is well-defined and fixed.
       real(default), intent(in) :: sqme_born
       real(default), dimension(:,:), intent(inout) :: sqme_color_c
       logical :: special_case_interferences
-      integer :: i_color_c, i_sub, n_offset
+      integer :: i_color_c, i_sub, n_offset, i_qn
       real(default), dimension(:), allocatable :: sqme
+      real(default) :: sqme_born_c
       if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "transfer_me_array_to_bij")
       if (pcm%settings%use_internal_color_correlations) then
          !!! A negative value for sqme_born indicates that the Born matrix
@@ -16215,15 +16371,22 @@ the threshold computation where the process is well-defined and fixed.
          end if
          allocate (sqme (term%get_n_sub_color ()), source = zero)
          do i_sub = 1, term%get_n_sub_color ()
-            sqme(i_sub) = real(term%connected%trace%get_matrix_element ( &
-                 term%connected%trace%get_qn_index &
-                 (i_flv, i_sub = i_sub + n_offset)), default)
+            i_qn = term%connected%trace%get_qn_index (i_flv, i_sub = i_sub + n_offset)
+            if (term%passed_array(i_flv) .or. .not. term%passed) then
+               sqme(i_sub) = real(term%connected%trace%get_matrix_element (i_qn), default)
+            else
+               sqme(i_sub) = zero
+            end if
          end do
          call blha_color_c_fill_offdiag (pcm%region_data%n_legs_born, &
               sqme, sqme_color_c)
-         call blha_color_c_fill_diag &
-              (real(term%connected%trace%get_matrix_element ( &
-              term%connected%trace%get_qn_index (i_flv, i_sub = 0)), default), &
+         i_qn = term%connected%trace%get_qn_index (i_flv, i_sub = 0)
+         if (term%passed_array(i_flv) .or. .not. term%passed) then
+            sqme_born_c = real(term%connected%trace%get_matrix_element (i_qn), default)
+         else
+            sqme_born_c = zero
+         end if
+         call blha_color_c_fill_diag (sqme_born_c, &
               pcm%region_data%get_flv_states_born (i_flv), &
               sqme_color_c, special_case_interferences)
       end if
@@ -16307,7 +16470,7 @@ the threshold computation where the process is well-defined and fixed.
   module subroutine term_instance_evaluate_spin_correlations (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
-    integer :: i_flv, i_sub, i_emitter, emitter
+    integer :: i_flv, i_sub, i_emitter, emitter, i_qn
     integer :: n_flv, n_sub_color, n_sub_spin, n_offset,i,j
     real(default), dimension(1:3, 1:3) :: sqme_spin_c
     real(default), dimension(:), allocatable :: sqme_spin_c_all
@@ -16330,9 +16493,14 @@ the threshold computation where the process is well-defined and fixed.
                 do i_flv = 1, n_flv
                    allocate (sqme_spin_c_all(n_sub_spin))
                    do i_sub = 1, n_sub_spin
-                      sqme_spin_c_all(i_sub) = real(term%connected%trace%get_matrix_element &
-                           (term%connected%trace%get_qn_index (i_flv, &
-                           i_sub = i_sub + n_offset + n_sub_color)), default)
+                      i_qn = term%connected%trace%get_qn_index (i_flv, &
+                             i_sub = i_sub + n_offset + n_sub_color)
+                      if (term%passed_array(i_flv) .or. .not. term%passed) then
+                         sqme_spin_c_all(i_sub) = &
+                            real(term%connected%trace%get_matrix_element (i_qn), default)
+                      else
+                         sqme_spin_c_all(i_sub) = zero
+                      end if
                    end do
                    do i_emitter = 1, pcm%region_data%n_emitters
                       emitter = pcm%region_data%emitters(i_emitter)
@@ -16378,7 +16546,7 @@ the threshold computation where the process is well-defined and fixed.
     class(kinematics_t), intent(inout) :: kin
     real(default), intent(in) :: alpha_s_sub, alpha_qed_sub
     real(default), dimension(:), allocatable :: sqme
-    integer :: i, i_phs, emitter
+    integer :: i, i_phs, emitter, i_qn
     logical :: is_subtraction
     select type (pcm_work => term%pcm_work)
     type is (pcm_nlo_workspace_t)
@@ -16410,9 +16578,13 @@ the threshold computation where the process is well-defined and fixed.
                 call pcm_work%set_radiation_event ()
                 emitter = kin%emitter; i_phs = kin%i_phs
                 do i = 1, term%connected%trace%get_qn_index_n_flv ()
-                   pcm_work%real_sub%sqme_real_non_sub (i, i_phs) = &
-                     real (term%connected%trace%get_matrix_element ( &
-                     term%connected%trace%get_qn_index (i)))
+                   i_qn = term%connected%trace%get_qn_index (i)
+                   if (term%passed_array(i) .or. .not. term%passed) then
+                      pcm_work%real_sub%sqme_real_non_sub (i, i_phs) = &
+                        real (term%connected%trace%get_matrix_element (i_qn))
+                   else
+                      pcm_work%real_sub%sqme_real_non_sub (i, i_phs) = zero
+                   end if
                 end do
                 call pcm_work%real_sub%compute (emitter, i_phs, alpha_s_sub, &
                      alpha_qed_sub, term%connected%has_matrix, sqme)
@@ -16456,7 +16628,7 @@ the threshold computation where the process is well-defined and fixed.
     real(default), dimension(2) :: alpha_coupling
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default), dimension(:), allocatable :: sqme_virt
-    integer :: i_flv
+    integer :: i_flv, i_qn_born, i_qn_virt
     if (term%nlo_type /= NLO_VIRTUAL)  call msg_fatal ("Trying to " // &
          "evaluate virtual matrix element with unsuited term_instance.")
     if (debug2_active (D_VIRTUAL)) then 
@@ -16492,12 +16664,17 @@ the threshold computation where the process is well-defined and fixed.
           type is (pcm_nlo_workspace_t)
              associate (virtual => pcm_work%virtual)
                do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
-                  virtual%sqme_born(i_flv) = &
-                       real (term%connected%trace%get_matrix_element ( &
-                       term%connected%trace%get_qn_index (i_flv, i_sub = 0)))
-                  virtual%sqme_virt_fin(i_flv) = &
-                       real (term%connected%trace%get_matrix_element ( &
-                       term%connected%trace%get_qn_index (i_flv, i_sub = 1)))
+                  i_qn_born = term%connected%trace%get_qn_index (i_flv, i_sub = 0)
+                  i_qn_virt = term%connected%trace%get_qn_index (i_flv, i_sub = 1)
+                  if (term%passed_array(i_flv) .or. .not. term%passed) then
+                     virtual%sqme_born(i_flv) = &
+                          real (term%connected%trace%get_matrix_element (i_qn_born))
+                     virtual%sqme_virt_fin(i_flv) = &
+                          real (term%connected%trace%get_matrix_element (i_qn_virt))
+                  else
+                     virtual%sqme_born(i_flv) = zero
+                     virtual%sqme_virt_fin(i_flv) = zero
+                  end if
                end do
              end associate
           end select
@@ -16726,17 +16903,96 @@ kinematics, enabling structure-function evaluation.
   procedure :: evaluate_expressions => &
        term_instance_evaluate_expressions
 <<Instances: sub interfaces>>=
-    module subroutine term_instance_evaluate_expressions (term, scale_forced)
+    module subroutine term_instance_evaluate_expressions &
+         (term, config, scale_forced)
       class(term_instance_t), intent(inout) :: term
+      type(process_beam_config_t), intent(in) :: config
       real(default), intent(in), allocatable, optional :: scale_forced
     end subroutine term_instance_evaluate_expressions
 <<Instances: procedures>>=
-  module subroutine term_instance_evaluate_expressions (term, scale_forced)
+  module subroutine term_instance_evaluate_expressions &
+       (term, config, scale_forced)
     class(term_instance_t), intent(inout) :: term
+    type(process_beam_config_t), intent(in) :: config
     real(default), intent(in), allocatable, optional :: scale_forced
-    call term%connected%evaluate_expressions (term%passed, &
-         term%scale, term%fac_scale, term%ren_scale, term%weight, &
-         scale_forced, force_evaluation = .true.)
+    real(default) :: scale = 0
+    real(default) :: weight = 1
+    real(default), allocatable :: fac_scale, ren_scale
+    type(interaction_t), pointer :: src_int
+    type(state_matrix_t), pointer :: state_matrix
+    type(flavor_t), dimension(:), allocatable :: flv_int, flv_src, f_in, f_out
+    logical :: passed
+    integer :: n_in, n_vir, n_out, n_tot, n_flv
+    integer :: i, j, k
+    n_flv = term%connected%trace%get_qn_index_n_flv ()
+    if (.not. allocated (term%passed_array)) allocate (term%passed_array(n_flv))
+    if (term%flv_dep_cut_eval) then
+       do k = 1, n_flv
+          if (k == term%i_flv_to_i_flv_rep(k)) then
+             n_in = term%int_hard%get_n_in ()
+             associate (int_eff => term%isolated%int_eff)
+               state_matrix => int_eff%get_state_matrix_ptr ()
+               n_tot = int_eff%get_n_tot  ()
+               flv_int = quantum_numbers_get_flavor &
+                    (state_matrix%get_quantum_number (k))
+               allocate (f_in (n_in))
+               f_in = flv_int(1:n_in)
+               deallocate (flv_int)
+             end associate
+             n_in = term%connected%trace%get_n_in ()
+             n_vir = term%connected%trace%get_n_vir ()
+             n_out = term%connected%trace%get_n_out ()
+             allocate (f_out (n_out))
+             do j = 1, n_out
+                call term%connected%trace%find_source &
+                     (n_in + n_vir + j, src_int, i)
+                if (associated (src_int)) then
+                   state_matrix => src_int%get_state_matrix_ptr ()
+                   flv_src = quantum_numbers_get_flavor &
+                        (state_matrix%get_quantum_number (k))
+                   f_out(j) = flv_src(i)
+                   deallocate (flv_src)
+                end if
+             end do
+
+             call term%connected%renew_flv_content_subevt &
+                  (term%isolated%sf_chain_eff, &
+                   config%data%flv, f_in, f_out)
+             call term%connected%evaluate_expressions (passed, &
+               scale, fac_scale, ren_scale, weight, &
+               scale_forced, force_evaluation = .true.)
+             if (k == 1) then
+                term%scale = scale
+                if (allocated (fac_scale)) then
+                   if (.not. allocated (term%fac_scale)) then
+                      allocate (term%fac_scale, source = fac_scale)
+                   else
+                      term%fac_scale = fac_scale
+                   end if
+                end if
+                if (allocated (ren_scale)) then
+                   if (.not. allocated (term%ren_scale)) then
+                      allocate (term%ren_scale, source = ren_scale)
+                   else
+                      term%ren_scale = ren_scale
+                   end if
+                end if
+                term%weight = weight
+             end if
+             term%passed_array(k) = passed
+             deallocate (f_in)
+             deallocate (f_out)
+          else
+             term%passed_array(k) = term%passed_array(term%i_flv_to_i_flv_rep(k))
+          end if
+       end do
+       term%passed = any (term%passed_array)
+    else
+       call term%connected%evaluate_expressions (term%passed, &
+            term%scale, term%fac_scale, term%ren_scale, term%weight, &
+            scale_forced, force_evaluation = .true.)
+       term%passed_array = term%passed
+    end if
     term%checked = .true.
   end subroutine term_instance_evaluate_expressions
 
@@ -16965,6 +17221,7 @@ only compute one and use the [[eqv_index]] determined by the
     allocate (eqv_me_evaluated(n_flv,n_hel))
     eqv_me_evaluated = .false.
     do i_flv = 1, n_flv
+       if (.not. term%passed_array(i_flv) .and. term%passed) cycle
        do i_hel = 1, n_hel
           i_flv_eqv = core%data%eqv_flv_index(i_flv)
           i_hel_eqv = core%data%eqv_hel_index(i_hel)
@@ -17158,6 +17415,7 @@ only compute one and use the [[eqv_index]] determined by the
     eqv_me_evaluated = .false.
     i_virt = 1
     do i_flv = 1, n_flv
+       if (.not. term%passed_array(i_flv) .and. term%passed) cycle
        do i_hel = 1, n_hel
           i_flv_eqv = core%data%eqv_flv_index(i_flv)
           i_hel_eqv = core%data%eqv_hel_index(i_hel)
@@ -18831,7 +19089,8 @@ in the term expressions.
     if (instance%evaluation_status >= STAT_EFF_KINEMATICS) then
        do i = 1, size (instance%term)
           if (instance%term(i)%active) then
-             call instance%term(i)%evaluate_expressions (scale_forced)
+             call instance%term(i)%evaluate_expressions &
+                  (instance%process%get_beam_config (), scale_forced)
           end if
        end do
        call evaluate_real_scales_and_cuts ()
@@ -18985,7 +19244,7 @@ terms, iterating over all active process components.
     class(process_instance_t), intent(inout) :: instance
     logical, intent(in), optional :: recover
     class(prc_core_t), pointer :: core => null ()
-    integer :: i, i_real_fin, i_core
+    integer :: i, i_real_fin, i_core, i_qn, i_flv
     real(default) :: alpha_s, alpha_qed
     class(prc_core_t), pointer :: core_sub => null ()
     class(model_data_t), pointer :: model => null ()
@@ -19010,6 +19269,15 @@ terms, iterating over all active process components.
                if (instance%process%uses_real_partition ()) &
                     call term%apply_real_partition (kin)
                if (term%config%i_component /= i_real_fin) then
+                  if (term%nlo_type == BORN) then
+                     do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
+                        i_qn = term%connected%trace%get_qn_index (i_flv, i_sub = 0)
+                        if (.not. term%passed_array(i_flv)) then
+                           call term%connected%trace%set_matrix_element &
+                                (i_qn, cmplx (zero, zero, default))
+                        end if
+                     end do
+                  end if
                   if ((term%nlo_type == NLO_REAL .and. kin%emitter < 0) &
                        .or. term%nlo_type == NLO_MISMATCH &
                        .or. term%nlo_type == NLO_DGLAP) &
@@ -19105,7 +19373,11 @@ terms, iterating over all active process components.
     type is (pcm_nlo_workspace_t)
        do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
           ii_flv = term%connected%trace%get_qn_index (i_flv, i_sub = 0)
-          sqme = real (term%connected%trace%get_matrix_element (ii_flv))
+          if (term%passed_array (i_flv) .or. .not. term%passed) then
+             sqme = real (term%connected%trace%get_matrix_element (ii_flv))
+          else
+             sqme = zero
+          end if
           select case (term%nlo_type)
           case (NLO_REAL)
              pcm_work%real_sub%sqme_born(i_flv) = sqme
@@ -19386,7 +19658,8 @@ Sindarin, e.g. for POWHEG.
              call term%set_alpha_qcd_forced (alpha_s_external)
           end if
           call term%compute_eff_kinematics ()
-          call term%evaluate_expressions (scale_forced)
+          call term%evaluate_expressions &
+               (instance%process%get_beam_config (), scale_forced)
           call term%evaluate_interaction (core, kin)
           call term%evaluate_trace (kin)
           if (term%is_subtraction ()) then

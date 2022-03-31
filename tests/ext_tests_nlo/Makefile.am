@@ -78,6 +78,7 @@ TESTS_EXTENDED = \
 	nlo_pphz_ew.run \
 	nlo_ppllll_ew.run \
 	nlo_ppllnn_ew.run \
+	nlo_pptt_ew.run \
 	nlo_pptj_ew.run \
 	nlo_ppwhh_ew.run \
 	nlo_ppww_ew.run \
@@ -163,6 +164,7 @@ nlo_pphjj_ew.run: nlo_settings_ew.sin
 nlo_pphz_ew.run: nlo_settings_ew.sin
 nlo_ppllll_ew.run: nlo_settings_ew.sin
 nlo_ppllnn_ew.run: nlo_settings_ew.sin
+nlo_pptt_ew.run: nlo_settings_ew.sin
 nlo_pptj_ew.run: nlo_settings_ew.sin
 nlo_ppwhh_ew.run: nlo_settings_ew.sin
 nlo_ppww_ew.run: nlo_settings_ew.sin

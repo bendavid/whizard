@@ -1709,6 +1709,28 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 
 @ %def is_lepton
 @
+@ Check if the pdg-number corresponds to a charged lepton
+<<PDG arrays: public>>=
+  public :: is_charged_lepton
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_charged_lepton (pdg_nr)
+      logical :: is_charged_lepton
+      integer, intent(in) :: pdg_nr
+    end function is_charged_lepton
+<<PDG arrays: procedures>>=
+  elemental module function is_charged_lepton (pdg_nr)
+    logical :: is_charged_lepton
+    integer, intent(in) :: pdg_nr
+    if (abs (pdg_nr) == ELECTRON .or. &
+         abs (pdg_nr) == MUON .or. &
+         abs (pdg_nr) == TAU) then
+      is_charged_lepton = .true.
+    else
+      is_charged_lepton = .false.
+    end if
+  end function is_charged_lepton
+@ %def is_charged_lepton
+@
 <<PDG arrays: public>>=
   public :: is_fermion
 <<PDG arrays: sub interfaces>>=
@@ -1957,6 +1979,22 @@ have the same flavor.
   end function qcd_ew_interferences
 
 @ %def qcd_ew_interferences
+@ Assign equivalent cut expression class to PDG code.
+<<PDG arrays: public>>=
+  public :: flv_eqv_expr_class
+<<PDG arrays: sub interfaces>>=
+    module function flv_eqv_expr_class (flv) result (assign_qgA)
+       integer, intent(in) :: flv
+       logical, dimension(3) :: assign_qgA
+    end function flv_eqv_expr_class
+<<PDG arrays: procedures>>=
+  module function flv_eqv_expr_class (flv) result (assign_qgA)
+     integer, intent(in) :: flv
+     logical, dimension(3) :: assign_qgA
+     assign_qgA = [is_quark (flv), is_gluon (flv), is_photon (flv)]
+  end function flv_eqv_expr_class
+
+@ %def flv_eqv_expr_class
 @ Match two arrays.  Succeeds if any pair of entries matches.
 <<PDG arrays: sub interfaces>>=
     module function pdg_array_match_pdg_array (aval1, aval2) result (flag)

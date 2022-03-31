@@ -4,6 +4,11 @@ Use svn log to see detailed changes.
 
 	Version 3.0.2+
 
+2022-03-31
+	NLO EW processes with massless leptons and jets (i.e.
+	   jet clustering and photon recombination) supported
+	NLO EW for massive initial leptons validated
+
 2022-03-27
 	Complete implementation/validation of NLL electron PDFs
 

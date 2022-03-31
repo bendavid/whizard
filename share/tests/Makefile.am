@@ -890,6 +890,7 @@ REF_OUTPUT_FILES_BASE = \
     ext_tests_nlo/ref-output/nlo_pphz_ew.ref \
     ext_tests_nlo/ref-output/nlo_ppllll_ew.ref \
     ext_tests_nlo/ref-output/nlo_ppllnn_ew.ref \
+    ext_tests_nlo/ref-output/nlo_pptt_ew.ref \
     ext_tests_nlo/ref-output/nlo_pptj_ew.ref \
     ext_tests_nlo/ref-output/nlo_ppwhh_ew.ref \
     ext_tests_nlo/ref-output/nlo_ppww_ew.ref \
@@ -1590,6 +1591,9 @@ EXT_NLO_SIN = \
     ext_tests_nlo/nlo_ppwzh_ew.sin \
     ext_tests_nlo/nlo_ppz_ew.sin \
     ext_tests_nlo/nlo_ppzzz_ew.sin \
+    ext_tests_nlo/nlo_ppeej_ew.sin \
+    ext_tests_nlo/nlo_ppevj_ew.sin \
+    ext_tests_nlo/nlo_pptt_ew.sin \
     ext_tests_nlo/nlo_settings.sin \
     ext_tests_nlo/nlo_settings_ew.sin
 
