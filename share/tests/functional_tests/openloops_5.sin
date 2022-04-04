@@ -17,6 +17,8 @@ $loop_me_method = "openloops"
 $real_tree_me_method = "openloops"
 $correlation_me_method = "openloops"
 
+$openloops_allowed_libs = "ppllj"
+
 !!! Tests should be run single-threaded
 openmp_num_threads = 1
 

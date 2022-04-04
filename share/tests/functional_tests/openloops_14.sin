@@ -52,6 +52,9 @@ jet_r = 0.5
 
 alpha_power = 2
 alphas_power = 1
+
+$openloops_allowed_libs = "ppllj"
+
 seed = 8131
 sqrts = 1 TeV
 

@@ -24,6 +24,8 @@ mtop = 175 GeV
 ?integration_timer = false
 ?pacify = true
 
+$openloops_allowed_libs = "ppllj"
+
 ?use_vamp_equivalences = false
 ?alphas_is_fixed = false
 ?alphas_from_mz = true

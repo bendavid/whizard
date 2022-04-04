@@ -6799,6 +6799,13 @@ procedure with type [[V_NONE]].
          '\ttt{\$method}, \ttt{openloos\_verbosity}, ' // &
          '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &
          '\ttt{?openloops\_switch\_off\_muon\_yukawa})'))
+    call var_list%append_string (var_str ("$openloops_allowed_libs"), &
+         var_str (""), intrinsic = .true., &
+         description=var_str ('String variable to restrict the ' // &
+         'allowed \openloops process libraries for a process. ' // &
+         '(cf. also \ttt{\$method}, \ttt{openloos\_verbosity}, ' // &
+         '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &
+         '\ttt{?openloops\_switch\_off\_muon\_yukawa})'))
     call var_list%append_real (var_str ("ellis_sexton_scale"), &
          -1._default, intrinsic = .true., &
          description = var_str ('Real positive paramter for the Ellis-Sexton scale' // &

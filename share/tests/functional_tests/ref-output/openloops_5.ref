@@ -5,6 +5,7 @@
 $loop_me_method = "openloops"
 $real_tree_me_method = "openloops"
 $correlation_me_method = "openloops"
+$openloops_allowed_libs = "ppllj"
 openmp_num_threads = 1
 ?use_vamp_equivalences = false
 ?alphas_is_fixed = true

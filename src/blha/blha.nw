@@ -305,6 +305,7 @@ of the particles. Note that the output can only be processed by OpenLoops.
      logical :: openloops_use_cms = .false.
      integer :: openloops_phs_tolerance = 0
      type(string_t) :: openloops_extra_cmd
+     type(string_t) :: openloops_allowed_libs
      integer :: openloops_stability_log = 0
      integer :: n_off_photons_is = 0
      integer :: n_off_photons_fs = 0
@@ -856,21 +857,23 @@ This types control the creation of BLHA-interface files
   procedure :: setup_additional_features => blha_master_setup_additional_features
 <<BLHA config: sub interfaces>>=
     module subroutine blha_master_setup_additional_features (master, &
-           phs_tolerance, use_cms, stability_log, extra_cmd, beam_structure)
+           phs_tolerance, use_cms, stability_log, extra_cmd, &
+           allowed_libs, beam_structure)
       class(blha_master_t), intent(inout) :: master
       integer, intent(in) :: phs_tolerance
       logical, intent(in) :: use_cms
-      type(string_t), intent(in), optional :: extra_cmd
+      type(string_t), intent(in), optional :: extra_cmd, allowed_libs
       integer, intent(in) :: stability_log
       type(beam_structure_t), intent(in), optional :: beam_structure
     end subroutine blha_master_setup_additional_features
 <<BLHA config: procedures>>=
   module subroutine blha_master_setup_additional_features (master, &
-         phs_tolerance, use_cms, stability_log, extra_cmd, beam_structure)
+         phs_tolerance, use_cms, stability_log, extra_cmd, &
+         allowed_libs,beam_structure)
     class(blha_master_t), intent(inout) :: master
     integer, intent(in) :: phs_tolerance
     logical, intent(in) :: use_cms
-    type(string_t), intent(in), optional :: extra_cmd
+    type(string_t), intent(in), optional :: extra_cmd, allowed_libs
     integer, intent(in) :: stability_log
     type(beam_structure_t), intent(in), optional :: beam_structure
     integer :: i_file
@@ -907,6 +910,11 @@ This types control the creation of BLHA-interface files
                 master%blha_cfg(i_file)%openloops_extra_cmd = extra_cmd
              else
                 master%blha_cfg(i_file)%openloops_extra_cmd = var_str ('')
+             end if
+             if (present (extra_cmd)) then
+                master%blha_cfg(i_file)%openloops_allowed_libs = allowed_libs
+             else
+                master%blha_cfg(i_file)%openloops_allowed_libs = var_str ('')
              end if
              master%blha_cfg(i_file)%openloops_stability_log = stability_log
           end select
@@ -1681,6 +1689,10 @@ corrections are activated and photons are present at LO.
        end if
        call check_extra_cmd (cfg%openloops_extra_cmd)
        write (u, '(A)') char (cfg%openloops_extra_cmd)
+       if (cfg%openloops_allowed_libs /= '') then
+          write (u, '(A25,A)') "extra allowed_libs" // pad, &
+               char (cfg%openloops_allowed_libs)
+       end if
        if (cfg%openloops_stability_log > 0) &
             write (u, '(A25,I1)') "extra stability_log " // pad, &
             cfg%openloops_stability_log

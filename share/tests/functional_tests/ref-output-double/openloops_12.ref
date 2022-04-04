@@ -29,6 +29,7 @@ $exclude_gauge_splittings = "c:b:t"
 $method = "openloops"
 alpha_power = 2
 alphas_power = 1
+$openloops_allowed_libs = "ppllj"
 ?use_vamp_equivalences = false
 $integration_method = "vamp2"
 $rng_method = "rng_stream"

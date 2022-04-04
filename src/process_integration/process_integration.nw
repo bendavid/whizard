@@ -4304,7 +4304,7 @@ environment variables.
     integer :: openloops_phs_tolerance, openloops_stability_log
     logical :: use_cms
     type(string_t) :: ew_scheme, correction_type
-    type(string_t) :: openloops_extra_cmd
+    type(string_t) :: openloops_extra_cmd, openloops_allowed_libs
     type(blha_master_t) :: blha_master
     integer, dimension(:,:), allocatable :: flv_born, flv_real
     if (process%pcm%uses_blha) then
@@ -4321,6 +4321,7 @@ environment variables.
               use_cms, &
               openloops_stability_log, &
               extra_cmd = openloops_extra_cmd, &
+              allowed_libs = openloops_allowed_libs, &
               beam_structure = process%env%get_beam_structure ())
          call pcm%get_blha_flv_states (process%core_entry, flv_born, flv_real)
          call blha_master%set_photon_characteristics (flv_born, process%config%n_in)
@@ -4346,6 +4347,8 @@ environment variables.
            var_list%get_sval (var_str ("$nlo_correction_type"))
       openloops_extra_cmd = &
            var_list%get_sval (var_str ("$openloops_extra_cmd"))
+      openloops_allowed_libs = &
+           var_list%get_sval (var_str ("$openloops_allowed_libs"))
     end subroutine collect_configuration_parameters
   end subroutine process_create_blha_interface
 

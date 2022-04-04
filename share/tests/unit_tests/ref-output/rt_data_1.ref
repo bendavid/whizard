@@ -368,6 +368,7 @@ openloops_phs_tolerance = 7
 openloops_stability_log = 0
 ?openloops_switch_off_muon_yukawa = false
 $openloops_extra_cmd = ""
+$openloops_allowed_libs = ""
 ellis_sexton_scale = -1.000000000000E+00
 ?disable_subtraction = false
 fks_dij_exp1 =  1.000000000000E+00
