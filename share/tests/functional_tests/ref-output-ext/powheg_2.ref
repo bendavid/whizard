@@ -1,0 +1,1578 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+?pacify = true
+?write_raw = false
+SM.mZ =>  9.11880E+01
+SM.mW =>  8.04190E+01
+SM.mH =>  1.25000E+02
+SM.GF =>  1.16639E-05
+SM.me =>  0.00000E+00
+SM.mmu =>  0.00000E+00
+SM.mtau =>  1.77700E+00
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
+?alphas_from_lhapdf = false
+alphas_nf = 5
+alphas_order = 1
+$exclude_gauge_splittings = "u:s:b:t"
+$method = "dummy"
+$pdf_builtin_set = "mstw2008nlo"
+sqrts =  1.40000E+04
+?combined_nlo_integration = true
+| Process library 'powheg_2_lib': recorded process 'powheg_2_p1'
+seed = 130
+?fixed_order_nlo_events = false
+?unweighted = true
+?powheg_matching = true
+powheg_grid_size_xi = 10
+powheg_grid_size_y = 10
+powheg_pt_min =  1.00000E+00
+| Integrate: current process library needs compilation
+| Process library 'powheg_2_lib': compiling ...
+| Process library 'powheg_2_lib': writing makefile
+| Process library 'powheg_2_lib': removing old files
+| Process library 'powheg_2_lib': writing driver
+| Process library 'powheg_2_lib': creating source code
+| Process library 'powheg_2_lib': compiling sources
+| Process library 'powheg_2_lib': linking
+| Process library 'powheg_2_lib': loading
+| Process library 'powheg_2_lib': ... success.
+| Integrate: compilation done
+| QCD alpha: using a running strong coupling
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 130
+| Initializing integration for process powheg_2_p1:
+| Beam structure: p, p => pdf_builtin
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.400000000000E+04 GeV
+| Initialized builtin PDF MSTW2008NLO
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_2_p1.i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'powheg_2_p1.i3.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'powheg_2_p1'
+|   Library name  = 'powheg_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'powheg_2_p1_i1':   d, dbar => e-, e+ [dummy]
+|     2: 'powheg_2_p1_i2':   d:gl, dbar:gl => e-, e+, gl:d:dbar [dummy], [real]
+|     3: 'powheg_2_p1_i3':   d, dbar => e-, e+ [dummy], [virtual]
+|     4: 'powheg_2_p1_i4':   d, dbar => e-, e+ [inactive], [subtraction]
+|     5: 'powheg_2_p1_i5':   d, dbar => e-, e+ [dummy], [dglap]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin
+| Beam structure: 2 channels, 2 dimensions
+| Applying user-defined cuts.
+| Using user-defined general scale.
+| Starting integration for process 'powheg_2_p1'
+| Integration hook: add POWHEG hook
+| Shower: interfacing PDF builtin set #8
+| Integrate: iterations = 1:1000:"gw"
+| Integrator: 2 chains, 2 channels, 7 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       1000     1.073E+10   4.88E+09   45.52   14.39     0.4
+|-----------------------------------------------------------------------------|
+   1       1000     1.073E+10   4.88E+09   45.52   14.39     0.4
+|=============================================================================|
+n_events = 10
+?negative_weights = true
+?keep_failed_events = true
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+| Starting simulation for process 'powheg_2_p1'
+| Simulate: using integration grids from file 'powheg_2_p1.m1.vg'
+| Simulate: activating parton shower
+| Shower: interfacing PDF builtin set #8
+| Shower: Using WHIZARD internal shower
+| Simulate: applying POWHEG matching
+| QCD alpha: using a running strong coupling
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 131
+| Simulation: requested number of events = 10
+|             corr. to luminosity [fb-1] =   9.3197E-10
+| Events: writing to ASCII file 'powheg_2_p1.debug'
+| Events: generating 10 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+| POWHEG: using grids from file 'powheg_2_p1.pg'
+| Grid: Mean value of the grid:  7.15782E+03
+| Grid: Max value of the grid:  1.18402E+05
+| Grid: Mean/Max value of the grid:  6.04533E-02
+|         ... event sample complete.
+| Events: actual unweighting efficiency =   0.34 %
+Warning: Encountered events with excess weight: 4 events ( 40.000 %)
+| Maximum excess weight = 1.722E+01
+| Average excess weight = 1.950E+00
+| Events: closing ASCII file 'powheg_2_p1.debug'
+| There were no errors and    1 warning(s).
+| WHIZARD run finished.
+|=============================================================================|
+Contents of powheg_2_p1.debug:
+========================================================================
+ Event #1
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  1.73082E+07
+   Squared matrix el. (prc) =  1.73082E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 3
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   6.899492E+02
+ P =   0.000000E+00  0.000000E+00  6.899492E+02
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   4.215047E-01
+ P =   0.000000E+00  0.000000E+00 -4.215047E-01
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.310051E+03
+ P =   0.000000E+00  0.000000E+00  6.310051E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.999578E+03
+ P =   0.000000E+00  0.000000E+00 -6.999578E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   6.087387E+02
+ P =  -9.888752E+00 -4.804441E+00  6.086394E+02
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   8.163209E+01
+ P =   9.888752E+00  4.804441E+00  8.088837E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 1
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8      689.949        0.000        0.000      689.949        0.000
+   4    [i]    dbar    0    0                    2                  7-8        0.422        0.000        0.000       -0.422        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6310.051        0.000        0.000     6310.051        0.000
+   6    [x]     hr3    0    0                    2               [none]     6999.578        0.000        0.000    -6999.578        0.000
+   7    [o]      e-    0    0                  3-4               [none]      608.739       -9.889       -4.804      608.639        0.000
+   8    [o]      e+    0    0                  3-4               [none]       81.632        9.889        4.804       80.888        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =          690.371        0.000        0.000      689.528 
+Sum of beam remnant momenta: p(0:3) =    13309.629        0.000        0.000     -689.528 
+Sum of outgoing momenta: p(0:3) =          690.371        0.000        0.000      689.528 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  3.41067E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  1.73082E+07
+sqme_ref* =>  1.73082E+07
+event_index* => 1
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  2.70702E-01
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-6.8994924E+02; 0.0000000E+00, 0.0000000E+00,-6.8994924E+02| 0.0000000E+00| 3)
+ 4 prt(i:-1|-4.2150470E-01; 0.0000000E+00, 0.0000000E+00, 4.2150470E-01| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.3100508E+03; 0.0000000E+00, 0.0000000E+00, 6.3100508E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9995785E+03; 0.0000000E+00, 0.0000000E+00,-6.9995785E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 6.0873866E+02;-9.8887519E+00,-4.8044408E+00, 6.0863937E+02| 0.0000000E+00| 7)
+ 8 prt(o:-11| 8.1632087E+01; 9.8887519E+00, 4.8044408E+00, 8.0888365E+01| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #2
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  2.00716E+06
+   Squared matrix el. (prc) =  2.00716E+06
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 1
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 6
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   1.446225E+03
+ P =   0.000000E+00  0.000000E+00  1.446225E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   1.042581E+01
+ P =   0.000000E+00  0.000000E+00 -1.042581E+01
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   5.553775E+03
+ P =   0.000000E+00  0.000000E+00  5.553775E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.989574E+03
+ P =   0.000000E+00  0.000000E+00 -6.989574E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   5.692890E+02
+ P =  -1.196264E+02  5.256740E+00  5.565536E+02
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   8.873620E+02
+ P =   1.196264E+02 -5.256740E+00  8.792458E+02
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 2
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8     1446.225        0.000        0.000     1446.225        0.000
+   4    [i]    dbar    0    0                    2                  7-8       10.426        0.000        0.000      -10.426        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     5553.775        0.000        0.000     5553.775        0.000
+   6    [x]     hr3    0    0                    2               [none]     6989.574        0.000        0.000    -6989.574        0.000
+   7    [o]      e-    0    0                  3-4               [none]      569.289     -119.626        5.257      556.554        0.000
+   8    [o]      e+    0    0                  3-4               [none]      887.362      119.626       -5.257      879.246        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =         1456.651        0.000        0.000     1435.799 
+Sum of beam remnant momenta: p(0:3) =    12543.349        0.000        0.000    -1435.799 
+Sum of outgoing momenta: p(0:3) =         1456.651        0.000        0.000     1435.799 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  2.45586E+02
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  2.00716E+06
+sqme_ref* =>  2.00716E+06
+event_index* => 2
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-1.4462252E+03; 0.0000000E+00, 0.0000000E+00,-1.4462252E+03| 0.0000000E+00| 3)
+ 4 prt(i:-1|-1.0425811E+01; 0.0000000E+00, 0.0000000E+00, 1.0425811E+01| 0.0000000E+00| 4)
+ 5 prt(o:-92| 5.5537748E+03; 0.0000000E+00, 0.0000000E+00, 5.5537748E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9895742E+03; 0.0000000E+00, 0.0000000E+00,-6.9895742E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 5.6928904E+02;-1.1962638E+02, 5.2567405E+00, 5.5655360E+02| 0.0000000E+00| 7)
+ 8 prt(o:-11| 8.8736197E+02; 1.1962638E+02,-5.2567405E+00, 8.7924579E+02| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #3
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  2.38562E+07
+   Squared matrix el. (prc) =  2.38562E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 9
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   8.712482E+01
+ P =   0.000000E+00  0.000000E+00  8.712482E+01
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   3.936136E+00
+ P =   0.000000E+00  0.000000E+00 -3.936136E+00
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.912875E+03
+ P =   0.000000E+00  0.000000E+00  6.912875E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.996064E+03
+ P =   0.000000E+00  0.000000E+00 -6.996064E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   5.371039E+01
+ P =   1.850581E+00 -1.806232E+01  5.054833E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   3.735057E+01
+ P =  -1.850581E+00  1.806232E+01  3.264036E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 3
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8       87.125        0.000        0.000       87.125        0.000
+   4    [i]    dbar    0    0                    2                  7-8        3.936        0.000        0.000       -3.936        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6912.875        0.000        0.000     6912.875        0.000
+   6    [x]     hr3    0    0                    2               [none]     6996.064        0.000        0.000    -6996.064        0.000
+   7    [o]      e-    0    0                  3-4               [none]       53.710        1.851      -18.062       50.548        0.000
+   8    [o]      e+    0    0                  3-4               [none]       37.351       -1.851       18.062       32.640        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =           91.061        0.000        0.000       83.189 
+Sum of beam remnant momenta: p(0:3) =    13908.939        0.000        0.000      -83.189 
+Sum of outgoing momenta: p(0:3) =           91.061        0.000        0.000       83.189 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  3.70370E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  2.38562E+07
+sqme_ref* =>  2.38562E+07
+event_index* => 3
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  4.63589E-01
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-8.7124821E+01; 0.0000000E+00, 0.0000000E+00,-8.7124821E+01| 0.0000000E+00| 3)
+ 4 prt(i:-1|-3.9361364E+00; 0.0000000E+00, 0.0000000E+00, 3.9361364E+00| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.9128752E+03; 0.0000000E+00, 0.0000000E+00, 6.9128752E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9960639E+03; 0.0000000E+00, 0.0000000E+00,-6.9960639E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 5.3710386E+01; 1.8505811E+00,-1.8062325E+01, 5.0548327E+01| 0.0000000E+00| 7)
+ 8 prt(o:-11| 3.7350571E+01;-1.8505811E+00, 1.8062325E+01, 3.2640357E+01| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #4
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  1.48421E+07
+   Squared matrix el. (prc) =  1.48421E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 12
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   1.939732E+02
+ P =   0.000000E+00  0.000000E+00  1.939732E+02
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   4.051484E+00
+ P =   0.000000E+00  0.000000E+00 -4.051484E+00
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.806027E+03
+ P =   0.000000E+00  0.000000E+00  6.806027E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.995949E+03
+ P =   0.000000E+00  0.000000E+00 -6.995949E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   1.889687E+02
+ P =  -8.729125E+00 -2.109992E+00  1.887552E+02
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   9.055960E+00
+ P =   8.729125E+00  2.109992E+00  1.166507E+00
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 4
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8      193.973        0.000        0.000      193.973        0.000
+   4    [i]    dbar    0    0                    2                  7-8        4.051        0.000        0.000       -4.051        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6806.027        0.000        0.000     6806.027        0.000
+   6    [x]     hr3    0    0                    2               [none]     6995.949        0.000        0.000    -6995.949        0.000
+   7    [o]      e-    0    0                  3-4               [none]      188.969       -8.729       -2.110      188.755        0.000
+   8    [o]      e+    0    0                  3-4               [none]        9.056        8.729        2.110        1.167        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =          198.025        0.000        0.000      189.922 
+Sum of beam remnant momenta: p(0:3) =    13801.975        0.000        0.000     -189.922 
+Sum of outgoing momenta: p(0:3) =          198.025        0.000        0.000      189.922 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  5.60671E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  1.48421E+07
+sqme_ref* =>  1.48421E+07
+event_index* => 4
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-1.9397318E+02; 0.0000000E+00, 0.0000000E+00,-1.9397318E+02| 0.0000000E+00| 3)
+ 4 prt(i:-1|-4.0514843E+00; 0.0000000E+00, 0.0000000E+00, 4.0514843E+00| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.8060268E+03; 0.0000000E+00, 0.0000000E+00, 6.8060268E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9959485E+03; 0.0000000E+00, 0.0000000E+00,-6.9959485E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 1.8896870E+02;-8.7291246E+00,-2.1099918E+00, 1.8875519E+02| 0.0000000E+00| 7)
+ 8 prt(o:-11| 9.0559605E+00; 8.7291246E+00, 2.1099918E+00, 1.1665068E+00| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #5
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  1.12189E+07
+   Squared matrix el. (prc) =  1.12189E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 15
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   2.299967E+00
+ P =   0.000000E+00  0.000000E+00  2.299967E+00
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   1.055385E+02
+ P =   0.000000E+00  0.000000E+00 -1.055385E+02
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.997700E+03
+ P =   0.000000E+00  0.000000E+00  6.997700E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.894461E+03
+ P =   0.000000E+00  0.000000E+00 -6.894461E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   6.359252E+01
+ P =  -1.344828E+00 -1.524474E+01 -6.172356E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   4.424595E+01
+ P =   1.344828E+00  1.524474E+01 -4.151498E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 5
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8        2.300        0.000        0.000        2.300        0.000
+   4    [i]    dbar    0    0                    2                  7-8      105.539        0.000        0.000     -105.539        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6997.700        0.000        0.000     6997.700        0.000
+   6    [x]     hr3    0    0                    2               [none]     6894.461        0.000        0.000    -6894.461        0.000
+   7    [o]      e-    0    0                  3-4               [none]       63.593       -1.345      -15.245      -61.724        0.000
+   8    [o]      e+    0    0                  3-4               [none]       44.246        1.345       15.245      -41.515        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =          107.838        0.000        0.000     -103.239 
+Sum of beam remnant momenta: p(0:3) =    13892.162        0.000        0.000      103.239 
+Sum of outgoing momenta: p(0:3) =          107.838        0.000        0.000     -103.239 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  3.11599E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  1.12189E+07
+sqme_ref* =>  1.12189E+07
+event_index* => 5
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-2.2999667E+00; 0.0000000E+00, 0.0000000E+00,-2.2999667E+00| 0.0000000E+00| 3)
+ 4 prt(i:-1|-1.0553851E+02; 0.0000000E+00, 0.0000000E+00, 1.0553851E+02| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.9977000E+03; 0.0000000E+00, 0.0000000E+00, 6.9977000E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.8944615E+03; 0.0000000E+00, 0.0000000E+00,-6.8944615E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 6.3592525E+01;-1.3448283E+00,-1.5244744E+01,-6.1723565E+01| 0.0000000E+00| 7)
+ 8 prt(o:-11| 4.4245950E+01; 1.3448283E+00, 1.5244744E+01,-4.1514977E+01| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #6
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) = -7.01417E+06
+   Squared matrix el. (prc) = -7.01417E+06
+   Event weight (ref)       = -1.00000E+00
+   Event weight (prc)       = -1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 18
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   6.920607E+00
+ P =   0.000000E+00  0.000000E+00  6.920607E+00
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   6.366500E+00
+ P =   0.000000E+00  0.000000E+00 -6.366500E+00
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.993079E+03
+ P =   0.000000E+00  0.000000E+00  6.993079E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.993634E+03
+ P =   0.000000E+00  0.000000E+00 -6.993634E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   6.520088E+00
+ P =   2.767436E+00  5.258452E+00 -2.683566E+00
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   6.767019E+00
+ P =  -2.767436E+00 -5.258452E+00  3.237673E+00
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 6
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8        6.921        0.000        0.000        6.921        0.000
+   4    [i]    dbar    0    0                    2                  7-8        6.366        0.000        0.000       -6.366        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6993.079        0.000        0.000     6993.079        0.000
+   6    [x]     hr3    0    0                    2               [none]     6993.634        0.000        0.000    -6993.634        0.000
+   7    [o]      e-    0    0                  3-4               [none]        6.520        2.767        5.258       -2.684        0.000
+   8    [o]      e+    0    0                  3-4               [none]        6.767       -2.767       -5.258        3.238        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =           13.287        0.000        0.000        0.554 
+Sum of beam remnant momenta: p(0:3) =    13986.713        0.000        0.000       -0.554 
+Sum of outgoing momenta: p(0:3) =           13.287        0.000        0.000        0.554 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  1.32755E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* => -7.01417E+06
+sqme_ref* => -7.01417E+06
+event_index* => 6
+event_weight* => -1.00000E+00
+event_weight_ref* => -1.00000E+00
+event_excess* =>  1.54959E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-6.9206073E+00; 0.0000000E+00, 0.0000000E+00,-6.9206073E+00| 0.0000000E+00| 3)
+ 4 prt(i:-1|-6.3664998E+00; 0.0000000E+00, 0.0000000E+00, 6.3664998E+00| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.9930794E+03; 0.0000000E+00, 0.0000000E+00, 6.9930794E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9936335E+03; 0.0000000E+00, 0.0000000E+00,-6.9936335E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 6.5200879E+00; 2.7674357E+00, 5.2584523E+00,-2.6835658E+00| 0.0000000E+00| 7)
+ 8 prt(o:-11| 6.7670193E+00;-2.7674357E+00,-5.2584523E+00, 3.2376733E+00| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #7
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  4.68463E+07
+   Squared matrix el. (prc) =  4.68463E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 21
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   5.667369E-01
+ P =   0.000000E+00  0.000000E+00  5.667369E-01
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   7.081701E+01
+ P =   0.000000E+00  0.000000E+00 -7.081701E+01
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.999433E+03
+ P =   0.000000E+00  0.000000E+00  6.999433E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.929183E+03
+ P =   0.000000E+00  0.000000E+00 -6.929183E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   6.467810E+01
+ P =   2.796685E+00 -2.231923E+00 -6.457905E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   6.705646E+00
+ P =  -2.796685E+00  2.231923E+00 -5.671222E+00
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 7
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8        0.567        0.000        0.000        0.567        0.000
+   4    [i]    dbar    0    0                    2                  7-8       70.817        0.000        0.000      -70.817        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6999.433        0.000        0.000     6999.433        0.000
+   6    [x]     hr3    0    0                    2               [none]     6929.183        0.000        0.000    -6929.183        0.000
+   7    [o]      e-    0    0                  3-4               [none]       64.678        2.797       -2.232      -64.579        0.000
+   8    [o]      e+    0    0                  3-4               [none]        6.706       -2.797        2.232       -5.671        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =           71.384        0.000        0.000      -70.250 
+Sum of beam remnant momenta: p(0:3) =    13928.616        0.000        0.000       70.250 
+Sum of outgoing momenta: p(0:3) =           71.384        0.000        0.000      -70.250 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  1.26704E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  4.68463E+07
+sqme_ref* =>  4.68463E+07
+event_index* => 7
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  1.72180E+01
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-5.6673690E-01; 0.0000000E+00, 0.0000000E+00,-5.6673690E-01| 0.0000000E+00| 3)
+ 4 prt(i:-1|-7.0817012E+01; 0.0000000E+00, 0.0000000E+00, 7.0817012E+01| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.9994333E+03; 0.0000000E+00, 0.0000000E+00, 6.9994333E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9291830E+03; 0.0000000E+00, 0.0000000E+00,-6.9291830E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 6.4678103E+01; 2.7966851E+00,-2.2319227E+00,-6.4579053E+01| 0.0000000E+00| 7)
+ 8 prt(o:-11| 6.7056461E+00;-2.7966851E+00, 2.2319227E+00,-5.6712224E+00| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #8
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  1.47022E+07
+   Squared matrix el. (prc) =  1.47022E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 24
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   1.748870E+01
+ P =   0.000000E+00  0.000000E+00  1.748870E+01
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   6.169637E+01
+ P =   0.000000E+00  0.000000E+00 -6.169637E+01
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.982511E+03
+ P =   0.000000E+00  0.000000E+00  6.982511E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.938304E+03
+ P =   0.000000E+00  0.000000E+00 -6.938304E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   2.709141E+01
+ P =   2.658050E+01 -5.228591E+00  2.882695E-01
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   5.209366E+01
+ P =  -2.658050E+01  5.228591E+00 -4.449594E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 8
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8       17.489        0.000        0.000       17.489        0.000
+   4    [i]    dbar    0    0                    2                  7-8       61.696        0.000        0.000      -61.696        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6982.511        0.000        0.000     6982.511        0.000
+   6    [x]     hr3    0    0                    2               [none]     6938.304        0.000        0.000    -6938.304        0.000
+   7    [o]      e-    0    0                  3-4               [none]       27.091       26.581       -5.229        0.288        0.000
+   8    [o]      e+    0    0                  3-4               [none]       52.094      -26.581        5.229      -44.496        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =           79.185        0.000        0.000      -44.208 
+Sum of beam remnant momenta: p(0:3) =    13920.815        0.000        0.000       44.208 
+Sum of outgoing momenta: p(0:3) =           79.185        0.000        0.000      -44.208 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  6.56959E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  1.47022E+07
+sqme_ref* =>  1.47022E+07
+event_index* => 8
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-1.7488700E+01; 0.0000000E+00, 0.0000000E+00,-1.7488700E+01| 0.0000000E+00| 3)
+ 4 prt(i:-1|-6.1696367E+01; 0.0000000E+00, 0.0000000E+00, 6.1696367E+01| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.9825113E+03; 0.0000000E+00, 0.0000000E+00, 6.9825113E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9383036E+03; 0.0000000E+00, 0.0000000E+00,-6.9383036E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 2.7091406E+01; 2.6580500E+01,-5.2285908E+00, 2.8826949E-01| 0.0000000E+00| 7)
+ 8 prt(o:-11| 5.2093661E+01;-2.6580500E+01, 5.2285908E+00,-4.4495937E+01| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #9
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  1.35334E+07
+   Squared matrix el. (prc) =  1.35334E+07
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 27
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   1.067593E+02
+ P =   0.000000E+00  0.000000E+00  1.067593E+02
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   8.464686E+00
+ P =   0.000000E+00  0.000000E+00 -8.464686E+00
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.893241E+03
+ P =   0.000000E+00  0.000000E+00  6.893241E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.991535E+03
+ P =   0.000000E+00  0.000000E+00 -6.991535E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   3.781862E+01
+ P =   1.174670E+01 -2.488222E+01  2.594491E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   7.740532E+01
+ P =  -1.174670E+01  2.488222E+01  7.234966E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 9
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8      106.759        0.000        0.000      106.759        0.000
+   4    [i]    dbar    0    0                    2                  7-8        8.465        0.000        0.000       -8.465        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6893.241        0.000        0.000     6893.241        0.000
+   6    [x]     hr3    0    0                    2               [none]     6991.535        0.000        0.000    -6991.535        0.000
+   7    [o]      e-    0    0                  3-4               [none]       37.819       11.747      -24.882       25.945        0.000
+   8    [o]      e+    0    0                  3-4               [none]       77.405      -11.747       24.882       72.350        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =          115.224        0.000        0.000       98.295 
+Sum of beam remnant momenta: p(0:3) =    13884.776        0.000        0.000      -98.295 
+Sum of outgoing momenta: p(0:3) =          115.224        0.000        0.000       98.295 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  6.01227E+01
+n_in* => 2
+n_out* => 4
+n_tot* => 6
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  1.35334E+07
+sqme_ref* =>  1.35334E+07
+event_index* => 9
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-1.0675926E+02; 0.0000000E+00, 0.0000000E+00,-1.0675926E+02| 0.0000000E+00| 3)
+ 4 prt(i:-1|-8.4646859E+00; 0.0000000E+00, 0.0000000E+00, 8.4646859E+00| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.8932407E+03; 0.0000000E+00, 0.0000000E+00, 6.8932407E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9915353E+03; 0.0000000E+00, 0.0000000E+00,-6.9915353E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 3.7818625E+01; 1.1746697E+01,-2.4882224E+01, 2.5944911E+01| 0.0000000E+00| 7)
+ 8 prt(o:-11| 7.7405319E+01;-1.1746697E+01, 2.4882224E+01, 7.2349661E+01| 0.0000000E+00| 8)
+========================================================================
+========================================================================
+ Event #10
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. (ref) =  6.32254E+06
+   Squared matrix el. (prc) =  6.32254E+06
+   Event weight (ref)       =  1.00000E+00
+   Event weight (prc)       =  1.00000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 2
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.00000E+00
+   Analysis flag      = T
+========================================================================
+ Event transform: trivial (hard process)
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519682
+     calls = 30
+   Number of tries = 1
+------------------------------------------------------------------------
+ Particle set:
+------------------------------------------------------------------------
+ Particle 1 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00  7.000000E+03
+ T =   0.000000000E+00
+ Children: 3 5
+ Particle 2 [b] f(2212)
+ E =   7.000000E+03
+ P =   0.000000E+00  0.000000E+00 -7.000000E+03
+ T =   0.000000000E+00
+ Children: 4 6
+ Particle 3 [i] f(1)
+ E =   3.840213E+02
+ P =   0.000000E+00  0.000000E+00  3.840213E+02
+ T =   0.000000000E+00
+ Parents:  1
+ Children: 7 8
+ Particle 4 [i] f(-1)
+ E =   2.304886E+01
+ P =   0.000000E+00  0.000000E+00 -2.304886E+01
+ T =   0.000000000E+00
+ Parents:  2
+ Children: 7 8
+ Particle 5 [x] f(-92*)
+ E =   6.615979E+03
+ P =   0.000000E+00  0.000000E+00  6.615979E+03
+ T =   0.000000000E+00
+ Parents:  1
+ Particle 6 [x] f(92*)
+ E =   6.976951E+03
+ P =   0.000000E+00  0.000000E+00 -6.976951E+03
+ T =   0.000000000E+00
+ Parents:  2
+ Particle 7 [o] f(11)
+ E =   1.317678E+02
+ P =  -7.259226E+01  4.671327E+01  9.955395E+01
+ T =   0.000000000E+00
+ Parents:  3 4
+ Particle 8 [o] f(-11)
+ E =   2.753024E+02
+ P =   7.259226E+01 -4.671327E+01  2.614185E+02
+ T =   0.000000000E+00
+ Parents:  3 4
+========================================================================
+========================================================================
+ Event transform: shower
+------------------------------------------------------------------------
+   Associated process: 'powheg_2_p1'
+   TAO random-number generator:
+     seed  = 8519683
+     calls = 10
+   Number of tries = 1
+ Particle set:
+------------------------------------------------------------------------
+  Nr Status  Flavor  Col ACol              Parents             Children         P(0)         P(1)         P(2)         P(3)          P^2
+   1    [b]       p    0    0               [none]                  3,5     7000.000        0.000        0.000     7000.000        0.000
+   2    [b]       p    0    0               [none]                  4,6     7000.000        0.000        0.000    -7000.000        0.000
+   3    [i]       d    0    0                    1                  7-8     1238.461        0.000        0.000     1238.461        0.000
+   4    [i]    dbar    1    0                    2                  7-8       76.676        0.000        0.000      -76.676        0.000
+   5    [x]  hr3bar    0    0                    1               [none]     6615.979        0.000        0.000     6615.979        0.000
+   6    [x]     hr3    0    0                    2               [none]     6976.951        0.000        0.000    -6976.951        0.000
+   7    [v]      e-    0    0                  3-4                 9-11      131.768      -72.592       46.713       99.554        0.000
+   8    [v]      e+    0    0                  3-4                 9-11      275.302       72.592      -46.713      261.419        0.000
+   9    [o]      e-    0    0                  7-8               [none]      476.698     -250.725       -3.146      405.424        0.000
+  10    [o]      e+    0    0                  7-8               [none]      252.020      -18.319      -72.159      240.772        0.000
+  11    [o]      gl    1    0                  7-8               [none]      586.419      269.044       75.306      515.589        0.000
+------------------------------------------------------------------------
+Sum of incoming momenta: p(0:3) =         1315.137        0.000        0.000     1161.785 
+Sum of beam remnant momenta: p(0:3) =    13592.930        0.000        0.000     -360.972 
+Sum of outgoing momenta: p(0:3) =         1315.137        0.000        0.000     1161.785 
+------------------------------------------------------------------------
+ Shower settings:
+------------------------------------------------------------------------
+ Master switches:
+   ps_isr_active                =  F
+   ps_fsr_active                =  F
+   ps_tau_dec                   =  F
+   muli_active                  =  F
+   hadronization_active         =  F
+ General settings:
+    [ISR and FSR off]
+ Matching Settings:
+   mlm_matching                 =  F
+   ckkw_matching                =  F
+ PYTHIA6 specific settings:
+   ps_PYTHIA_PYGIVE             = ''
+ PYTHIA8 specific settings:
+   ps_PYTHIA8_config            = ''
+   ps_PYTHIA8_config_file       = ''
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.40000E+04
+sqrts_hat* =>  6.16313E+02
+n_in* => 2
+n_out* => 5
+n_tot* => 7
+$process_id* => "powheg_2_p1"
+process_num_id* => [unknown integer]
+sqme* =>  6.32254E+06
+sqme_ref* =>  6.32254E+06
+event_index* => 10
+event_weight* =>  1.00000E+00
+event_weight_ref* =>  1.00000E+00
+event_excess* =>  0.00000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00,-7.0000000E+03| 0.0000000E+00| 1)
+ 2 prt(b:2212|-7.0000000E+03; 0.0000000E+00, 0.0000000E+00, 7.0000000E+03| 0.0000000E+00| 2)
+ 3 prt(i:1|-1.2384610E+03; 0.0000000E+00, 0.0000000E+00,-1.2384610E+03| 0.0000000E+00| 3)
+ 4 prt(i:-1|-7.6676176E+01; 0.0000000E+00, 0.0000000E+00, 7.6676176E+01| 0.0000000E+00| 4)
+ 5 prt(o:-92| 6.6159787E+03; 0.0000000E+00, 0.0000000E+00, 6.6159787E+03| 0.0000000E+00| 5)
+ 6 prt(o:92| 6.9769511E+03; 0.0000000E+00, 0.0000000E+00,-6.9769511E+03| 0.0000000E+00| 6)
+ 7 prt(o:11| 4.7669847E+02;-2.5072520E+02,-3.1464403E+00, 4.0542373E+02| 0.0000000E+00| 7)
+ 8 prt(o:-11| 2.5201954E+02;-1.8318762E+01,-7.2159414E+01, 2.4077228E+02| 0.0000000E+00| 8)
+ 9 prt(o:21| 5.8641920E+02; 2.6904396E+02, 7.5305854E+01, 5.1558885E+02| 0.0000000E+00| 9)
+========================================================================
+Contents of powheg_2_p1.pg:
+           3
+          10           10            3 
+ 4.560119051E+02  1.083969644E+03  1.007045090E+03  4.074727667E+02  8.208315226E+02  4.396871514E+03  0.000000000E+00  4.558709402E-01  1.141063084E-02  4.729003008E-04  6.224667616E+02  1.196651090E+03  8.127481918E+02  1.702520099E+02  5.646333397E+00  9.345880420E+01  1.355000828E-02  1.211241280E+00  3.408433911E+03  2.199084696E+02  1.987179071E+02  1.451993057E+03  4.418605876E+02  2.496876541E+03  4.722853189E+02  3.977529667E+01  4.554864153E+03  4.223918256E+00  2.217091820E+03  4.117712961E-01  7.473431303E+00  1.531560157E+03  1.196163055E+03  2.632995456E+02  1.244261059E+02  0.000000000E+00  1.072698995E+01  3.807601592E+00  0.000000000E+00  3.158646972E+02  2.886920571E+02  8.090733369E+02  5.419702401E+02  5.596089585E+02  3.922359485E+02  6.422277055E+01  3.629179193E-02  1.200576624E+03  8.145245363E-02  1.337148316E-05  2.275132877E+02  7.996803341E+00  1.683365759E+03  3.210781013E+02  4.797035517E+00  3.990989863E+01  1.172740941E+01  2.684231167E-01  8.274103289E-01  1.326605153E+02  1.577863835E+02  9.264959259E+02  1.264473405E+03  1.078038904E+03  6.874008947E+01  3.672498373E+00  1.917022085E-01  2.265468009E+02  7.912402820E+01  1.242060587E+01  7.851269709E+01  1.675160408E+02  7.208422421E+02  1.417059665E+03  7.165203739E+01  4.538204666E+02  8.488459448E+01  1.903180640E+02  0.000000000E+00  1.670547514E-05  1.544486081E+02  5.685362336E+02  5.067410634E+02  9.713214691E+02  5.724845962E+02  1.281704561E+01  1.669929929E+01  3.177996800E+02  1.678899478E+00  3.757393672E-01  7.723913041E+01  2.835181210E+02  1.722857133E+02  5.066051409E+01  3.080680165E+02  1.386711677E+02  3.920634233E-01  0.000000000E+00  8.331194878E+01  1.698877153E-01  4.384357886E+04  1.907411239E+04  8.156297799E+04  3.653229509E+03  4.960879926E+04  9.945844412E+04  1.272167788E+03  1.863897829E+01  2.581840288E-01  1.062710089E-02  4.229766048E+03  9.128743945E+04  4.372688746E+04  1.214563017E+04  1.199777760E+02  7.983321142E+02  1.502253809E+03  1.180843121E+02  1.207658703E+04  4.946094767E+02  2.317625316E+03  6.123651745E+04  5.831805406E+04  6.861434161E+04  2.789576069E+04  6.359156361E+02  2.779473767E+04  1.026255153E+02  1.440373556E+04  1.858861305E+00  1.351343762E+02  1.127664524E+05  9.259108934E+04  3.680628503E+04  8.859631485E+03  0.000000000E+00  6.613577376E+01  3.680970075E+01  0.000000000E+00  1.031766614E+03  2.670667723E+04  6.170918729E+04  9.037063250E+03  1.097775140E+04  3.183753648E+04  4.555298580E+03  8.373589993E-01  2.681984708E+04  1.887609733E+00  6.006817297E-04  2.318553652E+04  1.419703055E+02  1.184023594E+05  3.919247258E+04  9.544377658E+01  2.302546746E+03  7.610355877E+02  2.098636601E+02  5.046425000E+01  3.316618655E+02  1.096808016E+03  1.157035624E+05  4.543054667E+04  7.170013828E+04  5.210159323E+03  3.256620390E+03  1.213563384E+01  1.523174449E+03  5.410942140E+03  2.961644733E+01  3.472115729E+03  1.291384707E+03  2.554557055E+04  8.980998934E+04  1.274336968E+04  2.899266468E+04  4.998481482E+03  7.542775634E+03  5.165081136E-02  1.774632969E-02  1.635221459E+03  9.438799545E+03  4.288340659E+04  4.389527494E+04  4.093970320E+04  4.873126596E+03  1.600181166E+03  8.495159685E+03  1.040871211E+01  2.430656984E+00  1.649812345E+03  2.917103302E+04  5.771668801E+03  4.585200942E+03  2.345593651E+04  2.187096585E+04  8.234602725E+02  0.000000000E+00  7.317396285E+03  1.666966827E+01  5.749147374E+02  7.605462377E+02  6.411116380E+02  9.940470158E+02  3.342349588E+02  9.197581661E+03  0.000000000E+00  1.142175649E+00  5.329014553E-02  1.069341183E-03  4.915194122E+02  1.708347196E+03  7.849143141E+02  1.852367032E+03  1.258973745E+01  6.669359290E+02  1.860729054E-01  1.865177589E+01  1.036067036E+03  8.148132340E+01  2.192802695E+02  1.176156898E+03  1.670955478E+03  2.916818730E+03  2.315574574E+02  1.347360247E+01  4.526419719E+04  8.260606464E+00  7.033742117E+02  9.585383462E+00  8.383479187E+01  1.132991924E+03  4.213342008E+02  8.456329069E+01  7.268263951E+01  0.000000000E+00  1.644620618E+02  1.284889365E+00  0.000000000E+00  1.347470453E+02  7.201046670E+02  5.013058781E+02  3.631170367E+02  6.157810218E+02  1.870263897E+02  4.149033958E+02  4.320214850E-02  3.318665532E+03  3.007327115E-01  2.377752541E-04  1.253165488E+02  1.021004305E+02  2.594713553E+03  4.817873788E+02  3.620265939E+00  1.204126181E+01  1.988998097E+02  1.195857415E-01  1.654226413E+01  3.463483698E+02  1.050345433E+02  1.869781339E+03  6.913660441E+02  3.579855841E+02  4.191916120E+02  2.467937339E+00  1.716202025E+00  7.252395635E+02  2.151696550E+02  4.103453537E+00  4.849633550E+01  7.668112022E+01  2.624835596E+02  6.775170676E+02  1.261047593E+02  1.491137994E+02  1.826473604E+02  7.655725707E+01  0.000000000E+00  1.939892268E-04  6.654238879E+01  3.672920366E+02  6.869762253E+02  3.336088071E+02  1.978711286E+02  3.413928218E+01  7.676510481E+00  1.184736144E+02  1.011408152E+01  1.226057602E+00  4.734780021E+01  8.036833318E+02  6.763799877E+01  3.862775135E+01  1.058976228E+02  4.616043551E+01  1.667818945E+00  0.000000000E+00  2.558553524E+02  5.319890066E-01 

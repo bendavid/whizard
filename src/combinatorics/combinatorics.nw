@@ -2685,7 +2685,7 @@ submodule (grids) grids_s
 
   use constants, only: zero, one, tiny_07
   use io_units
-  use format_defs, only: FMT_16
+  use format_defs, only: FMT_16, FMT_12
   use diagnostics
 <<Use mpi f08>>
 
@@ -3115,14 +3115,14 @@ The operator has to be specified. We do not check on any specifications.
              maximum = val
           end if
        end do
-       write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+       write (msg_buffer, "(A," // FMT_12 // ")") &
             "Grid: Mean value of the grid: ", mean
        call msg_message ()
-       write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+       write (msg_buffer, "(A," // FMT_12 // ")") &
             "Grid: Max value of the grid: ", maximum
        call msg_message ()
        if (maximum > zero) then
-          write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+          write (msg_buffer, "(A," // FMT_12 // ")") &
                "Grid: Mean/Max value of the grid: ", mean / maximum
           call msg_message ()
        end if

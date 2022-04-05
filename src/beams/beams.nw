@@ -190,7 +190,7 @@ provide a [[to_string]] method.  The [[show]] method also lists the
 current values of relevant global variables.
 <<Beam structures: beam structure: TBP>>=
   procedure :: write => beam_structure_write
-  procedure :: to_string => beam_structure_to_string  
+  procedure :: to_string => beam_structure_to_string
 <<Beam structures: sub interfaces>>=
     module subroutine beam_structure_write (object, unit)
       class(beam_structure_t), intent(in) :: object
@@ -17067,7 +17067,7 @@ particle mass.
 
 @ %def EPA_MODE_DEFAULT EPA_MODE_BUDNEV_617 EPA_MODE_BUDNEV_616E
 @ %def EPA_MODE_LOG_POWER EPA_MODE_LOG_SIMPLE EPA_MODE_LOG
-@ 
+@
 <<SF epa: public>>=
   public :: epa_data_t
 <<SF epa: types>>=
@@ -26923,6 +26923,24 @@ Initialization.  We need to access the (quasi-global) initialization status.
   end subroutine alpha_qcd_lhapdf_init
 
 @ %def alpha_qcd_lhapdf_init
+@ Retrieves the quark masses from the PDF.
+<<SF lhapdf: alpha qcd: TBP>>=
+  procedure :: get_qmass => alpha_qcd_lhapdf_get_qmass
+<<SF lhapdf: sub interfaces>>=
+    module function alpha_qcd_lhapdf_get_qmass (alpha_qcd, i_q) result (mq)
+      real(default) :: mq
+      class(alpha_qcd_lhapdf_t), intent(in) :: alpha_qcd
+      integer, intent(in) :: i_q
+    end function alpha_qcd_lhapdf_get_qmass
+<<SF lhapdf: procedures>>=
+  module function alpha_qcd_lhapdf_get_qmass (alpha_qcd, i_q) result (mq)
+    real(default) :: mq
+    class(alpha_qcd_lhapdf_t), intent(in) :: alpha_qcd
+    integer, intent(in) :: i_q
+    mq = alpha_qcd%pdf%get_qmass (i_q)
+  end function alpha_qcd_lhapdf_get_qmass
+
+@ %def alpha_qcd_lhapdf_get_qmass
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -27893,7 +27911,7 @@ Due to a bug in gfortran 7/8/9 this has to remain in the main module.
 @ This is a hook that allows us to inject further handlers for
 structure-function objects, in particular a test structure function.
 <<Dispatch beams: public>>=
-  public :: dispatch_sf_data_extra  
+  public :: dispatch_sf_data_extra
 <<Dispatch beams: variables>>=
   procedure (dispatch_sf_data), pointer :: &
        dispatch_sf_data_extra => null ()

@@ -18416,7 +18416,7 @@ pointer).
        call hepmc_event_set_scale (eio%hepmc_event, event%get_fac_scale ())
        call hepmc_event_set_alpha_qcd (eio%hepmc_event, event%get_alpha_s ())
        call hepmc_event_set_alpha_qed (eio%hepmc_event, -1._default)
-       if (.not. eio%data%unweighted) then
+       if (.not. eio%data%unweighted .or. eio%data%negative_weights) then
           select case (eio%data%norm_mode)
           case (NORM_UNIT,NORM_N_EVT)
              call hepmc_event_add_weight &

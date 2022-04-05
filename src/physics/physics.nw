@@ -3956,7 +3956,7 @@ provided by the caller.
        s = 0
     end if
   end function phs_point_size
-  
+
 @ %def phs_point_size
 @ Equality, implemented only for valid points.
 <<PHS points: public>>=
@@ -4104,7 +4104,7 @@ Lorentz transformation.
        p = vector4_null
     end if
   end function phs_point_sum
-  
+
   pure module function phs_point_sum_iarray (phs_point, iarray) result (p)
     class(phs_point_t), intent(in) :: phs_point
     integer, dimension(:), intent(in) :: iarray
@@ -4125,13 +4125,13 @@ scattering process (two incoming particles) in the c.m.\ frame.
 <<PHS points: phs point: TBP>>=
   procedure :: get_x => phs_point_get_x
 <<PHS points: sub interfaces>>=
-    pure module function phs_point_get_x (phs_point, E_beam) result (x) 
+    pure module function phs_point_get_x (phs_point, E_beam) result (x)
       class(phs_point_t), intent(in) :: phs_point
       real(default), dimension(2) :: x
       real(default), intent(in) :: E_beam
     end function phs_point_get_x
 <<PHS points: procedures>>=
-  pure module function phs_point_get_x (phs_point, E_beam) result (x) 
+  pure module function phs_point_get_x (phs_point, E_beam) result (x)
     class(phs_point_t), intent(in) :: phs_point
     real(default), dimension(2) :: x
     real(default), intent(in) :: E_beam
@@ -4286,7 +4286,7 @@ numerical values of the Riemann zeta function:
 @  %def zeta2 zeta3 zeta4
 @ The Euler-Mascheroni constant is
 \begin{equation*}
-  \gamma_E = 
+  \gamma_E =
 \end{equation*}
 <<SM physics: public>>=
   public :: eulerc
@@ -4687,6 +4687,97 @@ takes the QCD scale and scale as inputs from the PDG book.
 @ %def running_as
 @ %def running_as_lam
 @ %def running_alpha running_alpha_num
+@ This routine determines the Landau pole $\Lambda^{(n_f)}_{\overline{MS}}$
+for given $\alpha_s$, scale, number of flavors and order.
+<<SM physics: public>>=
+  public :: lambda_qcd
+<<SM physics: sub interfaces>>=
+    module function lambda_qcd (as_q, q, nf, order) result (lambda)
+      real(default), intent(in) :: as_q, q
+      integer, intent(in) :: order, nf
+      real(default) :: lambda
+    end function lambda_qcd
+<<SM physics: procedures>>=
+  module function lambda_qcd (as_q, q, nf, order) result (lambda)
+    real(default), intent(in) :: as_q, q
+    integer, intent(in) :: nf, order
+    real(default) :: lambda
+    real(default), parameter :: acc = 1e-8_default
+    if (order == 0) then
+       lambda = lambda_qcd_lo (as_q, q, nf)
+    else if (order == 1) then
+       lambda = lambda_qcd_nlo (as_q, q, nf)
+    else if (order == 2) then
+       lambda = lambda_qcd_nnlo (as_q, q, nf)
+    else
+       call msg_error ("lambda_qcd: order unknown")
+    end if
+  contains
+    function lambda_qcd_lo (as_q, q, nf) result (lambda)
+      real(default) :: lambda
+      real(default), intent(in) :: as_q, q
+      integer, intent(in) :: nf
+      real(default) :: b0, t0, t1, as0, as1
+      b0 = coeff_b0(real(nf, default))
+      t1 = one/b0/as_q
+      FIND_ROOT: do
+         if (signal_is_pending ())  return
+         t0 = t1
+         as0 = one/b0/t1
+         as1 = - one/b0/t1**2
+         t1 = (as_q-as0)/as1 + t1
+         if (abs(t0-t1)/t0 < acc) exit FIND_ROOT
+      end do FIND_ROOT
+      lambda = q * exp(-t1/two)
+    end function lambda_qcd_lo
+    function lambda_qcd_nlo (as_q, q, nf) result (lambda)
+      real(default) :: lambda
+      real(default), intent(in) :: as_q, q
+      integer, intent(in) :: nf
+      real(default) :: b0, b1, t0, t1, as0, as1, logt
+      b0 = coeff_b0(real(nf, default))
+      b1 = coeff_b1(real(nf, default))
+      t1 = one/b0/as_q
+      FIND_ROOT: do
+         if (signal_is_pending ())  return
+         logt = log(t1)
+         t0 = t1
+         as0 = one/b0/t1 - b1/b0 * logt/(b0 * t1)**2
+         as1 = - one/b0/t1**2 - b1/b0**3 * (one - two*logt)/t1**3
+         t1 = (as_q-as0)/as1 + t1
+         if (abs(t0-t1)/t0 < acc) exit FIND_ROOT
+      end do FIND_ROOT
+      lambda = q * exp(-t1/two)
+    end function lambda_qcd_nlo
+    function lambda_qcd_nnlo (as_q, q, nf) result (lambda)
+      real(default) :: lambda
+      real(default), intent(in) :: as_q, q
+      integer, intent(in) :: nf
+      real(default) :: b0, b1, b2, t0, t1, as0, as1, logt
+      b0 = coeff_b0(real(nf, default))
+      b1 = coeff_b1(real(nf, default))
+      b2 = coeff_b2(real(nf, default))
+      t1 = one/b0/as_q
+      FIND_ROOT: do
+         if (signal_is_pending ())  return
+         logt = log(t1)
+         t0 = t1
+         as0 = one/b0/t1 * (one - b1/b0**2 * logt/t1 + (b1/b0**2 * logt/t1)**2 &
+              - (b1**2 * (logt + one) - b0*b2)/b0**4/t1**2)
+         as1 = one/b0/t1 * (-two*b1**2 * logt**2/(b0**4 * t1**3) &
+              + two*(b1**2 * (logt + one) - b0*b2)/(b0**4 * t1**3) &
+              + b1 * logt/(b0**2 * t1**2) + two*b1**2 * logt/(b0**4 * t1**3) &
+              - b1/(b0**2 * t1**2) - b1**2/(b0**4 * t1**3)) &
+              - (b1**2 * logt**2/(b0**4 * t1**2) - (b1**2 * (logt + one) &
+              - b0*b2)/(b0**4 * t1**2) - b1 * logt/(b0**2 * t1) + one)/(b0 * t1**2)
+         t1 = (as_q-as0)/as1 + t1
+         if (abs(t0-t1)/t0 < acc) exit FIND_ROOT
+      end do FIND_ROOT
+      lambda = q * exp(-t1/two)
+    end function lambda_qcd_nnlo
+  end function lambda_qcd
+
+@ %def lambda_qcd
 @
 \subsection{Catani-Seymour Parameters}
 These are fundamental constants of the Catani-Seymour dipole formalism.
@@ -4951,7 +5042,7 @@ imaginary part is set to zero.
     integer, intent(in) :: n, m
     real(default), intent(in) :: x
     complex(default) :: nplog
-    real(default), parameter :: c1 = 4._default/3._default, & 
+    real(default), parameter :: c1 = 4._default/3._default, &
          c2 = 1._default/3._default
     real(default), dimension(0:4), parameter :: &
          fct = [1.0_default,1.0_default,2.0_default,6.0_default,24.0_default]
@@ -6547,7 +6638,7 @@ functions are defined as complex functions:
          psic(cmplx(N+1,zero,kind=default))) + two/N/(N+1)
   end function pqqm
 
-@ %def pqqm 
+@ %def pqqm
 @
 \subsection{Top width}
 In order to produce sensible results, the widths have to be recomputed
@@ -7122,7 +7213,7 @@ end module sm_physics_uti
     write (u, "(1x,A,'(',F8.5,',',F8.5,')')")  " psi(z2,2) = ", &
          real(psiz), aimag(psiz)
 
-    write (u, "(A)")    
+    write (u, "(A)")
 
     psiz = psim (z1,3)
     write (u, "(1x,A,'(',F5.2,',',F5.2,')')")  " z1        = ", &
@@ -8028,8 +8119,8 @@ for the chosen scale.  Normally, this should be the $Z$ boson mass.
 @ %def alpha_qed_from_scale_get
 @
 \subsection{QED type}
-This module is similar to [[qcd_t]], defining the type [[qed_t]]. 
-It stores the [[alpha_qed_t]] type which is either constant or a running $\alpha$ 
+This module is similar to [[qcd_t]], defining the type [[qed_t]].
+It stores the [[alpha_qed_t]] type which is either constant or a running $\alpha$
 with different options.
 <<SM qed: public>>=
   public :: qed_t
@@ -8171,7 +8262,7 @@ end module sm_qed_uti
 We check two different implementations of the abstract QED coupling.
 <<SM qed: execute tests>>=
   call test (sm_qed_1, "sm_qed_1", &
-       "running alpha_s", &
+       "running alpha", &
        u, results)
 <<SM qed: test declarations>>=
   public :: sm_qed_1

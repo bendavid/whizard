@@ -6552,9 +6552,10 @@ procedure with type [[V_NONE]].
           description=var_str ('Lower $p_T$-cut-off for the POWHEG ' // &
           'hardest emission.'))
     call var_list%append_real (var_str ("powheg_lambda"), &
-          LAMBDA_QCD_REF, intrinsic = .true., &
+          0._default, intrinsic = .true., &
           description=var_str ('Reference scale of the $\alpha_s$ evolution ' // &
-          'in the POWHEG matching algorithm.'))
+          'in the POWHEG matching algorithm. Per default we use ' // &
+          '$\Lambda^{n_f=5}_{\overline{MS}}$.' ))
     call var_list%append_log (var_str ("?powheg_test_sudakov"), &
           .false., intrinsic = .true., &
           description=var_str ('Performs an internal consistency check ' // &

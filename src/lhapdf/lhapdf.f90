@@ -2,7 +2,7 @@
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2022 by 
+! Copyright (C) 1999-2022 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -12,13 +12,13 @@
 !     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -34,7 +34,7 @@ module lhapdf
 
   implicit none
   private
-  
+
   ! Public types
   public :: lhapdf_pdf_t
 
@@ -61,10 +61,10 @@ module lhapdf
   end type lhapdf_pdf_t
 
   ! Interface for generic operators
-  
+
   interface
      function lhapdf_init_pdf (setname, imem) bind (C) result (pdf)
-       import       
+       import
        integer(c_int), intent(in), value :: imem
        character(len=1, kind=c_char), dimension(*), intent(in) :: setname
        type(c_ptr) :: pdf
@@ -118,7 +118,7 @@ module lhapdf
      end function lhapdf_has_photon
   end interface
 
-  interface 
+  interface
      subroutine lhapdf_evolvepdfm (pdf, x, q, ff) bind (C)
        import
        type(c_ptr), intent(in), value :: pdf
@@ -157,7 +157,7 @@ module lhapdf
   end interface
 
   interface
-     function lhapdf_numpdfm (pdf) bind (C) result (numpdf) 
+     function lhapdf_numpdfm (pdf) bind (C) result (numpdf)
        import
        type(c_ptr), intent(in), value :: pdf
        integer(c_int) :: numpdf
@@ -198,35 +198,35 @@ contains
   end function lhapdf_is_associated
 
   function lhapdf_getxmin (pdf) result (xmin)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     real(double) :: xmin
     xmin = lhapdf_pdf_getxmin (pdf%cptr)
   end function lhapdf_getxmin
- 
+
   function lhapdf_getxmax (pdf) result (xmax)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     real(double) :: xmax
     xmax = lhapdf_pdf_getxmax (pdf%cptr)
   end function lhapdf_getxmax
- 
+
   function lhapdf_getq2min (pdf) result (q2min)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     real(double) :: q2min
     q2min = lhapdf_pdf_getq2min (pdf%cptr)
   end function lhapdf_getq2min
- 
+
   function lhapdf_getq2max (pdf) result (q2max)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     real(double) :: q2max
     q2max = lhapdf_pdf_getq2max (pdf%cptr)
   end function lhapdf_getq2max
- 
+
   function lhapdf_hasphoton (pdf) result (flag)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     logical :: flag
     flag = lhapdf_has_photon (pdf%cptr)
   end function lhapdf_hasphoton
- 
+
   subroutine lhapdf_evolve_pdfm (pdf, x, q, ff)
     class(lhapdf_pdf_t), intent(inout) :: pdf
     real(double), intent(in) :: x, q
@@ -236,7 +236,7 @@ contains
     c_q = q
     call lhapdf_evolvepdfm (pdf%cptr, c_x, c_q, ff)
   end subroutine lhapdf_evolve_pdfm
- 
+
   subroutine lhapdf_evolve_pdfphotonm (pdf, x, q, ff, fphot)
     class(lhapdf_pdf_t), intent(inout) :: pdf
     real(double), intent(in) :: x, q
@@ -248,7 +248,7 @@ contains
     call lhapdf_evolvepdfphotonm &
          (pdf%cptr, c_x, c_q, ff, fphot)
   end subroutine lhapdf_evolve_pdfphotonm
-       
+
   subroutine lhapdf_evolve_pdfpm (pdf, x, q, s, scheme, ff)
     class(lhapdf_pdf_t), intent(inout) :: pdf
     real(double), intent(in) :: x, q, s
@@ -263,22 +263,22 @@ contains
     call lhapdf_evolvepdfpm (pdf%cptr, &
          c_x, c_q, c_s, c_scheme, ff)
   end subroutine lhapdf_evolve_pdfpm
- 
+
   function lhapdf_get_qmass (pdf, nf) result (mass)
-    class(lhapdf_pdf_t), intent(inout) :: pdf
+    class(lhapdf_pdf_t), intent(in) :: pdf
     integer, intent(in) :: nf
     real(double) :: mass
     integer(c_int) :: c_nf
     c_nf = nf
     mass = lhapdf_getqmass (pdf%cptr, c_nf)
   end function lhapdf_get_qmass
- 
+
   function lhapdf_num_pdfm (pdf) result (numpdf)
     class(lhapdf_pdf_t), intent(inout) :: pdf
     integer :: numpdf
     numpdf = lhapdf_numpdfm (pdf%cptr)
   end function lhapdf_num_pdfm
- 
+
   function lhapdf_alphas_pdf (pdf, q) result (as)
     class(lhapdf_pdf_t), intent(in), target :: pdf
     real(double), intent(in) :: q

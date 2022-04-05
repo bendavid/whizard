@@ -356,7 +356,7 @@ Reset to initial state, i.e., mark the [[subevt]] as invalid.
 <<Subevt expr: sub interfaces>>=
     module subroutine subevt_expr_reset_contents (expr)
       class(subevt_expr_t), intent(inout) :: expr
-    end subroutine subevt_expr_reset_contents  
+    end subroutine subevt_expr_reset_contents
 <<Subevt expr: procedures>>=
   module subroutine subevt_expr_reset_contents (expr)
     class(subevt_expr_t), intent(inout) :: expr
@@ -449,7 +449,7 @@ Note: the [[prefix]] argument is declared in the [[write]] method of the
 [[subevt_t]] base type.  Here, it is unused.
 <<Subevt expr: parton expr: TBP>>=
   procedure :: write => parton_expr_write
-<<Subevt expr: sub interfaces>>=  
+<<Subevt expr: sub interfaces>>=
     module subroutine parton_expr_write (object, unit, prefix, pacified)
       class(parton_expr_t), intent(in) :: object
       integer, intent(in), optional :: unit
@@ -519,7 +519,7 @@ no expression.
 <<Subevt expr: sub interfaces>>=
     module subroutine parton_expr_setup_scale (expr, ef_scale)
       class(parton_expr_t), intent(inout), target :: expr
-      class(expr_factory_t), intent(in) :: ef_scale   
+      class(expr_factory_t), intent(in) :: ef_scale
     end subroutine parton_expr_setup_scale
     module subroutine parton_expr_setup_fac_scale (expr, ef_fac_scale)
       class(parton_expr_t), intent(inout), target :: expr
@@ -11729,7 +11729,7 @@ module pcm
   use phs_fks, only: phs_fks_config_t, get_filtered_resonance_histories
   use dispatch_phase_space, only: dispatch_phs
   use real_subtraction, only: real_subtraction_t, soft_mismatch_t
-  use real_subtraction, only: FIXED_ORDER_EVENTS, POWHEG
+  use real_subtraction, only: INTEGRATION, FIXED_ORDER_EVENTS
   use real_subtraction, only: real_partition_t, powheg_damping_simple_t
   use real_subtraction, only: real_partition_fixed_order_t
   use virtual, only: virtual_t
@@ -13939,20 +13939,7 @@ object and the squared matrix-element collector.
     pcm_work%real_sub%purpose = FIXED_ORDER_EVENTS
   end subroutine pcm_nlo_workspace_set_fixed_order_event_mode
 
-<<PCM: pcm instance: TBP>>=
-  procedure :: set_powheg_mode => pcm_nlo_workspace_set_powheg_mode
-<<PCM: sub interfaces>>=
-    module subroutine pcm_nlo_workspace_set_powheg_mode (pcm_work)
-      class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
-    end subroutine pcm_nlo_workspace_set_powheg_mode
-<<PCM: procedures>>=
-  module subroutine pcm_nlo_workspace_set_powheg_mode (pcm_work)
-    class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
-    pcm_work%real_sub%purpose = POWHEG
-  end subroutine pcm_nlo_workspace_set_powheg_mode
-
 @ %def pcm_nlo_workspace_set_fixed_order_event_mode
-@ %def pcm_nlo_workspace_set_powheg_mode
 @
 <<PCM: pcm instance: TBP>>=
   procedure :: init_soft_mismatch => pcm_nlo_workspace_init_soft_mismatch
@@ -14054,6 +14041,47 @@ object and the squared matrix-element collector.
   end function pcm_nlo_workspace_is_nlo
 
 @ %def pcm_nlo_workspace_is_nlo
+@ This routine modifies the kinematic factors applied to the real matrix element
+for use with POWHEG matching. We need to divide the real matrix element by [[xi_max]] to
+cancel a factor of [[xi_max]] applied in [[apply_kinematic_factors_radiation]].
+It comes from the fact that we sample $\tilde\xi \in [0,1]$ when integrating
+but $\xi \in [p_T^2,\xi_\text{max}]$ for POWHEG matching.
+Thus, we are taking into account that $d\xi = d\tilde\xi
+\frac{\xi}{\tilde\xi} = d\tilde\xi \xi_\text{max}$.
+Additionally, we need to cancel the Jacobian from the random number mapping.
+We only want the physical part of the Jacobian in our Sudakov splitting function.
+Furthermore, the real matrix element lacks its flux factor
+$\frac{1}{2 \hat s_{\mathcal{R}}}$ and the real Jacobian lacks a factor of
+$\frac{1}{1-\xi}$. Together, this is a factor of $\frac{1}{2 \hat s_{\mathcal{B}}}$,
+i.e. the same as the flux factor of the Born matrix element. We do not correct
+any of both here, as only the ratio of both will be relevant for the Sudakov.
+<<PCM: pcm instance: TBP>>=
+procedure :: powheg_kinematic_factors_real => &
+     pcm_nlo_workspace_powheg_kinematic_factors_real
+<<PCM: sub interfaces>>=
+    module function pcm_nlo_workspace_powheg_kinematic_factors_real &
+         (pcm_work, sqme_real, alr) result (sqme_real_corr)
+      real(default) :: sqme_real_corr
+      class(pcm_nlo_workspace_t), intent(in) :: pcm_work
+      real(default), intent(in) :: sqme_real
+      integer, intent(in) :: alr
+    end function pcm_nlo_workspace_powheg_kinematic_factors_real
+<<PCM: procedures>>=
+  module function pcm_nlo_workspace_powheg_kinematic_factors_real &
+       (pcm_work, sqme_real, alr) result (sqme_real_corr)
+    real(default) :: sqme_real_corr
+    class(pcm_nlo_workspace_t), intent(in) :: pcm_work
+    real(default), intent(in) :: sqme_real
+    integer, intent(in) :: alr
+    real(default) :: xi_max, jac_rand
+    integer :: i_phs
+    xi_max = pcm_work%get_xi_max (alr)
+    i_phs = pcm_work%real_kinematics%alr_to_i_phs (alr)
+    jac_rand = pcm_work%real_kinematics%jac_rand (i_phs)
+    sqme_real_corr = sqme_real / xi_max / jac_rand
+  end function pcm_nlo_workspace_powheg_kinematic_factors_real
+
+@ %def pcm_nlo_workspace_powheg_kinematic_factors_real
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Kinematics instance}
@@ -14304,7 +14332,7 @@ hence [[pcm]] is intent(inout).  This should be moved elsewhere, so
     module subroutine kinematics_set_threshold (kin, factorization_mode)
       class(kinematics_t), intent(inout) :: kin
       integer, intent(in) :: factorization_mode
-    end subroutine kinematics_set_threshold  
+    end subroutine kinematics_set_threshold
 <<Kinematics: procedures>>=
   module subroutine kinematics_set_threshold (kin, factorization_mode)
     class(kinematics_t), intent(inout) :: kin
@@ -14600,7 +14628,7 @@ chain, however.)
     module function kinematics_get_boost_to_lab (kin) result (lt)
       type(lorentz_transformation_t) :: lt
       class(kinematics_t), intent(in) :: kin
-    end function kinematics_get_boost_to_lab  
+    end function kinematics_get_boost_to_lab
 <<Kinematics: procedures>>=
   module function kinematics_get_boost_to_lab (kin) result (lt)
     type(lorentz_transformation_t) :: lt
@@ -14731,7 +14759,7 @@ evaluating the chain twice via different pointers to the same target.
       real(default), intent(in) :: fac_scale
       logical, intent(in), optional :: negative_sf
       class(sf_rescale_t), intent(inout), optional :: sf_rescale
-    end subroutine kinematics_evaluate_sf_chain  
+    end subroutine kinematics_evaluate_sf_chain
 <<Kinematics: procedures>>=
   module subroutine kinematics_evaluate_sf_chain &
        (k, fac_scale, negative_sf, sf_rescale)
@@ -14754,7 +14782,7 @@ current [[sf_chain]] to their source.  This is a side effect.
 <<Kinematics: sub interfaces>>=
     module subroutine kinematics_return_beam_momenta (k)
       class(kinematics_t), intent(in) :: k
-    end subroutine kinematics_return_beam_momenta  
+    end subroutine kinematics_return_beam_momenta
 <<Kinematics: procedures>>=
   module subroutine kinematics_return_beam_momenta (k)
     class(kinematics_t), intent(in) :: k
@@ -16634,7 +16662,7 @@ the threshold computation where the process is well-defined and fixed.
     integer :: i_flv, i_qn_born, i_qn_virt
     if (term%nlo_type /= NLO_VIRTUAL)  call msg_fatal ("Trying to " // &
          "evaluate virtual matrix element with unsuited term_instance.")
-    if (debug2_active (D_VIRTUAL)) then 
+    if (debug2_active (D_VIRTUAL)) then
        call msg_debug2 &
             (D_VIRTUAL, "Evaluating virtual-subtracted matrix elements")
        print *, 'ren_scale: ', term%get_ren_scale ()

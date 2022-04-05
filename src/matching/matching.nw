@@ -1574,8 +1574,6 @@ module powheg_matching
 
 <<POWHEG matching: public>>
 
-<<POWHEG matching: parameters>>
-
 <<POWHEG matching: types>>
 
 <<POWHEG matching: interfaces>>
@@ -1604,10 +1602,10 @@ submodule (powheg_matching) powheg_matching_s
   use string_utils, only: str
   use numeric_utils
   use os_interface, only: os_file_exist
-  use physics_defs, only: CA, BORN, NLO_REAL
+  use physics_defs, only: CA, BORN, NLO_REAL, MZ_REF
   use pdg_arrays, only: is_gluon, is_quark
   use sf_lhapdf, only:  alpha_qcd_lhapdf_t
-  use sm_physics, only: Li2
+  use sm_physics, only: Li2, coeff_b0, lambda_qcd
   use subevents, only: PRT_INCOMING, PRT_OUTGOING
   use colors
   use process_config, only: COMP_REAL_FIN
@@ -1623,9 +1621,10 @@ end submodule powheg_matching_s
 @ %def powheg_matching_s
 @
 \subsection{Base types for settings and data}
-[[lambda]] enters for now as the lowest scale
-$2 \Lambda^(5)_{\bar{\text{MS}}}$ where the radiation
-$\alpha_s^\text{rad}$ is still larger than the true $\alpha_s$.
+[[lambda]] is the lowest scale $\Lambda^(5)_{\bar{\text{MS}}}$
+where the radiation $\alpha_s^\text{rad}$ is still larger than
+the true $\alpha_s$. We relate $\alpha_s^\text{rad}$ and
+$\alpha_s^\text{true}$ at the scale $2\Lambda^(5)_{\bar{\text{MS}}}$.
 <<POWHEG matching: public>>=
   public :: powheg_settings_t
 <<POWHEG matching: types>>=
@@ -1731,13 +1730,13 @@ $\alpha_s^\text{rad}$ is still larger than the true $\alpha_s$.
 
 @ %def radiation_write
 @ [[lambda2_gen]] is the scale used in the (log integrated) upper bounding
-functions. It is not equivalent to [[lambda]] which is the reference
+functions. It is not equivalent to [[lambda5MSB]] which is a reference
 scale for the $\alpha_s$ evolution.
 <<POWHEG matching: public>>=
   public :: process_deps_t
 <<POWHEG matching: types>>=
   type :: process_deps_t
-     real(default) :: lambda2_gen, sqrts
+     real(default) :: lambda2_gen, lambda5MSB, sqrts
      integer :: n_alr
      integer :: alpha_power, alphas_power
      logical :: lab_is_cm = .true.
@@ -1768,6 +1767,8 @@ scale for the $\alpha_s$ evolution.
     write (u, "(1X,A)") "Process dependencies:"
     write (u, "(3X,A," // FMT_19 // ")") "lambda2_gen = ", &
          process_deps%lambda2_gen
+    write (u, "(3X,A," // FMT_19 // ")") "lambda5MSB = ", &
+         process_deps%lambda5MSB
     write (u, "(3X,A, I12)") "n_alr = ", process_deps%n_alr
     write (u, "(3X,A, L12)") "lab_is_cm = ", process_deps%lab_is_cm
     write (u, "(3X,A, I10)") "alpha_power = ", process_deps%alpha_power
@@ -1885,13 +1886,10 @@ scale for the $\alpha_s$ evolution.
 <<POWHEG matching: types>>=
   type :: veto_counter_t
     integer :: n_ubf = 0
-    integer :: n_first_fail = 0
-    integer :: n_alpha_s = 0
     integer :: n_xi_max = 0
     integer :: n_norm = 0
     integer :: n_sqme = 0
     integer :: n_veto_ubf = 0
-    integer :: n_veto_alpha_s = 0
     integer :: n_veto_xi_max = 0
     integer :: n_veto_norm = 0
     integer :: n_veto_sqme = 0
@@ -1918,37 +1916,6 @@ scale for the $\alpha_s$ evolution.
   end subroutine veto_counter_record_ubf
 
 @ %def veto_counter_record_ubf
-@
-<<POWHEG matching: veto counter: TBP>>=
-  procedure :: record_first_fail => veto_counter_record_first_fail
-<<POWHEG matching: sub interfaces>>=
-    module subroutine veto_counter_record_first_fail (counter)
-      class(veto_counter_t), intent(inout) :: counter
-    end subroutine veto_counter_record_first_fail  
-<<POWHEG matching: procedures>>=
-  module subroutine veto_counter_record_first_fail (counter)
-    class(veto_counter_t), intent(inout) :: counter
-    counter%n_first_fail = counter%n_first_fail + 1
-  end subroutine veto_counter_record_first_fail
-
-@ %def veto_counter_record_first_fail
-@
-<<POWHEG matching: veto counter: TBP>>=
-  procedure :: record_alpha_s => veto_counter_record_alpha_s
-<<POWHEG matching: sub interfaces>>=
-    module subroutine veto_counter_record_alpha_s (counter, vetoed)
-      class(veto_counter_t), intent(inout) :: counter
-      logical, intent(in) :: vetoed
-    end subroutine veto_counter_record_alpha_s
-<<POWHEG matching: procedures>>=
-  module subroutine veto_counter_record_alpha_s (counter, vetoed)
-    class(veto_counter_t), intent(inout) :: counter
-    logical, intent(in) :: vetoed
-    counter%n_alpha_s = counter%n_alpha_s + 1
-    if (vetoed) counter%n_veto_alpha_s = counter%n_veto_alpha_s + 1
-  end subroutine veto_counter_record_alpha_s
-
-@ %def veto_counter_record_alpha_s
 @
 <<POWHEG matching: veto counter: TBP>>=
   procedure :: record_xi_max => veto_counter_record_xi_max
@@ -2036,16 +2003,9 @@ events have been vetoed in which step of the sudakov veto algorithm.
             one * counter%n_veto_ubf / counter%n_ubf * 100, "%"
     call write_separator (u)
 
-    write (u, "(A29,I10)") "Nr. of alpha_s-veto calls: ", counter%n_alpha_s
-    write (u, "(A29,I10)") "Nr. of alpha_s-vetos: ", counter%n_veto_alpha_s
-    if (counter%n_alpha_s > 0) &
-       write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
-            one * counter%n_veto_alpha_s / counter%n_alpha_s * 100, "%"
-    call write_separator (u)
-
     write (u, "(A29,I10)") "Nr. of xi_max-veto calls: ", counter%n_xi_max
     write (u, "(A29,I10)") "Nr. of xi_max-vetos: ", counter%n_veto_xi_max
-    if (counter%n_alpha_s > 0) &
+    if (counter%n_xi_max > 0) &
        write (u, "(A29,F9.2,A1)") "Fraction of vetoed points: ", &
             one * counter%n_veto_xi_max / counter%n_xi_max * 100, "%"
     call write_separator (u)
@@ -2213,7 +2173,7 @@ thus $\frac 1 N U(\xi,y)$
 @ Similar to the [[upper_bound_func]], this is
 $-\frac 1 N \log\Delta(p_T^2)$ where
 \begin{equation}
-  \Delta^{(U)} (p_T) = \exp\left[-\int U(\xi,y)\theta(k_T - p_T) \; d\xi \, dy \, d\phi \right]
+  \Delta^{(U)} (p_T) = \exp\left[-N \int U(\xi,y)\theta(k_T - p_T) \; d\xi \, dy \, d\phi \right]
 \end{equation}
 <<POWHEG matching: sudakov: TBP>>=
   procedure (sudakov_log_integrated_ubf), deferred :: log_integrated_ubf
@@ -2321,22 +2281,23 @@ improved version.
 <<POWHEG matching: sudakov: TBP>>=
   procedure :: alpha_s => sudakov_alpha_s
 <<POWHEG matching: sub interfaces>>=
-    module function sudakov_alpha_s (sudakov, kT2, use_correct) result (a)
+    module function sudakov_alpha_s (sudakov, kT2, use_correct, improve_nll) result (a)
       real(default) :: a
       class(sudakov_t), intent(in) :: sudakov
       real(default), intent(in) :: kT2
-      logical, intent(in), optional :: use_correct
+      logical, intent(in), optional :: use_correct, improve_nll
     end function sudakov_alpha_s
 <<POWHEG matching: procedures>>=
-  module function sudakov_alpha_s (sudakov, kT2, use_correct) result (a)
+  module function sudakov_alpha_s (sudakov, kT2, use_correct, improve_nll) result (a)
     real(default) :: a
     class(sudakov_t), intent(in) :: sudakov
     real(default), intent(in) :: kT2
-    logical, intent(in), optional :: use_correct
-    logical :: yorn
-    yorn = .false.; if (present (use_correct)) yorn = use_correct
-    if (yorn) then
-       a = get_alpha_s (sudakov%qcd, kT2)
+    logical, intent(in), optional :: use_correct, improve_nll
+    logical :: correct, nll
+    correct = .false.; if (present (use_correct)) correct = use_correct
+    nll = .true.; if (present(improve_nll)) nll = improve_nll
+    if (correct) then
+       a = get_alpha_s (sudakov%qcd, kT2, improve_nll_opt=nll)
     else
        a = sudakov%alpha_s_rad (kT2)
     end if
@@ -2432,14 +2393,16 @@ a sequence of veto steps to get the correct distribution.
 <<POWHEG matching: sudakov: TBP>>=
   procedure :: generate_emission => sudakov_generate_emission
 <<POWHEG matching: sub interfaces>>=
-    module subroutine sudakov_generate_emission (sudakov, r)
+    module subroutine sudakov_generate_emission (sudakov, r, r_max)
       class(sudakov_t), intent(inout) :: sudakov
       type(radiation_t), intent(inout) :: r
+      type(radiation_t), intent(in) :: r_max
     end subroutine sudakov_generate_emission
 <<POWHEG matching: procedures>>=
-  module subroutine sudakov_generate_emission (sudakov, r)
+  module subroutine sudakov_generate_emission (sudakov, r, r_max)
     class(sudakov_t), intent(inout) :: sudakov
     type(radiation_t), intent(inout) :: r
+    type(radiation_t), intent(in) :: r_max
     logical :: accepted
     sudakov%current_pt2_max = r%pt2
     if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_generate_emission")
@@ -2453,17 +2416,11 @@ a sequence of veto steps to get the correct distribution.
        if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_generate_emission: after generate_pt2")
        if (debug_on) call msg_debug2 (D_MATCHING, "sqrt (r%pt2)", sqrt (r%pt2))
        if (debug_on) call msg_debug2 (D_MATCHING, "sudakov%sum_log_rands", sudakov%sum_log_rands)
-       if (r%pt2 <= sudakov%powheg_settings%pt2_min) then
+       if (r%pt2 <= sudakov%powheg_settings%pt2_min .or. r%pt2 <= r_max%pt2) then
           exit
        end if
        accepted = sudakov%reweight_ubf (r%pt2)
        call sudakov%veto_counter%record_ubf (.not. accepted)
-       if (.not. accepted) then
-          sudakov%current_pt2_max = r%pt2
-          cycle
-       end if
-       accepted = sudakov%reweight_alpha_s (r%pt2)
-       call sudakov%veto_counter%record_alpha_s (.not. accepted)
        if (.not. accepted) then
           sudakov%current_pt2_max = r%pt2
           cycle
@@ -2652,7 +2609,7 @@ with $p_\text{T,max}^2=\xi_\text{max}^2 s$.
        kt2_max = sudakov%kt2_max ()
        kt2_maxl = kt2_max / sudakov%process_deps%lambda2_gen
        pt2l = pt2 / sudakov%process_deps%lambda2_gen
-       log_sudakov = pi / b0rad * (log (kt2_maxl) * &
+       log_sudakov = pi / b0rad () * (log (kt2_maxl) * &
             log (log (kt2_maxl) / log (pt2l)) - &
             log (kt2_max / pt2))
     else
@@ -2661,7 +2618,7 @@ with $p_\text{T,max}^2=\xi_\text{max}^2 s$.
   end function sudakov_simple_fsr_log_integrated_ubf
 
 @ %def sudakov_simple_fsr_log_integrated_ubf
-@ No further veto needed for this upper bounding function.
+@ For this upper bounding function, we just overestimated $\alpha_s$.
 <<POWHEG matching: sudakov simple fsr: TBP>>=
   procedure :: reweight_ubf => sudakov_simple_fsr_reweight_ubf
 <<POWHEG matching: sub interfaces>>=
@@ -2670,6 +2627,8 @@ with $p_\text{T,max}^2=\xi_\text{max}^2 s$.
       logical :: accepted
       class(sudakov_simple_fsr_t), intent(inout) :: sudakov
       real(default), intent(in) :: pt2
+      real(default) :: alpha_s_true, alpha_s_rad
+      logical :: alpha_s_equal
     end function sudakov_simple_fsr_reweight_ubf
 <<POWHEG matching: procedures>>=
   module function sudakov_simple_fsr_reweight_ubf &
@@ -2677,7 +2636,28 @@ with $p_\text{T,max}^2=\xi_\text{max}^2 s$.
     logical :: accepted
     class(sudakov_simple_fsr_t), intent(inout) :: sudakov
     real(default), intent(in) :: pt2
-    accepted = .true.
+    real(default) :: alpha_s_true, alpha_s_rad
+    logical :: alpha_s_equal
+    if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_simple_fsr_reweight_ubf")
+    alpha_s_true = sudakov%alpha_s (pt2, use_correct = .true.)
+    alpha_s_rad = sudakov%alpha_s (pt2, use_correct = .false.)
+    call sudakov%rng%generate (sudakov%random)
+    alpha_s_equal = nearly_equal (alpha_s_true, alpha_s_rad)
+    accepted = alpha_s_equal .or. sudakov%random < alpha_s_true / alpha_s_rad
+    if (debug2_active (D_MATCHING)) then
+       print *, '  sqrt(pt2) =    ', sqrt(pt2)
+       print *, '  alpha_s_true =    ', alpha_s_true
+       print *, ' sudakov%process_deps%lambda2_gen =    ', &
+            sudakov%process_deps%lambda2_gen
+       print *, '  alpha_s_rad =    ', alpha_s_rad
+       print *, '  sudakov%random =    ', sudakov%random
+       print *, '  accepted =    ', accepted
+       if (alpha_s_rad < alpha_s_true .and. .not. alpha_s_equal) then
+          call msg_fatal ("sudakov_simple_fsr_reweight_ubf: &
+               &This should never happen. &
+               &Have you chosen a running alpha_s?")
+       end if
+    end if
   end function sudakov_simple_fsr_reweight_ubf
 
 @ %def sudakov_simple_fsr_reweight_ubf
@@ -2847,15 +2827,15 @@ for the transverse momentum $p_{T,\text{min}} > \Lambda =$ [[lambda2_gen]].
     real(default) :: log_sudakov
     class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
     real(default), intent(in) :: pt2
-    real(default) :: k_max2, Lambda2
+    real(default) :: kt2_max, Lambda2
     logical :: within_boundaries
-    k_max2 = sudakov%kt2_max ()
+    kt2_max = sudakov%kt2_max ()
     within_boundaries = pt2 >= sudakov%powheg_settings%pt2_min &
-         .and. pt2 <= k_max2
+         .and. pt2 <= kt2_max
     if (within_boundaries) then
        Lambda2 = sudakov%process_deps%lambda2_gen
-       log_sudakov = pi / b0rad * ( log (4 * k_max2 / Lambda2) * &
-            log (log (k_max2/Lambda2) / log (pt2/Lambda2)) - log(k_max2/pt2) )
+       log_sudakov = pi / b0rad () * ( log (4 * kt2_max / Lambda2) * &
+            log (log (kt2_max/Lambda2) / log (pt2/Lambda2)) - log(kt2_max/pt2) )
     else
        log_sudakov = 0
     end if
@@ -2870,6 +2850,7 @@ implemented in [[sudakov_eeqq_fsr_log_integrated_ubf]], we overestimated
   \leq \log \left[ \frac{4 k_\text{max}^2}{k_T^2} \right].
 \end{equation}
 We correct for this in this veto step.
+Additionally, we correct for overestimating $\alpha_s$.
 <<POWHEG matching: sudakov eeqq fsr: TBP>>=
   procedure :: reweight_ubf => sudakov_eeqq_fsr_reweight_ubf
 <<POWHEG matching: sub interfaces>>=
@@ -2885,11 +2866,29 @@ We correct for this in this veto step.
     class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
     real(default), intent(in) :: pt2
     real(default) :: log_bound, k_max2
+    real(default) :: alpha_s_true, alpha_s_rad
+    alpha_s_true = sudakov%alpha_s (pt2, use_correct = .true.)
+    alpha_s_rad = sudakov%alpha_s (pt2, use_correct = .false.)
     k_max2 = sudakov%kt2_max ()
     log_bound = log((1 + sqrt(1 - (pt2/k_max2))) &
                   / (1 - sqrt(1 - (pt2/k_max2))))
     call sudakov%rng%generate (sudakov%random)
-    accepted = sudakov%random * log( 4 * k_max2 / pt2 ) <= log_bound
+    accepted = sudakov%random * log( 4 * k_max2 / pt2 ) * alpha_s_rad &
+         <= log_bound * alpha_s_true
+    if (debug2_active (D_MATCHING)) then
+       print *, '  sqrt(pt2) =    ', sqrt(pt2)
+       print *, '  alpha_s_true =    ', alpha_s_true
+       print *, ' sudakov%process_deps%lambda2_gen =    ', &
+            sudakov%process_deps%lambda2_gen
+       print *, '  alpha_s_rad =    ', alpha_s_rad
+       print *, '  sudakov%random =    ', sudakov%random
+       print *, '  accepted =    ', accepted
+       if (log( 4 * k_max2 / pt2 ) * alpha_s_rad < log_bound * alpha_s_true) then
+          call msg_fatal ("sudakov_eeqq_fsr_reweight_ubf: &
+               &This should never happen. &
+               &Have you chosen a running alpha_s?")
+       end if
+    end if
   end function sudakov_eeqq_fsr_reweight_ubf
 
 @ %def sudakov_eeqq_fsr_reweight_ubf
@@ -3284,7 +3283,7 @@ for $a > 0$.
   end function sudakov_massive_fsr_log_integrated_ubf
 
 @ %def sudakov_massive_fsr_log_integrated_ubf
-@ No further ubf veto needed for now.
+@ For this UBF, we just overestimated $\alpha_s$.
 <<POWHEG matching: sudakov massive fsr: TBP>>=
   procedure :: reweight_ubf => sudakov_massive_fsr_reweight_ubf
 <<POWHEG matching: sub interfaces>>=
@@ -3300,7 +3299,28 @@ for $a > 0$.
     logical :: accepted
     class(sudakov_massive_fsr_t), intent(inout) :: sudakov
     real(default), intent(in) :: pt2
-    accepted = .true.
+    real(default) :: alpha_s_true, alpha_s_rad
+    logical :: alpha_s_equal
+    if (debug_on) call msg_debug2 (D_MATCHING, "sudakov_massive_fsr_reweight_ubf")
+    alpha_s_true = sudakov%alpha_s (pt2, use_correct = .true.)
+    alpha_s_rad = sudakov%alpha_s (pt2, use_correct = .false.)
+    call sudakov%rng%generate (sudakov%random)
+    alpha_s_equal = nearly_equal (alpha_s_true, alpha_s_rad)
+    accepted = alpha_s_equal .or. sudakov%random < alpha_s_true / alpha_s_rad
+    if (debug2_active (D_MATCHING)) then
+       print *, '  sqrt(pt2) =    ', sqrt(pt2)
+       print *, '  alpha_s_true =    ', alpha_s_true
+       print *, ' sudakov%process_deps%lambda2_gen =    ', &
+            sudakov%process_deps%lambda2_gen
+       print *, '  alpha_s_rad =    ', alpha_s_rad
+       print *, '  sudakov%random =    ', sudakov%random
+       print *, '  accepted =    ', accepted
+       if (alpha_s_rad < alpha_s_true .and. .not. alpha_s_equal) then
+          call msg_fatal ("sudakov_massive_fsr_reweight_ubf: &
+               &This should never happen. &
+               &Have you chosen a running alpha_s?")
+       end if
+    end if
   end function sudakov_massive_fsr_reweight_ubf
 
 @ %def sudakov_massive_fsr_reweight_ubf
@@ -3358,11 +3378,13 @@ and eq. (\ref{GMinusMassiveFSR}). Cannot be evaluated for $a = 0$.
 @
 \subsubsection{ISR}
 This is the Sudakov for ISR. This corresponds to [[1002.2581]], App. D.
+The [[ubf_variant]] determines which [[log_integrated_ubf]] is used.
 <<POWHEG matching: public>>=
   public :: sudakov_isr_t
 <<POWHEG matching: types>>=
   type, extends (sudakov_t) :: sudakov_isr_t
     real(default) :: xi_max_extended = 1._default
+    integer :: ubf_variant = 2
   contains
    <<POWHEG matching: sudakov isr: TBP>>
   end type sudakov_isr_t
@@ -3431,7 +3453,7 @@ singularities to both beam axes $y \to \pm 1$.
   end function sudakov_isr_upper_bound_func
 
 @ %def sudakov_isr_upper_bound_func
-@ This is eq. (D.14) in [1002.2581]. It is similar to the eeqq case
+@ This is eq. (D.14) and (D.18) in [1002.2581]. It is similar to the eeqq case
 with the only difference beeing that the first log here includes both,
 $k^2_\text{T, max}$ and $s_b$ via $q^2$.
 <<POWHEG matching: sudakov isr: TBP>>=
@@ -3449,17 +3471,37 @@ $k^2_\text{T, max}$ and $s_b$ via $q^2$.
     real(default) :: log_sudakov
     class(sudakov_isr_t), intent(in) :: sudakov
     real(default), intent(in) :: pt2
-    real(default) :: kT_max2, Lambda2, s_hat, q2
+    real(default) :: kt2_max, Lambda2, s_hat, q2
     logical :: within_boundaries
-    kT_max2 = sudakov%kt2_max ()
+    kt2_max = sudakov%kt2_max ()
     s_hat = sudakov%event_deps%s_hat
-    q2 = kT_max2 + s_hat
+    q2 = kt2_max + s_hat
+    Lambda2 = sudakov%process_deps%lambda2_gen
     within_boundaries = pt2 >= sudakov%powheg_settings%pt2_min &
-         .and. pt2 <= kT_max2
+         .and. pt2 <= kt2_max
     if (within_boundaries) then
-       Lambda2 = sudakov%process_deps%lambda2_gen
-       log_sudakov = pi / b0rad * ( log (q2 / Lambda2) * &
-            log (log (kT_max2/Lambda2) / log (pt2/Lambda2)) - log(kT_max2/pt2) )
+       if (sudakov%ubf_variant == 1) then
+          log_sudakov = pi / b0rad () * ( log (q2/Lambda2) * &
+               log (log (kt2_max/Lambda2) / log (pt2/Lambda2)) - log (kt2_max/pt2) )
+       elseif (sudakov%ubf_variant == 2) then
+          if (pt2 < s_hat) then
+             if (s_hat < kt2_max) then
+                log_sudakov = pi / b0rad () * &
+                     ( log (two * s_hat / Lambda2) &
+                     * log (log (s_hat / Lambda2) / log (pt2 / Lambda2)) &
+                     - log (s_hat / pt2) &
+                     + log (two) * log ( log (kt2_max / Lambda2) / log (s_hat / Lambda2) ))
+             else
+                log_sudakov = pi / b0rad () * &
+                     (log (two * s_hat / Lambda2) &
+                     * log (log (kt2_max / Lambda2) / log (pt2 / Lambda2)) &
+                     - log (kt2_max / pt2) )
+             end if
+          else
+             log_sudakov = pi / b0rad () * &
+                  (log (two) * log (log (kt2_max / Lambda2) / log (pt2 / Lambda2)))
+          end if
+       end if
     else
        log_sudakov = 0
     end if
@@ -3483,6 +3525,7 @@ with
   \quad \text{and} \quad q^2 = k^2_{T, \text{max}} + s_b.
 \end{equation}
 We correct for this in this veto step.
+Additionally, we correct for overestimating $\alpha_s$.
 <<POWHEG matching: sudakov isr: TBP>>=
   procedure :: reweight_ubf => sudakov_isr_reweight_ubf
 <<POWHEG matching: sub interfaces>>=
@@ -3497,6 +3540,9 @@ We correct for this in this veto step.
     class(sudakov_isr_t), intent(inout) :: sudakov
     real(default), intent(in) :: pt2
     real(default) :: log_bound, kT_max2, s_hat, s_had, rho, x_plus, x_minus, q2
+    real(default) :: alpha_s_true, alpha_s_rad
+    alpha_s_true = sudakov%alpha_s (pt2, use_correct = .true.)
+    alpha_s_rad = sudakov%alpha_s (pt2, use_correct = .false.)
     s_hat = sudakov%event_deps%s_hat
     s_had = sudakov%event_deps%s_had
     rho = s_hat / s_had
@@ -3505,10 +3551,38 @@ We correct for this in this veto step.
     x_plus  = ( sqrt( 1 + pt2 / s_hat ) + sqrt( pt2 / s_hat ) )**2
     x_minus = ( sqrt( 1 + pt2 / s_hat ) - sqrt( pt2 / s_hat ) )**2
     !!! These are not the ISR x values!
+    call sudakov%rng%generate (sudakov%random)
     log_bound = log ((sqrt( x_plus - rho ) + sqrt( x_minus - rho )) &
                    / (sqrt( x_plus - rho ) - sqrt( x_minus - rho )))
-    call sudakov%rng%generate (sudakov%random)
-    accepted = sudakov%random * log( q2 / pt2 ) <= 2 * log_bound
+    if (sudakov%ubf_variant == 1) then
+       accepted = sudakov%random * log( q2 / pt2 ) * alpha_s_rad &
+            <= 2 * log_bound * alpha_s_true
+    elseif (sudakov%ubf_variant == 2) then
+       if (pt2 < s_hat) then
+          accepted = sudakov%random * log( two * s_hat / pt2 ) * alpha_s_rad &
+               <= 2 * log_bound * alpha_s_true
+       else
+          accepted = sudakov%random * log( two ) * alpha_s_rad &
+               <= 2 * log_bound * alpha_s_true
+       end if
+    else
+       accepted = .false.
+       call msg_error("sudakov variant not implemented")
+    end if
+    if (debug2_active (D_MATCHING)) then
+       print *, 'sudakov_isr_reweight_ubf:'
+       print *, '  sqrt(pt2) =    ', sqrt(pt2)
+       print *, '  alpha_s_true =    ', alpha_s_true
+       print *, ' sudakov%process_deps%lambda2_gen =    ', &
+            sudakov%process_deps%lambda2_gen
+       print *, '  alpha_s_rad =    ', alpha_s_rad
+       print *, '  sudakov%random =    ', sudakov%random
+       print *, '  accepted =    ', accepted
+       if (log( q2 / pt2 ) * alpha_s_rad < 2 * log_bound * alpha_s_true) then
+          call msg_fatal ("sudakov_isr_reweight_ubf: This should never happen. &
+               &Have you chosen a running alpha_s?")
+       end if
+    end if
   end function sudakov_isr_reweight_ubf
 
 @ %def sudakov_isr_reweight_ubf
@@ -3529,6 +3603,12 @@ We veto too large $\xi$ in this veto step.
     class(sudakov_isr_t), intent(in) :: sudakov
     real(default), intent(in) :: xi
     accepted = xi < sqrt (sudakov%xi2_max)
+    if (debug2_active (D_MATCHING)) then
+       print *, 'sudakov_isr_reweight_xi_max:'
+       print *, '  xi =    ', xi
+       print *, '  xi_max =    ', sqrt (sudakov%xi2_max)
+       print *, '  xi accepted =    ', accepted
+    end if
   end function sudakov_isr_reweight_xi_max
 
 @ %def sudakov_isr_reweight_xi_max
@@ -3554,8 +3634,8 @@ in [[sudakov_isr_reweight_xi_max]].
     real(default) :: s_hat, s_had
     s_hat = sudakov%event_deps%s_hat
     s_had = sudakov%event_deps%s_had
-     sudakov%xi_max_extended = one - s_hat / s_had
-   end subroutine sudakov_isr_compute_xi_max_extended
+    sudakov%xi_max_extended = one - s_hat / s_had
+  end subroutine sudakov_isr_compute_xi_max_extended
 
 @ %def sudakov_isr_compute_xi_max_extended
 @ In the ISR case, we generate $\xi$ from a random number and
@@ -3625,6 +3705,7 @@ we use
 with a random number $r_x \in \text{Unif}[F(x_-),F(\rho)]
 = \text{Unif}\left[0,2 \sinh^{-1} \left( \sqrt{ \frac{x_- - \rho}{x_+ - x_-} } \right)
 \right]$.\\
+Alternatively, an implementation making extended use of rejection sampling is available.
 <<POWHEG matching: sudakov isr: TBP>>=
   procedure :: generate_xi => sudakov_isr_generate_xi
 <<POWHEG matching: sub interfaces>>=
@@ -3637,15 +3718,30 @@ with a random number $r_x \in \text{Unif}[F(x_-),F(\rho)]
     class(sudakov_isr_t), intent(inout) :: sudakov
     type(radiation_t), intent(inout) :: r
     real(default) :: s_hat, s_had, r_x, x, x_minus, x_plus, rho
+    integer :: variant = 1
+    logical :: valid
     s_hat = sudakov%event_deps%s_hat
     s_had = sudakov%event_deps%s_had
     rho = 1 - sudakov%xi_max_extended
     x_plus  = ( sqrt( 1 + r%pt2 / s_hat ) + sqrt( r%pt2 / s_hat ) )**2
     x_minus = ( sqrt( 1 + r%pt2 / s_hat ) - sqrt( r%pt2 / s_hat ) )**2
-    call sudakov%rng%generate (sudakov%random)
-    r_x = sudakov%random
-    r_x = r_x * 2 * asinh (sqrt ( (x_minus - rho) / (x_plus - x_minus) ) )
-    x = x_minus + (x_minus - x_plus) * sinh (r_x / 2)**2
+    if (variant == 1) then
+       call sudakov%rng%generate (sudakov%random)
+       r_x = sudakov%random
+       r_x = r_x * 2 * asinh (sqrt ( (x_minus - rho) / (x_plus - x_minus) ) )
+       x = x_minus + (x_minus - x_plus) * sinh (r_x / 2)**2
+    elseif (variant == 2) then
+       valid = .false.
+       do while (.not. valid)
+          if (signal_is_pending ())  return
+          call sudakov%rng%generate (sudakov%random)
+          r_x = sudakov%random
+          x = x_minus - (sqrt (x_minus - rho) * r_x)**2
+          call sudakov%rng%generate (sudakov%random)
+          r_x = sudakov%random
+          valid = r_x < sqrt ((x_plus - x_minus) / (x_plus - x))
+       end do
+    end if
     r%xi = 1 - x
   end subroutine sudakov_isr_generate_xi
 
@@ -3950,7 +4046,6 @@ Gfortran 7/8/9 bug, has to remain in the main module:
                powheg%event_deps, powheg%settings, &
                powheg%qcd, powheg%phs_fks_generator)
        end if
-
        call powheg%sudakov(alr)%s%set_i_phs (alr)
     end do
   end subroutine powheg_matching_setup_sudakovs
@@ -3994,7 +4089,6 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     type(lorentz_transformation_t) :: lt_lab_to_cms
     real(default) :: sqme_born
     real(default), dimension(2) :: x_born
-
     sqme_born = powheg%process_instance%get_sqme &
          (powheg%process_deps%i_term_born)
     x_born = powheg%phs_fks_generator%isr_kinematics%x
@@ -4047,7 +4141,8 @@ Gfortran 7/8/9 bug, has to remain in the main module:
   end subroutine powheg_matching_update_event_deps
 
 @ %def powheg_matching_update_event_deps
-@
+@ Boosts the real momenta to the LAB frame.
+ We call this only for FSR so we can take the boost from the Born term.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: boost_preal_to_lab_frame => &
        powheg_matching_boost_preal_to_lab_frame
@@ -4074,7 +4169,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
   end subroutine powheg_matching_boost_preal_to_lab_frame
 
 @ %def powheg_matching_boost_preal_to_lab_frame
-@
+@ Boosts the real momenta to the CM frame.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: boost_preal_to_cms => powheg_matching_boost_preal_to_cms
 <<POWHEG matching: sub interfaces>>=
@@ -4135,9 +4230,10 @@ but we still need to correct [[sqme_born]].
     class(powheg_matching_t), intent(inout) :: powheg
     type(radiation_t), intent(in) :: r
     integer :: emitter, n_in, i_phs, i_term_born, alphas_power, em
-    real(default) :: sqme_real_x_jacobian, sqme_born
+    real(default) :: sqme_real_x_jac, sqme_born
     real(default) :: norm, ubf, ubound, random, weight
-    real(default) :: alpha_s_kt, alpha_s_muren, muren, mufac, pt2
+    real(default) :: alpha_s_kt, alpha_s_muren, alpha_s_kt_noNLL
+    real(default) :: muren, mufac, pt2
     integer, dimension(2) :: flv_born
     real(double), dimension(-6:6) :: pdf_dbl
     real(double) :: x_dbl, q_dbl
@@ -4145,7 +4241,7 @@ but we still need to correct [[sqme_born]].
     real(default), dimension(2) :: pdf_born_mufac, pdf_born_kt
     if (debug_on) call msg_debug (D_MATCHING, "reweight_matrix_elements")
     sqme_born = powheg%event_deps%sqme_born
-    if (sqme_born == 0) then
+    if (nearly_equal(sqme_born,zero) .or. sqme_born < 0) then
        accepted = .false.
        return
     end if
@@ -4185,16 +4281,25 @@ but we still need to correct [[sqme_born]].
        norm = powheg%norm_from_xi_and_y (r)
        associate (s => powheg%sudakov(r%alr)%s)
           alpha_s_kt = s%alpha_s (r%pt2, use_correct=.true.)
+          alpha_s_kt_noNLL = s%alpha_s (r%pt2, use_correct=.true., improve_nll=.false.)
           i_term_born = powheg%process_deps%i_term_born
           muren = powheg%process_instance%term(i_term_born)%get_ren_scale ()
           mufac = powheg%process_instance%term(i_term_born)%get_fac_scale ()
-          alpha_s_muren = s%alpha_s (muren**2, use_correct=.true.)
+          alpha_s_muren = s%alpha_s (muren**2, use_correct=.true., improve_nll=.false.)
           ubf = s%upper_bound_func (r%xi, r%y, alpha_s_kt)
-          sqme_real_x_jacobian = powheg%compute_sqme_real (r%alr, sqrt(r%pt2))
 
-          !!! Correct all factors of alphas(muren) to alphas(kt).
+          sqme_real_x_jac = powheg%compute_sqme_real (r%alr, sqrt(r%pt2))
+
+          select type (pcm_work => powheg%process_instance%pcm_work)
+          class is (pcm_nlo_workspace_t)
+             sqme_real_x_jac = pcm_work%powheg_kinematic_factors_real &
+                  (sqme_real_x_jac, r%alr)
+          end select
+
+          !!! Correct all factors of alphas to the NLL-corrected alphas(kt).
           alphas_power = powheg%process_deps%alphas_power
           sqme_born = (alpha_s_kt / alpha_s_muren)**alphas_power * sqme_born
+          sqme_real_x_jac = (alpha_s_kt / alpha_s_kt_noNLL)**(alphas_power+1) * sqme_real_x_jac
 
           !!! Also correct the PDFs previously computed at mufac instead of kt
           select type (pcm => powheg%process_instance%term(i_term_born)%pcm)
@@ -4220,37 +4325,44 @@ but we still need to correct [[sqme_born]].
              end if
           end select
 
+          if (nearly_equal(sqme_born,zero) .or. sqme_born < 0) then
+             accepted = .false.
+             return
+          end if
           ubound = sqme_born * ubf * norm
-          weight = sqme_real_x_jacobian / ubound
+          weight = sqme_real_x_jac / ubound
           if (weight > 1) call s%veto_counter%record_ubf_fail()
           if (debug_active (D_MATCHING)) then
              if (weight < 0) call msg_warning ("R/B < 0!")
           end if
           accepted = random < weight
        end associate
+
        if (debug_active (D_MATCHING)) then
           print *, '  r%alr =    ',   r%alr
           print *, '  r%xi =    ', r%xi
           print *, '  r%y =    ', r%y
+          print *, '  r%phi =    ', r%phi
+          print *, '  r%pt =    ', sqrt(r%pt2)
           print *, '  emitter =    ', emitter
           print *, '  random =    ', random
-          print *, '  sqme_real_x_jacobian =    ', sqme_real_x_jacobian
           print *, '  sqme_born =    ', sqme_born
+          print *, '  sqme_real_x_jac =    ', sqme_real_x_jac
           print *, '  ubf =    ', ubf
           print *, '  norm =    ',   norm
           print *, '  ubound =    ', ubound
-          print *, '  matrix element  accepted =    ', accepted
+          print *, '  matrix element accepted =    ', accepted
        end if
     end select
   end function powheg_matching_reweight_matrix_elements
 
-@ %def powheg_matching_reweight_matrix_element
+@ %def powheg_matching_reweight_matrix_elements
 @
 \subsubsection{Generation algorithm and grid initialization}
 [[compute_sqme_real]] is the projected real matrix element
 $R_{\alpha_r} = S_{\alpha_r} R$ whereby the current $\alpha_r$ is
 implied by the [[emitter]].  Furthermore, it is multiplied by the
-Jacobian.
+real and the random number Jacobian.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: compute_sqme_real => powheg_matching_compute_sqme_real
 <<POWHEG matching: sub interfaces>>=
@@ -4275,12 +4387,8 @@ Jacobian.
     select type (pcm_work => powheg%process_instance%pcm_work)
     class is (pcm_nlo_workspace_t)
        i_phs = powheg%process_deps%alr_to_i_phs (alr)
-       i_term = powheg%process_deps%i_term_real(i_phs)
+       i_term = powheg%process_deps%i_term_real (i_phs)
        associate (instance => powheg%process_instance)
-          select type (pcm_work => instance%term(i_term)%pcm_work)
-          type is (pcm_nlo_workspace_t)
-             call pcm_work%set_powheg_mode ()
-          end select
           if (present(scale)) then
              if (.not. allocated (q)) then
                 allocate (q, source = scale)
@@ -4438,9 +4546,8 @@ because there were existing VAMP(2) and POWHEG grid files.
 Here, we veto in order to correct for
 \begin{enumerate}
   \item an overestimation of parts of the upper bounding function
-  for complicated UBFs in [[reweight_ubf]]
-  \item the usage of $\alpha_s^\text{rad}$ instead of $\alpha_s^\text{true}$
-  in [[reweight_alpha_s]]
+  for complicated UBFs in [[reweight_ubf]] as well as the usage of
+  $\alpha_s^\text{rad}$ instead of $\alpha_s^\text{true}$.
   \item the usage of [[xi_max_extended]] instead of [[xi_max]] in [[reweight_xi_max]]
   which is only non-trivial for massive FSR and ISR.
   \item using the maximum of the entire POWHEG normalization grid $N_\text{max}$
@@ -4450,13 +4557,13 @@ Here, we veto in order to correct for
   $\frac{\mathcal{R}(\xi,y) \mathcal{J}(\xi,y)}{\mathcal{B}}$.
 \end{enumerate}
 
-By keeping the radiation with the largest [[pt2]], we are effectively
-implementing the highest bid procedure.
-The loop over ALRs implemented here should instead loop over all
-radiation regions [[i_phs]] for each underlying Born flavor structure $f_b$.
-We should then pick the ALR with probability proportional to the corresponding
-$\mathcal{R}_{\alpha_r}$. The version here works only for $ee \to t \overline{t}$
-as there is just a single $f_b$ and each ALR corresponds to its own real phase space.
+By looping over all ALRs and in the end choosing the ALR with the largest [[pt2]],
+we are effectively implementing the highest bid procedure.
+To save some time generating equivalent phase spaces again and again,
+we could instead loop over all radiation regions [[i_phs]],
+take the sum of all real matrix elements in the Sudakov and in the end
+pick the ALR with probability proportional to the corresponding
+$\mathcal{R}_{\alpha_r}$. We might implement this optimization in the future.
 
 We need to compute [[xi2_max]] before [[kt2_max]] here.
 In the simple case, it is given by $\xi_\text{max} = \frac{s-M_\text{rec}^2}{s}$
@@ -4522,7 +4629,7 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
             if (debug_on) call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
             PT_EVOLUTION: do
                if (signal_is_pending ())  return
-               call sudakov%generate_emission (r)
+               call sudakov%generate_emission (r, r_max)
                if (signal_is_pending ())  return
                if (r%valid) then
                   accepted = powheg%reweight_norm (r)
@@ -4545,7 +4652,6 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
           call powheg%set_scale (r_max%pt2)
           if (present (particle_set)) then
              call powheg%build_particle_set (particle_set, &
-                  powheg%event_deps%p_born_lab%get_momenta (1), &
                   p_real_max, r_max%alr, r_max%y)
           end if
           if (present (pt2_generated)) pt2_generated = r_max%pt2
@@ -4578,19 +4684,19 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
   procedure :: build_particle_set => powheg_matching_build_particle_set
 <<POWHEG matching: sub interfaces>>=
     module subroutine powheg_matching_build_particle_set &
-         (powheg, particle_set, p_born, p_real, alr, y)
+         (powheg, particle_set, p_real, alr, y)
       class(powheg_matching_t), intent(inout) :: powheg
       type(particle_set_t), intent(inout) :: particle_set
-      type(vector4_t), dimension(:), intent(in) :: p_born, p_real
+      type(vector4_t), dimension(:), intent(in) :: p_real
       integer, intent(in) :: alr
       real(default), intent(in) :: y
     end subroutine powheg_matching_build_particle_set
 <<POWHEG matching: procedures>>=
   module subroutine powheg_matching_build_particle_set &
-       (powheg, particle_set, p_born, p_real, alr, y)
+       (powheg, particle_set, p_real, alr, y)
     class(powheg_matching_t), intent(inout) :: powheg
     type(particle_set_t), intent(inout) :: particle_set
-    type(vector4_t), dimension(:), intent(in) :: p_born, p_real
+    type(vector4_t), dimension(:), intent(in) :: p_real
     integer, intent(in) :: alr
     real(default), intent(in) :: y
     integer, dimension(:), allocatable :: i_flvs_real, flv_radiated
@@ -4662,24 +4768,12 @@ for this by keeping events with probability
 
 @ %def powheg_matching_reweight_norm
 @ Retrieves the value of the norm for given $\xi$ and $y$ from the pre-computed POWHEG grid.
-To find the correct bin in the grid, we need to invert the
-generation of $\xi$ and $y$ from their corresponding random numbers.
-As the grid is filled during integration, the formulas here are the inverse of
-those in [[compute_y_from_emitter]] instead of those specific for POWHEG matching.
-There, we coompute $y$ with [[y = (one - two * r_y)]] and [[y = 1.5_default * (y - y**3 / 3)]].
-The inverse of this operation is given by
-\begin{align}
-  r_y &=
-  \begin{cases}
-    \frac14 \left[ (i\sqrt{3}-1)A^{\frac13}
-    - (i\sqrt{3}+1)A^{-\frac13} + 2 \right]
-    \quad \text{for} \quad y < 0 \\
-    \frac14 \left[-(i\sqrt{3}+1)A^{\frac13}
-    + (i\sqrt{3}-1)A^{-\frac13} + 2 \right]
-    \quad \text{for} \quad y > 0
-  \end{cases}\nonumber\\
-  &\text{with} \quad A = \sqrt{y^2-1} + y
-\end{align}
+To find the correct bin we need to map $(\xi,y)$ in some way to $[0,1]^2$.
+This mapping is to the most extend arbitrary. We choose
+$y \mapsto |y|$ and
+$\xi \mapsto \log(\frac{1}{1-\xi}) / \log(\frac{1}{1-\xi_{max}})$.
+It may be possible to improve these mappings to tune the performance for processes
+with expensive matrix elements.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: norm_from_xi_and_y => powheg_matching_norm_from_xi_and_y
 <<POWHEG matching: sub interfaces>>=
@@ -4695,45 +4789,17 @@ The inverse of this operation is given by
     real(default) :: norm_true
     class(powheg_matching_t), intent(inout) :: powheg
     type(radiation_t), intent(in) :: r
-    real(default) :: f_alr
+    real(default) :: f_alr, xi_max
     real(default), dimension(2) :: rands
-    real(default) :: beta
     f_alr = (one * r%alr) / powheg%process_deps%n_alr - tiny_07
-    rands(I_XI) = r%xi / sqrt (powheg%sudakov(r%alr)%s%xi2_max)
-    select type (s => powheg%sudakov(r%alr)%s)
-    type is (sudakov_simple_fsr_t)
-       rands(I_Y) = map_y_to_rands_massless(r%y)
-    type is (sudakov_massive_fsr_t)
-       beta = beta_emitter (sqrt (powheg%event_deps%s_hat), &
-            powheg%event_deps%p_born_lab%get_momentum (1, s%associated_emitter()))
-       rands(I_Y) = - log((one - r%y * beta) / (one + beta)) / &
-            log((one + beta) / (one - beta))
-    type is (sudakov_eeqq_fsr_t)
-       rands(I_Y) = map_y_to_rands_massless(r%y)
-    type is (sudakov_isr_t)
-       rands(I_Y) = map_y_to_rands_massless(r%y)
-    class default
-       call msg_fatal ("powheg_matching_norm_from_xi_and_y: unknown Sudakov!")
-    end select
+    rands(I_Y) = abs(r%y)
+    xi_max = min(sqrt (powheg%sudakov(r%alr)%s%xi2_max), 1 - tiny_07)
+    if (r%xi > xi_max) then
+       rands(I_XI) = 1
+    else
+       rands(I_XI) = log(1 / (1 - r%xi)) / log(1 / (1 - xi_max))
+    end if
     norm_true = powheg%grid%get_value ([rands, f_alr])
-  contains
-    function map_y_to_rands_massless (y) result (r_y)
-       real(default), intent(in) :: y
-       real(default) :: r_y
-       complex(default) :: y_cmplx, A, r_y_cmplx
-       y_cmplx = cmplx(y, 0, default)
-       A = sqrt(y_cmplx**2 - 1) + y_cmplx
-       if (y < 0) then
-          r_y_cmplx = 0.25_default * (cmplx(-one,sqrt(three)) * A**(one/three) &
-               - cmplx(one,sqrt(three)) * A**(-one/three) + two)
-       else if (y == 0) then
-          r_y_cmplx = cmplx(0.5_default,0)
-       else if (y > 0) then
-          r_y_cmplx = 0.25_default * (-cmplx(one,sqrt(three)) * A**(one/three) &
-               + cmplx(-one,sqrt(three)) * A**(-one/three) + two)
-       end if
-       r_y = real(r_y_cmplx)
-    end function map_y_to_rands_massless
   end function powheg_matching_norm_from_xi_and_y
 
 @ %def powheg_matching_norm_from_xi_and_y
@@ -4748,7 +4814,7 @@ done by setting
   \alpha_s^\text{rad}(\mu_0) = \alpha_s (\mu_0)
 \end{equation}
 whereby $\mu_0^2$ is the [[scale_to_relate2]] that is taken to be
-$p_{T,\text{min}}^2$.
+$(2 \Lambda^{(5)}_{\overline{MS}})^2$.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: prepare_for_events => powheg_matching_prepare_for_events
 <<POWHEG matching: sub interfaces>>=
@@ -4763,6 +4829,7 @@ $p_{T,\text{min}}^2$.
     call matching%setup_nlo_environment ()
     call matching%grid%init ([matching%settings%size_grid_xi, &
        matching%settings%size_grid_y, matching%process_deps%n_alr])
+    call matching%compute_lambda5MSB ()
     call matching%compute_lambda2_gen ()
     call matching%setup_sudakovs ()
   end subroutine powheg_matching_prepare_for_events
@@ -4780,13 +4847,60 @@ By construction, it is always $p_{T,\text{min}} > \Lambda$.
   module subroutine powheg_matching_compute_lambda2_gen (matching)
     class(powheg_matching_t), intent(inout) :: matching
     real(default) :: scale_to_relate2, alpha_s
-    scale_to_relate2 = matching%settings%pt2_min
-    alpha_s = get_alpha_s (matching%qcd, scale_to_relate2)
-    matching%process_deps%lambda2_gen = exp (- one / (b0rad * alpha_s)) * &
+    scale_to_relate2 = (2*matching%process_deps%lambda5MSB)**2
+    alpha_s = get_alpha_s (matching%qcd, scale_to_relate2, 3)
+    matching%process_deps%lambda2_gen = exp (- one / (b0rad () * alpha_s)) * &
          scale_to_relate2
   end subroutine powheg_matching_compute_lambda2_gen
 
 @ %def powheg_matching_compute_lambda2_gen
+@ Computes the scale $\Lambda^{(5)}_{\overline{MS}}$ used to determine the scale
+at which we relate $\alpha_s^{\text{rad}}$ and $\alpha_s^{\text{true}}$.
+<<POWHEG matching: powheg matching: TBP>>=
+  procedure :: compute_lambda5MSB => powheg_matching_compute_lambda5MSB
+<<POWHEG matching: sub interfaces>>=
+    module subroutine powheg_matching_compute_lambda5MSB (matching)
+      class(powheg_matching_t), intent(inout) :: matching
+    end subroutine powheg_matching_compute_lambda5MSB
+<<POWHEG matching: procedures>>=
+  module subroutine powheg_matching_compute_lambda5MSB (matching)
+    class(powheg_matching_t), intent(inout) :: matching
+    real(default) :: alpha_s
+    integer :: nf, order
+    logical :: print_once = .true.
+    if (matching%settings%lambda == 0) then
+       alpha_s = matching%qcd%alpha%get(MZ_REF)
+       select type (alpha => matching%qcd%alpha)
+       type is (alpha_qcd_from_scale_t)
+          order = alpha%order
+       type is (alpha_qcd_from_lambda_t)
+          order = alpha%order
+       type is (alpha_qcd_lhapdf_t)
+          if (print_once) then
+             call msg_warning ("compute_lambda5MSB: LHAPDF not fully supported" // &
+                  " Assuming LO (1-loop) running!")
+             print_once = .false.
+          end if
+          !!! TODO (PS-2021-09-16) We'd need to get order from LHAPDF to continue here.
+          order = 1
+       class default
+          if (print_once) then
+             call msg_warning ("compute_lambda5MSB: alpha_qcd not running!" // &
+                  " Assuming LO (1-loop) running!")
+             print_once = .false.
+          end if
+          order = 0
+       end select
+       nf = 5
+       matching%process_deps%lambda5MSB = lambda_qcd(alpha_s, MZ_REF, nf, order)
+    else if (matching%settings%lambda > 0) then
+       matching%process_deps%lambda5MSB = matching%settings%lambda
+    else
+       call msg_fatal ("compute_lambda5MSB: lambda5MSB < 0")
+    end if
+  end subroutine powheg_matching_compute_lambda5MSB
+
+@ %def powheg_matching_compute_lambda5MSB
 @ This is the setup of the process dependencies stored for the matching.
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: setup_nlo_environment => powheg_matching_setup_nlo_environment
@@ -4851,7 +4965,8 @@ By construction, it is always $p_{T,\text{min}} > \Lambda$.
   end subroutine powheg_matching_setup_nlo_environment
 
 @ %def powheg_matching_setup_nlo_environment
-@ Copy momenta from [[event_deps]] to [[real_kinematics]].
+@ Copy momenta from [[event_deps]] to [[real_kinematics]]
+for them to be available for the [[int_hard]] in [[compute_sqme_rad]].
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: copy_momenta => powheg_matching_copy_momenta
 <<POWHEG matching: sub interfaces>>=
@@ -4874,35 +4989,52 @@ By construction, it is always $p_{T,\text{min}} > \Lambda$.
 
 @ %def powheg_matching_copy_momenta
 @ [[qcd%alpha%get]] should implement a variable-flavor result and
-optionally return [[n_flavors]] that are active at the scale...
+optionally return [[n_flavors]] that are active at the scale.
+Optionally takes [[nf]] as input preceeding the PDFs value.
+We need this to compute $\alpha_s^{rad}$ always with [[nf=3]].
 <<POWHEG matching: procedures>>=
-  function get_alpha_s (qcd, scale2) result (alpha_s)
+  function get_alpha_s (qcd, scale2, nf_in, improve_nll_opt) result (alpha_s)
     real(default) :: alpha_s
     class(qcd_t), intent(in) :: qcd
     real(default), intent(in) :: scale2
-    integer :: nf, order
-    ! TODO: (bcn 2015-01-30) implement variable flavor alpha_s
+    integer, optional, intent(in) :: nf_in
+    logical, optional, intent(in) :: improve_nll_opt
+    logical :: improve_nll
+    real(default) :: mb, mc
+    integer :: nf
+    logical :: print_once = .true.
+    ! TODO: (bcn 2015-01-30) implement variable flavor alpha_s for all types
+    improve_nll = .true.; if (present(improve_nll_opt)) improve_nll = improve_nll_opt
     alpha_s = qcd%alpha%get (sqrt(scale2))
     select type (alpha => qcd%alpha)
     type is (alpha_qcd_from_scale_t)
        nf = alpha%nf
-       order = alpha%order
     type is (alpha_qcd_from_lambda_t)
        nf = alpha%nf
-       order = alpha%order
     type is (alpha_qcd_lhapdf_t)
-       call msg_warning ("get_alpha_s for LHADPF not supported!" // &
-            " Assuming 5-flavors and LO (1-loop) running!")
-       !!! TODO (PS-2021-09-16) We'd need to get nf from LHAPDF to continue here.
-       nf = 5
-       order = 0
+       mc = alpha%get_qmass(4)
+       mb = alpha%get_qmass(5)
+       if (scale2 > mb**2) then
+          nf = 5
+       elseif (scale2 > mc**2) then
+          nf = 4
+       else
+          nf = 3
+       end if
     class default
-       call msg_warning ("get_alpha_s: QCD type is not running!" // &
-            " Assuming 5-flavors and LO (1-loop) running!")
+       if (print_once) then
+          call msg_warning ("get_alpha_s: QCD type is not running!" // &
+               " Assuming 5-flavors and LO (1-loop) running!")
+          print_once = .false.
+       end if
        nf = 5
-       order = 0
     end select
-    if (order > 0) alpha_s = improve_nll_accuracy (alpha_s, nf)
+    if (present(nf_in)) then
+       nf = nf_in
+    end if
+    if (improve_nll) then
+       alpha_s = improve_nll_accuracy (alpha_s, nf)
+    end if
   end function get_alpha_s
 
 @ %def get_alpha_s
@@ -4918,68 +5050,35 @@ exponent.
   end function improve_nll_accuracy
 
 @ %def improve_nll_accuracy
-@ This is fixed to $n_f=5$ for radiation generation. It will be
+@ Wrapper for $b_0(n_f=5)$ from the [[sm_physics]] module.
+It is fixed to $n_f=5$ for radiation generation and will be
 reweighted to the more precise $\alpha_s$.
-<<POWHEG matching: parameters>>=
-  real(default), parameter :: b0rad = (33 - 2 * 5) / (12 * pi)
+<<POWHEG matching: procedures>>=
+  pure function b0rad () result (b0)
+    real(default) :: b0
+    b0 = coeff_b0(five)
+  end function b0rad
 
 @ %def b0rad
-@
+@ Computes the overestimated $\alpha_s$ for the sudakov before the $\alpha_s$-Veto.
+We do not NLL-correct $\alpha_s$ again. We did so already when computing [[lambda2_gen]].
 <<POWHEG matching: sudakov: TBP>>=
   procedure :: alpha_s_rad => sudakov_alpha_s_rad
 <<POWHEG matching: sub interfaces>>=
-    elemental module function sudakov_alpha_s_rad (sudakov, scale2) result (y)
-      real(default) :: y
+    elemental module function sudakov_alpha_s_rad (sudakov, scale2) result (alpha_s_rad)
+      real(default) :: alpha_s_rad
       class(sudakov_t), intent(in) :: sudakov
       real(default), intent(in) :: scale2
     end function sudakov_alpha_s_rad
 <<POWHEG matching: procedures>>=
-  elemental module function sudakov_alpha_s_rad (sudakov, scale2) result (y)
-    real(default) :: y
+  elemental module function sudakov_alpha_s_rad (sudakov, scale2) result (alpha_s_rad)
+    real(default) :: alpha_s_rad
     class(sudakov_t), intent(in) :: sudakov
     real(default), intent(in) :: scale2
-    y = one / (b0rad * log (scale2 / sudakov%process_deps%lambda2_gen))
+    alpha_s_rad = one / (b0rad () * log (scale2 / sudakov%process_deps%lambda2_gen))
   end function sudakov_alpha_s_rad
 
 @ %def sudakov_alpha_s_rad
-@
-<<POWHEG matching: sudakov: TBP>>=
-  procedure :: reweight_alpha_s => sudakov_reweight_alpha_s
-<<POWHEG matching: sub interfaces>>=
-    module function sudakov_reweight_alpha_s (sudakov, pt2) result (accepted)
-      logical :: accepted
-      class(sudakov_t), intent(inout) :: sudakov
-      real(default), intent(in) :: pt2
-    end function sudakov_reweight_alpha_s
-<<POWHEG matching: procedures>>=
-  module function sudakov_reweight_alpha_s (sudakov, pt2) result (accepted)
-    logical :: accepted
-    class(sudakov_t), intent(inout) :: sudakov
-    real(default), intent(in) :: pt2
-    real(default) :: alpha_s_true, alpha_s_rad
-    logical :: alpha_s_equal
-    if (debug_on) call msg_debug2 (D_MATCHING, "reweight_alpha_s")
-    alpha_s_true = get_alpha_s (sudakov%qcd, pt2)
-    alpha_s_rad = sudakov%alpha_s_rad (pt2)
-    call sudakov%rng%generate (sudakov%random)
-    alpha_s_equal = nearly_equal (alpha_s_true, alpha_s_rad)
-    accepted = alpha_s_equal .or. sudakov%random < alpha_s_true / alpha_s_rad
-    if (debug2_active (D_MATCHING)) then
-       print *, '  sudakov%random =    ', sudakov%random
-       print *, '  alpha_s_true =    ', alpha_s_true
-       print *, '  alpha_s_rad =    ', alpha_s_rad
-       print *, '  alpha_s accepted =    ', accepted
-       if (alpha_s_rad < alpha_s_true .and. .not. alpha_s_equal) then
-          print *, 'pt2 =    ', pt2
-          print *, 'sudakov%process_deps%lambda2_gen =    ', &
-               sudakov%process_deps%lambda2_gen
-          call msg_fatal ("sudakov_reweight_alpha_s: This should never happen. &
-                           &Have you chosen a running alpha_s?")
-       end if
-    end if
-  end function sudakov_reweight_alpha_s
-
-@ %def sudakov_reweight_alpha_s
 @
 \subsection{POWHEG hook}
 We provide a POWHEG hook to be called by [[process_instance_evaluate]] to
@@ -5100,11 +5199,9 @@ the same cuts during integration and event generation, these points are not rele
 We also skip points where either matrix element is negative. If just one of both is negative,
 their ratio is negative and thus cannot possibly be relevant for the grid. If both are negative,
 we are in an unphysical region for the PDFs.
-We need to divide the real matrix element by [[xi_max]] to correct for the
-difference in [[apply_kinematic_factors_radiation]] between the real matrix
-element when integrating and when POWHEG matching.
 We also need to correct all scale dependences of [[sqme_born]] and [[sqme_real]] from
 the process' scale to $p_T$ as this is the scale of the entire Sudakov.
+This affects the PDFs and also $\alpha_s$.
 <<POWHEG matching: powheg matching hook: TBP>>=
   procedure :: evaluate => powheg_matching_hook_evaluate
 <<POWHEG matching: sub interfaces>>=
@@ -5120,17 +5217,17 @@ the process' scale to $p_T$ as this is the scale of the entire Sudakov.
     real(default), dimension(:), allocatable :: x
     real(default) :: kt2, xi, y, xi_max, onepy, onemy
     real(default), dimension(2) :: x_real
-    real(default) :: sqme_real, sqme_born
+    real(default) :: sqme_born, sqme_real_x_jac
     real(default) :: muren_born, mufac_born, muren_real, mufac_real
     real(default) :: alpha_s_kt, alpha_s_muren_born, alpha_s_muren_real
     real(default) :: f_alr, norm, ubf
+    real(default) :: r_xi, r_y
     real(double), dimension(-6:6) :: pdf_dbl
     real(default), dimension(2) :: pdf_born_mufac, pdf_born_kt, &
          pdf_real_mufac, pdf_real_kt
     real(double) :: x_dbl, q_dbl
     integer, dimension(2) :: flv_born, flv_real
-    integer :: alr, i_phs, n_x, i_term_born, i_term_real, i_real, &
-         emitter, em, n_in
+    integer :: alr, i_phs, n_x, i_term_born, i_term_real, i_real, em
     integer :: alphas_power
     logical :: is_isr
     if (instance%get_active_component_type () == COMP_REAL_FIN)  return
@@ -5148,24 +5245,18 @@ the process' scale to $p_T$ as this is the scale of the entire Sudakov.
          end select
          call powheg%update_sudakovs (alr, i_phs, y)
          if (powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min) then
-            select type (pcm_work => instance%pcm_work)
-            class is (pcm_nlo_workspace_t)
-               xi_max = pcm_work%get_xi_max (alr)
-            end select
-            sqme_born = instance%get_sqme (powheg%process_deps%i_term_born)
-            if (debug_active (D_MATCHING)) then
-               call assert_equal (OUTPUT_UNIT, sqme_born, &
-                    powheg%event_deps%sqme_born, "sqme_born " // &
-                    "stored in instance and event_deps do not coincide!")
-            end if
-            sqme_real = instance%get_sqme (i_term_real)
-            if (sqme_born <= 0 .or. sqme_real <= 0) then
+            sqme_born = instance%get_sqme (i_term_born)
+            sqme_real_x_jac = instance%get_sqme (i_term_real)
+            if (sqme_born <= 0 .or. sqme_real_x_jac <= 0) then
                cycle
             end if
-            n_in = instance%kin(i_term_real)%n_in
-            emitter = instance%kin(i_term_real)%emitter
-            is_isr = emitter <= n_in
-            sqme_real = sqme_real / xi_max
+            is_isr = instance%kin(i_term_real)%emitter <= instance%kin(i_term_real)%n_in
+            select type (pcm_work => instance%pcm_work)
+            class is (pcm_nlo_workspace_t)
+               sqme_real_x_jac = pcm_work%powheg_kinematic_factors_real &
+                    (sqme_real_x_jac, alr)
+            end select
+
             associate (s => powheg%sudakov(alr)%s)
               kt2 = s%kt2(xi, y)
               alpha_s_kt = s%alpha_s (kt2, use_correct=.true.)
@@ -5173,15 +5264,15 @@ the process' scale to $p_T$ as this is the scale of the entire Sudakov.
               mufac_born = instance%term(i_term_born)%get_fac_scale ()
               muren_real = instance%term(i_term_real)%get_ren_scale ()
               mufac_real = instance%term(i_term_real)%get_fac_scale ()
-              alpha_s_muren_born = s%alpha_s (muren_born**2, use_correct=.true.)
-              alpha_s_muren_real = s%alpha_s (muren_real**2, use_correct=.true.)
+              alpha_s_muren_born = s%alpha_s (muren_born**2, use_correct=.true., improve_nll=.false.)
+              alpha_s_muren_real = s%alpha_s (muren_real**2, use_correct=.true., improve_nll=.false.)
               ubf = s%upper_bound_func (xi, y, alpha_s_kt)
             end associate
 
             !!! Correct all factors of alphas(muren) to alphas(kt).
             alphas_power = powheg%process_deps%alphas_power
             sqme_born = (alpha_s_kt / alpha_s_muren_born)**alphas_power * sqme_born
-            sqme_real = (alpha_s_kt / alpha_s_muren_real)**(alphas_power+1) * sqme_real
+            sqme_real_x_jac = (alpha_s_kt / alpha_s_muren_real)**(alphas_power+1) * sqme_real_x_jac
 
               !!! Also correct the PDFs previously computed at mufac instead of kt
             select type (pcm => instance%term(i_term_real)%pcm)
@@ -5220,20 +5311,26 @@ the process' scale to $p_T$ as this is the scale of the entire Sudakov.
                     end do
                     sqme_born = pdf_born_kt(1) * pdf_born_kt(2) / &
                          (pdf_born_mufac(1) * pdf_born_mufac(2)) * sqme_born
-                    sqme_real = pdf_real_kt(1) * pdf_real_kt(2) / &
-                         (pdf_real_mufac(1) * pdf_real_mufac(2)) * sqme_real
+                    sqme_real_x_jac = pdf_real_kt(1) * pdf_real_kt(2) / &
+                         (pdf_real_mufac(1) * pdf_real_mufac(2)) * sqme_real_x_jac
                   end associate
                end if
             end select
 
-            norm = sqme_real / (sqme_born * ubf)
+            norm = sqme_real_x_jac / (sqme_born * ubf)
             f_alr = (one * alr) / powheg%process_deps%n_alr - tiny_07
-            if (.not. allocated (x)) &
-                 allocate (x(size (instance%get_x_process ())))
-            x = instance%get_x_process ()
-            n_x = size (x)
-            call powheg%grid%update_maxima &
-                 ([x(n_x - 2 : n_x - 1), f_alr], norm)
+
+            r_y = abs(y)
+            select type (pcm_work => instance%pcm_work)
+            class is (pcm_nlo_workspace_t)
+               xi_max = min(pcm_work%get_xi_max (alr), 1 - tiny_07)
+            end select
+            if (xi > xi_max) then
+               r_xi = 1
+            else
+               r_xi = log(1 / (1 - xi)) / log(1 / (1 - xi_max))
+            end if
+            call powheg%grid%update_maxima ([r_xi, r_y, f_alr], norm)
          end if
       end do
     end associate
@@ -5242,7 +5339,6 @@ the process' scale to $p_T$ as this is the scale of the entire Sudakov.
   end subroutine powheg_matching_hook_evaluate
 
 @ %def powheg_matching_hook_evaluate
-<<POWHEG matching: powheg matching hook: evaluate: contained>>=
 @ In some phase space point, the quark PDF may vanish although the gluon PDF does not.
 This may lead to very large ratios $\mathcal{R} / \mathcal{B}$ which may spoil
 the reweighting performance of the POWHEG grid.
@@ -5397,7 +5493,7 @@ In its current state however, it fills the histogram with either $1$ or [[NaN]] 
     class(powheg_matching_t), intent(inout) :: powheg
     integer :: n_calls1, n_calls2
     integer, parameter :: n_bins = 20
-    real(default) :: sqme_real_x_jacobian, sqme_born
+    real(default) :: sqme_real_x_jac, sqme_born
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default), dimension(3) :: random
     real(default) :: xi, y
@@ -5466,9 +5562,9 @@ Linear and logarithmic binning are available.
                kT2 = powheg%sudakov(alr)%s%kt2(xi, y)
                if (kT2 >= pt2_min .and. xi < one - tiny_07) then
                   alpha_s = get_alpha_s (powheg%qcd, kT2)
-                  sqme_real_x_jacobian = powheg%compute_sqme_real (alr, sqrt(kT2))
+                  sqme_real_x_jac = powheg%compute_sqme_real (alr, sqrt(kT2))
                   random_jacobian = pcm_work%real_kinematics%jac_rand (emitter)
-                  weight = sqme_real_x_jacobian * random_jacobian / sqme_born
+                  weight = sqme_real_x_jac * random_jacobian / sqme_born
                   do i_bin = 1, n_bins
                      if (kT2 > binning(i_bin)) then
                         histo1(i_bin) = histo1(i_bin) + weight

@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.2+
 
+2022-04-05
+	POWHEG matching for single flavor hadron collisions
+
 2022-03-31
 	NLO EW processes with massless leptons and jets (i.e.
 	   jet clustering and photon recombination) supported

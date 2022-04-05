@@ -956,6 +956,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/parton_shower_2.ref \
     functional_tests/ref-output-double/pdf_builtin.ref \
     functional_tests/ref-output-double/powheg_1.ref \
+    functional_tests/ref-output-double/powheg_2.ref \
     functional_tests/ref-output-double/pythia6_3.ref \
     functional_tests/ref-output-double/pythia6_4.ref \
     functional_tests/ref-output-double/qcdtest_1.ref \
@@ -1044,6 +1045,7 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/openloops_13.ref \
     functional_tests/ref-output-ext/openloops_14.ref \
     functional_tests/ref-output-ext/powheg_1.ref \
+    functional_tests/ref-output-ext/powheg_2.ref \
     functional_tests/ref-output-ext/pythia6_3.ref \
     functional_tests/ref-output-ext/pythia6_4.ref \
     functional_tests/ref-output-ext/resonances_1.ref \
@@ -1089,6 +1091,7 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/openloops_13.ref \
     functional_tests/ref-output-quad/openloops_14.ref \
     functional_tests/ref-output-quad/powheg_1.ref \
+    functional_tests/ref-output-quad/powheg_2.ref \
     functional_tests/ref-output-quad/pythia6_3.ref \
     functional_tests/ref-output-quad/pythia6_4.ref \
     functional_tests/ref-output-quad/resonances_1.ref \
@@ -1306,6 +1309,7 @@ MISC_TESTS_SIN = \
     functional_tests/photon_isolation_2.sin \
     functional_tests/polarized_1.sin \
     functional_tests/powheg_1.sin \
+    functional_tests/powheg_2.sin \
     functional_tests/process_log.sin \
     functional_tests/pythia6_1.sin \
     functional_tests/pythia6_2.sin \

@@ -8456,7 +8456,6 @@ end submodule real_subtraction_s
 <<Real subtraction: parameters>>=
   integer, parameter, public :: INTEGRATION = 0
   integer, parameter, public :: FIXED_ORDER_EVENTS = 1
-  integer, parameter, public :: POWHEG = 2
 
 @ %def real subtraction parameters
 @ Translates the NLO purpose into a string. However, this purpose is
@@ -8470,8 +8469,6 @@ never set and this routine is nowhere used.
        of_purpose = var_str ("Integration")
     case (FIXED_ORDER_EVENTS)
        of_purpose = var_str ("Fixed order NLO events")
-    case (POWHEG)
-       of_purpose = var_str ("Powheg events")
     case default
        of_purpose = var_str ("Undefined!")
     end select
@@ -9703,12 +9700,10 @@ is true).
           if (same_emitter .and. i_phs == rsub%real_kinematics%alr_to_i_phs (alr)) then
              i_res = rsub%get_i_res (alr)
              this_emitter = rsub%reg_data%regions(alr)%emitter
-             sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, &
-                  alpha_coupling)
-             if (rsub%purpose == INTEGRATION .or. rsub%purpose == FIXED_ORDER_EVENTS) then
-                i_con = rsub%get_i_contributor (alr)
-                sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
-             end if
+             sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, &
+                  i_res, alpha_coupling)
+             i_con = rsub%get_i_contributor (alr)
+             sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
           end if
           sqme_alr_arr(alr) = sqme_alr_arr(alr) + sqme_alr
           if (.not. (debug_active (D_SUBTRACTION) .or. debug2_active (D_SUBTRACTION))) then
@@ -9903,7 +9898,7 @@ the corresponding Jacobians.
                      (rsub%reg_data%get_matrix_element_index (alr), i_phs)
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, &
               rsub%real_kinematics, alr, i_phs, emitter, i_res)
-         call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, &
+         call apply_kinematic_factors_radiation (sqme_rad, &
               rsub%real_kinematics, i_phs)
       end if
       if (rsub%subtraction_event .and. .not. (rsub%subtraction_deactivated &
@@ -10179,7 +10174,7 @@ However, it still remains to be motivated analytically.
          sqme_rad = rsub%sqme_real_non_sub (rsub%reg_data%get_matrix_element_index (alr), i_phs)
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, rsub%real_kinematics, &
               alr, i_phs, emitter, i_res)
-         call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, rsub%real_kinematics, i_phs)
+         call apply_kinematic_factors_radiation (sqme_rad, rsub%real_kinematics, i_phs)
       end if
       if (rsub%subtraction_event .and. .not. (rsub%subtraction_deactivated &
             .or. region%nlo_correction_type == "none")) then
@@ -10389,33 +10384,22 @@ However, it still remains to be motivated analytically and to be validated.
   end subroutine evaluate_fks_factors
 
 @ %def evaluate_fks_factors
-@ Applies the Jacobian to the squared matrix element. During
-integration and when generating fixed order events, the non-kinematic
-part $\frac{s}{(4\pi)^3}$ is applied in [[real_subtraction_compute]] via
-[[get_phs_factor]]. For the purpose of generating POWHEG events, we do
-it here. The additional factor $\frac{\xi}{\tilde\xi}$ during
-integration comes from eq.~(4.19f) in arXiv:1002.2581.
-During integration, we sample $\tilde\xi \in [0,1]$ while we sample
-$\xi \in [p_T^2,\xi_\text{max}]$ for POWHEG matching.
-Thus, we are taking into account that $d\xi = d\tilde\xi
-\frac{\xi}{\tilde\xi}$. 
+@ Applies the kinematic dependent part of the Jacobian
+to the squared matrix element. During integration and when generating
+fixed order events, the non-kinematic part $\frac{s}{(4\pi)^3}$ is applied
+in [[real_subtraction_compute]] via [[get_phs_factor]].
+The additional factor $\frac{\xi}{\tilde\xi}$ comes from
+eq.~(4.19f) in arXiv:1002.2581.
 <<Real subtraction: procedures>>=
-  subroutine apply_kinematic_factors_radiation (sqme, purpose, &
+  subroutine apply_kinematic_factors_radiation (sqme, &
        real_kinematics, i_phs)
     real(default), intent(inout) :: sqme
-    integer, intent(in) :: purpose
     type(real_kinematics_t), intent(in) :: real_kinematics
     integer, intent(in) :: i_phs
     real(default) :: xi, xi_tilde, s_b
     xi_tilde = real_kinematics%xi_tilde
     xi = xi_tilde * real_kinematics%xi_max (i_phs)
-    select case (purpose)
-    case (INTEGRATION, FIXED_ORDER_EVENTS)
-       sqme = sqme * xi**2 / xi_tilde * real_kinematics%jac(i_phs)%jac(1)
-    case (POWHEG)
-       s_b = real_kinematics%cms_energy2
-       sqme = sqme * xi * s_b / (8 * twopi3) * real_kinematics%jac(i_phs)%jac(1)
-    end select
+    sqme = sqme * xi**2 / xi_tilde * real_kinematics%jac(i_phs)%jac(1)
   end subroutine apply_kinematic_factors_radiation
 
 @ %def apply_kinematic_factors_radiation
