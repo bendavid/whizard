@@ -1,5 +1,7 @@
 include("nlo_settings.sin")
 
+$openloops_allowed_libs = "ppllj"
+
 cuts = let subevt @clustered_jets = cluster [jet] in
        let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in

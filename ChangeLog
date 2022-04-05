@@ -2,7 +2,10 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 3.0.2+
+	Version 3.0.3
+
+2022-04-06
+	RELEASE: version 3.0.3
 
 2022-04-05
 	POWHEG matching for single flavor hadron collisions

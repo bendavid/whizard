@@ -12,6 +12,7 @@
 \usepackage{noweb}
 \usepackage{graphics,graphicx}
 \usepackage{url}
+\usepackage[T1]{fontenc}
 \setlength{\nwmarginglue}{1em}
 \noweboptions{smallcode,noidentxref}
 %%% Saving paper:
@@ -48,12 +49,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{3.0.2+}
-\def\WhizardDate{Nov 23 2021}
+\def\WhizardVersion{3.0.3}
+\def\WhizardDate{Apr 06 2022}
 <<Version>>=
-3.0.2+
+3.0.3
 <<Date>>=
-Nov 23 2021
+Apr 06 2022
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -73,10 +74,11 @@ Nov 23 2021
  with contributions from:
  Fabian Bach, Tim Barklow, Vincent Bettaque, Mikael Berggren,
  Hans-Werner Boschmann, Felix Braam, Simon Brass, Pia Bredt,
- Bijan Chokouf\'{e} Nejad, Oliver Fischer, Christian Fleper, David Gordo Gomez, Uta
- Klein, Akiya Miyamoto, Moritz Prei{\ss}er, Vincent Rothe, Sebastian Schmidt,
+ Bijan Chokouf\'{e} Nejad, Oliver Fischer, Christian Fleper,
+ David Gordo Gomez, Uta Klein, Nils Kreher, Krzysztof~M\k{e}ka{\l}a,
+ Akiya Miyamoto, Moritz Prei{\ss}er, Vincent Rothe, Sebastian Schmidt,
  Marco Sekulla, So Young Shim, Christian Speckner, Pascal Stienemeier,
- Manuel Utsch, Christian Weiss, Daniel Wiesler, Zhijie Zhao
+ Tobias Striegl, Manuel Utsch, Christian Weiss, Daniel Wiesler, Zhijie Zhao
  \vspace{1cm}
  \begin{center}
  \includegraphics[width=4cm]{Whizard-Logo}
