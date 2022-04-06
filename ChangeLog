@@ -2,7 +2,9 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 3.0.3
+	Version 3.0.3+
+
+##################################################################
 
 2022-04-06
 	RELEASE: version 3.0.3
