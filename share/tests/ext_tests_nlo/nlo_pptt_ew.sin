@@ -3,6 +3,8 @@ include("nlo_settings_ew.sin")
 alias pr= u:U:d:D:s:S:c:C:b:B:g:A
 alias j= u:U:d:D:s:S:c:C:b:B:g:A
 
+$openloops_allowed_libs = "pptt_ew"
+
 alpha_power = 0
 alphas_power = 2
 
