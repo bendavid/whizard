@@ -1,3 +1,5 @@
+$openloops_allowed_libs = "ppvv"
+
 include("nlo_settings.sin")
 
 alias pr = u:U:d:D:s:S:c:C:b:B:gl

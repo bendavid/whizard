@@ -1,5 +1,7 @@
 # Seed change to clean numerical noise between LHAPDF 6.2.3 and 6.3.0/6.4.0
 
+$openloops_allowed_libs = "ppvj"
+
 include("nlo_settings.sin")
 ?pacify = true
 

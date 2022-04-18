@@ -4,6 +4,8 @@
 
 model = "SM"
 
+$openloops_allowed_libs = "ppvj"
+
 ?logging = true
 ?openmp_logging = false
 ?vis_history = false
