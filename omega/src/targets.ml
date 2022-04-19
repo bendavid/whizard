@@ -6745,6 +6745,24 @@ i*)
       nl ()
     i*)
 
+    let print_external_mass_case flv (fin, fout) =
+      printf "    case (%3d)" (succ flv); nl ();
+      List.iteri
+        (fun i f ->
+          printf "      m(%2d) = %s" (succ i) (M.mass_symbol f); nl ())
+        (fin @ fout)
+
+    let print_external_masses amplitudes =
+      printf "  @[<5>"; if !fortran95 then printf "pure ";
+      printf "subroutine external_masses (m, flv)"; nl ();
+      printf "    real(kind=%s), dimension(:), intent(out) :: m" !kind; nl ();
+      printf "    integer, intent(in) :: flv"; nl ();
+      printf "    select case (flv)"; nl ();
+      List.iteri print_external_mass_case (CF.flavors amplitudes);
+      printf "    end select"; nl ();
+      printf "  end subroutine external_masses"; nl ();
+      nl ()
+
     let print_numeric_inquiry_functions (f, v) =
       printf "  @[<5>"; if !fortran95 then printf "pure ";
       printf "function %s () result (n)" f; nl ();
@@ -7152,7 +7170,8 @@ i*)
       ["number_particles_in"; "number_particles_out";
        "number_color_indices";
        "reset_helicity_selection"; "new_event";
-       "is_allowed"; "get_amplitude"; "color_sum"; "openmp_supported"] @
+       "is_allowed"; "get_amplitude"; "color_sum";
+       "external_masses"; "openmp_supported"] @
       ThoList.flatmap
         (fun n -> ["number_" ^ n; n])
         ["spin_states"; "flavor_states"; "color_flows"; "color_factors"]
@@ -7218,7 +7237,7 @@ i*)
       print_amplitude_table amplitudes;
       print_helicity_selection_table ()
 
-    let print_interface () =
+    let print_interface amplitudes =
       print_md5sum_functions !md5sum;
       print_maintenance_functions ();
       List.iter print_numeric_inquiry_functions
@@ -7226,6 +7245,7 @@ i*)
          ("number_particles_out", "n_out")];
       List.iter print_inquiry_functions
         ["spin_states"; "flavor_states"];
+      print_external_masses amplitudes;
       print_inquiry_function_openmp ();
       print_color_flows ();
       print_color_factors ();
@@ -7334,7 +7354,7 @@ i*)
         print_constants amplitudes
 
       and print_implementations () =
-        print_interface ();
+        print_interface amplitudes;
         print_calculate_amplitudes
           (fun () -> print_variable_declarations amplitudes)
           (fun () ->
@@ -7365,7 +7385,7 @@ i*)
         print_variable_declarations amplitudes
 
       and print_implementations () =
-        print_interface () in
+        print_interface amplitudes in
 
       let chopped_fusions, chopped_brakets =
         chop_amplitudes size amplitudes in
@@ -7484,7 +7504,7 @@ i*)
         List.map brakets_module chopped_brakets in
 
       let print_implementations () =
-        print_interface ();
+        print_interface amplitudes;
         print_calculate_amplitudes
           (fun () -> ())
           (print_compute_chops chopped_fusions chopped_brakets)

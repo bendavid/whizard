@@ -48,11 +48,10 @@ contains
     yorn = (x /= x)
   end function ieee_is_nan
 
-  subroutine check (physical, unphysical, roots, m1, m2, m3, m4, &
+  subroutine check (physical, unphysical, roots, &
        threshold, n, failures, attempts, seed)
     type(omega_procedures), intent(in) :: physical, unphysical
     real(kind=default), intent(in) :: roots, threshold
-    real(kind=default), intent(in), optional :: m1, m2, m3, m4
     integer, intent(in) :: n
     integer, intent(out) :: failures, attempts
     integer, intent(in), optional :: seed
@@ -62,7 +61,7 @@ contains
     ! integer :: i_prt
     integer, dimension(:,:), allocatable :: spin_states_phys, spin_states_unphys
     real(kind=default), dimension(:,:), allocatable :: p
-    real(kind=default), dimension(:), allocatable :: mass
+    real(kind=default), dimension(:), allocatable :: m
     complex(kind=default), dimension(:), allocatable :: a
     character(len=80) :: msg
     complex(kind=default) :: wi
@@ -102,23 +101,16 @@ contains
     call physical%reset_helicity_selection (-1.0_default, -1)
     call unphysical%reset_helicity_selection (-1.0_default, -1)
     allocate (p(0:3,2+n_out))
+    allocate (m(2+n_out))
     allocate (a(n_hel))
     allocate (spin_states_phys(2+n_out,n_hel))
     allocate (spin_states_unphys(2+n_out,unphysical%number_spin_states()))
     call physical%spin_states(spin_states_phys)
     call unphysical%spin_states(spin_states_unphys)
-    call beams (ROOTS, m1, m2, p(:,1), p(:,2))
+    call physical%external_masses(m, 1)
+    call beams (ROOTS, m(1), m(2), p(:,1), p(:,2))
     do i = 1, N
-       if (m3 > mass_thr .or. m4 > mass_thr) then
-          allocate (mass (n_out))
-          mass = 0
-          mass(1) = m3
-          mass(2) = m4
-          call massive_decay (ROOTS, mass, p(:,3:))
-          deallocate (mass)
-       else
-          call massless_isotropic_decay (ROOTS, p(:,3:))
-       end if
+       call massive_decay (ROOTS, m(3:), p(:,3:))
        call physical%new_event (p)
        call unphysical%new_event (p)
        do i_flv = 1, n_flv

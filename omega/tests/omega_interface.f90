@@ -36,6 +36,7 @@ module omega_interface
      procedure(spin_states), nopass, pointer :: spin_states => NULL()
      procedure(number_flavor_states), nopass, pointer :: number_flavor_states => NULL()
      procedure(flavor_states), nopass, pointer :: flavor_states => NULL()
+     procedure(external_masses), nopass, pointer :: external_masses => NULL()
      procedure(number_color_indices), nopass, pointer :: number_color_indices => NULL()
      procedure(number_color_flows), nopass, pointer :: number_color_flows => NULL()
      procedure(color_flows), nopass, pointer :: color_flows => NULL()
@@ -75,6 +76,12 @@ module omega_interface
      pure subroutine flavor_states (a)
        integer, dimension(:,:), intent(out) :: a
      end subroutine flavor_states
+
+     pure subroutine external_masses (m, flv)
+       use kinds
+       real(kind=default), dimension(:), intent(out) :: m
+       integer, intent(in) :: flv
+     end subroutine external_masses
 
      pure function number_color_indices () result (n)
        integer :: n

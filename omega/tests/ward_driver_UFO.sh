@@ -69,6 +69,7 @@ contains
     p%spin_states => spin_states
     p%number_flavor_states => number_flavor_states
     p%flavor_states => flavor_states
+    p%external_masses => external_masses
     p%number_color_indices => number_color_indices
     p%number_color_flows => number_color_flows
     p%color_flows => color_flows
@@ -138,8 +139,6 @@ cat <<EOF
   print *, "checking process '$process'"
   call check (load_physical_$module (), load_unphysical_$module (), &
               roots = real ($roots, kind=default), &
-              m1 = 0._default, m2 = 0._default, &
-              m3 = 0._default, m4 = 0._default, &
               threshold = real ($threshold, kind=default), &
               n = $n, seed = SEED, &
               failures = failures, attempts = attempts)
