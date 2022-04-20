@@ -641,7 +641,7 @@ submodule (lexers) lexers_s
   use string_utils
   use system_defs, only: EOF, EOR
   use system_defs, only: LF
-  use system_defs, only: WHITESPACE_CHARS, LCLETTERS, UCLETTERS, DIGITS
+  use system_defs, only: WHITESPACE_CHARS, LCLETTERS, UCLETTERS, DIGIT_CHARS
   use ifiles, only: line_get_string_advance
   use ifiles, only: line_is_associated, line_init, line_final
   use diagnostics
@@ -1415,7 +1415,7 @@ that should be glued together as identifiers).
     end forall
     n = n + size (special_class)
     setup%tt(n+1) = template_identifier &
-         (LCLETTERS//UCLETTERS, LCLETTERS//DIGITS//"_"//UCLETTERS)
+         (LCLETTERS//UCLETTERS, LCLETTERS//DIGIT_CHARS//"_"//UCLETTERS)
     setup%type(n+1) = T_IDENTIFIER
     n = n + 1
     if (n /= size (setup%tt)) &
@@ -2117,7 +2117,7 @@ end module syntax_rules
 
 submodule (syntax_rules) syntax_rules_s
 
-  use system_defs, only: LCLETTERS, UCLETTERS, DIGITS
+  use system_defs, only: LCLETTERS, UCLETTERS, DIGIT_CHARS
   use io_units
   use diagnostics
   use ifiles, only: ifile_get_length
@@ -2264,7 +2264,7 @@ anything.  Finalizer: not needed (no pointer components).
 rules:
 <<Syntax: sub parameters>>=
   character(*), parameter :: &
-           UNQUOTED = "(),|_"//LCLETTERS//UCLETTERS//DIGITS
+           UNQUOTED = "(),|_"//LCLETTERS//UCLETTERS//DIGIT_CHARS
 @
 \subsection{Accessing rules}
 This is the API for syntax rules:
@@ -3154,7 +3154,7 @@ submodule (parser) parser_s
   use io_units
   use diagnostics
   use md5
-  use system_defs, only: DIGITS
+  use system_defs, only: DIGIT_CHARS
   use format_defs, only: FMT_19
 
   implicit none
@@ -3248,7 +3248,7 @@ and key.  Otherwise, set the type to [[S_UNKNOWN]].
     subroutine read_integer (s)
       character(*), intent(in) :: s
       integer :: tmp, iostat
-      if (verify (s, DIGITS) == 0) then
+      if (verify (s, DIGIT_CHARS) == 0) then
          read (s, *, iostat=iostat) tmp
          if (iostat == 0) then
             allocate (token%ival)

@@ -78,9 +78,9 @@ Single-character constants.
   character(*), parameter, public :: WHITESPACE_CHARS = BLANK// TAB // CR // LF
   character(*), parameter, public :: LCLETTERS = "abcdefghijklmnopqrstuvwxyz"
   character(*), parameter, public :: UCLETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-  character(*), parameter, public :: DIGITS = "0123456789"
+  character(*), parameter, public :: DIGIT_CHARS = "0123456789"
 
-@ %def WHITESPACE_CHARS LCLETTERS UCLETTERS DIGITS
+@ %def WHITESPACE_CHARS LCLETTERS UCLETTERS DIGIT_CHARS
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{C wrapper for sigaction}
