@@ -7382,7 +7382,7 @@ error, or an I/O error occurs.
     write (ref, "(1x,A)")  "Process definition list: [empty]"
     if (buffer == ref)  return         ! OK: empty library
     backspace (unit)
-    READ_ENTRIES: do i = 1, huge (0)
+    READ_ENTRIES: do i = 1, huge(0)-1
        if (i > 1) read (unit, *, end=1)
        read (unit, "(A)")  buffer
 
