@@ -842,14 +842,14 @@ The weights are initialized with an uniform normalized value.
 <<MCI base: mci instance: TBP>>=
   procedure :: set_channel_weights => mci_instance_set_channel_weights
 <<MCI base: sub interfaces>>=
-    module subroutine mci_instance_set_channel_weights & 
+    module subroutine mci_instance_set_channel_weights &
          (mci_instance, weights, sum_non_zero)
       class(mci_instance_t), intent(inout) :: mci_instance
       real(default), dimension(:), intent(in) :: weights
       logical, intent(out), optional :: sum_non_zero
     end subroutine mci_instance_set_channel_weights
 <<MCI base: procedures>>=
-  module subroutine mci_instance_set_channel_weights & 
+  module subroutine mci_instance_set_channel_weights &
        (mci_instance, weights, sum_non_zero)
     class(mci_instance_t), intent(inout) :: mci_instance
     real(default), dimension(:), intent(in) :: weights
@@ -9292,7 +9292,7 @@ now counts the number of events (calls to the sampling function, actually).
   end subroutine mci_vamp_prepare_simulation
 
 @ %def mci_vamp_prepare_simulation
-@ 
+@
 \subsection{Sampling function}
 The VAMP sampling function has a well-defined interface which we have
 to implement.  The [[data]] argument allows us to pass pointers to the
@@ -12562,7 +12562,7 @@ end submodule mci_vamp2_s
 <<MCI vamp2: types>>=
   type, extends (vamp2_func_t) :: mci_vamp2_func_t
      private
-     real(default) :: integrand = 0.
+     real(default) :: integrand = 0._default
      class(mci_sampler_t), pointer :: sampler => null ()
      class(mci_vamp2_instance_t), pointer :: instance => null ()
    contains
@@ -13900,7 +13900,7 @@ an additional binary file.
           return !! success = .false.
        end if
     end if
-    !! The grid file (ending *.vg) exists and, if binary file is listed, it 
+    !! The grid file (ending *.vg) exists and, if binary file is listed, it
     !! exists, too.
     call mci%update (u, success)
     close (u)
@@ -14505,7 +14505,7 @@ generating an event.
           if (signal_is_pending ()) return
           if (sampler%is_valid ()) exit generate
        end do generate
-       if (mci%integrator%get_evt_weight () < 0.) then
+       if (mci%integrator%get_evt_weight () < 0._default) then
           if (.not. mci%negative_weights) then
              call msg_fatal ("VAMP2: cannot sample negative weights!")
           end if
@@ -14541,7 +14541,7 @@ generating an event.
 @ %def mci_vamp2_rebuild_event
 @
 \subsection{Integrator instance}
-\label{sec:nistance}
+\label{sec:instance}
 
 We store all information relevant for simulation. The event weight is stored, when a
 weighted event is generated, and the event excess, when a larger weight occurs
@@ -14557,9 +14557,9 @@ with [[event_rescale_f_max]].
      real(default), dimension(:), allocatable :: gi
      integer :: n_events = 0
      logical :: event_generated = .false.
-     real(default) :: event_weight = 0.
-     real(default) :: event_excess = 0.
-     real(default) :: event_rescale_f_max = 1.
+     real(default) :: event_weight = 0._default
+     real(default) :: event_excess = 0._default
+     real(default) :: event_rescale_f_max = 1._default
      real(default), dimension(:), allocatable :: event_x
    contains
    <<MCI vamp2: mci vamp2 instance: TBP>>

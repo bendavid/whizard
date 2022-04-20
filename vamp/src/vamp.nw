@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % VAMP main code as NOWEB source
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{The Abstract Datatype \texttt{vamp\_grid}}
@@ -176,7 +176,7 @@ end subroutine vamp_equivalences_write
 @ %def vamp_equivalences_write
 @
 <<Declaration of [[vamp_equivalences]] procedures>>=
-public :: vamp_equivalence_set 
+public :: vamp_equivalence_set
 @
 <<Implementation of [[vamp_equivalences]] procedures>>=
 subroutine vamp_equivalence_set (eq, i, left, right, perm, mode)
@@ -258,7 +258,7 @@ contains
   <<Implementation of [[vamp]] procedures>>
 end module vamp_rest
 @ %def vamp_rest
-@ 
+@
 <<[[vamp.f90]]>>=
 module vamp
   use vamp_grid_type    !NODEP!
@@ -312,7 +312,7 @@ type, public :: vamp_grid
    integer :: equivalent_to_ch, multiplicity
 end type vamp_grid
 @ %def vamp_grid
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_copy_grid, vamp_delete_grid
 @
@@ -323,7 +323,7 @@ public :: vamp_copy_grid, vamp_delete_grid
   the application can extend according to its needs.  The purpose is
   to hold all sorts of data that are predefined and accessed during
   the call of the sampling function.
-  
+
   The actual interface for the sampling function is PURE.
   Nevertheless, we can implement side effects via pointer components
   of a [[vamp_data_t]] extension.
@@ -441,14 +441,14 @@ pure subroutine map_domain (map, true_xmin, true_xmax, xmin, xmax)
   xmax = maxval (corners, dim=1)
 end subroutine map_domain
 @ %def map_domain
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental subroutine vamp_create_empty_grid (g)
   type(vamp_grid), intent(inout) :: g
   nullify (g%div, g%num_div, g%map, g%mu_x, g%mu_xx, g%sum_mu_x, g%sum_mu_xx)
 end subroutine vamp_create_empty_grid
 @ %def vamp_create_empty_grid
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_discard_integral
 @ Keep the current optimized grid, but drop the accumulated results
@@ -493,7 +493,7 @@ pure subroutine vamp_discard_integral &
 end subroutine vamp_discard_integral
 @ %def vamp_discard_integral
 @ %def sum_integral sum_weights sum_chi2
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 private :: set_grid_options
 @
@@ -580,7 +580,7 @@ sampling and after reshaping.  Build a fence with another routine.
 <<Declaration of [[vamp]] procedures>>=
 private :: vamp_reshape_grid_internal
 public :: vamp_reshape_grid
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_reshape_grid &
      (g, num_calls, num_div, stratified, quadrupole, covariance, exc, &
@@ -621,7 +621,7 @@ be two sampling points per cell.
   N_{\text{calls}} = 2\cdot (n_g)^{n_{\text{dim}}}
 \end{equation}
 The additional optional argument~$\hat n_g$ specifies an anisotropy in
-the shape 
+the shape
 \begin{equation}
   n_{g,j} =
    \frac{\hat n_{g,j}}{\left(\prod_j\hat n_{g,j}\right)^{1/n_{\text{dim}}}}
@@ -658,16 +658,16 @@ and
            {N_{\text{calls/cell}}^2(N_{\text{calls/cell}}-1)}
 \end{equation}
 <<Adjust [[grid]] and other state for new [[num_calls]]>>=
-g%jacobi = product (volume_division (g%div)) / g%calls 
+g%jacobi = product (volume_division (g%div)) / g%calls
 g%dv2g = (g%calls / num_cells)**2 &
      / g%calls_per_cell / g%calls_per_cell / (g%calls_per_cell - 1.0)
 @ %def jacobi dv2g
-@ 
+@
 <<Adjust [[grid]] and other state for new [[num_calls]]>>=
 call vamp_nullify_f_limits (g)
 @ When the grid is refined or reshaped, the recorded minimum and maximum of
 the sampling function should be nullified:
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_nullify_f_limits
 @
@@ -679,12 +679,12 @@ elemental subroutine vamp_nullify_f_limits (g)
 end subroutine vamp_nullify_f_limits
 @ %def vamp_nullify_f_limits
 @ %def f_min f_max
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_rigid_divisions
 public :: vamp_get_covariance, vamp_nullify_covariance
 public :: vamp_get_variance, vamp_nullify_variance
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure function vamp_rigid_divisions (g) result (ng)
   type(vamp_grid), intent(in) :: g
@@ -692,7 +692,7 @@ pure function vamp_rigid_divisions (g) result (ng)
   ng = rigid_division (g%div)
 end function vamp_rigid_divisions
 @ %def vamp_rigid_divisions
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure function vamp_get_covariance (g) result (cov)
   type(vamp_grid), intent(in) :: g
@@ -713,7 +713,7 @@ pure function vamp_get_covariance (g) result (cov)
   end if
 end function vamp_get_covariance
 @ %def vamp_get_covariance
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental subroutine vamp_nullify_covariance (g)
   type(vamp_grid), intent(inout) :: g
@@ -723,7 +723,7 @@ elemental subroutine vamp_nullify_covariance (g)
   end if
 end subroutine vamp_nullify_covariance
 @ %def vamp_nullify_covariance
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental function vamp_get_variance (g) result (v)
   type(vamp_grid), intent(in) :: g
@@ -739,7 +739,7 @@ elemental function vamp_get_variance (g) result (v)
   end if
 end function vamp_get_variance
 @ %def vamp_get_variance
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental subroutine vamp_nullify_variance (g)
   type(vamp_grid), intent(inout) :: g
@@ -754,7 +754,7 @@ public :: vamp_sample_grid
 public :: vamp_sample_grid0
 public :: vamp_refine_grid
 public :: vamp_refine_grids
-@ 
+@
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Simple Non-Adaptive Sampling: $S_0$}
@@ -816,12 +816,12 @@ end if
 if (present (channel)) then
    g%mu_gi = 0.0
 end if
-@ 
+@
 <<Local variables in [[vamp_sample_grid0]]>>=
 real(kind=default), parameter :: &
      eps =  tiny (1._default) / epsilon (1._default)
 character(len=6) :: buffer
-@ 
+@
 <<Local variables in [[vamp_sample_grid0]]>>=
 integer :: j, k
 integer, dimension(size(g%div)) :: cell
@@ -882,7 +882,7 @@ else
    f = wgt * func (x, data, weights, channel, grids)
 end if
 @ %def f
-@ 
+@
 <<Collect integration and grid optimization data for [[x]] from [[f]]>>=
 if (g%f_min > g%f_max) then
    g%f_min = abs (f) * g%calls
@@ -892,7 +892,7 @@ else if (abs (f) * g%calls < g%f_min) then
 else if (abs (f) * g%calls > g%f_max) then
    g%f_max = abs (f) * g%calls
 end if
-@ 
+@
 <<Collect integration and grid optimization data for [[x]] from [[f]]>>=
 f2 = f * f
 sum_f = sum_f + f
@@ -914,7 +914,7 @@ if (present (channel)) then
    g%mu_gi = g%mu_gi + f2
 end if
 @ %def f2 sum_f sum_f2 sum_f_plus sum_f_minus sum_f2_plus sum_f2_minus
-@ 
+@
 <<Local variables in [[vamp_sample_grid0]]>>=
 real(kind=default) :: wgt, f, f2
 real(kind=default) :: sum_f, sum_f2, var_f
@@ -923,7 +923,7 @@ real(kind=default) :: sum_f_minus, sum_f2_minus, var_f_minus
 real(kind=default), dimension(size(g%div)):: x, x_mid, wgts
 real(kind=default), dimension(size(g%div)):: r
 integer, dimension(size(g%div)) :: ia
-@ %def wgt f f2 
+@ %def wgt f f2
 @ %def sum_f sum_f2 var_f
 @ %def sum_f_plus sum_f2_plus var_f_plus
 @ %def sum_f_minus sum_f2_minus var_f_minus
@@ -940,13 +940,13 @@ integer, dimension(size(g%div)) :: ia
 var_f = sum_f2 * g%calls_per_cell - sum_f**2
 var_f_plus = sum_f2_plus * g%calls_per_cell - sum_f_plus**2
 var_f_minus = sum_f2_minus * g%calls_per_cell - sum_f_minus**2
-if (var_f <= 0.0) then 
+if (var_f <= 0.0) then
    var_f = tiny (1.0_default)
 end if
-if (sum_f_plus /= 0 .and. var_f_plus <= 0) then 
+if (sum_f_plus /= 0 .and. var_f_plus <= 0) then
    var_f_plus = tiny (1.0_default)
 end if
-if (sum_f_minus /= 0 .and. var_f_minus <= 0) then 
+if (sum_f_minus /= 0 .and. var_f_minus <= 0) then
    var_f_minus = tiny (1.0_default)
 end if
 g%mu = g%mu + (/ sum_f, var_f /)
@@ -989,7 +989,7 @@ if (neg_w) then
       g%mu_minus(2) = eps * max (g%mu_minus(1)**2, 1._default)
    end if
 end if
-@ 
+@
 <<Collect results of [[vamp_sample_grid0]]>>=
 if (g%mu(1)>0) then
    g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
@@ -1042,17 +1042,17 @@ else if (neg_w) then
    g%sum_weights = 0
 end if
 @ %def sum_integral sum_chi2 sum_weights
-@ 
+@
 <<Check optional arguments in [[vamp_sample_grid0]]>>=
 if (present (channel) .neqv. present (weights)) then
    call raise_exception (exc, EXC_FATAL, FN, &
         "channel and weights required together")
    return
 end if
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_probability
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure function vamp_probability (g, x) result (p)
   type(vamp_grid), intent(in) :: g
@@ -1062,7 +1062,7 @@ pure function vamp_probability (g, x) result (p)
 end function vamp_probability
 @ %def vamp_probability
 
-@ 
+@
 \begin{dubious}
   [[%variance]] should be private to [[division]]
 \end{dubious}
@@ -1143,7 +1143,7 @@ pure subroutine vamp_refine_grid (g, exc)
   end if
 end subroutine vamp_refine_grid
 @ %def vamp_refine_grid
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_refine_grids (g)
   type(vamp_grids), intent(inout) :: g
@@ -1154,7 +1154,7 @@ subroutine vamp_refine_grids (g)
   end do
 end subroutine vamp_refine_grids
 @ %def vamp_refine_grids
-@ 
+@
 <<Variables in [[vamp]]>>=
 real(kind=default), private, parameter :: QUAD_POWER = 0.5_default
 @ %def QUAD_POWER
@@ -1229,12 +1229,12 @@ elemental subroutine vamp_average_iterations_grid &
   end if
 end subroutine vamp_average_iterations_grid
 @ %def vamp_average_iterations_grid
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_average_iterations
 private :: vamp_average_iterations_grid
 @ %def vamp_average_iterations
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface vamp_average_iterations
    module procedure vamp_average_iterations_grid
@@ -1285,7 +1285,7 @@ private :: vamp_fork_grid_single, vamp_fork_grid_multi
 public :: vamp_join_grid
 private :: vamp_join_grid_single, vamp_join_grid_multi
 @ %def vamp_fork_grid vamp_join_grid
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface vamp_fork_grid
    module procedure vamp_fork_grid_single, vamp_fork_grid_multi
@@ -1389,7 +1389,7 @@ do i = 1, num_grids
 end do
 deallocate (d_tmp)
 <<Bail out if exception [[exc]] raised>>
-@ 
+@
 <<Bail out if exception [[exc]] raised>>=
 if (present (exc)) then
    if (exc%level > EXC_WARN) then
@@ -1402,7 +1402,7 @@ suffice), because [[copy_division]] handles the memory management.
 do i = 1, num_grids
    call copy_division (gs(i)%div(j), g%div(j))
 end do
-@ 
+@
 <<Allocate or resize the divisions>>=
 num_div = size (g%div)
 do i = 1, size (gs)
@@ -1416,7 +1416,7 @@ do i = 1, size (gs)
       call create_empty_division (gs(i)%div)
    end if
 end do
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_join_grid_single (g, gs, d, exc)
   type(vamp_grid), intent(inout) :: g
@@ -1436,7 +1436,7 @@ pure subroutine vamp_join_grid_single (g, gs, d, exc)
   <<Combine the rest of [[gs]] onto [[g]]>>
 end subroutine vamp_join_grid_single
 @ %def vamp_join_grid_single
-@ 
+@
 <<[[call join_division (g%div(j), gs%div(j))]]>>=
 allocate (d_tmp(num_grids))
 do i = 1, num_grids
@@ -1453,7 +1453,7 @@ do i = 1, num_grids
 end do
 call sum_division (g%div(j), d_tmp)
 deallocate (d_tmp)
-@ 
+@
 <<Combine the rest of [[gs]] onto [[g]]>>=
 g%f_min = minval (gs%f_min * (g%jacobi * g%calls) / (gs%jacobi * gs%calls))
 g%f_max = maxval (gs%f_max * (g%jacobi * g%calls) / (gs%jacobi * gs%calls))
@@ -1492,7 +1492,7 @@ allocate (gx(vamp_fork_grid_joints (dim)))
 call vamp_fork_grid (g, gs, gx, dim, exc)
 ...
 call vamp_join_grid (g, gs, gx, dim, exc)
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure recursive subroutine vamp_fork_grid_multi (g, gs, gx, d, exc)
   type(vamp_grid), intent(in) :: g
@@ -1524,7 +1524,7 @@ pure recursive subroutine vamp_fork_grid_multi (g, gs, gx, d, exc)
   end select
 end subroutine vamp_fork_grid_multi
 @ %def vamp_fork_grid_multi
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_fork_grid_joints
 @
@@ -1544,7 +1544,7 @@ pure function vamp_fork_grid_joints (d) result (s)
   end do
 end function vamp_fork_grid_joints
 @ %def vamp_fork_grid_joints
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure recursive subroutine vamp_join_grid_multi (g, gs, gx, d, exc)
   type(vamp_grid), intent(inout) :: g
@@ -1645,7 +1645,7 @@ subroutine vamp_sample_grid_parallel &
   <<Copy results of [[vamp_sample_grid]] to dummy variables>>
 end subroutine vamp_sample_grid_parallel
 @ %def vamp_sample_grid_parallel
-@ 
+@
 <<Gather exceptions in [[vamp_sample_grid_parallel]]>>=
 if ((present (exc)) .and. (any (excs(1:num_workers)%level > 0))) then
    call gather_exceptions (exc, excs(1:num_workers))
@@ -1680,7 +1680,7 @@ pure subroutine vamp_distribute_work (num_workers, ng, d)
      <<Accept distribution among [[n]] workers>>
   end do try
 end subroutine vamp_distribute_work
-@ 
+@
 <<Accept distribution among [[n]] workers>>=
 j = count (num_forks > 1)
 if (associated (d)) then
@@ -1691,7 +1691,7 @@ if (associated (d)) then
 else
    allocate (d(2,j))
 end if
-@ 
+@
 <<Accept distribution among [[n]] workers>>=
 j = 1
 do i = 1, size (ng)
@@ -1701,7 +1701,7 @@ do i = 1, size (ng)
    end if
 end do
 return
-@ 
+@
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Diagnostics}
@@ -1716,7 +1716,7 @@ type, public :: vamp_history
    type(div_history), dimension(:), pointer :: div => null ()
 end type vamp_history
 @ %def vamp_history
-@ 
+@
 <<Trace results of [[vamp_sample_grid]]>>=
 if (present (history)) then
    if (iteration <= size (history)) then
@@ -1738,7 +1738,7 @@ public :: vamp_get_history, vamp_get_history_single
 interface vamp_get_history
    module procedure vamp_get_history_single
 end interface
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental subroutine vamp_create_history (h, ndim, verbose)
   type(vamp_history), intent(out) :: h
@@ -1758,14 +1758,14 @@ elemental subroutine vamp_create_history (h, ndim, verbose)
   end if
 end subroutine vamp_create_history
 @ %def vamp_create_history
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental subroutine vamp_terminate_history (h)
   type(vamp_history), intent(inout) :: h
   h%calls = 0.0
 end subroutine vamp_terminate_history
 @ %def vamp_terminate_history
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_get_history_single (h, g, integral, std_dev, avg_chi2)
   type(vamp_history), intent(inout) :: h
@@ -1796,7 +1796,7 @@ if (associated (h%div)) then
 else
    allocate (h%div(size(g%div)))
 end if
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_print_history, vamp_write_history
 private :: vamp_print_one_history, vamp_print_histories
@@ -1813,7 +1813,7 @@ interface vamp_write_history
 end interface
 @ %def vamp_print_history
 @ %def vamp_write_history
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_print_one_history (h, tag)
   type(vamp_history), dimension(:), intent(in) :: h
@@ -1873,11 +1873,11 @@ subroutine vamp_print_one_history (h, tag)
   flush (output_unit)
 end subroutine vamp_print_one_history
 @ %def vamp_print_one_history
-@ 
+@
 <<Variables in [[vamp]]>>=
 integer, private, parameter :: BUFFER_SIZE = 50
 @ %def BUFFER_SIZE
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_print_histories (h, tag)
   type(vamp_history), dimension(:,:), intent(in) :: h
@@ -1897,7 +1897,7 @@ subroutine vamp_print_histories (h, tag)
   flush (output_unit)
 end subroutine vamp_print_histories
 @ %def vamp_print_histories
-@ 
+@
 \begin{dubious}
  WK
 \end{dubious}
@@ -2026,12 +2026,12 @@ type, public :: vamp_grids
    real(kind=default) :: sum_chi2, sum_integral, sum_weights
 end type vamp_grids
 @ %def vamp_grids
-@ 
+@
 \begin{equation}
 \label{eq:gophi_i}
   g\circ\phi_i
      = \left|\frac{\partial\phi_i}{\partial x}\right|^{-1}
-       \left( \alpha_i g_i + 
+       \left( \alpha_i g_i +
        \sum_{\substack{j=1\\j\not=i}}^{N_c} \alpha_j (g_j\circ\pi_{ij})
           \left|\frac{\partial\pi_{ij}}{\partial x}\right| \right)\,.
 \end{equation}
@@ -2069,7 +2069,7 @@ function vamp_multi_channel &
        / dot_product (weights, g_phi_x)
 end function vamp_multi_channel
 @ %def vamp_multi_channel
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 function vamp_multi_channel0 &
      (func, data, phi, jacobian, x, weights, channel) result (w_x)
@@ -2091,7 +2091,7 @@ function vamp_multi_channel0 &
   w_x = func (x_prime, data) / dot_product (weights, g_phi_x)
 end function vamp_multi_channel0
 @ %def vamp_multi_channel0
-@ 
+@
 \begin{dubious}
  WK
 \end{dubious}
@@ -2218,7 +2218,7 @@ pure subroutine numeric_jacobian (phi, channel, x, region, jacobian, delta_x)
   jacobian = abs (jacobian)
 end subroutine numeric_jacobian
 @ %def numeric_jacobian
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_create_grids, vamp_create_empty_grids
 public :: vamp_copy_grids, vamp_delete_grids
@@ -2260,14 +2260,14 @@ pure subroutine vamp_create_grids &
   g%sum_weights = 0.0
 end subroutine vamp_create_grids
 @  %def vamp_create_grids
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_create_empty_grids (g)
   type(vamp_grids), intent(inout) :: g
   nullify (g%grids, g%weights, g%num_calls)
 end subroutine vamp_create_empty_grids
 @  %def vamp_create_empty_grids
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_discard_integrals
 @
@@ -2295,7 +2295,7 @@ pure subroutine vamp_discard_integrals &
 end subroutine vamp_discard_integrals
 @ %def vamp_discard_integrals
 @ %def sum_integral sum_weights sum_chi2
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_update_weights
 @ We must discard the accumulated integrals, because the weight
@@ -2324,7 +2324,7 @@ pure subroutine vamp_update_weights &
   end if
 end subroutine vamp_update_weights
 @ %def vamp_update_weights
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_reshape_grids
 @
@@ -2367,7 +2367,7 @@ pure subroutine vamp_reshape_grids &
   end do
 end subroutine vamp_reshape_grids
 @ %def vamp_reshape_grids
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_sample_grids
 @ Even if [[g%num_calls]] is derived from [[g%weights]], we must
@@ -2462,7 +2462,7 @@ if (present (histories)) then
    end if
    call vamp_terminate_history (histories(iteration+1:,ch))
 end if
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_reduce_channels
 @
@@ -2509,10 +2509,10 @@ pure subroutine vamp_reduce_channels (g, integrals, std_devs, active)
   g%sum_chi2 = g%sum_chi2 + this_weight * this_integral**2
 end subroutine vamp_reduce_channels
 @ %def vamp_reduce_channels
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_refine_weights
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 elemental subroutine vamp_average_iterations_grids &
      (g, iteration, integral, std_dev, avg_chi2)
@@ -2534,10 +2534,10 @@ elemental subroutine vamp_average_iterations_grids &
   end if
 end subroutine vamp_average_iterations_grids
 @ %def vamp_average_iterations_grids
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 private :: vamp_average_iterations_grids
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface vamp_average_iterations
    module procedure  vamp_average_iterations_grids
@@ -2551,7 +2551,7 @@ end interface
 pure subroutine vamp_refine_weights (g, power)
   type(vamp_grids), intent(inout) :: g
   real(kind=default), intent(in), optional :: power
-  real(kind=default) :: local_power 
+  real(kind=default) :: local_power
   real(kind=default), parameter :: DEFAULT_POWER = 0.5_default
   if (present (power)) then
      local_power = power
@@ -2562,7 +2562,7 @@ pure subroutine vamp_refine_weights (g, power)
        (g, g%weights * vamp_get_variance (g%grids) ** local_power)
 end subroutine vamp_refine_weights
 @ %def vamp_refine_weights
-@ 
+@
 <<Trace results of [[vamp_sample_grids]]>>=
 if (present (history)) then
    if (iteration <= size (history)) then
@@ -2582,7 +2582,7 @@ private :: vamp_get_history_multi
 interface vamp_get_history
    module procedure vamp_get_history_multi
 end interface
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_get_history_multi (h, g, integral, std_dev, avg_chi2)
   type(vamp_history), intent(inout) :: h
@@ -2728,7 +2728,7 @@ subroutine more_pancake_than_cigar (eval, yes_or_no)
   end if
 end subroutine more_pancake_than_cigar
 @ %def more_pancake_than_cigar
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 private :: more_pancake_than_cigar
 @ %def more_pancake_than_cigar
@@ -2762,7 +2762,7 @@ i(2) = sum (maxloc (abs_evec, mask = abs_evec < abs_evec(i(1))))
 print *, iv, evals(iv), " => ", evecs(:,iv)
 print *, i(1), abs_evec(i(1)), ", ", i(2), abs_evec(i(2))
 print *, i(1), evecs(i(1),iv), ", ", i(2), evecs(i(2),iv)
-@ 
+@
 <<Get $\cos\theta$ and $\sin\theta$ from [[evecs]]>>=
 cos_theta = evecs(i(1),iv)
 sin_theta = evecs(i(2),iv)
@@ -2809,7 +2809,7 @@ subroutine select_rotation_axis (cov, r, pancake, cigar)
   <<Construct~$\hat R(\theta;i,j)$>>
 end subroutine select_rotation_axis
 @ %def select_rotation_axis
-@ 
+@
 <<Handle optional [[pancake]] and [[cigar]]>>=
 if (present (pancake)) then
    num_pancake = pancake
@@ -2837,7 +2837,7 @@ subroutine select_subspace_explicit (cov, r, subspace)
   r(subspace,subspace) = evec_sub
 end subroutine select_subspace_explicit
 @ %def select_subspace_explicit
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine select_subspace_guess (cov, r, ndim, pancake, cigar)
   real(kind=default), dimension(:,:), intent(in) :: cov
@@ -2857,7 +2857,7 @@ subroutine select_subspace_guess (cov, r, ndim, pancake, cigar)
   call select_subspace_explicit (cov, r, subspace)
 end subroutine select_subspace_guess
 @ %def select_subspace_guess
-@ 
+@
 <<Set [[subspace]] to the axes of the optimal plane>>=
 abs_evec = abs (evecs(:,iv))
 subspace(1) = sum (maxloc (abs_evec))
@@ -2865,7 +2865,7 @@ do i = 2, ndim
    abs_evec(subspace(i-1)) = -1.0
    subspace(i) = sum (maxloc (abs_evec))
 end do
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface select_rotation_subspace
    module procedure select_subspace_explicit, select_subspace_guess
@@ -2881,7 +2881,7 @@ private :: select_subspace_guess
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_print_covariance
 @ %def vamp_print_covariance
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_print_covariance (cov)
   real(kind=default), dimension(:,:), intent(in) :: cov
@@ -2949,7 +2949,7 @@ cl = spread ((/ (i, i=1,cl_num) /), dim = 2, ncopies = 2)
   d_1 (x,y) &= |x-y| \\
 \intertext{%
   since the latter won't separate very small eiegenvalues from the
-  bulk.  Another option is} 
+  bulk.  Another option is}
   d_\alpha (x,y) &= |x^\alpha-y^\alpha|
 \end{align}
 \end{subequations}
@@ -2972,7 +2972,7 @@ wgt1 = cl(gap+1,2) - cl(gap+1,1) + 1
 cl_pos(gap) = (wgt0 * cl_pos(gap) + wgt1 * cl_pos(gap+1)) / (wgt0 + wgt1)
 cl(gap,2) = cl(gap+1,2)
 @ %def gap wgt0 wgt1 cl_pos cl
-@ 
+@
 <<Join closest clusters>>=
 cl_pos(gap+1:cl_num-1) = cl_pos(gap+2:cl_num)
 cl(gap+1:cl_num-1,:) = cl(gap+2:cl_num,:)
@@ -3025,7 +3025,7 @@ function condense_action (positions, clusters) result (s)
                                            :clusters(i,2))) ** POWER
   end do
 end function condense_action
-@ 
+@
 <<[[ctest.f90]]>>=
 program ctest
   use kinds
@@ -3065,12 +3065,12 @@ Automagically adaptive tools are not always appropriate for unweighted
 event generation, but we can give it a try.
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_next_event
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface vamp_next_event
    module procedure vamp_next_event_single, vamp_next_event_multi
 end interface
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 private :: vamp_next_event_single, vamp_next_event_multi
 @ Both event generation routines operate in two modes, depending on
@@ -3105,7 +3105,7 @@ subroutine vamp_next_event_single &
   end do rejection
 end subroutine vamp_next_event_single
 @ %def vamp_next_event_single
-@ 
+@
 <<Choose a [[x]] and calculate f([[x]])>>=
 call tao_random_number (rng, r)
 call inject_division_short (g%div, real(r, kind=default), x, ia, wgts)
@@ -3116,19 +3116,19 @@ if (associated (g%map)) then
 end if
 <<[[f = wgt * func (x, weights, channel)]], iff [[x]] inside [[true_domain]]>>
 ! call record_efficiency (g%div, ia, f/g%f_max)
-@ 
+@
 <<Unconditionally accept weighted event>>=
 weight = f
 exit rejection
 @
 <<Maybe accept unweighted event>>=
-if (f > g%f_max) then
+if (abs(f) > g%f_max) then
    g%f_max = f
    call raise_exception (exc, EXC_WARN, FN, "weight > 1")
    exit rejection
 end if
 call tao_random_number (rng, r0)
-if (r0 * g%f_max <= f) then
+if (r0 * g%f_max <= abs(f)) then
    exit rejection
 end if
 @ We know that [[g%weights]] are normalized: [[sum (g%weights) == 1.0]].
@@ -3178,7 +3178,7 @@ end subroutine vamp_next_event_multi
   \frac{w_i(x)}{\max_i \max_x w_i(x)}
 \end{equation}
 after using the apriori weights~$\alpha_i$ to select a channel~$i$ or we
-can  reject with the weights
+can reject with the weights
 \begin{equation}
   \frac{w_i(x)}{\max_x w_i(x)}
 \end{equation}
@@ -3193,7 +3193,7 @@ else
    weights = g%weights
 end if
 weights = weights / sum (weights)
-@ 
+@
 <<Select [[channel]] from [[weights]]>>=
 call tao_random_number (rng, r)
 select_channel: do channel = 1, size (g%weights)
@@ -3203,7 +3203,7 @@ select_channel: do channel = 1, size (g%weights)
    end if
 end do select_channel
 channel = min (channel, size (g%weights)) !: for $r=1$ and rounding errors
-@ 
+@
 <<Unconditionally accept weighted multi channel event>>=
 weight = wgt * g%weights(channel) / weights(channel)
 exit rejection
@@ -3308,7 +3308,7 @@ end subroutine vamp_warmup_grids
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_integrate
 private :: vamp_integrate_grid, vamp_integrate_region
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface vamp_integrate
    module procedure vamp_integrate_grid, vamp_integrate_region
@@ -3381,11 +3381,11 @@ subroutine vamp_integrate_region &
   call vamp_delete_grid (g)
 end subroutine vamp_integrate_region
 @ %def vamp_integrate_region
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_integratex
 private :: vamp_integratex_region
-@ 
+@
 <<Interfaces of [[vamp]] procedures>>=
 interface vamp_integratex
    module procedure vamp_integratex_region
@@ -3462,7 +3462,7 @@ public :: vamp_write_grids
 private :: write_grids_unit, write_grids_name
 public :: vamp_read_grids
 private :: read_grids_unit, read_grids_name
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_read_grids_raw
 private :: read_grids_raw_unit, read_grids_raw_name
@@ -3667,7 +3667,7 @@ subroutine read_grid_unit (g, unit, read_integrals)
   read (unit = unit, fmt = descr_fmt) chdum
 end subroutine read_grid_unit
 @ %def read_grid_unit
-@ 
+@
 <<Insure that [[size (g%div) == ndim]]>>=
 if (associated (g%div)) then
    if (size (g%div) /= ndim) then
@@ -3699,7 +3699,7 @@ end if
 if (associated (g%sum_mu_xx)) then
    deallocate (g%sum_mu_xx)
 end if
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine write_grid_name (g, name, write_integrals)
   type(vamp_grid), intent(inout) :: g
@@ -3712,7 +3712,7 @@ subroutine write_grid_name (g, name, write_integrals)
   close (unit = unit)
 end subroutine write_grid_name
 @ %def write_grid_name
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine read_grid_name (g, name, read_integrals)
   type(vamp_grid), intent(inout) :: g
@@ -3798,7 +3798,7 @@ subroutine read_grids_unit (g, unit, read_integrals)
   read (unit = unit, fmt = descr_fmt) chdum
 end subroutine read_grids_unit
 @ %def read_grids_unit
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine write_grids_name (g, name, write_integrals)
   type(vamp_grids), intent(inout) :: g
@@ -3811,7 +3811,7 @@ subroutine write_grids_name (g, name, write_integrals)
   close (unit = unit)
 end subroutine write_grids_name
 @ %def write_grids_name
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine read_grids_name (g, name, read_integrals)
   type(vamp_grids), intent(inout) :: g
@@ -3969,7 +3969,7 @@ subroutine read_grid_raw_unit (g, unit, read_integrals)
      end do
   else if (magic == MAGIC_GRID_EMPTY) then
      <<Insure that [[associated (g%mu_x) == .false.]]>>
-  else 
+  else
      print *, FN, " fatal: expecting magic ", MAGIC_GRID_EMPTY, &
                   " or ", MAGIC_GRID_MU_X, ", found ", magic
      stop
@@ -3982,7 +3982,7 @@ subroutine read_grid_raw_unit (g, unit, read_integrals)
   end if
 end subroutine read_grid_raw_unit
 @ %def read_grid_raw_unit
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine write_grid_raw_name (g, name, write_integrals)
   type(vamp_grid), intent(inout) :: g
@@ -3996,7 +3996,7 @@ subroutine write_grid_raw_name (g, name, write_integrals)
   close (unit = unit)
 end subroutine write_grid_raw_name
 @ %def write_grid_raw_name
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine read_grid_raw_name (g, name, read_integrals)
   type(vamp_grid), intent(inout) :: g
@@ -4085,7 +4085,7 @@ subroutine read_grids_raw_unit (g, unit, read_integrals)
   end if
 end subroutine read_grids_raw_unit
 @ %def read_grids_raw_unit
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine write_grids_raw_name (g, name, write_integrals)
   type(vamp_grids), intent(inout) :: g
@@ -4099,7 +4099,7 @@ subroutine write_grids_raw_name (g, name, write_integrals)
   close (unit = unit)
 end subroutine write_grids_raw_name
 @ %def write_grids_raw_name
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 subroutine read_grids_raw_name (g, name, read_integrals)
   type(vamp_grids), intent(inout) :: g
@@ -4120,7 +4120,7 @@ end subroutine read_grids_raw_name
 buffer indices)!
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_marshal_grid_size, vamp_marshal_grid, vamp_unmarshal_grid
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_marshal_grid (g, ibuf, dbuf)
   type(vamp_grid), intent(in) :: g
@@ -4194,7 +4194,7 @@ pure subroutine vamp_marshal_grid (g, ibuf, dbuf)
   iidx = iidx + 1
 end subroutine vamp_marshal_grid
 @ %def vamp_marshal_grid
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_marshal_grid_size (g, iwords, dwords)
   type(vamp_grid), intent(in) :: g
@@ -4218,7 +4218,7 @@ pure subroutine vamp_marshal_grid_size (g, iwords, dwords)
   end if
 end subroutine vamp_marshal_grid_size
 @ %def vamp_marshal_grid_size
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_unmarshal_grid (g, ibuf, dbuf)
   type(vamp_grid), intent(inout) :: g
@@ -4280,11 +4280,11 @@ pure subroutine vamp_unmarshal_grid (g, ibuf, dbuf)
   iidx = iidx + 1
 end subroutine vamp_unmarshal_grid
 @ %def vamp_unmarshal_grid
-@ 
+@
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_marshal_history_size, vamp_marshal_history
 public :: vamp_unmarshal_history
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_marshal_history (h, ibuf, dbuf)
   type(vamp_history), intent(in) :: h
@@ -4324,7 +4324,7 @@ pure subroutine vamp_marshal_history (h, ibuf, dbuf)
   end do
 end subroutine vamp_marshal_history
 @ %def vamp_marshal_history
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_marshal_history_size (h, iwords, dwords)
   type(vamp_history), intent(in) :: h
@@ -4344,7 +4344,7 @@ pure subroutine vamp_marshal_history_size (h, iwords, dwords)
   end do
 end subroutine vamp_marshal_history_size
 @ %def vamp_marshal_history_size
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
 pure subroutine vamp_unmarshal_history (h, ibuf, dbuf)
   type(vamp_history), intent(inout) :: h
@@ -4488,7 +4488,7 @@ elemental subroutine vamp_delete_grids (g)
   end if
 end subroutine vamp_delete_grids
 @ %def vamp_delete_grids
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
   elemental subroutine vamp_copy_history (lhs, rhs)
     type(vamp_history), intent(inout) :: lhs
@@ -4517,7 +4517,7 @@ end subroutine vamp_delete_grids
   end subroutine vamp_copy_history
 
 @ %def vamp_copy_history
-@ 
+@
 <<Implementation of [[vamp]] procedures>>=
   elemental subroutine vamp_delete_history (h)
     type(vamp_history), intent(inout) :: h

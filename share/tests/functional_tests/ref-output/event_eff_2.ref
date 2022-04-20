@@ -202,7 +202,10 @@ Warning: No cuts have been defined.
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  62.77 %
+| Events: actual unweighting efficiency =  63.49 %
+Warning: Encountered events with excess weight: 1 events (  0.100 %)
+| Maximum excess weight = 1.157E-03
+| Average excess weight = 1.157E-06
 | Events: closing raw file 'event_eff_2_p1.evx'
 ?negative_weights = true
 | RNG: Initializing TAO random-number generator
@@ -263,8 +266,11 @@ Warning: No cuts have been defined.
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
-| Events: actual unweighting efficiency =  66.14 %
+| Events: actual unweighting efficiency =  61.01 %
+Warning: Encountered events with excess weight: 6 events (  0.600 %)
+| Maximum excess weight = 5.954E-03
+| Average excess weight = 1.334E-05
 | Events: closing raw file 'event_eff_2_p1.evx'
-| There were no errors and    6 warning(s).
+| There were no errors and    8 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

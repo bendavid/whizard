@@ -18335,8 +18335,7 @@ Otherwise, all volatile data are inside the [[instance]] object.
   end subroutine process_instance_generate_unweighted_event
 
 @ %def process_instance_generate_unweighted_event
-@
-This replaces the event generation methods for the situation that the
+@ This replaces the event generation methods for the situation that the
 process instance object has been filled by other means (i.e., reading
 and/or recalculating its contents).  We just have to fill in missing
 MCI data, especially the event weight.
@@ -18358,7 +18357,6 @@ MCI data, especially the event weight.
   end subroutine process_instance_recover_event
 
 @ %def process_instance_recover_event
-@
 @ Activate the components and terms that correspond to a currently
 selected MCI parameter set.
 <<Instances: process instance: TBP>>=
@@ -19647,7 +19645,7 @@ for the term instance with index [[i_term]] and a phase space point set with
 index [[i_phs]]. In addition, for the real emission, each term instance
 corresponds to one emitter. There is the possibility to supply an external
 $\alpha_s$ as well as an external scale to override the scale set in the
-Sindarin, e.g. for POWHEG.
+Sindarin, e.g. for POWHEG matching.
 <<Instances: process instance: TBP>>=
   procedure :: compute_sqme_rad => process_instance_compute_sqme_rad
 <<Instances: sub interfaces>>=

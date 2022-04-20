@@ -5,7 +5,7 @@
 \chapter{VEGAS Integration}
 \label{cha:vegas-integration}
 
-@ The backbone integrator of WHIZARD is a object-oriented implemetation of the VEGAS algorithm.
+@ The backbone integrator of WHIZARD is an object-oriented implemetation of the VEGAS algorithm.
 
 <<[[vegas.f90]]>>=
 <<File header>>
@@ -254,42 +254,50 @@ be used, to export the actual grid.
     write (u, integer_fmt) "n_dim = ", self%n_dim
     write (u, integer_fmt) "n_bins = ", self%n_bins
     write (u, descr_fmt) "begin x_lower"
-    do j = 1, self%n_dim
-       if (pac) then
-          write (u, double_array_pac_fmt)  j, self%x_lower(j)
-       else
-          write (u, double_array_fmt)  j, self%x_lower(j)
-       end if
-    end do
-    write (u, descr_fmt) "end x_lower"
-    write (u, descr_fmt) "begin x_upper"
-    do j = 1, self%n_dim
-       if (pac) then
-          write (u, double_array_pac_fmt) j, self%x_upper(j)
-       else
-          write (u, double_array_fmt) j, self%x_upper(j)
-       end if
-    end do
-    write (u, descr_fmt) "end x_upper"
-    write (u, descr_fmt) "begin delta_x"
-    do j = 1, self%n_dim
-       if (pac) then
-          write (u, double_array_pac_fmt)  j, self%delta_x(j)
-       else
-          write (u, double_array_fmt)  j, self%delta_x(j)
-       end if
-    end do
-    write (u, descr_fmt) "end delta_x"
-    write (u, descr_fmt) "begin xi"
-    do j = 1, self%n_dim
-       do i = 1, self%n_bins + 1
+    if (allocated (self%x_lower)) then
+       do j = 1, self%n_dim
           if (pac) then
-             write (u, double_array2_pac_fmt) i, j, self%xi(i, j)
+             write (u, double_array_pac_fmt)  j, self%x_lower(j)
           else
-             write (u, double_array2_fmt) i, j, self%xi(i, j)
+             write (u, double_array_fmt)  j, self%x_lower(j)
           end if
        end do
-    end do
+    end if
+    write (u, descr_fmt) "end x_lower"
+    write (u, descr_fmt) "begin x_upper"
+    if (allocated (self%x_upper)) then
+       do j = 1, self%n_dim
+          if (pac) then
+             write (u, double_array_pac_fmt) j, self%x_upper(j)
+          else
+             write (u, double_array_fmt) j, self%x_upper(j)
+          end if
+       end do
+    end if
+    write (u, descr_fmt) "end x_upper"
+    write (u, descr_fmt) "begin delta_x"
+    if (allocated (self%delta_x)) then
+       do j = 1, self%n_dim
+          if (pac) then
+             write (u, double_array_pac_fmt)  j, self%delta_x(j)
+          else
+             write (u, double_array_fmt)  j, self%delta_x(j)
+          end if
+       end do
+    end if
+    write (u, descr_fmt) "end delta_x"
+    write (u, descr_fmt) "begin xi"
+    if (allocated (self%xi)) then
+       do j = 1, self%n_dim
+          do i = 1, self%n_bins + 1
+             if (pac) then
+                write (u, double_array2_pac_fmt) i, j, self%xi(i, j)
+             else
+                write (u, double_array2_fmt) i, j, self%xi(i, j)
+             end if
+          end do
+       end do
+    end if
     write (u, descr_fmt) "end xi"
     write (u, descr_fmt) "end vegas_grid_t"
   end subroutine vegas_grid_write
@@ -473,7 +481,7 @@ We store the result of the latest iteration(s) in a transparent container.
 The [[vegas_result_t]] object inside VEGAS must not be directly accessible.
 We export the a copy of the result via a get-method of the [[vegas_t]] object.
 
-We store latest event weight in [[evt_weight]] and a (possible) evebt weight
+We store latest event weight in [[evt_weight]] and a (possible) event weight
 excess in [[evt_weight_excess]], if the event weight is larger than
 [[max_abs_f]].
 <<Vegas: public>>=
@@ -1405,7 +1413,7 @@ if you are not careful! Hence, it will only be avaible during usage with
       class(vegas_t), intent(in) :: self
       real(default) :: sum_abs_f
     end function vegas_get_sum_abs_f_pos
-    elemental module function vegas_get_sum_abs_f_neg (self) result (sum_abs_f)    
+    elemental module function vegas_get_sum_abs_f_neg (self) result (sum_abs_f)
       class(vegas_t), intent(in) :: self
       real(default) :: sum_abs_f
     end function vegas_get_sum_abs_f_neg
@@ -1416,7 +1424,7 @@ if you are not careful! Hence, it will only be avaible during usage with
     sum_abs_f = self%result%efficiency_pos * self%result%max_abs_f_pos
   end function vegas_get_sum_abs_f_pos
 
-  elemental module function vegas_get_sum_abs_f_neg (self) result (sum_abs_f)    
+  elemental module function vegas_get_sum_abs_f_neg (self) result (sum_abs_f)
     class(vegas_t), intent(in) :: self
     real(default) :: sum_abs_f
     sum_abs_f = self%result%efficiency_neg * self%result%max_abs_f_neg
@@ -2061,7 +2069,7 @@ parallelization is useless.
   end subroutine vegas_integrate_collect
 
 @ %def vegas_integrate_collect
-@ 
+@
 Obtain a random point inside the $n$-dimensional hypercube, transform
 onto the correct interval and calculate the bin volume. The additional
 factor [[n_bins]] is already applied to the [[jacobian]] (per
@@ -2218,21 +2226,18 @@ maximum, accordingly.
     class(rng_t), intent(inout) :: rng
     real(default), dimension(self%config%n_dim), intent(out) :: x
     real(default) :: bin_volume
-    real(default) :: max_abs_f
     real(default) :: r
     associate (result => self%result)
       generate: do
          call self%generate_weighted (func, rng, x)
-         max_abs_f = merge (result%max_abs_f_pos, result%max_abs_f_neg, &
-              & result%evt_weight > 0.)
-         if (result%evt_weight > max_abs_f) then
+         if (abs(result%evt_weight) > result%max_abs_f) then
             result%evt_weight_excess = &
-                 & result%evt_weight / max_abs_f - 1._default
+                 & abs(result%evt_weight) / result%max_abs_f - 1._default
             exit generate
          end if
          call rng%generate (r)
          ! Do not use division, because max_abs_f could be zero.
-         if (max_abs_f * r <= abs(result%evt_weight)) then
+         if (result%max_abs_f * r <= abs(result%evt_weight)) then
           exit generate
          end if
       end do generate
@@ -4990,7 +4995,7 @@ main module:
   end subroutine vamp2_compute_result_and_efficiency
 
 @ %def vamp2_compute_result_and_efficiency
-@ 
+@
 Generate event from multi-channel weight $w(x) = f(x) / g(x)$.
 
 We select a channel using the a-priori weights and
@@ -5018,6 +5023,14 @@ An additional rescale factor [[opt_event_rescale]] is applied to
     real(default) :: r
     if (.not. self%event_prepared) then
        call prepare_event ()
+    else
+       if (.not. allocated (func%grids)) then
+          call prepare_event ()
+       else
+          if (any ([(.not. allocated (func%grids(i)%xi),i=1,size(func%grids))])) then
+             call prepare_event ()
+          end if
+       end if
     end if
     call rng%generate (r)
     nchannel: do ch = 1, self%config%n_channel
@@ -5077,6 +5090,14 @@ last value of the loop index [[ch]] is then \(c^\prime\).
     end if
     if (.not. self%event_prepared) then
        call prepare_event ()
+    else
+       if (.not. allocated (func%grids)) then
+          call prepare_event ()
+       else
+          if (any ([(.not. allocated (func%grids(i)%xi),i=1,size(func%grids))])) then
+             call prepare_event ()
+          end if
+       end if
     end if
     generate: do
        call rng%generate (r)
@@ -5088,13 +5109,10 @@ last value of the loop index [[ch]] is then \(c^\prime\).
        call func%set_channel (ch)
        call self%integrator(ch)%generate_weighted (func, rng, x)
        self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
-       max_abs_f = merge ( &
-            self%integrator(ch)%get_max_abs_f_pos (), &
-            self%integrator(ch)%get_max_abs_f_neg (), &
-            self%result%evt_weight > 0.)
+       max_abs_f = self%integrator(ch)%get_max_abs_f ()
        self%result%evt_weight_excess = 0._default
-       if (self%result%evt_weight > max_abs_f) then
-          self%result%evt_weight_excess = self%result%evt_weight / max_abs_f - 1._default
+       if (abs(self%result%evt_weight) > max_abs_f) then
+          self%result%evt_weight_excess = abs(self%result%evt_weight) / max_abs_f - 1._default
           exit generate
        end if
        call rng%generate (r)
@@ -6174,14 +6192,14 @@ overtake each other, p. 41. For non-blocking communication, the
 standard extends it such that the order depends on "the execution
 order of the calls that initiate the communication". The
 non-overtaking requirement is then extended to this definition of
-order. 
+order.
 
 Color method for tracking communication? We restrict each slave to a
 single callback (at once), which can communicate during the next
 request computation. Before handling the next (current) callback, the
 former one has to finish (with a wait call on the client-side). On the
 server-side, we only test on the finishing, reporting a communication
-failure. 
+failure.
 
 Furthermore, the implementation has to take care that the order of
 the communication calls on the master and slave code always matches!
@@ -6262,7 +6280,7 @@ implementation of the polling honors this order.
   end interface
 
 @ %def request_base_release_workload
-@ 
+@
 <<Request base: interfaces>>=
      !> Handle associated callback and release workload with the information from the request container.
      !!
@@ -7290,7 +7308,7 @@ end module request_state
 submodule (request_state) request_state_s
 
   use diagnostics
-  
+
   implicit none
 
 contains
@@ -7499,7 +7517,7 @@ states.
 
 @ %def request_state_client_terminate
 @ Init persistent requests. Must be called before first
-[[receive_request]]. [[Free_request]] must be called after 
+[[receive_request]]. [[Free_request]] must be called after
 [[is_terminated]] returns [[true]].
 <<Request state: state: TBP>>=
   procedure :: init_request => request_state_init_request
@@ -8000,7 +8018,7 @@ allowed.
 @ %def balancer_base_free_worker
 @
 <<Balancer base: public>>=
-  public :: shift_rank_to_worker 
+  public :: shift_rank_to_worker
 <<Balancer base: sub interfaces>>=
     elemental module function shift_rank_to_worker (rank) result (worker)
       integer, intent(in) :: rank
@@ -8277,7 +8295,7 @@ allowed.
 <<Balancer base: sub interfaces>>=
     module subroutine resource_state_freeze (state)
       class(resource_state_t), intent(inout) :: state
-    end subroutine resource_state_freeze  
+    end subroutine resource_state_freeze
 <<Balancer base: procedures>>=
   module subroutine resource_state_freeze (state)
     class(resource_state_t), intent(inout) :: state
@@ -8424,9 +8442,9 @@ allowed.
 @ Add partition of workers and link with workers.We move the allocated
 partition object into the balancer. We then assign each partition its
 respective number of workers in a incrementing linear
-fashion. However, we postpone the linking of the resources to the 
+fashion. However, we postpone the linking of the resources to the
 partition, which can be either done dynamically with the balancer
-state or directly with the appropriate type-bound procedure. 
+state or directly with the appropriate type-bound procedure.
 <<Balancer base: base: TBP>>=
   procedure :: add_state => balancer_base_add_state
 <<Balancer base: sub interfaces>>=
@@ -8616,7 +8634,7 @@ end submodule balancer_simple_s
 <<Balancer simple: parameters>>=
   integer, parameter :: N_BALANCER_SIMPLE_STATES = 1, &
        BALANCER_SIMPLE_CHANNEL = 1
-@ 
+@
 <<Balancer simple: public>>=
   public :: balancer_simple_t
 <<Balancer simple: types>>=
@@ -9269,7 +9287,7 @@ end submodule balancer_channel_s
   end subroutine balancer_channel_assign_worker
 
 @ %def balancer_channel_assign_worker
-@  
+@
 Free worker from associated resource. Idempotent. Depending on state
 association, given resource must equal worker's resource (check) for
 single state. For all state, the *current* resource of the worker may
@@ -9336,7 +9354,7 @@ group.
 
 \begin{description}
 \item[request handler] Base type and interface for providing two-sided
-  communication in a callback fashion. 
+  communication in a callback fashion.
 \item[request handler manager] Manages handler with a binary tree.
 \end{description}
 
@@ -9653,7 +9671,7 @@ after object-initialization.
     call MPI_COMM_DUP (comm, rhm%comm)
   end subroutine request_handler_manager_init
 
-@ %def request_handler_manager_init 
+@ %def request_handler_manager_init
 @
 <<Request callback: handler manager: TBP>>=
   procedure :: write => request_handler_manager_write

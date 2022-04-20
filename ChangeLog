@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.0.3+
 
+2022-04-20
+	Bug fix for VAMP2 event generation with indefinite samples
+
 ##################################################################
 
 2022-04-06
