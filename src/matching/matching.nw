@@ -4252,7 +4252,7 @@ but we still need to correct [[sqme_born]].
        emitter = pcm%region_data%get_emitter (r%alr)
        n_in = pcm%region_data%get_n_in()
        if (emitter <= n_in) then
-          allocate(p_real_lab(pcm%region_data%get_n_legs_real()))
+          allocate(p_real_lab (pcm%region_data%get_n_legs_real()))
           call powheg%phs_fks_generator%generate_isr_from_xi_and_y (&
                r%xi, sqrt (powheg%sudakov(r%alr)%s%xi2_max), r%y, &
                r%phi, i_phs, powheg%event_deps%p_born_lab%get_momenta(1), &
@@ -4260,7 +4260,7 @@ but we still need to correct [[sqme_born]].
           powheg%event_deps%p_real_lab%phs_point(i_phs) = p_real_lab
           call powheg%boost_preal_to_cms (i_phs)
        else
-          allocate(p_real_cms(pcm%region_data%get_n_legs_real()))
+          allocate(p_real_cms (pcm%region_data%get_n_legs_real()))
           call powheg%phs_fks_generator%generate_fsr_from_xi_and_y (r%xi, r%y, &
                r%phi, emitter, i_phs, &
                powheg%event_deps%p_born_cms%get_momenta(1), &

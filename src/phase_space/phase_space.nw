@@ -27074,7 +27074,7 @@ recoiling momenta.
       class(phs_fks_generator_t), intent(inout) :: generator
       integer, intent(in) :: emitter, i_phs
       type(vector4_t), intent(in), dimension(:) :: p_born
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
       real(default), intent(in), dimension(3), optional :: xi_y_phi
       logical, intent(in), optional :: no_jacobians
     end subroutine phs_fks_generator_generate_fsr_default
@@ -27085,7 +27085,7 @@ recoiling momenta.
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: emitter, i_phs
     type(vector4_t), intent(in), dimension(:) :: p_born
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     real(default), intent(in), dimension(3), optional :: xi_y_phi
     logical, intent(in), optional :: no_jacobians
     real(default) :: q0
@@ -27292,14 +27292,14 @@ recoiling momenta.
          (generator, p_born, p_real)
       class(phs_fks_generator_t), intent(inout) :: generator
       type(vector4_t), intent(in), dimension(:) :: p_born
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
     end subroutine phs_fks_generator_generate_fsr_in
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_generate_fsr_in &
        (generator, p_born, p_real)
     class(phs_fks_generator_t), intent(inout) :: generator
     type(vector4_t), intent(in), dimension(:) :: p_born
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     integer :: i
     do i = 1, generator%n_in
        p_real(i) = p_born(i)
@@ -27526,7 +27526,7 @@ $\xi$.
          i_con, xi_y_phi, no_jacobians)
       class(phs_fks_t), intent(inout) :: phs
       integer, intent(in) :: emitter, i_phs
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
       integer, intent(in), optional :: i_con
       real(default), intent(in), dimension(3), optional :: xi_y_phi
       logical, intent(in), optional :: no_jacobians
@@ -27536,7 +27536,7 @@ $\xi$.
        i_con, xi_y_phi, no_jacobians)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: emitter, i_phs
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     integer, intent(in), optional :: i_con
     real(default), intent(in), dimension(3), optional :: xi_y_phi
     logical, intent(in), optional :: no_jacobians
@@ -27968,13 +27968,13 @@ It is also used for the POWHEG matching.
     module subroutine phs_fks_generate_isr (phs, i_phs, p_real)
       class(phs_fks_t), intent(inout) :: phs
       integer, intent(in) :: i_phs
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
     end subroutine phs_fks_generate_isr
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generate_isr (phs, i_phs, p_real)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: i_phs
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     type(vector4_t) :: p0, p1
     type(lorentz_transformation_t) :: lt
     real(default) :: sqrts_hat
@@ -28045,7 +28045,7 @@ with $\Lambda$.
       class(phs_fks_generator_t), intent(inout) :: generator
       integer, intent(in) :: i_phs
       type(vector4_t), intent(in), dimension(:) :: p_born
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
     end subroutine phs_fks_generator_generate_isr_fixed_beam_energy
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_generate_isr_fixed_beam_energy &
@@ -28053,7 +28053,7 @@ with $\Lambda$.
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: i_phs
     type(vector4_t), intent(in), dimension(:) :: p_born
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     real(default) :: xi_max, xi, y, phi
     integer :: nlegborn, nlegreal, i
     real(default) :: k0_np1
@@ -28111,7 +28111,7 @@ with $\Lambda$.
       class(phs_fks_generator_t), intent(inout) :: generator
       integer, intent(in) :: i_phs, emitter
       type(vector4_t), intent(in), dimension(:) :: p_born
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
     end subroutine phs_fks_generator_generate_isr_factorized
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_generate_isr_factorized &
@@ -28119,7 +28119,7 @@ with $\Lambda$.
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: i_phs, emitter
     type(vector4_t), intent(in), dimension(:) :: p_born
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     type(vector4_t), dimension(3) :: p_tmp_born
     type(vector4_t), dimension(4) :: p_tmp_real
     type(vector4_t) :: p_top
@@ -28201,7 +28201,7 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
       class(phs_fks_generator_t), intent(inout) :: generator
       integer, intent(in) :: i_phs
       type(vector4_t), intent(in) , dimension(:) :: p_born
-      type(vector4_t), intent(inout), dimension(:) :: p_real
+      type(vector4_t), intent(out), dimension(:) :: p_real
     end subroutine phs_fks_generator_generate_isr
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_generate_isr &
@@ -28210,7 +28210,7 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: i_phs
     type(vector4_t), intent(in) , dimension(:) :: p_born
-    type(vector4_t), intent(inout), dimension(:) :: p_real
+    type(vector4_t), intent(out), dimension(:) :: p_real
     real(default) :: xi_max, xi_tilde, xi, y, phi
     integer :: nlegborn, nlegreal
     real(default) :: sqrts_real

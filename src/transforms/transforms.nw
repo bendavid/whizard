@@ -11070,6 +11070,7 @@ submodule (evt_nlo) evt_nlo_s
   use pcm, only: pcm_nlo_t, pcm_nlo_workspace_t
   use prc_core, only: prc_core_t
   use prc_external, only: prc_external_t
+  use phs_fks, only: SQRTS_FIXED, SQRTS_VAR
 
   implicit none
 
@@ -11587,9 +11588,16 @@ been shifted to [[n_vir]]. We thus take [[n_in]] from the [[particle_set]].
                         event_deps%phs_identifiers)
                    ! TODO wk 19-02-28: intent of p_real (also below)?
                    p_real = event_deps%p_real_lab%phs_point(i_phs)
-                   call generator%generate_isr (i_phs, &
-                        event_deps%p_born_lab%phs_point(1)%get (), &
-                        p_real)
+                   select case (generator%isr_kinematics%isr_mode)
+                   case (SQRTS_FIXED)
+                      call generator%generate_isr_fixed_beam_energy (i_phs, &
+                           event_deps%p_born_cms%phs_point(1)%get (), &
+                           p_real)
+                   case (SQRTS_VAR)
+                      call generator%generate_isr (i_phs, &
+                           event_deps%p_born_lab%phs_point(1)%get (), &
+                           p_real)
+                   end select
                    event_deps%p_real_lab%phs_point(i_phs) = p_real
                    event_deps%p_real_cms%phs_point(i_phs) &
                         = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
@@ -12128,6 +12136,7 @@ submodule (events) events_s
   use pcm, only: pcm_nlo_workspace_t
   use decays
   use evt_nlo
+  use phs_fks, only: SQRTS_FIXED, SQRTS_VAR
 
   implicit none
 
@@ -12818,9 +12827,12 @@ For testing purpose, we allow for providing them explicitly, as an option.
              if (evt%i_evaluation > 0) then
                 emitter = evt%process_instance%kin(i_term)%emitter
                 n_in = evt%process_instance%kin(i_term)%n_in
-                if (emitter <= n_in) then
-                   call evt%connected_set_real_IS_momenta ()
-                end if
+                select type (pcm_work => evt%process_instance%term(i_term)%pcm_work)
+                type is (pcm_nlo_workspace_t)
+                   if (emitter <= n_in .and. pcm_work%isr_kinematics%isr_mode == SQRTS_VAR) then
+                      call evt%connected_set_real_IS_momenta ()
+                   end if
+                end select
              end if
           end select
           call evt%make_particle_set (event%config%factorization_mode, &

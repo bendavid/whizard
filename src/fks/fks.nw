@@ -7649,7 +7649,7 @@ virtual corrections.
                    call virt%compute_eikonals_threshold (i_flv, p_born, s_o_Q2, QB, BI)
                 case default
                    call virt%compute_massive_self_eikonals &
-                   (i_flv, corr_index (i_corr), p_born, s_o_Q2, reg_data, QB)
+                        (i_flv, corr_index (i_corr), p_born, s_o_Q2, reg_data, QB)
                    call virt%compute_eikonals &
                         (i_flv, corr_index (i_corr), p_born, s_o_Q2, reg_data, BI)
                 end select
@@ -7744,12 +7744,14 @@ virtual corrections.
                            virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
                    end if
                 else if (i_corr == 2) then
-                   I_ij = compute_eikonal_factor (p_born, flst_born%massive, &
-                        i, j, s_o_Q2)
-                   BI_tmp = BI_tmp + virtual%sqme_charge_c (i, j, i_flv) * I_ij
-                   if (debug2_active (D_VIRTUAL)) &
-                        print *, 'b_ij: ', &
-                        virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
+                   if (flst_born%charge (i) /= 0 .and. flst_born%charge(j) /= 0) then
+                      I_ij = compute_eikonal_factor (p_born, flst_born%massive, &
+                           i, j, s_o_Q2)
+                      BI_tmp = BI_tmp + virtual%sqme_charge_c (i, j, i_flv) * I_ij
+                      if (debug2_active (D_VIRTUAL)) &
+                           print *, 'b_ij: ', &
+                           virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
+                   end if
                 end if
              else if (debug2_active (D_VIRTUAL)) then
                 if (i_corr == 1) then
@@ -8137,9 +8139,11 @@ self-eikonal of (A.10) in arXiv:0908.4272, given as
     do i = 1, virt%n_legs
        massive = reg_data%flv_born(i_flv)%massive(i)
        if (massive) then
-          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv, i_corr) &
-               * (log (s_over_Q2) - 0.5_default * I_m_eps (p_born(i)))) &
-               * sqme_born_virt
+          if (virt%c_flv (i, i_flv, i_corr) /= 0) then
+             QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv, i_corr) &
+                  * (log (s_over_Q2) - 0.5_default * I_m_eps (p_born(i)))) &
+                  * sqme_born_virt
+          end if
        end if
     end do
   end subroutine virtual_compute_massive_self_eikonals
@@ -8312,38 +8316,63 @@ The implemented formulas are then defined as follows:
   function I_mm_eps (p1, p2) result (I)
     type(vector4_t), intent(in) :: p1, p2
     real(default) :: I
+    type(vector4_t) :: q1, q2
     type(vector3_t) :: beta1, beta2
-    real(default) :: a, b, b2
+    real(default) :: a, b
     real(default) :: zp, zm, z1, z2, x1, x2
     real(default) :: zmb, z1b
-    real(default) :: K1, K2
-
+    real(default) :: K1, K2, b1, b2
+    real(default) :: nu, a_kl, m12, m22
     beta1 = space_part (p1) / energy(p1)
     beta2 = space_part (p2) / energy(p2)
-    a = beta1**2 + beta2**2 - 2 * beta1 * beta2
-    b = beta1**2 * beta2**2 - (beta1 * beta2)**2
-    if (beta1**1 > beta2**1) call switch_beta (beta1, beta2)
-    if (beta1 == vector3_null) then
+    if (min (one - beta1**1, one - beta2**1) < tiny_07) then
+       if (beta1**1 < beta2**1) then
+          call switch_beta (beta1, beta2)
+          q1 = p2
+          q2 = p1
+       else
+          q1 = p1
+          q2 = p2
+       end if
+       b1 = beta1**1
        b2 = beta2**1
-       I = (-0.5 * log ((one - b2) / (one + b2))**2 - two * Li2 (-two * b2 / (one - b2))) &
-           * one / sqrt (a - b)
-       return
+       m12 = q1**2
+       m22 = q2**2
+       a_kl = ((q1*q2) + sqrt((q1*q2)**2 - q1**2*q2**2))/m12
+       nu = (a_kl**2 * m12 - m22) / two / (a_kl * p1%p(0) - q2%p(0))
+       K1 =   0.5_default * log ((one - b1) / (one + b1))**2 &
+            + two * Li2 (one - (one - b1)*(a_kl*q1%p(0)/nu)) &
+            + two * Li2 (one - (one + b1)*(a_kl*q1%p(0)/nu))
+       K2 =   0.5_default * log((one - b2) / (one + b2))**2 &
+            + two * Li2 (one - (one - b2)*(q2%p(0)/nu)) &
+            + two * Li2 (one - (one + b2)*(q2%p(0)/nu))
+       I = (K2 - K1) / sqrt(one - m12*m22/(q1*q2)**2)
+    else
+       a = beta1**2 + beta2**2 - 2 * beta1 * beta2
+       b = beta1**2 * beta2**2 - (beta1 * beta2)**2
+       if (beta1**1 > beta2**1) call switch_beta (beta1, beta2)
+       b2 = beta2**1
+       if (beta1 == vector3_null) then
+          I = (-0.5 * log ((one - b2) / (one + b2))**2 - two * Li2 (-two * b2 / (one - b2))) &
+               * one / sqrt (a - b)
+          return
+       end if
+       x1 = beta1**2 - beta1 * beta2
+       x2 = beta2**2 - beta1 * beta2
+       zp = sqrt (a) + sqrt (a - b)
+       zm = sqrt (a) - sqrt (a - b)
+       zmb = one  / zp
+       z1 = sqrt (x1**2 + b) - x1
+       z2 = sqrt (x2**2 + b) + x2
+       z1b = one / (sqrt (x1**2 + b) + x1)
+       K1 = - 0.5_default * log (((z1b - zmb) * (zp - z1)) / ((zp + z1) * (z1b + zmb)))**2 &
+            - two * Li2 ((two * zmb * (zp - z1)) / ((zp - zm) * (zmb + z1b))) &
+            - two * Li2 ((-two * zp * (zm + z1)) / ((zp - zm) * (zp - z1)))
+       K2 = - 0.5_default * log ((( z2 - zm) * (zp - z2)) / ((zp + z2) * (z2 + zm)))**2 &
+            - two * Li2 ((two * zm * (zp - z2)) / ((zp - zm) * (zm + z2))) &
+            - two * Li2 ((-two * zp * (zm + z2)) / ((zp - zm) * (zp - z2)))
+       I = (K2 - K1) * (one - beta1 * beta2) / sqrt (a - b)
     end if
-    x1 = beta1**2 - beta1 * beta2
-    x2 = beta2**2 - beta1 * beta2
-    zp = sqrt (a) + sqrt (a - b)
-    zm = sqrt (a) - sqrt (a - b)
-    zmb = one  / zp
-    z1 = sqrt (x1**2 + b) - x1
-    z2 = sqrt (x2**2 + b) + x2
-    z1b = one / (sqrt (x1**2 + b) + x1)
-    K1 = - 0.5 * log (((z1b - zmb) * (zp - z1)) / ((zp + z1) * (z1b + zmb)))**2 &
-          - two * Li2 ((two * zmb * (zp - z1)) / ((zp - zm) * (zmb + z1b))) &
-          - two * Li2 ((-two * zp * (zm + z1)) / ((zp - zm) * (zp - z1)))
-    K2 = - 0.5 * log ((( z2 - zm) * (zp - z2)) / ((zp + z2) * (z2 + zm)))**2 &
-          - two * Li2 ((two * zm * (zp - z2)) / ((zp - zm) * (zm + z2))) &
-          - two * Li2 ((-two * zp * (zm + z2)) / ((zp - zm) * (zp - z2)))
-    I = (K2 - K1) * (one - beta1 * beta2) / sqrt (a - b)
   contains
     subroutine switch_beta (beta1, beta2)
       type(vector3_t), intent(inout) :: beta1, beta2
