@@ -1443,38 +1443,38 @@ module Color_Atom' : Atom
       | K6 (i', j, k) -> Printf.sprintf "K6(%d,%d,%d)" i' j k
       | K6Bar (i', j, k) -> Printf.sprintf "K6Bar(%d,%d,%d)" i' j k
 
-    type r = S | Sbar | F | C | A
+    type r = S | F | C | A
 
     let rep_trivial = function
-      | S | Sbar -> true
-      | F | C | A-> false
+      | S -> true
+      | F | C | A -> false
 
     let rep_to_string = function
       | S -> "1"
-      | Sbar -> "1bar"
       | F -> "3"
       | C -> "3bar"
       | A-> "8"
 
     let rep_to_string_whizard = function
       | S -> "1"
-      | Sbar -> "-1"
       | F -> "3"
       | C -> "-3"
       | A-> "8"
 
     let rep_of_int neutral = function
       | 1 -> S
-      | -1 -> Sbar (* UFO appears to use this for colorless antiparticles!. *)
       | 3 -> F
       | -3 -> C
       | 8 -> A
       | 6 | -6 -> failwith "UFOx.Color: sextets not supported yet!"
-      | _ -> invalid_arg "UFOx.Color: impossible representation!"
+      | 10 | -10 -> failwith "UFOx.Color: decuplets not supported yet!"
+      | n ->
+         invalid_arg
+           (Printf.sprintf
+              "UFOx.Color: impossible representation color = %d!" n)
 	 
     let rep_conjugate = function
-      | Sbar -> S
-      | S -> Sbar
+      | S -> S
       | C -> F
       | F -> C
       | A -> A
@@ -1506,10 +1506,10 @@ module Color_Atom' : Atom
 
     (* FIXME: $N_C=3$ should not be hardcoded! *)
     let omega = function
-      | S | Sbar -> Color.Singlet
+      | S -> Color.Singlet
       | F -> Color.SUN (3)
       | C -> Color.SUN (-3)
-      | A-> Color.AdjSUN (3)
+      | A -> Color.AdjSUN (3)
     
   end
 

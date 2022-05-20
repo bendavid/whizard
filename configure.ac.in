@@ -1195,6 +1195,7 @@ AC_CONFIG_FILES([omega/tests/UFO/SMEFTsim_top_alphaScheme/Makefile])
 AC_CONFIG_FILES([omega/tools/Makefile])
 AC_CONFIG_FILES([omega/scripts/Makefile])
 AC_CONFIG_FILES([omega/scripts/omega-config], [chmod u+x omega/scripts/omega-config])
+AC_CONFIG_FILES([omega/scripts/ufo-sanitizer], [chmod u+x omega/scripts/ufo-sanitizer])
 
 
 # Copy config.mli to the build directory (otherwise ocamlc and/or

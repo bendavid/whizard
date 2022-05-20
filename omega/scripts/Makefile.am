@@ -29,4 +29,4 @@
 
 
 ## Deliver the info required for building external models
-nodist_bin_SCRIPTS = omega-config
+nodist_bin_SCRIPTS = omega-config ufo-sanitizer

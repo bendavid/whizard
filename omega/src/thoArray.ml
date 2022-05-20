@@ -152,16 +152,6 @@ let num_columns a =
   | [ (_, n) ] -> n
   | _ -> invalid_arg "ThoArray.num_columns: inhomogeneous array"
 
-(* This is copied from ocaml's [Array.exists], that arrives with
-   4.03.0 *)
-let exists p a =
-  let n = Array.length a in
-  let rec loop i =
-    if i = n then false
-    else if p (Array.unsafe_get a i) then true
-    else loop (succ i) in
-  loop 0
-
 module Test =
   struct
 

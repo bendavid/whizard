@@ -539,9 +539,9 @@ module Particle : Particle =
 	  texname = p.antitexname;
 	  antitexname = p.texname;
 	  charge = conjugate_charge p.charge;
-	  ghost_number = p.ghost_number;
-	  lepton_number = p.lepton_number;
-	  y = p.y;
+	  ghost_number = - p.ghost_number;
+	  lepton_number = - p.lepton_number;
+	  y = conjugate_charge p.y;
 	  goldstone = p.goldstone;
 	  propagating = p.propagating;
 	  line = p.line;
@@ -558,9 +558,10 @@ module Particle : Particle =
          let name = required string_attrib "name"
 	 and antiname = required string_attrib "antiname" in
          let neutral = (name = antiname) in
+         let pdg_code = required integer_attrib "pdg_code" in
 	 SMap.add symbol
 	   { (* The required attributes per UFO docs. *)
-             pdg_code = required integer_attrib "pdg_code";
+             pdg_code;
 	     name; antiname;
 	     spin =
                UFOx.Lorentz.rep_of_int neutral (required integer_attrib "spin");
@@ -583,7 +584,9 @@ module Particle : Particle =
              propagator =
                (try Some (name_attrib ~strip:"Prop" "propagator" attribs) with _ -> None);
              (* O'Mega extensions. *)
-             is_anti = false } map
+             (* Instead of ``first come is particle'' rely on
+                a negative PDG code to identify antiparticles. *)
+             is_anti = pdg_code < 0 } map
       | [ "anti"; p ], [] ->
 	 begin
 	   try
@@ -2170,6 +2173,11 @@ module Model =
 
         let flavor_format = ref Hexadecimal
 
+(*i
+        let match_pdf_code p1 p2 =
+	  p1.Particle.pdg_code = p2.Particle.pdg_code
+i*)
+
         let conjugate_of_particle_array particles =
           Array.init
 	    (Array.length particles)
@@ -2582,7 +2590,7 @@ i*)
                 match l'.Lorentz.spins with
                 | Lorentz.Unused -> acc
                 | Lorentz.Unique spins ->
-                   if ThoArray.exists is_majorana spins then
+                   if Array.exists is_majorana spins then
                      List.map
                        (name_spins_structure spins)
                        (Lorentz.required_charge_conjugates l')
