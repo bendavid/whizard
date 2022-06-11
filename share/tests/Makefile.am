@@ -282,6 +282,11 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/jets_1.ref \
     unit_tests/ref-output/lcio_interface_1.ref \
     unit_tests/ref-output/lexer_1.ref \
+    unit_tests/ref-output/lorentz_1.ref \
+    unit_tests/ref-output/lorentz_2.ref \
+    unit_tests/ref-output/lorentz_3.ref \
+    unit_tests/ref-output/lorentz_4.ref \
+    unit_tests/ref-output/lorentz_5.ref \
     unit_tests/ref-output/mci_base_1.ref \
     unit_tests/ref-output/mci_base_2.ref \
     unit_tests/ref-output/mci_base_3.ref \
