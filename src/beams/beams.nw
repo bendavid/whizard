@@ -26941,6 +26941,22 @@ Initialization.  We need to access the (quasi-global) initialization status.
   end function alpha_qcd_lhapdf_get_qmass
 
 @ %def alpha_qcd_lhapdf_get_qmass
+@ Retrieves the order from the PDF.
+<<SF lhapdf: alpha qcd: TBP>>=
+  procedure :: get_order => alpha_qcd_lhapdf_get_order
+<<SF lhapdf: sub interfaces>>=
+    module function alpha_qcd_lhapdf_get_order (alpha_qcd) result (order)
+      integer :: order
+      class(alpha_qcd_lhapdf_t), intent(in) :: alpha_qcd
+    end function alpha_qcd_lhapdf_get_order
+<<SF lhapdf: procedures>>=
+  module function alpha_qcd_lhapdf_get_order (alpha_qcd) result (order)
+    integer :: order
+    class(alpha_qcd_lhapdf_t), intent(in) :: alpha_qcd
+    order = alpha_qcd%pdf%get_order ()
+  end function alpha_qcd_lhapdf_get_order
+
+@ %def alpha_qcd_lhapdf_get_order
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.

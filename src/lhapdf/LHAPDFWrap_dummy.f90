@@ -1,7 +1,7 @@
 function lhapdf_init_pdf (setname, imem) bind (C) result (pdf)
   use iso_c_binding
   character(len=1, kind=c_char), dimension(*), intent(in) :: setname
-  integer(c_int), intent(in), value :: imem  
+  integer(c_int), intent(in), value :: imem
   type(c_ptr) :: pdf
 end function lhapdf_init_pdf
 
@@ -82,4 +82,8 @@ function lhapdf_alphaspdf (pdf) bind (C) result (as)
   real(c_double) :: as
 end function lhapdf_alphaspdf
 
-
+function lhapdf_getorder (pdf) bind (C) result (order)
+  use iso_c_binding
+  type(c_ptr), intent(in) :: pdf
+  integer(c_int) :: order
+end function lhapdf_getorder

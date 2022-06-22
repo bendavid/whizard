@@ -4857,7 +4857,11 @@ incoming PDG values for this beam and component.
     class(process_t), intent(in), target :: process
     integer, intent(in) :: i_component
     if (allocated (process%component)) then
-       phs_config => process%component(i_component)%phs_config
+       if (process%component(i_component)%active) then
+          phs_config => process%component(i_component)%phs_config
+       else
+          phs_config => null ()
+       end if
     else
        phs_config => null ()
     end if
@@ -4888,14 +4892,17 @@ resonance history with no resonances in the set.
     integer, intent(in), optional :: i_component
     integer :: i
     i = 1;  if (present (i_component))  i = i_component
-    select type (phs_config => process%get_phs_config (i))
-    class is (phs_wood_config_t)
-       call phs_config%extract_resonance_history_set (res_set, include_trivial)
-    class default
-       call msg_error ("process '" // char (process%get_id ()) &
-            // "': extract resonance histories: phase-space method must be &
-            &'wood'.  No resonances can be determined.")
-    end select
+    if (process%component(i)%active) then
+       select type (phs_config => process%get_phs_config (i))
+       class is (phs_wood_config_t)
+          call phs_config%extract_resonance_history_set &
+               (res_set, include_trivial)
+       class default
+          call msg_error ("process '" // char (process%get_id ()) &
+               // "': extract resonance histories: phase-space method must be &
+               &'wood'.  No resonances can be determined.")
+       end select
+    end if
   end subroutine process_extract_resonance_history_set
 
 @ %def process_extract_resonance_history_set
@@ -15037,6 +15044,7 @@ submodule (instances) instances_s
   use phs_fks
   use blha_olp_interfaces, only: prc_blha_t
   use blha_config, only: BLHA_AMP_COLOR_C
+  use prc_omega, only: prc_omega_t, omega_state_t
   use prc_external, only: prc_external_t, prc_external_state_t
   use prc_threshold, only: prc_threshold_t
   use blha_olp_interfaces, only: blha_result_array_size
@@ -19274,13 +19282,19 @@ terms, iterating over all active process components.
     logical, intent(in), optional :: recover
     class(prc_core_t), pointer :: core => null ()
     integer :: i, i_real_fin, i_core, i_qn, i_flv
-    real(default) :: alpha_s, alpha_qed
+    real(default) :: alpha_s, alpha_qed, pt
     class(prc_core_t), pointer :: core_sub => null ()
     class(model_data_t), pointer :: model => null ()
     logical :: has_pdfs
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_evaluate_trace")
     has_pdfs = instance%process%pcm_contains_pdfs ()
     instance%sqme = zero
+    select type (pcm_work => instance%pcm_work)
+    type is (pcm_nlo_workspace_t)
+       if (allocated(pcm_work%real_sub%sqme_real_arr)) then
+          pcm_work%real_sub%sqme_real_arr = zero
+       end if
+    end select
     call instance%reset_matrix_elements ()
     if (instance%evaluation_status >= STAT_PASSED_CUTS) then
        do i = 1, size (instance%term)
@@ -19297,7 +19311,28 @@ terms, iterating over all active process components.
                i_real_fin = instance%process%get_associated_real_fin (1)
                if (instance%process%uses_real_partition ()) &
                     call term%apply_real_partition (kin)
-               if (term%config%i_component /= i_real_fin) then
+               if (term%config%i_component == i_real_fin) then
+                  if (term%nlo_type == NLO_REAL .and. .not. term%is_subtraction ()) then
+                     !!! Force the scale pT into the events for the real finite
+                     associate (p_hard => term%p_hard)
+                        !!! This is only the correct pt for ISR
+                        pt = transverse_part(p_hard(size(p_hard)))
+                        call term%set_fac_scale (pt)
+                        select type (core)
+                        class is (prc_external_t)
+                           select type (core_state => term%core_state)
+                           class is (prc_external_state_t)
+                              core_state%alpha_qcd = core%qcd%alpha%get (pt)
+                           end select
+                        type is (prc_omega_t)
+                           select type (core_state => term%core_state)
+                           type is (omega_state_t)
+                              core_state%alpha_qcd = core%qcd%alpha%get (pt)
+                           end select
+                        end select
+                     end associate
+                  end if
+               else
                   if (term%nlo_type == BORN) then
                      do i_flv = 1, term%connected%trace%get_qn_index_n_flv ()
                         i_qn = term%connected%trace%get_qn_index (i_flv, i_sub = 0)
@@ -19669,6 +19704,12 @@ Sindarin, e.g. for POWHEG matching.
     integer :: i_real_fin
     logical :: has_pdfs
     has_pdfs = instance%process%pcm_contains_pdfs ()
+    select type (pcm_work => instance%pcm_work)
+    type is (pcm_nlo_workspace_t)
+       if (allocated(pcm_work%real_sub%sqme_real_arr)) then
+          pcm_work%real_sub%sqme_real_arr = zero
+       end if
+    end select
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, "process_instance_compute_sqme_rad")
     select type (pcm_work => instance%pcm_work)
     type is (pcm_nlo_workspace_t)

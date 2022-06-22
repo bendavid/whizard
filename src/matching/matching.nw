@@ -1609,6 +1609,8 @@ submodule (powheg_matching) powheg_matching_s
   use subevents, only: PRT_INCOMING, PRT_OUTGOING
   use colors
   use process_config, only: COMP_REAL_FIN
+  use prc_external, only: prc_external_state_t
+  use prc_omega, only: omega_state_t
 
   implicit none
 
@@ -1794,7 +1796,7 @@ scale for the $\alpha_s$ evolution.
      type(phs_point_set_t) :: p_born_lab
      type(phs_point_set_t) :: p_real_cms
      type(phs_point_set_t) :: p_real_lab
-     real(default) :: sqme_born
+     real(default), dimension(:), allocatable :: sqme_born
   contains
    <<POWHEG matching: event deps: TBP>>
   end type event_deps_t
@@ -1812,14 +1814,17 @@ scale for the $\alpha_s$ evolution.
   module subroutine event_deps_write (event_deps, unit)
     class(event_deps_t), intent(in) :: event_deps
     integer, intent(in), optional :: unit
-    integer :: u
+    integer :: u, alr
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1X,A)") "Event dependencies:"
     write (u, "(3X,A," // FMT_19 // ")") "s_hat = ", event_deps%s_hat
     write (u, "(3X,A," // FMT_19 // ")") "x(+)  = ", event_deps%x_born(I_PLUS)
     write (u, "(3X,A," // FMT_19 // ")") "x(-)  = ", event_deps%x_born(I_MINUS)
     write (u, "(3X,A," // FMT_19 // ")") "s_had = ", event_deps%s_had
-    write (u, "(3X,A," // FMT_19 // ")") "sqme_born = ", event_deps%sqme_born
+    do alr = 1, size(event_deps%sqme_born)
+       write (u, "(3X,A,I3,A," // FMT_19 // ")") "sqme_born(",alr,") = ", &
+            event_deps%sqme_born(alr)
+    end do
   end subroutine event_deps_write
 
 @ %def event_deps_write
@@ -1830,7 +1835,7 @@ scale for the $\alpha_s$ evolution.
     module subroutine event_deps_update (event_deps, sqme_born, &
          p_born, x_born, lt_lab_to_cms)
       class(event_deps_t), intent(inout) :: event_deps
-      real(default), intent(in) :: sqme_born
+      real(default), dimension(:), intent(in) :: sqme_born
       type(vector4_t), dimension(:), intent(in) :: p_born
       real(default), dimension(2), intent(in) :: x_born
       type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
@@ -1839,12 +1844,16 @@ scale for the $\alpha_s$ evolution.
   module subroutine event_deps_update (event_deps, sqme_born, &
        p_born, x_born, lt_lab_to_cms)
     class(event_deps_t), intent(inout) :: event_deps
-    real(default), intent(in) :: sqme_born
+    real(default), dimension(:), intent(in) :: sqme_born
     type(vector4_t), dimension(:), intent(in) :: p_born
     real(default), dimension(2), intent(in) :: x_born
     type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
     integer :: n_born
-    event_deps%sqme_born = sqme_born
+    if (allocated(event_deps%sqme_born)) then
+       event_deps%sqme_born = sqme_born
+    else
+       allocate(event_deps%sqme_born, source=sqme_born)
+    end if
     n_born = size (p_born)
     if (debug_active (D_MATCHING)) then
        if (n_born /= event_deps%p_born_lab%get_n_particles (1)) then
@@ -3013,14 +3022,12 @@ will be vetoed afterwards in [[sudakov_massive_fsr_reweight_xi_max]].
      => sudakov_massive_fsr_compute_xi_max_extended
 <<POWHEG matching: sub interfaces>>=
     module subroutine sudakov_massive_fsr_compute_xi_max_extended &
-         (sudakov, i_phs)
+         (sudakov)
       class(sudakov_massive_fsr_t), intent(inout) :: sudakov
-      integer, intent(in) :: i_phs
     end subroutine sudakov_massive_fsr_compute_xi_max_extended
 <<POWHEG matching: procedures>>=
-  module subroutine sudakov_massive_fsr_compute_xi_max_extended (sudakov, i_phs)
+  module subroutine sudakov_massive_fsr_compute_xi_max_extended (sudakov)
     class(sudakov_massive_fsr_t), intent(inout) :: sudakov
-    integer, intent(in) :: i_phs
     real(default) :: m, mrec
     real(default) :: q0
     type(vector4_t) :: p
@@ -3718,11 +3725,11 @@ Alternatively, an implementation making extended use of rejection sampling is av
     class(sudakov_isr_t), intent(inout) :: sudakov
     type(radiation_t), intent(inout) :: r
     real(default) :: s_hat, s_had, r_x, x, x_minus, x_plus, rho
-    integer :: variant = 1
+    integer, parameter :: variant = 1
     logical :: valid
     s_hat = sudakov%event_deps%s_hat
     s_had = sudakov%event_deps%s_had
-    rho = 1 - sudakov%xi_max_extended
+    rho = s_hat / s_had
     x_plus  = ( sqrt( 1 + r%pt2 / s_hat ) + sqrt( r%pt2 / s_hat ) )**2
     x_minus = ( sqrt( 1 + r%pt2 / s_hat ) - sqrt( r%pt2 / s_hat ) )**2
     if (variant == 1) then
@@ -3942,7 +3949,7 @@ function is unsuitable for the considered process.
     if (n_sqme_total > 0) then
       frac_ubf_fail = one * n_fail_ubf_total / n_sqme_total * 100
       if (frac_ubf_fail > 1) then
-         write (msg_buffer, "(A16,I4,A2,F6.2,A24)") "There have been ", &
+         write (msg_buffer, "(A16,I6,A2,F6.2,A24)") "There have been ", &
               n_fail_ubf_total,&
               " (", frac_ubf_fail, "%) POWHEG grid excesses."
          call msg_warning
@@ -4087,10 +4094,23 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     class(powheg_matching_t), intent(inout) :: powheg
     type(vector4_t), dimension(:), intent(in) :: p_born
     type(lorentz_transformation_t) :: lt_lab_to_cms
-    real(default) :: sqme_born
+    real(default), dimension(:), allocatable :: sqme_born
+    integer :: i_uborn, n_reg, alr
     real(default), dimension(2) :: x_born
-    sqme_born = powheg%process_instance%get_sqme &
-         (powheg%process_deps%i_term_born)
+    select type (pcm =>  powheg%process_instance%pcm)
+    type is (pcm_nlo_t)
+       associate (reg_data => pcm%region_data)
+          n_reg = reg_data%n_regions
+          allocate(sqme_born(n_reg))
+          do alr = 1, n_reg
+             select type (pcm_work => powheg%process_instance%pcm_work)
+             class is (pcm_nlo_workspace_t)
+                i_uborn = reg_data%regions(alr)%uborn_index
+                sqme_born(alr) = pcm_work%real_sub%sqme_born(i_uborn)
+             end select
+          end do
+       end associate
+    end select
     x_born = powheg%phs_fks_generator%isr_kinematics%x
     if (.not. powheg%process_deps%lab_is_cm) then
        lt_lab_to_cms = powheg%process_instance%get_boost_to_cms (1)
@@ -4124,7 +4144,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     module subroutine powheg_matching_update_event_deps &
          (powheg, sqme_born, p_born, x_born, lt_lab_to_cms)
       class(powheg_matching_t), intent(inout) :: powheg
-      real(default), intent(in) :: sqme_born
+      real(default), dimension(:), intent(in) :: sqme_born
       type(vector4_t), dimension(:), intent(in) :: p_born
       real(default), dimension(2), intent(in) :: x_born
       type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
@@ -4133,7 +4153,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
   module subroutine powheg_matching_update_event_deps &
        (powheg, sqme_born, p_born, x_born, lt_lab_to_cms)
     class(powheg_matching_t), intent(inout) :: powheg
-    real(default), intent(in) :: sqme_born
+    real(default), dimension(:), intent(in) :: sqme_born
     type(vector4_t), dimension(:), intent(in) :: p_born
     real(default), dimension(2), intent(in) :: x_born
     type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
@@ -4239,9 +4259,15 @@ but we still need to correct [[sqme_born]].
     real(double) :: x_dbl, q_dbl
     type(vector4_t), dimension(:), allocatable :: p_real_cms, p_real_lab
     real(default), dimension(2) :: pdf_born_mufac, pdf_born_kt
+    logical :: cuts_passed
     if (debug_on) call msg_debug (D_MATCHING, "reweight_matrix_elements")
-    sqme_born = powheg%event_deps%sqme_born
-    if (nearly_equal(sqme_born,zero) .or. sqme_born < 0) then
+    cuts_passed = powheg%process_instance%get_sqme(powheg%process_deps%i_term_born) > 0
+    if (cuts_passed) then
+       sqme_born = powheg%event_deps%sqme_born(r%alr)
+    else
+       sqme_born = zero
+    end if
+    if (nearly_equal(sqme_born,zero)) then
        accepted = .false.
        return
     end if
@@ -4302,11 +4328,11 @@ but we still need to correct [[sqme_born]].
           sqme_real_x_jac = (alpha_s_kt / alpha_s_kt_noNLL)**(alphas_power+1) * sqme_real_x_jac
 
           !!! Also correct the PDFs previously computed at mufac instead of kt
-          select type (pcm => powheg%process_instance%term(i_term_born)%pcm)
+          select type (pcm => powheg%process_instance%pcm)
           type is (pcm_nlo_t)
              if (pcm%has_pdfs) then
                 associate (reg_data => pcm%region_data)
-                   flv_born = reg_data%flv_born(i_term_born)%flst(1:2)
+                   flv_born = reg_data%regions(r%alr)%flst_uborn%flst(1:2)
                    where (flv_born == 21) flv_born = 0
                 end associate
                 associate (pdf_data => powheg%process_deps%pdf_data, &
@@ -4382,7 +4408,7 @@ real and the random number Jacobian.
     real(default), intent(in), optional :: scale
     real(default), allocatable :: q
     integer :: i_phs, i_term
-    logical :: is_subtraction
+    logical :: is_subtraction, cuts_passed
     is_subtraction = .false.
     select type (pcm_work => powheg%process_instance%pcm_work)
     class is (pcm_nlo_workspace_t)
@@ -4400,7 +4426,12 @@ real and the random number Jacobian.
           else
              call instance%compute_sqme_rad (i_term, i_phs, is_subtraction)
           end if
-          sqme = instance%get_sqme (i_term)
+          cuts_passed = instance%get_sqme(i_term) > 0
+          if (cuts_passed) then
+             sqme = pcm_work%real_sub%sqme_real_arr(alr)
+          else
+             sqme = zero
+          end if
        end associate
     end select
   end function powheg_matching_compute_sqme_real
@@ -4593,11 +4624,17 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
     real(default) :: xi2_max
     integer :: alr
     logical :: accepted
+    logical, dimension(:), allocatable :: prt_status_mask
     type(vector4_t), dimension(:), allocatable :: p_real_max
     if (signal_is_pending ())  return
+    if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_generate_emission")
+    allocate(prt_status_mask(particle_set%get_n_tot()))
+    prt_status_mask = .false.
+    where (particle_set%prt%get_status () == PRT_INCOMING &
+         .or. particle_set%prt%get_status () == PRT_OUTGOING) &
+              prt_status_mask = .true.
     r_max%pt2 = zero
     r_max%alr = 0
-    if (debug_on) call msg_debug (D_MATCHING, "powheg_matching_generate_emission")
     select type (pcm => powheg%process_instance%pcm)
     type is (pcm_nlo_t)
        allocate (p_real_max (pcm%region_data%n_legs_real))
@@ -4606,6 +4643,15 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
     class is (pcm_nlo_workspace_t)
        do alr = 1, powheg%process_deps%n_alr
           if (signal_is_pending ())  return
+          if (present (particle_set)) then
+             select type (pcm => powheg%process_instance%pcm)
+             type is (pcm_nlo_t)
+                if (any (pack(particle_set%prt%get_pdg (), prt_status_mask) /= &
+                     pcm%region_data%regions(alr)%flst_uborn%flst)) then
+                   cycle
+                end if
+             end select
+          end if
           associate (sudakov => powheg%sudakov(alr)%s)
             select type (sudakov)
             type is (sudakov_simple_fsr_t)
@@ -4617,7 +4663,7 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
             type is (sudakov_eeqq_fsr_t)
                call sudakov%update_xi2_max (one)
             type is (sudakov_massive_fsr_t)
-               call sudakov%compute_xi_max_extended (sudakov%i_phs)
+               call sudakov%compute_xi_max_extended ()
             type is (sudakov_isr_t)
                call sudakov%compute_xi_max_extended ()
             class default
@@ -4649,14 +4695,14 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
        end do
        if (r_max%pt2 > powheg%settings%pt2_min) then
           powheg%n_emissions = powheg%n_emissions + 1
-          call powheg%set_scale (r_max%pt2)
+          call update_event_data (powheg, r_max%alr, r_max%pt2)
           if (present (particle_set)) then
              call powheg%build_particle_set (particle_set, &
                   p_real_max, r_max%alr, r_max%y)
           end if
           if (present (pt2_generated)) pt2_generated = r_max%pt2
        else
-          call powheg%set_scale (powheg%settings%pt2_min)
+          call update_event_data (powheg, 1, powheg%settings%pt2_min)
           if (present (pt2_generated)) pt2_generated = powheg%settings%pt2_min
        end if
     end select
@@ -4676,6 +4722,21 @@ because the actual $\xi_\text{max}$ depends on the real kinematics.
        call assert_equal (OUTPUT_UNIT, sudakov%xi2_max, xi2_max, &
             "powheg_matching_generate_emission: xi_max inconsistent")
     end subroutine check_xi2_max
+    !!! Force the scale pT and the value of alpha_s(p_T) into the event output.
+    subroutine update_event_data (powheg, alr, pt2)
+       class(powheg_matching_t), intent(inout) :: powheg
+       integer, intent(in) :: alr
+       real(default), intent(in) :: pt2
+       real(default) :: alpha_s
+       alpha_s = powheg%sudakov(alr)%s%alpha_s (pt2, use_correct = .true.)
+       select type (core_state => powheg%process_instance%term(1)%core_state)
+       class is (prc_external_state_t)
+          core_state%alpha_qcd = alpha_s
+       class is (omega_state_t)
+          core_state%alpha_qcd = alpha_s
+       end select
+       call powheg%set_scale (pt2)
+    end subroutine update_event_data
   end subroutine powheg_matching_generate_emission
 
 @ %def generate_emission
@@ -4771,7 +4832,7 @@ for this by keeping events with probability
 To find the correct bin we need to map $(\xi,y)$ in some way to $[0,1]^2$.
 This mapping is to the most extend arbitrary. We choose
 $y \mapsto |y|$ and
-$\xi \mapsto \log(\frac{1}{1-\xi}) / \log(\frac{1}{1-\xi_{max}})$.
+$\xi \mapsto \log(1-\xi) / \log(1-\xi_{max})$.
 It may be possible to improve these mappings to tune the performance for processes
 with expensive matrix elements.
 <<POWHEG matching: powheg matching: TBP>>=
@@ -4797,7 +4858,7 @@ with expensive matrix elements.
     if (r%xi > xi_max) then
        rands(I_XI) = 1
     else
-       rands(I_XI) = log(1 / (1 - r%xi)) / log(1 / (1 - xi_max))
+       rands(I_XI) = log(1 - r%xi) / log(1 - xi_max)
     end if
     norm_true = powheg%grid%get_value ([rands, f_alr])
   end function powheg_matching_norm_from_xi_and_y
@@ -4876,13 +4937,7 @@ at which we relate $\alpha_s^{\text{rad}}$ and $\alpha_s^{\text{true}}$.
        type is (alpha_qcd_from_lambda_t)
           order = alpha%order
        type is (alpha_qcd_lhapdf_t)
-          if (print_once) then
-             call msg_warning ("compute_lambda5MSB: LHAPDF not fully supported" // &
-                  " Assuming LO (1-loop) running!")
-             print_once = .false.
-          end if
-          !!! TODO (PS-2021-09-16) We'd need to get order from LHAPDF to continue here.
-          order = 1
+          order = alpha%get_order ()
        class default
           if (print_once) then
              call msg_warning ("compute_lambda5MSB: alpha_qcd not running!" // &
@@ -5227,112 +5282,125 @@ This affects the PDFs and also $\alpha_s$.
          pdf_real_mufac, pdf_real_kt
     real(double) :: x_dbl, q_dbl
     integer, dimension(2) :: flv_born, flv_real
-    integer :: alr, i_phs, n_x, i_term_born, i_term_real, i_real, em
-    integer :: alphas_power
+    integer :: alr, i_phs, n_x, i_term_born, i_term_real, em
+    integer :: alphas_power, i_uborn
     logical :: is_isr
     if (instance%get_active_component_type () == COMP_REAL_FIN)  return
     associate (powheg => hook%powheg)
-      allocate (p_hard_born (size (instance%get_p_hard (1))))
-      p_hard_born = instance%get_p_hard (1)
-      call powheg%update (p_hard_born)
-      do alr = 1, powheg%process_deps%n_alr
-         i_phs = powheg%process_deps%alr_to_i_phs (alr)
-         i_term_real = powheg%process_deps%i_term_real(i_phs)
-         i_term_born = powheg%process_deps%i_term_born
-         select type (phs => instance%kin(i_term_real)%phs)
-         type is (phs_fks_t)
-            call phs%generator%get_radiation_variables (i_phs, xi, y)
-         end select
-         call powheg%update_sudakovs (alr, i_phs, y)
-         if (powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min) then
-            sqme_born = instance%get_sqme (i_term_born)
-            sqme_real_x_jac = instance%get_sqme (i_term_real)
-            if (sqme_born <= 0 .or. sqme_real_x_jac <= 0) then
-               cycle
-            end if
-            is_isr = instance%kin(i_term_real)%emitter <= instance%kin(i_term_real)%n_in
-            select type (pcm_work => instance%pcm_work)
-            class is (pcm_nlo_workspace_t)
-               sqme_real_x_jac = pcm_work%powheg_kinematic_factors_real &
-                    (sqme_real_x_jac, alr)
-            end select
+       i_term_born = powheg%process_deps%i_term_born
+       allocate (p_hard_born (size (instance%get_p_hard (i_term_born))))
+       p_hard_born = instance%get_p_hard (i_term_born)
+       call powheg%update (p_hard_born)
+       do alr = 1, powheg%process_deps%n_alr
+          i_phs = powheg%process_deps%alr_to_i_phs (alr)
+          i_term_real = powheg%process_deps%i_term_real(i_phs)
+          select type (phs => instance%kin(i_term_real)%phs)
+          type is (phs_fks_t)
+             call phs%generator%get_radiation_variables (i_phs, xi, y)
+          end select
+          call powheg%update_sudakovs (alr, i_phs, y)
+          kt2 = powheg%sudakov(alr)%s%kt2 (xi, y)
+          if (kt2 >= powheg%settings%pt2_min) then
+             select type (pcm => instance%pcm)
+             type is (pcm_nlo_t)
+                associate (reg_data => pcm%region_data)
+                   i_uborn = reg_data%regions(alr)%uborn_index
+                end associate
+             end select
+             is_isr = instance%kin(i_term_real)%emitter <= instance%kin(i_term_real)%n_in
+             select type (pcm_work => instance%pcm_work)
+             class is (pcm_nlo_workspace_t)
+                sqme_born = pcm_work%real_sub%sqme_born(i_uborn)
+                sqme_real_x_jac = pcm_work%real_sub%sqme_real_arr(alr)
+                sqme_real_x_jac = pcm_work%powheg_kinematic_factors_real &
+                     (sqme_real_x_jac, alr)
+             end select
+             if (sqme_born == 0 .or. sqme_real_x_jac == 0) then
+                cycle
+             end if
 
-            associate (s => powheg%sudakov(alr)%s)
-              kt2 = s%kt2(xi, y)
-              alpha_s_kt = s%alpha_s (kt2, use_correct=.true.)
-              muren_born = instance%term(i_term_born)%get_ren_scale ()
-              mufac_born = instance%term(i_term_born)%get_fac_scale ()
-              muren_real = instance%term(i_term_real)%get_ren_scale ()
-              mufac_real = instance%term(i_term_real)%get_fac_scale ()
-              alpha_s_muren_born = s%alpha_s (muren_born**2, use_correct=.true., improve_nll=.false.)
-              alpha_s_muren_real = s%alpha_s (muren_real**2, use_correct=.true., improve_nll=.false.)
-              ubf = s%upper_bound_func (xi, y, alpha_s_kt)
-            end associate
+             associate (s => powheg%sudakov(alr)%s)
+                alpha_s_kt = s%alpha_s (kt2, use_correct=.true.)
+                muren_born = instance%term(i_term_born)%get_ren_scale ()
+                mufac_born = instance%term(i_term_born)%get_fac_scale ()
+                muren_real = instance%term(i_term_real)%get_ren_scale ()
+                mufac_real = instance%term(i_term_real)%get_fac_scale ()
+                alpha_s_muren_born = s%alpha_s (muren_born**2, use_correct=.true., improve_nll=.false.)
+                alpha_s_muren_real = s%alpha_s (muren_real**2, use_correct=.true., improve_nll=.false.)
+                ubf = s%upper_bound_func (xi, y, alpha_s_kt)
+             end associate
 
-            !!! Correct all factors of alphas(muren) to alphas(kt).
-            alphas_power = powheg%process_deps%alphas_power
-            sqme_born = (alpha_s_kt / alpha_s_muren_born)**alphas_power * sqme_born
-            sqme_real_x_jac = (alpha_s_kt / alpha_s_muren_real)**(alphas_power+1) * sqme_real_x_jac
+             !!! Correct all factors of alphas(muren) to alphas(kt).
+             alphas_power = powheg%process_deps%alphas_power
+             sqme_born = (alpha_s_kt / alpha_s_muren_born)**alphas_power * sqme_born
+             sqme_real_x_jac = (alpha_s_kt / alpha_s_muren_real)**(alphas_power+1) * sqme_real_x_jac
 
-              !!! Also correct the PDFs previously computed at mufac instead of kt
-            select type (pcm => instance%term(i_term_real)%pcm)
-            type is (pcm_nlo_t)
-               if (pcm%has_pdfs) then
-                  associate (reg_data => pcm%region_data)
-                    flv_born = reg_data%flv_born(i_term_born)%flst(1:2)
-                    where (flv_born == 21) flv_born = 0
-                    i_real = reg_data%regions(alr)%real_index
-                    flv_real = reg_data%flv_real(i_real)%flst(1:2)
-                    where (flv_real == 21) flv_real = 0
-                  end associate
-                  associate (pdf_data => powheg%process_deps%pdf_data, &
-                       x_born => powheg%event_deps%x_born)
-                    if (.not. pdfs_valid(instance, pdf_data, i_term_born, i_term_real, &
-                         sqrt(kt2), x_born, is_isr)) cycle
-                    do em = 1, 2
-                       x_dbl = x_born(em) ; q_dbl = mufac_born
-                       call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
-                       pdf_born_mufac(em) = pdf_dbl(flv_born(em)) / x_born(em)
-                       x_dbl = x_born(em) ; q_dbl = sqrt(kt2)
-                       call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
-                       pdf_born_kt(em) = pdf_dbl(flv_born(em)) / x_born(em)
-                    end do
-                    onepy = one + y; onemy = one - y
-                    x_real(1) = x_born(1) * sqrt ((two - xi * onemy) / (two - xi * onepy))
-                    x_real(2) = x_born(2) * sqrt ((two - xi * onepy) / (two - xi * onemy))
-                    x_real = x_real / sqrt (one - xi)
-                    do em = 1, 2
-                       x_dbl = x_real(em) ; q_dbl = mufac_real
-                       call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
-                       pdf_real_mufac(em) = pdf_dbl(flv_real(em)) / x_real(em)
-                       x_dbl = x_real(em) ; q_dbl = sqrt(kt2)
-                       call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
-                       pdf_real_kt(em) = pdf_dbl(flv_real(em)) / x_real(em)
-                    end do
-                    sqme_born = pdf_born_kt(1) * pdf_born_kt(2) / &
-                         (pdf_born_mufac(1) * pdf_born_mufac(2)) * sqme_born
-                    sqme_real_x_jac = pdf_real_kt(1) * pdf_real_kt(2) / &
-                         (pdf_real_mufac(1) * pdf_real_mufac(2)) * sqme_real_x_jac
-                  end associate
-               end if
-            end select
+             !!! Also correct the PDFs previously computed at mufac instead of kt
+             select type (pcm => instance%pcm)
+             type is (pcm_nlo_t)
+                if (pcm%has_pdfs) then
+                   associate (reg_data => pcm%region_data)
+                      flv_born = reg_data%regions(alr)%flst_uborn%flst(1:2)
+                      where (flv_born == 21) flv_born = 0
+                      flv_real = reg_data%regions(alr)%flst_real%flst(1:2)
+                      where (flv_real == 21) flv_real = 0
+                   end associate
+                   associate (pdf_data => powheg%process_deps%pdf_data, &
+                        x_born => powheg%event_deps%x_born)
+                      if (.not. pdfs_valid(instance, pdf_data, alr, &
+                           sqrt(kt2), x_born, is_isr)) cycle
+                      do em = 1, 2
+                         x_dbl = x_born(em) ; q_dbl = mufac_born
+                         call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
+                         pdf_born_mufac(em) = pdf_dbl(flv_born(em)) / x_born(em)
+                         x_dbl = x_born(em) ; q_dbl = sqrt(kt2)
+                         call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
+                         pdf_born_kt(em) = pdf_dbl(flv_born(em)) / x_born(em)
+                      end do
+                      if (is_isr) then
+                         onepy = one + y; onemy = one - y
+                         x_real(1) = x_born(1) * sqrt ((two - xi * onemy) / (two - xi * onepy))
+                         x_real(2) = x_born(2) * sqrt ((two - xi * onepy) / (two - xi * onemy))
+                         x_real = x_real / sqrt (one - xi)
+                      else
+                         x_real = x_born
+                      end if
+                      do em = 1, 2
+                         x_dbl = x_real(em) ; q_dbl = mufac_real
+                         call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
+                         pdf_real_mufac(em) = pdf_dbl(flv_real(em)) / x_real(em)
+                         x_dbl = x_real(em) ; q_dbl = sqrt(kt2)
+                         call pdf_data%evolve(x_dbl, q_dbl, pdf_dbl)
+                         pdf_real_kt(em) = pdf_dbl(flv_real(em)) / x_real(em)
+                      end do
+                      sqme_born = pdf_born_kt(1) * pdf_born_kt(2) / &
+                           (pdf_born_mufac(1) * pdf_born_mufac(2)) * sqme_born
+                      sqme_real_x_jac = pdf_real_kt(1) * pdf_real_kt(2) / &
+                           (pdf_real_mufac(1) * pdf_real_mufac(2)) * sqme_real_x_jac
+                   end associate
+                end if
+             end select
 
-            norm = sqme_real_x_jac / (sqme_born * ubf)
-            f_alr = (one * alr) / powheg%process_deps%n_alr - tiny_07
+             if (sqme_born <= 0 .or. sqme_real_x_jac <= 0) then
+                cycle
+             end if
 
-            r_y = abs(y)
-            select type (pcm_work => instance%pcm_work)
-            class is (pcm_nlo_workspace_t)
-               xi_max = min(pcm_work%get_xi_max (alr), 1 - tiny_07)
-            end select
-            if (xi > xi_max) then
-               r_xi = 1
-            else
-               r_xi = log(1 / (1 - xi)) / log(1 / (1 - xi_max))
-            end if
-            call powheg%grid%update_maxima ([r_xi, r_y, f_alr], norm)
-         end if
-      end do
+             norm = sqme_real_x_jac / (sqme_born * ubf)
+             f_alr = (one * alr) / powheg%process_deps%n_alr - tiny_07
+
+             r_y = abs(y)
+             select type (pcm_work => instance%pcm_work)
+             class is (pcm_nlo_workspace_t)
+                xi_max = min(pcm_work%get_xi_max (alr), 1 - tiny_07)
+             end select
+             if (xi > xi_max) then
+                r_xi = 1
+             else
+                r_xi = log(1 - xi) / log(1 - xi_max)
+             end if
+             call powheg%grid%update_maxima ([r_xi, r_y, f_alr], norm)
+          end if
+       end do
     end associate
   contains
   <<POWHEG matching: powheg matching hook: evaluate: contained>>
@@ -5347,11 +5415,11 @@ with a huge performance gain.
 The PDF veto we perform is independent on the actual emitter to not artificially
 favor specific ALRs.
 <<POWHEG matching: powheg matching hook: evaluate: contained>>=
-  function pdfs_valid (instance, pdf_data, i_term_born, i_term_real, q, x, is_isr) result (valid)
+  function pdfs_valid (instance, pdf_data, alr, q, x, is_isr) result (valid)
     logical :: valid
     class(process_instance_t), intent(in), target :: instance
     type(pdf_data_t), intent(inout) :: pdf_data
-    integer, intent(in) :: i_term_born, i_term_real
+    integer, intent(in) :: alr
     real(default), intent(in) :: q
     real(default), dimension(2), intent(in) :: x
     real(double) :: q_dbl
@@ -5373,9 +5441,9 @@ favor specific ALRs.
        do em = 1, 2
           call pdf_data%evolve(x_dbl(em), q_dbl, pdf_dbl)
           pdf = pdf_dbl / x(em)
-          select type (pcm => instance%term(i_term_real)%pcm)
+          select type (pcm => instance%pcm)
           type is (pcm_nlo_t)
-             flv_born_em = pcm%region_data%flv_born(i_term_born)%flst(em)
+             flv_born_em = pcm%region_data%regions(alr)%flst_uborn%flst(em)
           end select
           if (is_gluon(flv_born_em)) then
              sum_pdf_q = 0
@@ -5509,7 +5577,6 @@ In its current state however, it fills the histogram with either $1$ or [[NaN]] 
     integer :: u
 
     p_born = powheg%event_deps%p_born_lab%get_momenta (1)
-    sqme_born = powheg%event_deps%sqme_born
     s = powheg%event_deps%s_hat
     pt2_min = powheg%settings%pt2_min
     n_calls1 = 100000; n_calls2 = 1000000
@@ -5562,6 +5629,7 @@ Linear and logarithmic binning are available.
                kT2 = powheg%sudakov(alr)%s%kt2(xi, y)
                if (kT2 >= pt2_min .and. xi < one - tiny_07) then
                   alpha_s = get_alpha_s (powheg%qcd, kT2)
+                  sqme_born = powheg%event_deps%sqme_born(alr)
                   sqme_real_x_jac = powheg%compute_sqme_real (alr, sqrt(kT2))
                   random_jacobian = pcm_work%real_kinematics%jac_rand (emitter)
                   weight = sqme_real_x_jac * random_jacobian / sqme_born

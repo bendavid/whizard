@@ -19,6 +19,10 @@ me = 0
 mmu = 0
 mtau = 1.777
 
+ms = 0
+mc = 0
+mb = 0
+
 ?alphas_is_fixed = false
 ?alphas_from_mz = true
 ?alphas_from_lambda_qcd = false
@@ -26,7 +30,8 @@ mtau = 1.777
 alphas_nf = 5
 alphas_order = 1
 
-$exclude_gauge_splittings = "u:s:b:t"
+alias pr = d:D:u:U:s:S:c:C:b:B
+$exclude_gauge_splittings = "t"
 
 $method = "dummy"
 
@@ -41,8 +46,9 @@ scale = mZ
 ?combined_nlo_integration = true
 
 process powheg_2_p1 = d, D => e1, E1 { nlo_calculation = full }
+process powheg_2_p2 = pr, pr => e1, E1 { nlo_calculation = full }
 
-seed = 130
+seed = 487
 ! chosen to produce Born-like and real-like events, positive and negative weights.
 
 # Options for POWHEG matching
@@ -61,7 +67,7 @@ powheg_pt_min = 1 GeV
 integrate (powheg_2_p1) { iterations = 1:1000:"gw" }
 
 ## Event settings:
-n_events = 10
+n_events = 5
 
 ?negative_weights = true 
 ?keep_failed_events = true
@@ -73,3 +79,7 @@ sample_format = debug
 ?sample_pacify = true
 
 simulate(powheg_2_p1)
+
+integrate (powheg_2_p2) { iterations = 1:1000:"gw" }
+simulate(powheg_2_p2)
+

@@ -30,8 +30,6 @@ powheg_grid_size_y = 5
 powheg_pt_min = 1
 ?powheg_use_singular_jacobian = false
 
-!?powheg_test_sudakov = true
-
 # hardest jet pT
 scale = eval Pt [sort by -Pt [colored]]
 
@@ -53,7 +51,7 @@ simulate (powheg_1_p1)
 n_events = 2
 simulate (powheg_1_p1)
 
-$real_partition_mode = "on"
+$real_partition_mode = "singular"
 real_partition_scale = 5 GeV
 
 process powheg_1_p2 = E1, e1 => t, T { nlo_calculation = full }

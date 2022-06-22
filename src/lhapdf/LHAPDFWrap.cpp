@@ -7,7 +7,7 @@ using namespace std;
 
 extern "C" {
 
-  LHAPDF::PDF* lhapdf_init_pdf (char* setname, const int imem) { 
+  LHAPDF::PDF* lhapdf_init_pdf (char* setname, const int imem) {
     LHAPDF::PDF* pdf = LHAPDF::mkPDF(setname, imem);
     return pdf;
   }
@@ -31,7 +31,7 @@ extern "C" {
   double lhapdf_pdf_getq2max (LHAPDF::PDF* pdf) {
     return pdf->q2Max();
   }
-  
+
   bool lhapdf_has_photon (const LHAPDF::PDF* pdf) {
     return pdf->hasFlavor(22);
   }
@@ -43,13 +43,13 @@ extern "C" {
       fxq[i] = pdf->xfxQ(i-6, x, q);
     }
   }
-    
+
   /// Get xfx values from current PDF, including an extra photon flavor
   void lhapdf_evolvepdfphotonm (const LHAPDF::PDF* pdf, const double x, const double q, double* fxq, double &photonfxq) {
     lhapdf_evolvepdfm (pdf, x, q, fxq);
     photonfxq = pdf->xfxQ(22, x, q);
   }
-    
+
   void lhapdf_evolvepdfpm (const LHAPDF::PDF* pdf, const double x, const double q, const double s, const int scheme, double fxq) {
     throw LHAPDF::NotImplementedError("Photon structure function are not yet supported");
   }
@@ -72,6 +72,11 @@ extern "C" {
 
   double lhapdf_alphaspdf (const LHAPDF::PDF* pdf, const double q) {
     return pdf->alphasQ(q);
+  }
+
+  int lhapdf_getorder (const LHAPDF::PDF* pdf, int order) {
+    order = pdf->info().get_entry_as<int>("OrderQCD");
+    return order;
   }
 
 }

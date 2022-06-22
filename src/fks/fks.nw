@@ -9521,6 +9521,7 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
      real(default), dimension(:,:), allocatable :: sqme_real_non_sub
      real(default), dimension(:), allocatable :: sqme_born
      real(default), dimension(:,:), allocatable :: sf_factors
+     real(default), dimension(:), allocatable :: sqme_real_arr
      real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
      real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
      real(default), dimension(:,:,:,:), allocatable :: sqme_born_spin_c
@@ -9566,6 +9567,8 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
     rsub%sqme_born = zero
     allocate (rsub%sf_factors (reg_data%n_regions, 0:reg_data%n_in))
     rsub%sf_factors = zero
+    allocate (rsub%sqme_real_arr (reg_data%n_regions))
+    rsub%sqme_real_arr = zero
     allocate (rsub%sqme_born_color_c &
          (reg_data%n_legs_born, reg_data%n_legs_born, reg_data%n_flv_born))
     rsub%sqme_born_color_c = zero
@@ -9741,6 +9744,9 @@ is true).
           end if
        else
           sqme_alr_arr(alr) = sqme_alr_arr(rsub%reg_data%regions(alr)%eqv_index)
+       end if
+       if (rsub%radiation_event .and. sqme_alr_arr(alr) /= zero) then
+          rsub%sqme_real_arr(alr) = sqme_alr_arr(alr)
        end if
        if (separate_alrs) then
           sqme(alr) = sqme(alr) + sqme_alr_arr(alr)
@@ -11052,6 +11058,7 @@ in this case, we need to differentiate between [[em]] and [[em_pdf = 0]].
     if (allocated (rsub%sqme_real_non_sub)) deallocate (rsub%sqme_real_non_sub)
     if (allocated (rsub%sqme_born)) deallocate (rsub%sqme_born)
     if (allocated (rsub%sf_factors)) deallocate (rsub%sf_factors)
+    if (allocated (rsub%sqme_real_arr)) deallocate (rsub%sqme_real_arr)
     if (allocated (rsub%sqme_born_color_c)) deallocate (rsub%sqme_born_color_c)
     if (allocated (rsub%sqme_born_charge_c)) deallocate (rsub%sqme_born_charge_c)
     if (allocated (rsub%sc_required)) deallocate (rsub%sc_required)

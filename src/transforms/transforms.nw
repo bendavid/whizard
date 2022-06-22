@@ -2576,9 +2576,17 @@ resonance history, or none.
   module subroutine evt_resonance_generate_weighted (evt, probability)
     class(evt_resonance_t), intent(inout) :: evt
     real(default), intent(inout) :: probability
+    integer :: i_term
     call evt%fill_momenta ()
     call evt%compute_probabilities ()
-    call evt%selector%generate (evt%rng, evt%selected_history)
+    if (associated (evt%process_instance)) then
+       i_term = evt%process_instance%get_first_active_i_term ()
+       if (evt%process_instance%term(i_term)%passed) then
+          call evt%selector%generate (evt%rng, evt%selected_history)
+       end if
+    else
+       call evt%selector%generate (evt%rng, evt%selected_history)
+    end if
     probability = 1
   end subroutine evt_resonance_generate_weighted
 

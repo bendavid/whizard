@@ -6362,6 +6362,8 @@ is possible.  The reconstructed momentum is not projected on-shell.
 [[model]] and a random number [[r_color]] for chosing a color in
 ambiguous cases, we update the [[particle_set]].
 The reference for this procedure is [0709.2092], Sec. 4.5.1.
+We do not (yet) account for helicities and polarisations here nor do we
+update the beam remnant color and momenta.
 <<Particles: particle set: TBP>>=
   procedure :: build_radiation => particle_set_build_radiation
 <<Particles: sub interfaces>>=
@@ -6385,16 +6387,17 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
     real(default), intent(in) :: r_color
     type(particle_set_t) :: new_particle_set
     type(particle_t) :: new_particle
-    integer :: i, pdg_index_emitter, pdg_index_radiation
+    integer :: i, j, pdg_index_emitter, pdg_index_radiation, new_color_index
     integer, dimension(:), allocatable :: parents, children
+    type(vector4_t) :: mom_sum_children
     type(flavor_t) :: new_flv, real_emitter_flavor
     logical, dimension(:), allocatable :: status_mask
     integer, dimension(:), allocatable :: &
-         i_in1, i_beam1, i_remnant1, i_virt1, i_out1
+         i_in1, i_beam1, i_remnant1, i_virt1, i_res1, i_out1
     integer, dimension(:), allocatable :: &
-         i_in2, i_beam2, i_remnant2, i_virt2, i_out2
-    integer :: n_in1, n_beam1, n_remnant1, n_virt1, n_out1
-    integer :: n_in2, n_beam2, n_remnant2, n_virt2, n_out2
+         i_in2, i_beam2, i_remnant2, i_virt2, i_res2, i_out2
+    integer :: n_in1, n_beam1, n_remnant1, n_virt1, n_res1, n_out1
+    integer :: n_in2, n_beam2, n_remnant2, n_virt2, n_res2, n_out2
     integer :: n, n_tot, i_emitter
     logical :: is_fsr
 
@@ -6425,44 +6428,45 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
     allocate (i_virt1 (n_virt1))
     i_virt1 = particle_set%get_indices (status_mask)
     do i = 1, n
+       status_mask(i) = particle_set%prt(i)%get_status () == PRT_RESONANT
+    end do
+    n_res1 = count (status_mask)
+    allocate (i_res1 (n_res1))
+    i_res1 = particle_set%get_indices (status_mask)
+    do i = 1, n
        status_mask(i) = particle_set%prt(i)%get_status () == PRT_OUTGOING
     end do
     n_out1 = count (status_mask)
     allocate (i_out1 (n_out1))
     i_out1 = particle_set%get_indices (status_mask)
 
-    n_in2 = n_in1; n_beam2 = n_beam1; n_remnant2 = n_remnant1
-    n_virt2 = n_virt1 + n_out1
+    n_in2 = n_in1; n_beam2 = n_beam1; n_remnant2 = n_remnant1; n_res2 = n_res1
+    n_virt2 = n_virt1
     n_out2 = n_out1 + 1
-    n_tot = n_in2 + n_beam2 + n_remnant2 + n_virt2 + n_out2
+    n_tot = n_in2 + n_beam2 + n_remnant2 + n_virt2 + n_res2 + n_out2
 
-    allocate (i_in2 (n_in2), i_beam2 (n_beam2), i_remnant2 (n_remnant2))
-    i_in2 = i_in1; i_beam2 = i_beam1; i_remnant2 = i_remnant1
+    allocate (i_in2 (n_in2), i_beam2 (n_beam2), i_remnant2 (n_remnant2), i_res2 (n_res2))
+    i_in2 = i_in1; i_beam2 = i_beam1; i_remnant2 = i_remnant1; i_res2 = i_res1
 
     allocate (i_virt2 (n_virt2))
     i_virt2(1 : n_virt1) = i_virt1
-    i_virt2(n_virt1 + 1 : n_virt2) = i_out1
 
     allocate (i_out2 (n_out2))
-    i_out2(1 : n_out1) = i_out1(1 : n_out1) + n_out1
+    i_out2(1 : n_out1) = i_out1(1 : n_out1)
     i_out2(n_out2) = n_tot
 
     new_particle_set%n_beam = n_beam2
     new_particle_set%n_in = n_in2
-    new_particle_set%n_vir = n_virt2
+    new_particle_set%n_vir = n_virt2 + n_res2
     new_particle_set%n_out = n_out2
     new_particle_set%n_tot = n_tot
     new_particle_set%correlated_state = particle_set%correlated_state
     allocate (new_particle_set%prt (n_tot))
     if (size (i_beam1) > 0) new_particle_set%prt(i_beam2) = particle_set%prt(i_beam1)
     if (size (i_remnant1) > 0) new_particle_set%prt(i_remnant2) = particle_set%prt(i_remnant1)
+    if (size (i_res1) > 0) new_particle_set%prt(i_res2) = particle_set%prt(i_res1)
     do i = 1, n_virt1
        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_virt1(i))
-    end do
-
-    do i = n_virt1 + 1, n_virt2
-       new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_out1(i - n_virt1))
-       call new_particle_set%prt(i_virt2(i))%reset_status (PRT_VIRTUAL)
     end do
 
     do i = 1, n_in2
@@ -6486,7 +6490,7 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
     call new_flv%init (pdg_index_radiation, model)
     is_fsr = emitter > n_in1
     if (is_fsr) then
-       i_emitter = emitter + n_virt2 + n_remnant2 + n_beam2
+       i_emitter = emitter + n_virt2 + n_res2 + n_remnant2 + n_beam2
     else
        i_emitter = emitter + n_beam2
     end if
@@ -6494,39 +6498,60 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
     call real_emitter_flavor%init (pdg_index_emitter, model)
     call new_particle_set%prt(i_emitter)%set_flavor(real_emitter_flavor)
 
+    new_color_index = 0
+    do i = 1, n_tot - 1
+       new_color_index = max(maxval(abs(particle_set%prt(i)%get_color())), new_color_index)
+    end do
+    new_color_index = new_color_index + 1
     call reassign_colors (new_particle, new_particle_set%prt(i_emitter), &
-         pdg_index_radiation, pdg_index_emitter, is_fsr, r_color)
+         pdg_index_radiation, pdg_index_emitter, new_color_index, is_fsr, r_color)
 
     call new_particle%set_flavor (new_flv)
     new_particle_set%prt(n_tot) = new_particle
 
-    allocate (children (n_out2))
-    children = i_out2
-    do i = n_in2 + n_beam2 + n_remnant2 + n_virt1 + 1, n_in2 + n_beam2 + n_remnant2 + n_virt2
-       call new_particle_set%prt(i)%set_children (children)
-    end do
-
     !!! Set proper parents for outgoing particles
-    allocate (parents (n_out1))
-    parents = i_out1
-    do i = n_in2 + n_beam2 + n_remnant2 + n_virt2 + 1, n_tot
-       call new_particle_set%prt(i)%set_parents (parents)
+    if (is_fsr) then
+       call new_particle_set%prt(n_tot)%set_parents ( &
+           new_particle_set%prt(i_emitter)%get_parents ())
+    else
+       call new_particle_set%prt(n_tot)%set_parents (i_in2)
+    end if
+
+    do i = n_in2 + n_beam2 + n_remnant2 + n_virt1 + 1, &
+         n_in2 + n_beam2 + n_remnant2 + n_virt2 + n_res2
+       allocate(children(0))
+       mom_sum_children = vector4_null
+       do j = n_in2 + n_beam2 + n_remnant2, n_tot
+          if (any(new_particle_set%prt(j)%get_parents() == i)) then
+             children = [children, j]
+             if (new_particle_set%prt(j)%get_status () == PRT_OUTGOING) then
+                mom_sum_children = mom_sum_children &
+                     +  new_particle_set%prt(j)%get_momentum ()
+             end if
+          end if
+       end do
+       call new_particle_set%prt(i)%set_children (children)
+       if (mom_sum_children /= vector4_null) then
+          call new_particle_set%set_momentum (i, mom_sum_children)
+       end if
+       deallocate(children)
     end do
     call particle_set%init (new_particle_set)
   contains
 
     <<build radiation: set color offset>>
-    subroutine reassign_colors (prt_radiated, prt_emitter, flv_rad, flv_em, is_fsr, r_col)
+    subroutine reassign_colors (prt_radiated, prt_emitter, flv_rad, flv_em, &
+         new_color_index, is_fsr, r_col)
       type(particle_t), intent(inout) :: prt_radiated, prt_emitter
-      integer, intent(in) :: flv_rad, flv_em
+      integer, intent(in) :: flv_rad, flv_em, new_color_index
       logical, intent(in) :: is_fsr
       real(default), intent(in) :: r_col
       type(color_t) :: col_rad, col_em
       if (is_fsr) then
          if (is_quark (flv_em) .and. is_gluon (flv_rad)) then
-            call reassign_colors_q_to_qg_fsr (prt_emitter, col_rad, col_em)
+            call reassign_colors_q_to_qg_fsr (prt_emitter, new_color_index, col_rad, col_em)
          else if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
-            call reassign_colors_g_to_gg_fsr (prt_emitter, r_col, col_rad, col_em)
+            call reassign_colors_g_to_gg_fsr (prt_emitter, r_col, new_color_index, col_rad, col_em)
          else if (is_quark (flv_em) .and. is_quark (flv_rad)) then
             call reassign_colors_g_to_qq_fsr (prt_emitter, flv_em, col_rad, col_em)
          else
@@ -6534,13 +6559,13 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
          end if
       else
          if (is_quark (flv_em) .and. is_gluon (flv_rad)) then
-            call reassign_colors_q_to_qg_isr (prt_emitter, col_rad, col_em)
+            call reassign_colors_q_to_qg_isr (prt_emitter, new_color_index, col_rad, col_em)
          else if (is_quark (flv_em) .and. is_quark (flv_rad)) then
             call reassign_colors_g_to_qq_isr (prt_emitter, flv_rad, col_rad, col_em)
          else if (is_gluon (flv_em) .and. is_quark (flv_rad)) then
-            call reassign_colors_q_to_gq_isr (prt_emitter, col_rad, col_em)
+            call reassign_colors_q_to_gq_isr (prt_emitter, flv_rad, new_color_index, col_rad, col_em)
          else if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
-            call reassign_colors_g_to_gg_isr (prt_emitter, r_col, col_rad, col_em)
+            call reassign_colors_g_to_gg_isr (prt_emitter, r_col, new_color_index, col_rad, col_em)
          else
             call msg_fatal ("reassign_colors: invalid splitting")
          end if
@@ -6549,12 +6574,13 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       call prt_radiated%set_color (col_rad)
     end subroutine reassign_colors
 
-    subroutine reassign_colors_q_to_qg_fsr (prt_emitter, col_rad, col_em)
+    subroutine reassign_colors_q_to_qg_fsr (prt_emitter, new_color_index, &
+         col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
+      integer, intent(in) :: new_color_index
       type(color_t), intent(out) :: col_rad, col_em
       integer, dimension(2) :: color_rad, color_em
       integer :: i1, i2
-      integer :: new_color_index
       logical :: is_anti_quark
 
       color_em = prt_emitter%get_color ()
@@ -6563,7 +6589,6 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       if (is_anti_quark) then
          i1 = 2; i2 = 1
       end if
-      new_color_index = color_em(i1)+1
       color_rad(i1) = color_em(i1)
       color_rad(i2) = new_color_index
       color_em(i1) = new_color_index
@@ -6571,16 +6596,16 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
     end subroutine reassign_colors_q_to_qg_fsr
 
-    subroutine reassign_colors_g_to_gg_fsr (prt_emitter, random, col_rad, col_em)
+    subroutine reassign_colors_g_to_gg_fsr (prt_emitter, random, new_color_index, &
+         col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
       real(default), intent(in) :: random
+      integer, intent(in) :: new_color_index
       type(color_t), intent(out) :: col_rad, col_em
       integer, dimension(2) :: color_rad, color_em
       integer :: i1, i2
-      integer :: new_color_index
 
       color_em = prt_emitter%get_color ()
-      new_color_index = maxval (abs (color_em))+1
       i1 = 1; i2 = 2
       if (random < 0.5) then
          i1 = 2; i2 = 1
@@ -6613,12 +6638,13 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
     end subroutine reassign_colors_g_to_qq_fsr
 
-    subroutine reassign_colors_q_to_qg_isr (prt_emitter, col_rad, col_em)
+    subroutine reassign_colors_q_to_qg_isr (prt_emitter, new_color_index, &
+         col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
+      integer, intent(in) :: new_color_index
       type(color_t), intent(out) :: col_rad, col_em
       integer, dimension(2) :: color_rad, color_em
       integer :: i1, i2
-      integer :: new_color_index
       logical :: is_anti_quark
 
       color_em = prt_emitter%get_color ()
@@ -6627,7 +6653,6 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       if (is_anti_quark) then
          i1 = 2; i2 = 1
       end if
-      new_color_index = color_em(i1)+1
       color_rad(i2) = color_em(i1)
       color_rad(i1) = new_color_index
       color_em(i1) = new_color_index
@@ -6647,7 +6672,7 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       i1 = 1; i2 = 2
       is_anti_quark = pdg_rad < 0
       if (is_anti_quark) then
-         i1 = 2; i1 = 1
+         i1 = 2; i2 = 1
       end if
       color_rad(i1) = color_em(i2)
       color_rad(i2) = 0
@@ -6656,21 +6681,21 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
     end subroutine reassign_colors_g_to_qq_isr
 
-    subroutine reassign_colors_q_to_gq_isr (prt_emitter, col_rad, col_em)
+    subroutine reassign_colors_q_to_gq_isr (prt_emitter, pdg_rad, new_color_index, &
+         col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
+      integer, intent(in) :: pdg_rad, new_color_index
       type(color_t), intent(out) :: col_rad, col_em
       integer, dimension(2) :: color_rad, color_em
       integer :: i1, i2
-      integer :: new_color_index
-      logical :: is_anti_quark
+      logical :: rad_is_quark
 
       color_em = prt_emitter%get_color ()
       i1 = 1; i2 = 2
-      is_anti_quark = color_em(2) /= 0
-      if (is_anti_quark) then
+      rad_is_quark = pdg_rad > 0
+      if (rad_is_quark) then
          i1 = 2; i2 = 1
       end if
-      new_color_index = color_em(i1)+1
       color_rad(i1) = 0
       color_rad(i2) = new_color_index
       color_em(i2) = new_color_index
@@ -6678,16 +6703,16 @@ The reference for this procedure is [0709.2092], Sec. 4.5.1.
       call col_rad%init_col_acl (color_rad(1), color_rad(2))
     end subroutine reassign_colors_q_to_gq_isr
 
-    subroutine reassign_colors_g_to_gg_isr (prt_emitter, random, col_rad, col_em)
+    subroutine reassign_colors_g_to_gg_isr (prt_emitter, random, new_color_index, &
+         col_rad, col_em)
       type(particle_t), intent(in) :: prt_emitter
       real(default), intent(in) :: random
+      integer, intent(in) :: new_color_index
       type(color_t), intent(out) :: col_rad, col_em
       integer, dimension(2) :: color_rad, color_em
       integer :: i1, i2
-      integer :: new_color_index
 
       color_em = prt_emitter%get_color ()
-      new_color_index = maxval (abs (color_em))+1
       i1 = 1; i2 = 2
       if (random < 0.5) then
          i1 = 2; i2 = 1

@@ -9,6 +9,10 @@ if test -f OCAML_FLAG; then
     cat ${name}_p1.debug >> $name.log
     echo "Contents of ${name}_p1.pg:" >> $name.log
     cat ${name}_p1.pg | sed -e 's/[0-9]E/XE/g' >> $name.log
+    echo "Contents of ${name}_p2.debug:" >> $name.log
+    cat ${name}_p2.debug >> $name.log
+    echo "Contents of ${name}_p2.pg:" >> $name.log
+    cat ${name}_p2.pg | sed -e 's/[0-9]E/XE/g' >> $name.log
     diff -b ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"

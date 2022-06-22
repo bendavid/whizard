@@ -55,6 +55,7 @@ module lhapdf
      procedure :: evolve_pdfphotonm => lhapdf_evolve_pdfphotonm
      procedure :: evolve_pdfpm => lhapdf_evolve_pdfpm
      procedure :: get_qmass => lhapdf_get_qmass
+     procedure :: get_order => lhapdf_get_order
      procedure :: num_pdfm => lhapdf_num_pdfm
      procedure :: alphas_pdf => lhapdf_alphas_pdf
      procedure :: final => lhapdf_final
@@ -154,6 +155,14 @@ module lhapdf
        integer(c_int), intent(in), value :: nf
        real(c_double) :: mass
      end function lhapdf_getqmass
+  end interface
+
+  interface
+     function lhapdf_getorder (pdf) bind (C) result (order)
+       import
+       type(c_ptr), intent(in), value :: pdf
+       integer(c_int) :: order
+     end function lhapdf_getorder
   end interface
 
   interface
@@ -272,6 +281,12 @@ contains
     c_nf = nf
     mass = lhapdf_getqmass (pdf%cptr, c_nf)
   end function lhapdf_get_qmass
+
+  function lhapdf_get_order (pdf) result (order)
+    class(lhapdf_pdf_t), intent(in) :: pdf
+    integer(c_int) :: order
+    order = lhapdf_getorder (pdf%cptr)
+  end function lhapdf_get_order
 
   function lhapdf_num_pdfm (pdf) result (numpdf)
     class(lhapdf_pdf_t), intent(inout) :: pdf
