@@ -4053,9 +4053,7 @@ this requires refactoring the event-handling procedures.
   module subroutine process_final (process)
     class(process_t), intent(inout) :: process
     integer :: i
-    ! call process%meta%final ()
     call process%env%final ()
-    ! call process%config%final ()
     if (allocated (process%component)) then
        do i = 1, size (process%component)
           call process%component(i)%final ()
@@ -8459,19 +8457,6 @@ Gfortran 7/8/9 bug: has to remain in the main module:
   end subroutine process_config_data_init
 
 @ %def process_config_data_init
-@ Current implementation: nothing to finalize.
-<<Process config: process config data: TBP>>=
-  procedure :: final => process_config_data_final
-<<Process config: sub interfaces>>=
-    module subroutine process_config_data_final (config)
-      class(process_config_data_t), intent(inout) :: config
-    end subroutine process_config_data_final
-<<Process config: procedures>>=
-  module subroutine process_config_data_final (config)
-    class(process_config_data_t), intent(inout) :: config
-  end subroutine process_config_data_final
-
-@ %def process_config_data_final
 @ Return a copy of the QCD data block.
 <<Process config: process config data: TBP>>=
   procedure :: get_qcd => process_config_data_get_qcd
