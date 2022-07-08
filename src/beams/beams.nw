@@ -23629,7 +23629,7 @@ submodule (sf_circe2) sf_circe2_s
   use format_defs, only: FMT_19
   use numeric_utils
   use diagnostics
-  use physics_defs, only: PHOTON, ELECTRON
+  use physics_defs, only: PHOTON, ELECTRON, MUON
   use lorentz
   use colors
   use helicities
@@ -23801,18 +23801,27 @@ in the current directory.
 <<SF circe2: procedures>>=
   module subroutine circe2_data_check (data)
     class(circe2_data_t), intent(in) :: data
-    type(flavor_t) :: flv_photon, flv_electron
+    type(flavor_t) :: flv_photon, flv_electron, flv_muon
     call flv_photon%init (PHOTON, data%model)
     if (.not. flv_photon%is_defined ()) then
        call msg_fatal ("CIRCE2: model must contain photon")
     end if
-    call flv_electron%init (ELECTRON, data%model)
-    if (.not. flv_electron%is_defined ()) then
-       call msg_fatal ("CIRCE2: model must contain electron")
+    if (any (abs (data%pdg_in) /= PHOTON .and. abs (data%pdg_in) /= &
+         ELECTRON .and. abs (data%pdg_in) /= MUON)) then
+       call msg_fatal ("CIRCE2: applicable only for e+e-, mu+mu- or " // &
+            "photon collisions")
     end if
-    if (any (abs (data%pdg_in) /= PHOTON .and. abs (data%pdg_in) /= ELECTRON)) &
-         then
-       call msg_fatal ("CIRCE2: applicable only for e+e- or photon collisions")
+    if (any (abs (data%pdg_in) == ELECTRON)) then
+       call flv_electron%init (ELECTRON, data%model)
+       if (.not. flv_electron%is_defined ()) then
+          call msg_fatal ("CIRCE2: model must contain electron")
+       end if
+    end if
+    if (any (abs (data%pdg_in) == MUON)) then
+       call flv_muon%init (MUON, data%model)
+       if (.not. flv_muon%is_defined ()) then
+          call msg_fatal ("CIRCE2: model must contain muon")
+       end if
     end if
     select case (data%error)
     case (-1)
