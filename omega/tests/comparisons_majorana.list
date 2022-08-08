@@ -41,7 +41,7 @@ vvepa    0.40  1E-11    10  1000   SM  .true. scatter nuebar nue -> e+  e- A
 wwep     0.70  1E-11   100  1000   SM .false. scatter W+ W- -> e+ e-
 ewew     0.70  1E-11   100  1000   SM .false. scatter e- W+ -> e- W+
 pwpw     0.70  1E-11   100  1000   SM  .true. scatter e+ W+ -> e+ W+
-epww     0.90  1E-11   100  1000   SM  .true. scatter e+ e- -> W+ W-
+epww     0.80  1E-11   100  1000   SM  .true. scatter e+ e- -> W+ W-
 wwvv     0.70  1E-11   100  1000   SM .false. scatter W+ W- -> nuebar nue
 wwvv_    0.70  1E-11   100  1000   SM  .true. scatter W+ W- -> nue nuebar
 zzep     0.90  1E-11   100  1000   SM .false. scatter Z  Z  -> e+ e-
@@ -55,7 +55,7 @@ ezea     0.90  1E-11   100  1000   SM .false. scatter e- Z  -> e- A
 eaez     0.90  1E-11   100  1000   SM .false. scatter e- A  -> e- Z
 epaz     0.90  1E-11   100  1000   SM  .true. scatter e+ e- -> A  Z
 epza     0.90  1E-11   100  1000   SM  .true. scatter e+ e- -> Z  A
-epwwz    0.90  1E-11    10  1000   SM  .true. scatter e+ e- -> W+ W- Z
-epwwww   0.90  1E-11    10  1000   SM  .true. scatter e+ e- -> W+ W- W+ W-
-epwwzz   0.90  1E-11    10  1000   SM  .true. scatter e+ e- -> W+ W- Z Z
-cc10     0.90  1E-11    10  1000   SM  .true. scatter e+ e- -> mu- numubar u dbar
+epwwz    0.80  1E-11    10  1000   SM  .true. scatter e+ e- -> W+ W- Z
+epwwww   0.75  1E-11    10  1000   SM  .true. scatter e+ e- -> W+ W- W+ W-
+epwwzz   0.75  1E-11    10  1000   SM  .true. scatter e+ e- -> W+ W- Z Z
+cc10     0.85  1E-11    10  1000   SM  .true. scatter e+ e- -> mu- numubar u dbar

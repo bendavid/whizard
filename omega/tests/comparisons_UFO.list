@@ -42,7 +42,7 @@ wzzw     0.55  1E-11 100 1000 SM scatter W+ Z -> Z W+
 wzzw_1   0.55  1E-11 100 1000 SM scatter W+ Z -> W+ Z
 wwaz     0.50  1E-11 100 1000 SM scatter W+ W- -> A Z | W+ W- -> a Z
 wwza     0.50  1E-11 100 1000 SM scatter W+ W- -> Z A | W+ W- -> Z a
-zaww     0.55  1E-11 100 1000 SM scatter A Z -> W+ W- | a Z -> W+ W-
+zaww     0.50  1E-11 100 1000 SM scatter A Z -> W+ W- | a Z -> W+ W-
 azww     0.55  1E-11 100 1000 SM scatter Z A -> W+ W- | Z a -> W+ W-
 wawz     0.55  1E-11 100 1000 SM scatter W+ A -> W+ Z | W+ a -> W+ Z
 wazw     0.55  1E-11 100 1000 SM scatter W+ A -> Z W+ | W+ a -> Z W+

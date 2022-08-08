@@ -5898,7 +5898,7 @@ module isr_epa_handler_uti
   use rng_base, only: rng_t
   use models, only: syntax_model_file_init, syntax_model_file_final
   use models, only: model_list_t, model_t
-  use particles, only: particle_set_t
+  use particles, only: particle_set_t, pacify
 
   use event_transforms
   use isr_epa_handler, only: evt_isr_epa_t
@@ -5987,6 +5987,7 @@ trivial case where the event is kept collinear.
 
     call evt_trivial%reset ()
     call evt_trivial%set_particle_set (pset, 1, 1)
+    call pacify (evt_trivial%particle_set)
     call evt_trivial%write (u)
     call write_separator (u, 2)
 
@@ -6089,6 +6090,7 @@ is conserved, and all outgoing photons and partons are on-shell
 
     call evt_trivial%reset ()
     call evt_trivial%set_particle_set (pset, 1, 1)
+    call pacify (evt_trivial%particle_set)
     call evt_trivial%write (u)
     call write_separator (u, 2)
 
@@ -6219,6 +6221,7 @@ are not in their c.m.\ frame (but collinear).
 
     call evt_trivial%reset ()
     call evt_trivial%set_particle_set (pset, 1, 1)
+    call pacify (evt_trivial%particle_set)
     call evt_trivial%write (u)
     call write_separator (u, 2)
 
@@ -6344,6 +6347,7 @@ trivial case where the event is kept collinear.
 
     call evt_trivial%reset ()
     call evt_trivial%set_particle_set (pset, 1, 1)
+    call pacify (evt_trivial%particle_set)
     call evt_trivial%write (u)
     call write_separator (u, 2)
 
@@ -6446,6 +6450,7 @@ is conserved, and all outgoing beam remnants and photons are on-shell
 
     call evt_trivial%reset ()
     call evt_trivial%set_particle_set (pset, 1, 1)
+    call pacify (evt_trivial%particle_set)
     call evt_trivial%write (u)
     call write_separator (u, 2)
 
@@ -6575,6 +6580,7 @@ before EPA are not in their c.m.\ frame (but collinear).
 
     call evt_trivial%reset ()
     call evt_trivial%set_particle_set (pset, 1, 1)
+    call pacify (evt_trivial%particle_set)
     call evt_trivial%write (u)
     call write_separator (u, 2)
 

@@ -1946,6 +1946,8 @@ check the normalization, and transform back to the density matrix.
       d = fundamental_dimension (s)
       write (u, *)
       call init_matrix (d, r)
+      where (abs (aimag (r)) < 1.e-14_default)  &
+           r = cmplx (real(r, kind=default), 0._default, kind=default)
       call write_matrix (d, r)
       call pol%init (s, r)
       write (u, *)
@@ -2198,6 +2200,8 @@ the density matrix.
       d = fundamental_dimension (s)
       write (u, *)
       call init_matrix (d, r)
+      where (abs (aimag (r)) < 1.e-14_default)  &
+           r = cmplx (real(r, kind=default), 0._default, kind=default)
       call write_matrix (d, r)
       call pol%init (s, r)
       write (u, *)

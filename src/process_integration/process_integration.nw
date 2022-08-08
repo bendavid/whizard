@@ -21686,6 +21686,7 @@ structure-function channel.
     write (u, "(A)")
 
     call write_separator (u)
+    call pacify (pset)
     call pset%write (u)
     call write_separator (u)
 

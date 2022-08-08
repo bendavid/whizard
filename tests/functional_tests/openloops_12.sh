@@ -9,7 +9,7 @@ if test -f OCAML_FLAG -a -f OPENLOOPS_FLAG -a -f FASTJET_FLAG; then
     cat $name.log.tmp | sed -e 's/Loading library:.*/Loading library: [...]/' > $name.log
     cat ${name}_p1_fks_regions.out >> $name.log
     echo "Contents of ${name}_p1.debug:" >> $name.log
-    cat ${name}_p1.debug >> $name.log
+    cat ${name}_p1.debug | sed -e 's/\(sqme_rad =  [0-9]\.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\)[0-9]E-\([0-9][0-9]\)/\1XE-\2/' -e '/prt(o:21/s/[0-9]E/XE/g' >> $name.log
     diff ref-output/$name.ref $name.log
 else
     echo "|=============================================================================|"

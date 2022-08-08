@@ -6,10 +6,10 @@ if test -f OCAML_FLAG -a -f HEPMC2_FLAG || test -f OCAML_FLAG -a -f HEPMC3_FLAG;
     ./run_whizard.sh @script@ --no-logging
     echo "Contents of ${name}a.evt" >> $name.log
     cat ${name}a.evt | grep 'prt(' \
-	| sed -e 's/^\(.*|.*|\) .*\(|.*\)$/\1 *** \2/' >> $name.log
+	| sed -e 's/^\(.*|.*|\).*\(|.*\)$/\1 *** \2/' >> $name.log
     echo "Contents of ${name}b.evt" >> $name.log
     cat ${name}b.evt | grep 'prt(' \
-	| sed -e 's/^\(.*|.*|\) .*\(|.*\)$/\1 *** \2/' >> $name.log
+	| sed -e 's/^\(.*|.*|\).*\(|.*\)$/\1 *** \2/' >> $name.log
     diff ref-output/`basename @script@`.ref `basename @script@`.log
 else
     echo "|=============================================================================|"

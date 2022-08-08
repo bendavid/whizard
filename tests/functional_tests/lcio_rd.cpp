@@ -1,5 +1,6 @@
 #include "lcio.h"
 #include <stdio.h>
+#include <limits>
 
 #include "IO/LCReader.h"
 #include "IMPL/LCTOOLS.h"
@@ -20,7 +21,7 @@ using namespace lcio ;
 std::string getSimulatorStatusString(const MCParticle* mcp=0){
 
   if( mcp == 0  ) {
-    
+
     std::stringstream str ;
     
     str << "simulator status bits: [sbvtcls] "
@@ -229,7 +230,12 @@ void printMCParticles(const EVENT::LCCollection* col ) {
 	   part->getVertex()[0] , 
 	   part->getVertex()[1] , 
 	   part->getVertex()[2] );
-    printf("% 1.2e|" , part->getMass() ) ; 
+    float mass;
+    if (abs (part->getMass ()) < part->getEnergy () * std::numeric_limits<float>::epsilon())
+      mass = 0;
+    else
+      mass = part->getMass ();
+    printf("% 1.2e|" , mass ) ; 
     printf("% 1.2e|" , part->getCharge() ) ; 
     
     printf("% 1.2e,% 1.2e,% 1.2e|" , 
