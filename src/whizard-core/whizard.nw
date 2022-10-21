@@ -11517,7 +11517,8 @@ submodule (simulations) simulations_s
   !  TODO: (bcn 2016-09-13) should be ideally only pcm_base
   use pcm, only: pcm_nlo_t, pcm_nlo_workspace_t
   !  TODO: (bcn 2016-09-13) details of process config should not be necessary here
-  use process_config, only: COMP_REAL_FIN
+  use process_config, only: COMP_REAL_FIN, COMP_MASTER, COMP_REAL, &
+       COMP_REAL_SING
   use instances
   use shower
   use evt_nlo
@@ -13101,19 +13102,22 @@ exist -- in that case, here it will be recovered without recompilation.
        call entry%resonant_subprocess_set%create_library &
             (libname, global, library_exist)
        do i_component = 1, process%get_n_components ()
-          call process%extract_resonance_history_set &
-               (res_history_set, i_component = i_component)
-          call entry%resonant_subprocess_set%fill_resonances &
-               (res_history_set, i_component)
-          if (.not. library_exist) then
-             process_component_def &
-                  => process%get_component_def_ptr (i_component)
-             call entry%resonant_subprocess_set%add_to_library &
-                  (i_component, &
-                  process_component_def%get_prt_spec_in (), &
-                  process_component_def%get_prt_spec_out (), &
-                  global)
-          end if
+          select case (process%get_component_type (i_component))
+          case (COMP_MASTER, COMP_REAL_FIN, COMP_REAL_SING, COMP_REAL)
+             call process%extract_resonance_history_set &
+                  (res_history_set, i_component = i_component)
+             call entry%resonant_subprocess_set%fill_resonances &
+                  (res_history_set, i_component)
+             if (.not. library_exist) then
+                process_component_def &
+                     => process%get_component_def_ptr (i_component)
+                call entry%resonant_subprocess_set%add_to_library &
+                     (i_component, &
+                     process_component_def%get_prt_spec_in (), &
+                     process_component_def%get_prt_spec_out (), &
+                     global)
+             end if
+          end select
        end do
        call entry%resonant_subprocess_set%freeze_library (global)
     end if
@@ -15670,7 +15674,7 @@ process.  This is used only in the unit tests.
 <<Simulations: sub interfaces>>=
     module subroutine simulation_evaluate_transforms (simulation)
       class(simulation_t), intent(inout) :: simulation
-    end subroutine simulation_evaluate_transforms  
+    end subroutine simulation_evaluate_transforms
 <<Simulations: procedures>>=
   module subroutine simulation_evaluate_transforms (simulation)
     class(simulation_t), intent(inout) :: simulation
@@ -31817,4 +31821,3 @@ end submodule features_s
      help = "graphical event analysis via LaTeX/MetaPost"
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-

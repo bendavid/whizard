@@ -4287,6 +4287,7 @@ but we still need to correct [[sqme_born]].
           call powheg%boost_preal_to_cms (i_phs)
        else
           allocate(p_real_cms (pcm%region_data%get_n_legs_real()))
+          powheg%phs_fks_generator%m2 = invariant_mass_squared (powheg%event_deps%p_born_cms%get_momenta(1))
           call powheg%phs_fks_generator%generate_fsr_from_xi_and_y (r%xi, r%y, &
                r%phi, emitter, i_phs, &
                powheg%event_deps%p_born_cms%get_momenta(1), &

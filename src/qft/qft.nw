@@ -8077,7 +8077,7 @@ kept.  If [[h]] is set, [[hd]] is irrelevant and will be kept
    <<Quantum numbers: quantum numbers mask: TBP>>
   end type quantum_numbers_mask_t
 
-@ %def quantum_number_t
+@ %def quantum_numbers_mask_t
 @ Define a quantum number mask: Constructor form
 <<Quantum numbers: public>>=
   public :: quantum_numbers_mask
@@ -16332,7 +16332,7 @@ non-diagonal matrix elements, respectively.
     type(index_map_t) :: index_result
   end type connection_table_nondiag_t
 
-@ %def connection_table_t 
+@ %def connection_table_t
 @ %def connection_table_diag_t
 @
 \subsubsection{Color handling}

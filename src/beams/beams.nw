@@ -11988,7 +11988,7 @@ momentum. In particular, we have to handle the following cases:
   \item and rescaled momentum fraction for one of both beams in the case of the
     subtraction and DGLAP component ([[i_sub = 1,2]]).
 \end{itemize}
-For the collinear final or intial state counter terms, we apply a rescaling to
+For the collinear final or initial state counter terms, we apply a rescaling to
 one beam, and keep the other beam as is. We redo it then vice versa having now two subtractions.
 <<SF base: sf chain instance: TBP>>=
   procedure :: evaluate => sf_chain_instance_evaluate

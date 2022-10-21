@@ -12655,7 +12655,7 @@ information, required for the region data.
     call pcm%handle_threshold_core (core_entry)
     call component(1)%config%get_coupling_powers (alpha_power, alphas_power)
     call pcm%setup_region_data (core_entry, &
-         component(pcm%i_real)%phs_config, model, alpha_power, alphas_power)
+         model, alpha_power, alphas_power, component(pcm%i_real)%phs_config)
     call pcm%setup_real_partition ()
   end subroutine pcm_nlo_complete_setup
 
@@ -12876,21 +12876,21 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
   procedure :: setup_region_data => pcm_nlo_setup_region_data
 <<PCM: sub interfaces>>=
     module subroutine pcm_nlo_setup_region_data &
-         (pcm, core_entry, phs_config, model, alpha_power, alphas_power)
+         (pcm, core_entry, model, alpha_power, alphas_power, phs_config)
       class(pcm_nlo_t), intent(inout) :: pcm
       type(core_entry_t), dimension(:), intent(in) :: core_entry
-      class(phs_config_t), intent(inout) :: phs_config
       type(model_t), intent(in), target :: model
       integer, intent(in) :: alpha_power, alphas_power
+      class(phs_config_t), intent(inout), optional :: phs_config
     end subroutine pcm_nlo_setup_region_data
 <<PCM: procedures>>=
   module subroutine pcm_nlo_setup_region_data &
-       (pcm, core_entry, phs_config, model, alpha_power, alphas_power)
+       (pcm, core_entry, model, alpha_power, alphas_power, phs_config)
     class(pcm_nlo_t), intent(inout) :: pcm
     type(core_entry_t), dimension(:), intent(in) :: core_entry
-    class(phs_config_t), intent(inout) :: phs_config
     type(model_t), intent(in), target :: model
     integer, intent(in) :: alpha_power, alphas_power
+    class(phs_config_t), intent(inout), optional :: phs_config
     type(process_constants_t) :: data_born, data_real
     integer, dimension (:,:), allocatable :: flavor_born, flavor_real
     type(resonance_history_t), dimension(:), allocatable :: resonance_histories
@@ -12905,6 +12905,9 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
          pcm%settings%nlo_correction_type, alpha_power, alphas_power)
     associate (template => pcm%settings%fks_template)
       if (template%mapping_type == FKS_RESONANCES) then
+         if (.not. present(phs_config)) then
+            call msg_bug("setup_region_data: real phase space required to setup the resonance histories.")
+         end if
          select type (phs_config)
          type is (phs_fks_config_t)
             call get_filtered_resonance_histories (phs_config, &
@@ -19544,9 +19547,7 @@ in this way should hold up in these cases as well, however.
        i_component = process%get_first_real_component ()
        if (process%component_is_selected (i_component) .and. &
               process%get_component_nlo_type (i_component) == NLO_REAL) then
-          allocate (i_terms &
-               (size (process%get_component_i_terms (i_component))))
-          i_terms = process%get_component_i_terms (i_component)
+          allocate (i_terms, source=process%get_component_i_terms (i_component))
           do i_term = 1, size (i_terms)
              call instance%term(i_terms(i_term))%apply_real_partition ( &
                   instance%kin(i_terms(i_term)))

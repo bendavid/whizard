@@ -4,6 +4,10 @@ Use svn log to see detailed changes.
 
 	Version 3.0.3+
 
+2022-10-21
+        General POWHEG matching
+          with optional NLO real phase space partitioning
+
 2022-06-22
         POWHEG matching for Drell-Yan and similar processes
 

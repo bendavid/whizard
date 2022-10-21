@@ -6838,7 +6838,7 @@ procedure with type [[V_NONE]].
          'phase space that sets the numerical lower value of the $\xi$ ' // &
          'variable. Valid for the value range $[\texttt{tiny\_07},1]$, where ' // &
          'value inputs out of bounds will take the value of the closest bound. ' // &
-         'Here, $\texttt{tiny\_07} = \texttt{1E0\_default * epsilon (0.\_default)}$, where ' // &
+         'Here, $\texttt{tiny\_07} = \texttt{1E9\_default * epsilon (0.\_default)}$, where ' // &
          '\ttt{epsilon} is an intrinsic Fortran function. (cf. also \ttt{fks\_dij\_exp1}, ' // &
          '\ttt{fks\_dij\_exp2}, \ttt{\$fks\_mapping\_type}, \ttt{fks\_y\_max})'))
     call var_list%append_real (var_str ("fks_y_max"), &
