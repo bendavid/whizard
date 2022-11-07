@@ -11,11 +11,12 @@ AC_ARG_ENABLE([python],
   [], [enable_python="no"])
 
 AC_PATH_PROG(cython_exe,[cython],[no])
+AC_PATH_PROG(cython3_exe,[cython3],[no])
 
 if test "$enable_python" = "yes"; then
   AC_MSG_CHECKING([for PYTHON API])
   if test "$PYTHON_API" = "yes"; then
-    if test "$cython_exe" = "no"; then
+    if test "$cython3_exe" = "no" -a "$cython_exe" = "no"; then
       enable_python="no"
       AC_MSG_RESULT([(disabled)])
       AC_MSG_WARN([******************
