@@ -869,7 +869,7 @@ This types control the creation of BLHA-interface files
 <<BLHA config: procedures>>=
   module subroutine blha_master_setup_additional_features (master, &
          phs_tolerance, use_cms, stability_log, extra_cmd, &
-         allowed_libs,beam_structure)
+         allowed_libs, beam_structure)
     class(blha_master_t), intent(inout) :: master
     integer, intent(in) :: phs_tolerance
     logical, intent(in) :: use_cms
@@ -911,7 +911,7 @@ This types control the creation of BLHA-interface files
              else
                 master%blha_cfg(i_file)%openloops_extra_cmd = var_str ('')
              end if
-             if (present (extra_cmd)) then
+             if (present (allowed_libs)) then
                 master%blha_cfg(i_file)%openloops_allowed_libs = allowed_libs
              else
                 master%blha_cfg(i_file)%openloops_allowed_libs = var_str ('')

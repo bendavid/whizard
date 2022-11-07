@@ -256,7 +256,7 @@ module system_dependencies
        ""
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
   character(*), parameter :: DEFAULT_LDFLAGS_STATIC = &
-       "@LDFLAGS_STATIC@"
+       "@LDFLAGS_STATIC@ @RPC_CFLAGS@"
   character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
        "@LDFLAGS_HEPMC@"
   character(*), parameter :: DEFAULT_LDFLAGS_LCIO = &
