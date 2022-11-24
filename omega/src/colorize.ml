@@ -370,6 +370,14 @@ module Flavor (M : Model.T) =
 
 (* \thocwmodulesection{The Legacy Implementation} *)
 
+(* We have to keep this legacy implementation around,
+   because it infers the color flows from the $\mathrm{SU}(3)$
+   representations of a particle in vertices with three and four
+   legs (except for four triplets, where the connections are
+   ambiguous).  The new implementation is already used for UFO
+   models exclusively, since they don't use [Coupling.V2]
+   and [Coupling.V3] at all. *)
+
 module Legacy_Implementation (M : Model.T) =
   struct
 
@@ -1577,9 +1585,9 @@ module It (M : Model.T) =
         (partial_map_undoing_fusen fusen)
 
     let colorize_fusionn_ufo flist f c v spins flines color fuse xtra =
-      let v = Vn (UFO (c, v, spins, flines, Color.Vertex.unit), fuse, xtra) in
+      let v = Vn (UFO (c, v, spins, flines, Color.Vertex.one), fuse, xtra) in
       let p = undo_permutation_of_fusen fuse in
-      colorize (CV.map p color) flist f v
+      colorize (CV.relocate p color) flist f v
 
     let colorize_fusionn flist (f, v) =
       match v with

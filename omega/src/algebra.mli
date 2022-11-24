@@ -121,15 +121,34 @@ module QC : QComplex with type q = Q.t
 
 (* \thocwmodulesection{Laurent Polynomials} *)
 
+(* Polynomials, including negative powers, in one variable.
+   In our applications, the variable~$x$ will often be~$N_C$,
+   the number of colors
+   \begin{equation}
+     \sum_n c_n N_C^n
+   \end{equation} *)
 module type Laurent =
   sig
+
+    (* The type of coefficients.  In the implementation below,
+       it is [QComplex.t]: complex numbers with rational real
+       and imaginary parts. *)
     type c
     type t
+
+    (* Elementary constructors *)
     val null : t
-    val unit : t
     val is_null : t -> bool
+    val unit : t
+
+    (* [atom c n] constructs a term $c x^n$, where $x$ denotes
+       the variable. *)
     val atom : c -> int -> t
+
+    (* Shortcut: [const c = atom c 0] *)
     val const : c -> t
+
+    (* Elementary arithmetic *)
     val scale : c -> t -> t
     val add : t -> t -> t
     val diff : t -> t -> t
@@ -137,16 +156,24 @@ module type Laurent =
     val mul : t -> t -> t
     val product : t list -> t
     val pow : int -> t -> t
+
+    (* [eval c p] evaluates the polynomial [p] by substituting
+       the constant [c] for the variable. *)
     val eval : c -> t -> c
-    val to_string : string -> t -> string
+
+    (* A total ordering.  Does not correspond to any mathematical order. *)
     val compare : t -> t -> int
+
+    (* Logging, debugging and toplevel integration. *)
+    val to_string : string -> t -> string
     val pp : Format.formatter -> t -> unit
     module Test : Test
   end
 
 (* \begin{dubious}
-     Could (should?) be functorialized over [QComplex], but
-     wait until we upgrade our O'Caml requirements to 4.02 \ldots
+     Could (should?) be functorialized over [QComplex].
+     We had to wait until we upgraded our O'Caml requirements to 4.02,
+     but that has been done.
    \end{dubious} *)
 
 module Laurent : Laurent with type c = QC.t

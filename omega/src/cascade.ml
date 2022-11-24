@@ -394,7 +394,7 @@ module Make (M : Model.T) (P : Momentum.T) :
 
     let dummy3 = Coupling.Scalar_Scalar_Scalar 1
     let dummy4 = Coupling.Scalar4 1
-    let dummyn = Coupling.UFO (Algebra.QC.unit, "dummy", [], [], Color.Vertex.unit)
+    let dummyn = Coupling.UFO (Algebra.QC.unit, "dummy", [], [], Color.Vertex.one)
 
 (* Translate the vertices in a pair of lists: the first is the list
    of always rejected couplings and the second the remaining
@@ -520,12 +520,3 @@ i*)
       to_selectors cascades
 i*)
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-

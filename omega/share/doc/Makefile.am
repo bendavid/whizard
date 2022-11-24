@@ -55,7 +55,7 @@ PICTURES_PDF = \
 
 LATEX_STYLES = \
     flex.cls thophys.sty thohacks.sty \
-    noweb.sty ocamlweb.sty \
+    noweb.sty ocamlweb.sty ytableau.sty \
     feynmp.sty feynmp.mp emp.sty
 
 TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/omega/share/doc"

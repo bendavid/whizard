@@ -186,6 +186,7 @@ let suite =
      Permutation_Test_Using_Arrays.suite;
      Combinatorics_Unit_Tests.suite;
      Combinatorics.Test.suite;
+     Young.Test.suite;
      Algebra.Q.Test.suite;
      Algebra.QC.Test.suite;
      Algebra.Laurent.Test.suite;
@@ -202,12 +203,27 @@ let suite =
      Dirac.Dirac.test_suite;
      Dirac.Majorana.test_suite]
 
+let suite_long =
+  "omega long" >:::
+    [Young.Test.suite_long;
+     Color.Flow.Test.suite_long;
+     Color.Arrow.Test.suite_long;
+     Color.Birdtracks.Test.suite_long;
+     Color.SU3.Test.suite_long;
+     Color.U3.Test.suite_long]
+
+let run_suite_long = ref false
+
 let _ =
   ignore
     (run_test_tt_main
        ~arg_specs:[("-attended", Arg.Clear unattended,
 		    "      run tests that depend on the environment");
 		   ("-unattended", Arg.Set unattended,
-		    "    don't run tests depend on the environment")]
+		    "    don't run tests depend on the environment");
+		   ("-long", Arg.Set run_suite_long,
+		    "          also run the very long tests")]
        suite);
+  if !run_suite_long then
+    ignore (run_test_tt suite_long);
   exit 0

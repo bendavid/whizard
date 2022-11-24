@@ -29,6 +29,7 @@ let pcompare = compare
 module type Test =
   sig
     val suite : OUnit.test
+    val suite_long : OUnit.test
   end
 
 (* \thocwmodulesection{Quantum Numbers} *)
@@ -414,6 +415,19 @@ i*)
 
         open OUnit
 
+(* Here and elsewhere, we have to resist the temptation to define
+   these tests as functions with an additional argument [()] in the
+   hope to avoid having to package them into an explicit thunk
+   [fun () -> eq v1 v2] in order to delay
+   evaluation. It turns out that the runtime would then sometimes
+   evaluate the argument [v1] or [v2] even \emph{before} the test
+   is run.  For pure functions, there is no difference, but the
+   compiler appears to treat explicit thunks specially.
+   \begin{dubious}
+     I haven't yet managed to construct a small demonstrator to find
+     out in which circumstances the premature evaluation happens.
+   \end{dubious} *)
+
         let suite_square =
           "square" >:::
 
@@ -457,6 +471,10 @@ i*)
           "Color.Flow" >:::
 	    [suite_square]
 
+        let suite_long =
+          "Color.Flow long" >:::
+	    []
+
       end
   end
 
@@ -484,6 +502,135 @@ module General_Flow =
   end
 
 (* \thocwmodulesection{Vertex Color Flows} *)
+
+(* \newcommand{\setupFourAmp}{%
+     \fmfleft{i1,i2}
+     \fmfright{o1,o2}
+     \fmf{phantom}{i1,v1,i2}
+     \fmf{phantom}{o2,v2,o1}
+     \fmf{phantom}{v1,v2}
+     \fmffreeze}
+   \fmfcmd{%
+     numeric joindiameter;
+     joindiameter := 7thick;}
+   \fmfcmd{%
+     vardef sideways_at (expr d, p, frac) =
+       save len; len = length p;
+       (point frac*len of p) shifted ((d,0) rotated (90 + angle direction frac*len of p))
+     enddef;
+     secondarydef p sideways d =
+       for frac = 0 step 0.01 until 0.99:
+         sideways_at (d, p, frac) ..
+       endfor
+       sideways_at (d, p, 1)
+     enddef;
+     secondarydef p choptail d =
+      subpath (ypart (fullcircle scaled d shifted (point 0 of p) intersectiontimes p), infinity) of p
+     enddef;
+     secondarydef p choptip d =
+      reverse ((reverse p) choptail d)
+     enddef;
+     secondarydef p pointtail d =
+       fullcircle scaled d shifted (point 0 of p) intersectionpoint p
+     enddef;
+     secondarydef p pointtip d =
+       (reverse p) pointtail d
+     enddef;
+     secondarydef pa join pb =
+       pa choptip joindiameter .. pb choptail joindiameter
+     enddef;
+     vardef cyclejoin (expr p) =
+       subpath (0.5*length p, infinity) of p join subpath (0, 0.5*length p) of p .. cycle
+     enddef;}
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   \fmfcmd{%
+     style_def double_line_arrow expr p =
+       save pi, po; 
+       path pi, po;
+       pi = reverse (p sideways thick);
+       po = p sideways -thick;
+       cdraw pi;
+       cdraw po;
+       cfill (arrow (subpath (0, 0.9 length pi) of pi));
+       cfill (arrow (subpath (0, 0.9 length po) of po));
+     enddef;}
+   \fmfcmd{%
+     style_def double_line_arrow_beg expr p =
+       save pi, po, pc; 
+       path pi, po, pc;
+       pc = p choptail 7thick;
+       pi = reverse (pc sideways thick);
+       po = pc sideways -thick;
+       cdraw pi .. p pointtail 5thick .. po;
+       cfill (arrow pi);
+       cfill (arrow po);
+     enddef;}
+   \fmfcmd{%
+     style_def double_line_arrow_end expr p =
+       save pi, po, pc; 
+       path pi, po, pc;
+       pc = p choptip 7thick;
+       pi = reverse (pc sideways thick);
+       po = pc sideways -thick;
+       cdraw po .. p pointtip 5thick .. pi;
+       cfill (arrow pi);
+       cfill (arrow po);
+     enddef;}
+   \fmfcmd{%
+     style_def double_line_arrow_both expr p =
+       save pi, po, pc; 
+       path pi, po, pc;
+       pc = p choptip 7thick choptail 7thick;
+       pi = reverse (pc sideways thick);
+       po = pc sideways -thick;
+       cdraw po .. p pointtip 5thick .. pi .. p pointtail 5thick .. cycle;
+       cfill (arrow pi);
+       cfill (arrow po);
+     enddef;}
+   \fmfcmd{%
+     style_def double_arrow_parallel expr p =
+       save pi, po; 
+       path pi, po;
+       pi = p sideways thick;
+       po = p sideways -thick;
+       save li, lo;
+       li = length pi;
+       lo = length po;
+       cdraw pi;
+       cdraw po;
+       cfill (arrow pi);
+       cfill (arrow po);
+     enddef;}
+   \fmfcmd{%
+     style_def double_arrow_crossed_beg expr p =
+       save lp;  lp = length p;
+       save pi, po; 
+       path pi, po;
+       pi = p sideways thick;
+       po = p sideways -thick;
+       save li, lo;
+       li = length pi;
+       lo = length po;
+       cdraw subpath (0, 0.1 li) of pi .. subpath (0.3 lo, lo) of po;
+       cdraw subpath (0, 0.1 lo) of po .. subpath (0.3 li, li) of pi;
+       cfill (arrow pi);
+       cfill (arrow po);
+     enddef;}
+   \fmfcmd{%
+     style_def double_arrow_crossed_end expr p =
+       save lp;  lp = length p;
+       save pi, po; 
+       path pi, po;
+       pi = p sideways thick;
+       po = p sideways -thick;
+       save li, lo;
+       li = length pi;
+       lo = length po;
+       cdraw subpath (0, 0.7 li) of pi .. subpath (0.9 lo, lo) of po;
+       cdraw subpath (0, 0.7 lo) of po .. subpath (0.9 li, li) of pi;
+       cfill (arrow pi);
+       cfill (arrow po);
+     enddef;} *)
 
 module Q = Algebra.Q
 module QC = Algebra.QC
@@ -517,6 +664,8 @@ module type Arrow =
       | Mismatch
       | No_Match
     val merge : factor -> factor -> merge
+    val tee : int -> free -> free list
+    val dir : int -> int -> free -> int
     val single : endpoint -> endpoint -> free
     val double : endpoint -> endpoint -> free list
     val ghost : endpoint -> free
@@ -555,12 +704,17 @@ module Arrow : Arrow =
     type tail = endpoint
     type ghost = endpoint
 
-    (* Note that the \emph{same} index can appear multiple
-       times on \emph{each} side. Thus, we \emph{must not}
-       combine the arrows in the two factors.
-       In fact, we cannot disambiguate them by
-       distinguishing tips from tails alone. *)
-
+    (* Note that in the case of double lines for the adjoint
+       representation the \emph{same} [endpoint] appears twice:
+       once as a [tip] and once as a [tail].  If we want to
+       multiply two factors by merging arrows with matching
+       [tip] and [tail], we must make sure that the [tip] is from
+       one factor and the [tail] from the other factor. *)
+               
+    (* The [Free] variant contains positive indices
+       as well as negative indices that don't appear on both sides
+       and will be summed in a later product.  [SumL] and [SumR]
+       indices appear on both sides. *)
     type 'a index =
       | Free of 'a
       | SumL of 'a
@@ -657,6 +811,22 @@ module Arrow : Arrow =
     let ghost g =
       Ghost g
 
+    let tee a = function
+      | Arrow (tail, tip) -> [Arrow (tail, I a); Arrow (I a, tip)]
+      | Ghost _ -> []
+
+    let dir i j = function
+      | Arrow (tail, tip) ->
+         let tail = position tail
+         and tip = position tip in
+         if tip = i && tail = j then
+           1
+         else if tip = j && tail = i then
+           -1
+         else
+           invalid_arg "Arrow.dir"
+      | Ghost _ -> 0
+
     type merge =
       | Match of factor
       | Ghost_Match
@@ -690,13 +860,13 @@ module Arrow : Arrow =
 
     module Infix =
       struct
-        let (=>) i j = single (I i) (I j)
-        let (==>) i j = [i => j]
-        let (<=>) i j = double (I i) (I j)
+        let ( => ) i j = single (I i) (I j)
+        let ( ==> ) i j = [i => j]
+        let ( <=> ) i j = double (I i) (I j)
         let ( >=> ) (i, n) j = single (M (i, n)) (I j)
         let ( =>> ) i (j, m) = single (I i) (M (j, m))
         let ( >=>> ) (i, n) (j, m) = single (M (i, n)) (M (j, m))
-        let (??) i = ghost (I i)
+        let ( ?? ) i = ghost (I i)
       end
 
     open Infix
@@ -776,6 +946,10 @@ module Arrow : Arrow =
 	    [suite_chain;
              suite_cycle]
 
+        let suite_long =
+          "Color.Arrow long" >:::
+	    []
+
       end
 
     let pp_free fmt f =
@@ -853,17 +1027,21 @@ module LP : LP =
 module type Birdtracks =
   sig
     type t
+    val canonicalize : t -> t
     val to_string : t -> string
     val trivial : t -> bool
     val is_null : t -> bool
     val const : Algebra.Laurent.t -> t
-    val unit : t
     val null : t
+    val one : t
     val two : t
     val half : t
     val third : t
     val minus : t
+    val int : int -> t
+    val fraction : int -> t
     val nc : t
+    val over_nc : t
     val imag : t
     val ints : (int * int) list -> t
     val scale : QC.t -> t -> t
@@ -878,7 +1056,7 @@ module type Birdtracks =
     end
     val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
     val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
-    val map : (int -> int) -> t -> t
+    val relocate : (int -> int) -> t -> t
     val fuse : int -> t -> Propagator.t list -> (QC.t * Propagator.t) list
     module Test : Test
     val pp : Format.formatter -> t -> unit
@@ -925,15 +1103,18 @@ module Birdtracks =
     let l_over_nc n = l_ints [(n, -1)]
 
     (* Expressions *)
-    let unit = []
     let const c = [c, []]
     let ints pairs = const (LP.ints pairs)
     let null = const L.null
     let half = const (LP.fraction 2)
     let third = const (LP.fraction 3)
+    let fraction n = const (LP.fraction n)
+    let one = const (LP.int 1)
     let two = const (LP.int 2)
     let minus = const (LP.int (-1))
+    let int n = const (LP.int n)
     let nc = const (LP.nc 1)
+    let over_nc = const (LP.ints [(1, -1)])
     let imag = const (LP.imag 1)
 
     module AMap = Pmap.Tree
@@ -949,14 +1130,14 @@ module Birdtracks =
         List.fold_left
           (fun acc term ->
             let coeff, arrows = canonicalize1 term in
-            if coeff = L.null then
+            if L.is_null coeff then
               acc
             else
               match find_arrows_opt arrows acc with
               | None -> AMap.add pcompare arrows coeff acc
               | Some coeff' ->
                  let coeff'' = L.add coeff coeff' in
-                 if coeff'' = L.null then
+                 if L.is_null coeff'' then
                    AMap.remove pcompare arrows acc
                  else
                    AMap.add pcompare arrows coeff'' acc)
@@ -1000,43 +1181,47 @@ module Birdtracks =
       Format.fprintf fmt "%s" (to_string v)
 
     let is_null v =
-      match canonicalize v with
-      | [c, _] -> c = L.null
-      | _ -> false
+      List.for_all (fun (c, _) -> L.is_null c) (canonicalize v)
 
     let is_white = function
       | P.W -> true
       | _ -> false
 
-    let map1 f (c, v) =
+    let relocate1 f (c, v) =
       (c, List.map (A.map (A.relocate f)) v)
 
-    let map f = List.map (map1 f)
+    let relocate f = List.map (relocate1 f)
 
+    (* Add one [arrow] to a list of arrows, updating [coeff]
+       if necessary. Accumulate already processed arrows in [acc].
+       Returns [None] if there is a mismatch (a gluon meeting
+       a ghost), [Some (coeff', arrows')] otherwise. *)
+    let rec add_arrow' arrow (coeff, acc) = function
+      | [] -> (* visited all [arrows]: no opportunities for further matches *)
+         Some (coeff, arrow :: acc)
+      | arrow' :: arrows' ->
+         begin match A.merge arrow arrow' with
+         | A.Mismatch ->
+            None
+         | A.Ghost_Match -> (* replace matching ghosts by $-1/N_C$ *)
+            Some (L.mul (LP.over_nc (-1)) coeff, List.rev_append acc arrows')
+         | A.Loop_Match -> (* replace a loop by $N_C$ *)
+            Some (L.mul (LP.nc 1) coeff, List.rev_append acc arrows')
+         | A.Match arrow'' -> (* two arrows have been merged into one *)
+            if A.is_free arrow'' then (* no opportunities for further matches *)
+              Some (coeff, arrow'' :: List.rev_append acc arrows')
+            else (* the new [arrow''] ist not yet saturated, try again: *)
+              add_arrow' arrow'' (coeff, acc) arrows'
+         | A.No_Match -> (* recurse to the remaining arrows *)
+            add_arrow' arrow (coeff, arrow' :: acc) arrows'
+         end
+
+    (* Avoid the recursion, if there is no summation index in [arrow]. *)
     let add_arrow arrow (coeff, arrows) =
-      let rec add_arrow' arrow (coeff, acc) = function
-        | [] ->
-           (* No opportunities for further matches *)
-           Some (coeff, arrow :: acc)
-        | arrow' :: arrows' ->
-           begin match A.merge arrow arrow' with
-           | A.Mismatch ->
-              None
-           | A.Ghost_Match ->
-              Some (L.mul (LP.over_nc (-1)) coeff,
-                    List.rev_append acc arrows')
-           | A.Loop_Match ->
-              Some (L.mul (LP.nc 1) coeff, List.rev_append acc arrows')
-           | A.Match arrow'' ->
-              if A.is_free arrow'' then
-                Some (coeff, arrow'' :: List.rev_append acc arrows')
-              else
-                (* the new [arrow''] ist not yet saturated, try again: *)
-                add_arrow' arrow'' (coeff, acc) arrows'
-           | A.No_Match ->
-              add_arrow' arrow (coeff, arrow' :: acc) arrows'
-           end in
-      add_arrow' arrow (coeff, []) arrows
+      if A.is_free arrow then
+        Some (coeff, arrow :: arrows)
+      else
+        add_arrow' arrow (coeff, []) arrows
 
     let logging_add_arrow arrow (coeff, arrows) =
       let result = add_arrow arrow (coeff, arrows) in
@@ -1167,15 +1352,20 @@ module Birdtracks =
 
     open Infix
 
+    (* Compute $ \tr(r(T_a) r(T_b) r(T_c)) $.  NB: this uses the
+       summation indices $-1$, $-2$ and $-3$.  Therefore
+       it \emph{must not} appear unevaluated more than once in a product! *)
     let trace3 r a b c =
       r a (-1) (-2) *** r b (-2) (-3) *** r c (-3) (-1)
 
     let f_of_rep r a b c =
       minus *** imag *** (trace3 r a b c --- trace3 r a c b)
 
+    (* $ d_{abc} = \tr(r(T_a) [r(T_b), r(T_c)]_+) $ *)
     let d_of_rep r a b c =
       trace3 r a b c +++ trace3 r a c b
 
+(* \thocwmodulesubsection{Feynman Rules} *)
     module IMap =
       Map.Make (struct type t = int let compare = pcompare end)
 
@@ -1191,8 +1381,10 @@ module Birdtracks =
           lines in
       map
 
-    let find_opt i map =
+(*i Redundant since ocaml 4.05
+     let find_opt i map =
       try Some (IMap.find i map) with Not_found -> None
+i*)
 
     let lines_to_string lines =
       match IMap.bindings lines with
@@ -1207,12 +1399,12 @@ module Birdtracks =
     let clear = IMap.remove
 
     let add_in i cf lines =
-      match find_opt i lines with
+      match IMap.find_opt i lines with
       | Some (P.O cf') -> IMap.add i (P.IO (cf, cf')) lines
       | _ -> IMap.add i (P.I cf) lines
 
     let add_out i cf' lines =
-      match find_opt i lines with
+      match IMap.find_opt i lines with
       | Some (P.I cf) -> IMap.add i (P.IO (cf, cf')) lines
       | _ -> IMap.add i (P.O cf') lines
 
@@ -1226,7 +1418,7 @@ module Birdtracks =
          if g = n then
            Some (add_ghost n lines)
          else
-           begin match find_opt g lines with
+           begin match IMap.find_opt g lines with
            | Some P.G -> Some (clear g lines)
            | _ -> None
            end
@@ -1234,17 +1426,17 @@ module Birdtracks =
          let i = A.position i
          and o = A.position o in
          if o = n then
-           match find_opt i lines with
+           match IMap.find_opt i lines with
            | Some (P.I cfi) -> Some (add_in o cfi (clear i lines))
            | Some (P.IO (cfi, cfi')) -> Some (add_in o cfi (add_out i cfi' lines))
            | _ -> None
          else if i = n then
-           match find_opt o lines with
+           match IMap.find_opt o lines with
            | Some (P.O cfo') -> Some (add_out i cfo' (clear o lines))
            | Some (P.IO (cfo, cfo')) -> Some (add_out i cfo' (add_in o cfo lines))
            | _ -> None
          else
-           match find_opt i lines, find_opt o lines with
+           match IMap.find_opt i lines, IMap.find_opt o lines with
            | Some (P.I cfi), Some (P.O cfo') when cfi = cfo' ->
               Some (clear o (clear i lines))
            | Some (P.I cfi), Some (P.IO (cfo, cfo')) when cfi = cfo'->
@@ -1293,33 +1485,33 @@ module Birdtracks =
       struct
         open OUnit
 
-        let vertices1_equal v1 v2 =
+        let vertices_equal v1 v2 =
           match v1, v2 with
           | None, None -> true
           | Some v1, Some v2 -> (canonicalize1 v1) = (canonicalize1 v2)
           | _ -> false
 
-        let assert_equal_vertices1 v1 v2 =
-          assert_equal ~printer:to_string1_opt ~cmp:vertices1_equal v1 v2
+        let eq v1 v2 =
+          assert_equal ~printer:to_string1_opt ~cmp:vertices_equal v1 v2
 
         let suite_times1 =
           "times1" >:::
 
             [ "merge two" >::
 	        (fun () ->
-	          assert_equal_vertices1
+	          eq
                     (Some (L.unit, 1 ==> 2))
                     (times1 (L.unit,  1 ==> -1) (L.unit, -1 ==>  2)));
 
               "merge two exchanged" >::
 	        (fun () ->
-	          assert_equal_vertices1
+	          eq
                     (Some (L.unit, 1 ==> 2))
                     (times1 (L.unit, -1 ==>  2) (L.unit,  1 ==> -1)));
 
               "ghost1" >::
 	        (fun () ->
-	          assert_equal_vertices1
+	          eq
                     (Some (l_over_nc (-1), 1 ==> 2))
                     (times1
                        (L.unit, [-1 =>  2; ?? (-3)])
@@ -1327,7 +1519,7 @@ module Birdtracks =
 
               "ghost2" >::
 	        (fun () ->
-	          assert_equal_vertices1
+	          eq
                     None
                     (times1
                        (L.unit, [ 1 => -1; ?? (-3)])
@@ -1335,7 +1527,7 @@ module Birdtracks =
 
               "ghost2 exchanged" >::
 	        (fun () ->
-	          assert_equal_vertices1
+	          eq
                     None
                     (times1
                        (L.unit, [-1 =>  2; -3 => -4; -4 => -3])
@@ -1400,121 +1592,53 @@ module Birdtracks =
 	    [suite_times1;
              suite_canonicalize;
              suite_connect]
+
+        let suite_long =
+          "Color.Birdtracks long" >:::
+	    []
+
       end
 
     let vertices_equal v1 v2 =
       is_null (v1 --- v2)
 
-    let assert_equal_vertices v1 v2 =
+    let assert_zero_vertex v =
+      OUnit.assert_equal ~printer:to_string ~cmp:vertices_equal null v
+
+    (* As an extra protection agains vacuous tests, we make
+       sure that the LHS does not vanish.  *)
+    let eq v1 v2 =
+      OUnit.assert_bool "LHS = 0" (not (is_null v1));
       OUnit.assert_equal ~printer:to_string ~cmp:vertices_equal v1 v2
 
   end
     
-(* \thocwmodulesubsection{$\mathrm{SU}(N_C)$}
+(* \thocwmodulesection{$\mathrm{SU}(N_C)$}
    We're computing with a general $N_C$, but [epsilon] and [epsilonbar]
    make only sense for $N_C=3$.  Also some of the terminology alludes
    to $N_C=3$: triplet, sextet, octet. *)
 
-module type SU3 =
-  sig
-    include Birdtracks
-    val delta3 : int -> int -> t
-    val delta8 : int -> int -> t
-    val delta8_loop : int -> int -> t
-    val gluon : int -> int -> t
-    val t : int -> int -> int -> t
-    val f : int -> int -> int -> t
-    val d : int -> int -> int -> t
-    val epsilon : int -> int -> int -> t
-    val epsilonbar : int -> int -> int -> t
-    val t6 : int -> int -> int -> t
-    val k6 : int -> int -> int -> t
-    val k6bar : int -> int -> int -> t
-  end
-
-module SU3 : SU3 =
-  struct
-
-    module A = Arrow
-    open Arrow.Infix
-
-    module B = Birdtracks
-    type t = B.t
-    let to_string = B.to_string
-    let pp = B.pp
-    let trivial = B.trivial
-    let is_null = B.is_null
-    let null = B.null
-    let unit = B.unit
-    let const = B.const
-    let two = B.two
-    let half = B.half
-    let third = B.third
-    let nc = B.imag
-    let minus = B.minus
-    let imag = B.imag
-    let ints = B.ints
-    let sum = B.sum
-    let diff = B.diff
-    let scale = B.scale
-    let times = B.times
-    let multiply = B.multiply
-    let map = B.map
-    let fuse = B.fuse
-    let f_of_rep = B.f_of_rep
-    let d_of_rep = B.d_of_rep
-    module Infix = B.Infix
-
-    let delta3 i j =
-      [(LP.int 1, i ==> j)]
-
-    let delta8 a b =
-      [(LP.int 1, a <=> b)]
-
-    (* If the~$\delta_{ab}$ originates from
-       a~$\tr(T_aT_b)$, like an effective~$gg\to H\ldots$
-       coupling, it makes a difference in the color
-       flow basis and we must write the full expression~(6.2)
-       from~\cite{Kilian:2012pz} instead. *)
-
-    let delta8_loop a b =
-      [(LP.int 1, a <=> b);
-       (LP.int 1, [a => a; ?? b]);
-       (LP.int 1, [?? a; b => b]);
-       (LP.nc 1, [?? a; ?? b])]
-
-    (* The following can be used for computing polarization sums
-       (eventually, this could make the [Flow] module redundant).
-       Note that we have $-N_C$ instead of $-1/N_C$ in the ghost
-       contribution here, because
-       two factors of $-1/N_C$ will be produced by [add_arrow]
-       below, when contracting two ghost indices.
-       Indeed, with this definition we can maintain
-       [multiply [delta8 1 (-1); gluon (-1) (-2); delta8 (-2) 2]
-        = delta8 1 2]. *)
-
-    let ghost a b =
-      [ (LP.nc (-1), [?? a; ?? b])]
-
-    let gluon a b =
-      delta8 a b @ ghost a b
-
-(* \begin{dubious}
-     Do we need to introduce an
-     index \emph{pair} for each sextet index?  Is that all?
-   \end{dubious} *)
-
-    let sextet n m =
-      [ (LP.fraction 2, [(n, 0) >=>> (m, 0); (n, 1) >=>> (m, 1)]);
-        (LP.fraction 2, [(n, 0) >=>> (m, 1); (n, 1) >=>> (m, 0)]) ]
-
-    (* FIXME: note the flipped [i] and [j]! *)
-    let t a j i =
-      [ (LP.int 1, [i => a; a => j]);
-        (LP.int 1, [i => j; ?? a]) ]
-
-(* Using the normalization~$\tr(T_{a}T_{b}) = \delta_{ab}$
-   we find with
+(* Using the normalization~$\tr(T_{a}T_{b}) = \delta_{ab}$, we can
+   check the selfconsistency of the completeness relation
+   \begin{equation}
+       T_{a}^{i_1j_1} T_{a}^{i_2j_2} =
+         \left(                 \delta^{i_1j_2} \delta^{i_2j_1}
+                - \frac{1}{N_C} \delta^{i_1j_1} \delta^{j_1j_2}\right)
+   \end{equation}
+   as
+   \begin{multline}
+     T_{a}^{i_1j_1} T_{a}^{i_2j_2}
+       = \tr\left(T_{a_1}T_{a_2}\right) T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2}
+       = T_{a_1}^{l_1l_2} T_{a_2}^{l_2l_1}
+         T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} \\
+       = \left(                 \delta^{l_1j_1} \delta^{i_1l_2}
+                - \frac{1}{N_C} \delta^{l_1l_2} \delta^{i_1j_1}\right)
+         \left(                 \delta^{l_2j_2} \delta^{i_2l_1}
+                - \frac{1}{N_C} \delta^{l_2l_1} \delta^{i_2j_2}\right)
+       = \left(                 \delta^{i_1j_2} \delta^{i_2j_1}
+                - \frac{1}{N_C} \delta^{i_1i_2} \delta^{j_2j_1}\right)
+   \end{multline}
+   With
    \begin{equation}
    \label{eq:f=tr(TTT)'}
      \ii f_{a_1a_2a_3}
@@ -1535,7 +1659,7 @@ module SU3 : SU3 =
          \left(                 \delta^{l_3j_3} \delta^{i_3l_1}
                 - \frac{1}{N_C} \delta^{l_3l_1} \delta^{i_3j_3}\right)
    \end{multline}
-   the decomposition
+   we find the decomposition
    \begin{equation}
    \label{eq:fTTT'}
        \ii f_{a_1a_2a_3} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
@@ -1551,8 +1675,8 @@ vector i1, i2, i3, j1, j2, j3;
 index l1, l2, l3;
 
 local [TT] =
-   ( j1(l1) * i1(l2) - d_(l1,l2) * i1.j1 / nc )
- * ( j2(l2) * i2(l1) - d_(l2,l1) * i2.j2 / nc );
+        ( j1(l1) * i1(l2) - d_(l1,l2) * i1.j1 / nc )
+      * ( j2(l2) * i2(l1) - d_(l2,l1) * i2.j2 / nc );
 
 #procedure TTT(sign)
 local [TTT`sign'] =
@@ -1590,29 +1714,375 @@ gives
 \end{verbatim}
 *)
 
-(* \begin{dubious}
-     What about the overall sign?
-   \end{dubious} *)
+module type SU3 =
+  sig
+    include Birdtracks
+    val delta3 : int -> int -> t
+    val delta8 : int -> int -> t
+    val delta8_loop : int -> int -> t
+    val gluon : int -> int -> t
+    val delta6 : int -> int -> t
+    val delta10 : int -> int -> t
+    val t : int -> int -> int -> t
+    val f : int -> int -> int -> t
+    val d : int -> int -> int -> t
+    val epsilon : int -> int -> int -> t
+    val epsilonbar : int -> int -> int -> t
+    val t8 : int -> int -> int -> t
+    val t6 : int -> int -> int -> t
+    val t10 : int -> int -> int -> t
+    val k6 : int -> int -> int -> t
+    val k6bar : int -> int -> int -> t
+    val delta_of_tableau : int Young.tableau -> int -> int -> t
+    val t_of_tableau : int Young.tableau -> int -> int -> int -> t
+  end
+
+module SU3 : SU3 =
+  struct
+
+    module A = Arrow
+    open Arrow.Infix
+
+    module B = Birdtracks
+    type t = B.t
+    let canonicalize = B.canonicalize
+    let to_string = B.to_string
+    let pp = B.pp
+    let trivial = B.trivial
+    let is_null = B.is_null
+    let null = B.null
+    let const = B.const
+    let one = B.one
+    let two = B.two
+    let int = B.int
+    let half = B.half
+    let third = B.third
+    let fraction = B.fraction
+    let nc = B.nc
+    let over_nc = B.over_nc
+    let minus = B.minus
+    let imag = B.imag
+    let ints = B.ints
+    let sum = B.sum
+    let diff = B.diff
+    let scale = B.scale
+    let times = B.times
+    let multiply = B.multiply
+    let relocate = B.relocate
+    let fuse = B.fuse
+    let f_of_rep = B.f_of_rep
+    let d_of_rep = B.d_of_rep
+    module Infix = B.Infix
+
+(* \thocwmodulesubsection{Fundamental and Adjoint Representation} *)
+
+    let delta3 i j =
+      [(LP.int 1, j ==> i)]
+
+    let delta8 a b =
+      [(LP.int 1, a <=> b)]
+
+    (* If the~$\delta_{ab}$ originates from
+       a~$\tr(T_aT_b)$, like an effective~$gg\to H$
+       coupling, it makes a difference in the color
+       flow basis and we must write the full expression~(6.2)
+       from~\cite{Kilian:2012pz} including the ghosts instead.
+       Note that the sign for the terms with one ghost
+       has not been spelled out in that reference. *)
+
+    let delta8_loop a b =
+      [(LP.int 1, a <=> b);
+       (LP.int (-1), [a => a; ?? b]);
+       (LP.int (-1), [?? a; b => b]);
+       (LP.nc 1, [?? a; ?? b])]
+
+    (* The following can be used for computing polarization sums
+       (eventually, this could make the [Flow] module redundant).
+       Note that we have $-N_C$ instead of $-1/N_C$ in the ghost
+       contribution here, because
+       two factors of $-1/N_C$ will be produced by [add_arrow]
+       below, when contracting two ghost indices.
+       Indeed, with this definition we can maintain
+       [multiply [delta8 1 (-1); gluon (-1) (-2); delta8 (-2) 2]
+        = delta8 1 2]. *)
+
+    let ghost a b =
+      [ (LP.nc (-1), [?? a; ?? b])]
+
+    let gluon a b =
+      delta8 a b @ ghost a b
+
+    (* Note that the arrow is directed from the second to the first
+       index, opposite to our color flow paper~\cite{Kilian:2012pz}.
+       Fortunately, this is just a matter of conventions.
+\begin{subequations}
+\begin{align}
+\parbox{28\unitlength}{%
+  \fmfframe(4,4)(4,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{f1,f2}
+    \fmfright{g}
+    \fmfv{label=$i$}{f2}
+    \fmfv{label=$j$}{f1}
+    \fmfv{label=$a$}{g}
+    \fmf{fermion}{f1,v}
+    \fmf{fermion}{v,f2}
+    \fmf{gluon}{v,g}
+  \end{fmfgraph*}}} &\Longrightarrow
+\parbox{28\unitlength}{%
+  \fmfframe(4,4)(4,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{f1,f2}
+    \fmfright{g}
+    \fmfv{label=$i$}{f2}
+    \fmfv{label=$j$}{f1}
+    \fmfv{label=$a$}{g}
+    \fmf{phantom}{f1,v}
+    \fmf{phantom}{v,f2}
+    \fmf{phantom}{v,g}
+    \fmffreeze
+    \fmfi{phantom_arrow}{vpath (__v, __g) sideways -thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__v, __g)) sideways -thick}
+    \fmfi{phantom_arrow}{vpath (__f1, __v)}
+    \fmfi{phantom_arrow}{vpath (__v, __f2)}
+    \fmfi{plain}{%
+      (vpath (__f1, __v) join (vpath (__v, __g)) sideways -thick)}
+    \fmfi{plain}{%
+      ((reverse vpath (__g, __v) sideways -thick) join vpath (__v, __f2))}
+  \end{fmfgraph*}}}
+\parbox{28\unitlength}{%
+  \fmfframe(4,4)(4,4){%
+  \begin{fmfgraph*}(20,20)
+    \fmfleft{f1,f2}
+    \fmfright{g}
+    \fmfv{label=$i$}{f1}
+    \fmfv{label=$j$}{f2}
+    \fmfv{label=$a$}{g}
+    \fmf{fermion}{f1,v}
+    \fmf{fermion}{v,f2}
+    \fmf{dots}{v,g}
+  \end{fmfgraph*}}}\\
+  T_a^{ij} \qquad\quad
+    &\Longrightarrow \qquad\quad \delta^{ia}\delta^{aj}
+       \qquad\qquad\qquad - \delta^{ij}
+\end{align}
+\end{subequations} *)
+
+    let t a i j =
+      [ (LP.int 1, [j => a; a => i]);
+        (LP.int (-1), [j => i; ?? a]) ]
+
+(* Note that while we expect $\tr(T_a)=T_a^{ii}=0$,
+   the evaluation of the expression [t 1 (-1) (-1)] will stop
+   at [ [ -1 => 1; 1 => -1 ] --- [ -1 => -1; ?? 1 ] ], because the
+   summation index appears in a single term.
+   However, a naive further evaluation would get stuck at
+   [ [ 1 => 1 ] --- nc *** [ ?? 1 ] ].
+   Fortunately, traces of single generators are never needed in our
+   applications.  We just have to resist the temptation to use them
+   in unit tests. *)
+
+(*
+\begin{equation}
+\parbox{29\unitlength}{%
+  \fmfframe(2,2)(2,2){%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g1,g2}
+    \fmfright{g3}
+    \fmfv{label=$a$}{g1}
+    \fmfv{label=$b$}{g2}
+    \fmfv{label=$c$}{g3}
+    \fmf{gluon}{g1,v}
+    \fmf{gluon}{g2,v}
+    \fmf{gluon}{g3,v}
+  \end{fmfgraph*}}}
+\qquad\Longrightarrow
+\parbox{29\unitlength}{%
+  \fmfframe(2,2)(2,2){%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g1,g2}
+    \fmfright{g3}
+    \fmfv{label=$a$}{g1}
+    \fmfv{label=$b$}{g2}
+    \fmfv{label=$c$}{g3}
+    \fmf{phantom}{g1,v}
+    \fmf{phantom}{g2,v}
+    \fmf{phantom}{g3,v}
+    \fmffreeze
+    \fmfi{plain}{(vpath(__g1,__v) join (reverse vpath(__g2,__v))) 
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g2,__v) join (reverse vpath(__g3,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g3,__v) join (reverse vpath(__g1,__v)))
+                 sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g3, __v) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g3, __v)) sideways thick}
+  \end{fmfgraph*}}}
+\qquad
+\parbox{29\unitlength}{%
+  \fmfframe(2,2)(2,2){%
+  \begin{fmfgraph*}(25,25)
+    \fmfleft{g1,g2}
+    \fmfright{g3}
+    \fmfv{label=$a$}{g1}
+    \fmfv{label=$b$}{g2}
+    \fmfv{label=$c$}{g3}
+    \fmf{phantom}{g1,v}
+    \fmf{phantom}{g2,v}
+    \fmf{phantom}{g3,v}
+    \fmffreeze
+    \fmfi{plain}{(vpath(__g1,__v) join (reverse vpath(__g3,__v))) 
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g2,__v) join (reverse vpath(__g1,__v)))
+                 sideways thick}
+    \fmfi{plain}{(vpath(__g3,__v) join (reverse vpath(__g2,__v)))
+                 sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g1, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g2, __v) sideways thick}
+    \fmfi{phantom_arrow}{vpath (__g3, __v) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g1, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g2, __v)) sideways thick}
+    \fmfi{phantom_arrow}{(reverse vpath (__g3, __v)) sideways thick}
+  \end{fmfgraph*}}}
+\end{equation} *)
 
     let f a b c =
       [ (LP.imag ( 1), A.cycle [a; b; c]);
         (LP.imag (-1), A.cycle [a; c; b]) ]
 
-(* Except for the signs, the symmetric combination
-   \emph{is} compatible with~(6.11) in our color flow
-   paper~\cite{Kilian:2012pz}.  There the signs are
-   probably wrong, as they cancel in~(6.13). *)
+(* The generator in the adjoint representation $T_a^{bc}=-\ii f_{abc}$: *)
+    let t8 a b c =
+      Birdtracks.Infix.( minus *** imag *** f a b c )
+
+(* This $d_{abc}$ is now compatible with~(6.11) in our color
+   flow paper~\cite{Kilian:2012pz}.  The signs had been wrong
+   in earlier versions of the code to match the missing
+   sign in the ghost contribution to the generator~$T_a^{ij}$
+   above. *)
 
     let d a b c =
       [ (LP.int 1, A.cycle [a; b; c]);
         (LP.int 1, A.cycle [a; c; b]);
-        (LP.int 2, (a <=> b) @ [?? c]);
-        (LP.int 2, (b <=> c) @ [?? a]);
-        (LP.int 2, (c <=> a) @ [?? b]);
+        (LP.int (-2), (a <=> b) @ [?? c]);
+        (LP.int (-2), (b <=> c) @ [?? a]);
+        (LP.int (-2), (c <=> a) @ [?? b]);
         (LP.int 2, [a => a; ?? b; ?? c]);
         (LP.int 2, [?? a; b => b; ?? c]);
         (LP.int 2, [?? a; ?? b; c => c]);
-        (LP.nc 2, [?? a; ?? b; ?? c]) ]
+        (LP.nc (-2), [?? a; ?? b; ?? c]) ]
+
+(* \thocwmodulesubsection{Decomposed Tensor Product Representations} *)
+
+    let pass_through m n incoming outgoing =
+      List.rev_map2 (fun i o -> (m, i) >=>> (n, o)) incoming outgoing
+
+    let delta_of_permutations n permutations k l =
+      let incoming = ThoList.range 0 (pred n)
+      and normalization = List.length permutations in
+      List.rev_map
+        (fun (eps, outgoing) ->
+          (LP.fraction (eps * normalization),
+           pass_through l k incoming outgoing))
+        permutations
+
+    let totally_symmetric n =
+      List.map
+        (fun p -> (1, p))
+        (Combinatorics.permute (ThoList.range 0 (pred n)))
+
+    let totally_antisymmetric n =
+        (Combinatorics.permute_signed (ThoList.range 0 (pred n)))
+
+    let delta_S n k l =
+      delta_of_permutations n (totally_symmetric n) k l
+
+    let delta_A n k l =
+      delta_of_permutations n (totally_antisymmetric n) k l
+
+    let delta6 = delta_S 2
+    let delta10 = delta_S 3
+    let delta15 = delta_S 4
+
+    let delta3bar = delta_A 2
+
+    (* Mixed symmetries, as in section 9.4 of the birdtracks book. *)
+
+    module IM = Partial.Make (struct type t = int let compare = pcompare end)
+    module P = Permutation.Default
+
+(* Map the elements of [original] to [permuted] in [all], with [all]
+   a list of $n$ integers from $0$ to $n-1$ in order, and use the resulting
+   list to define a permutation.
+   E.\,g.~[permute_partial [1;3] [3;1] [0;1;2;3;4]] will define a
+   permutation that transposes the second and fourth element in
+   a 5 element list. *)
+    let permute_partial original permuted all =
+      P.of_list (List.map (IM.auto (IM.of_lists original permuted)) all)
+                         
+    let apply1 (sign, indices) (eps, p) =
+      (eps * sign, P.list p indices)
+
+    let apply signed_permutations signed_indices =
+      List.rev_map (apply1 signed_indices) signed_permutations
+
+    let apply_list signed_permutations signed_indices =
+      ThoList.flatmap (apply signed_permutations) signed_indices
+
+    let symmetrizer_of_permutations n original signed_permutations =
+      let incoming = ThoList.range 0 (pred n) in
+      List.rev_map
+        (fun (eps, permuted) ->
+          (eps, permute_partial original permuted incoming))
+        signed_permutations
+
+    let symmetrizer n indices =
+      symmetrizer_of_permutations
+        n indices
+        (List.rev_map (fun p -> (1, p)) (Combinatorics.permute indices))
+
+    let anti_symmetrizer n indices =
+      symmetrizer_of_permutations
+        n indices
+        (Combinatorics.permute_signed indices)
+
+    let symmetrize n elements indices =
+      apply_list (symmetrizer n elements) indices
+
+    let anti_symmetrize n elements indices =
+      apply_list (anti_symmetrizer n elements) indices
+      
+    let id n =
+      [(1, ThoList.range 0 (pred n))]
+
+    (* \begin{dubious}
+         We can avoid the recursion here, if we use
+         [Combinatorics.permute_tensor_signed] in
+         [symmetrizer] above.
+       \end{dubious} *)
+    let rec apply_tableau f n tableau indices =
+      match tableau with
+      | [] | [_] :: _ -> indices
+      | cells :: rest ->
+         apply_tableau f n rest (f n cells indices)
+
+(* \begin{dubious}
+     Here we should at a sanity test for [tableau]: all integers should
+     be consecutive starting from 0 with no duplicates.  In additions
+     the rows must not grow in length.
+   \end{dubious} *)
+
+    let delta_of_tableau tableau i j =
+      let n = Young.num_cells_tableau tableau
+      and num, den = Young.normalization (Young.diagram_of_tableau tableau)
+      and rows = tableau
+      and cols = Young.transpose_tableau tableau in
+      let permutations =
+        apply_tableau symmetrize n rows (apply_tableau anti_symmetrize n cols (id n)) in
+      Birdtracks.Infix.( int num *** fraction den *** delta_of_permutations n permutations i j )
 
     let incomplete tensor =
       failwith ("Color.Vertex: " ^ tensor ^ " not supported yet!")
@@ -1622,45 +2092,115 @@ gives
         "Color.Vertex: %s support still experimental and untested!\n"
         tensor
 
+(* \begin{dubious}
+     Can we avoid nonlocality of the $\epsilon_{ijk}$ reduction,
+     as described in the revision of our color flow paper,
+     by simply using $\bar N\otimes_A \bar N$ instead of~$N$ on one
+     of the lines?
+
+     This should work trivially, if we could always pick one flavor
+     appearing in the $\epsilon_{ijk}$ for this conversion, but this
+     is not guaranteed.
+
+     As a hack, we could choose the color triplet bosons for
+     the $\bar N\otimes_A \bar N$ treatment,
+     as long as we can expect only $\epsilon_{ijk} \psi_i\psi_j\phi_k$
+     couplings.  This would take care of the RPV MSSM.
+   \end{dubious} *)
+
+    (* All lines end here: they point away from the vertex. *)
     let epsilon i j k = incomplete "epsilon-tensor"
+
+    (* All lines start here: they point towards the vertex. *)
     let epsilonbar i j k = incomplete "epsilon-tensor"
 
-   (* \begin{dubious}
-        Is it enough to introduce an index \emph{pair} for
-        each sextet index?
-      \end{dubious} *)
+(* In order to get the correct $N_C$ dependence of
+   quadratic Casimir operators, the arrows in the vertex must
+   have the same permutation symmetry as the propagator.  This
+   is demonstrated by the unit tests involving Casimir operators
+   on page \pageref{pg:casimir-tests} below.  These tests also
+   provide a check of our normalization.
 
-    (* \begin{dubious}
-         We need to find a way to make sure that we use
-         particle/antiparticle assignments that a consistent
-         with FeynRules.
-       \end{dubious} *)
+   The implementation takes a propagator and uses [Arrow.tee] to
+   replace one arrow by the pair of arrows correspondig to the
+   insertion of a gluon.  This is repeated for each arrow.
+   The normalization remains unchanged from the propagator.
+   A minus sign is added for antiparallel arrows, since the
+   conjugate representation is~$-T^*_a$.
 
-    let t6 a m n =
-      experimental "t6-tensor";
-      [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0); (n, 1) >=>> (m, 1)]);
-        (LP.int (-1), [(n, 0) >=>> (m, 0); (n, 1) >=>> (m, 1); ?? a]) ]
+   To this, we add the diagrams with a gluon connected to one arrow.
+   Since these are identical, only one diagram multiplied by the
+   difference of the number of parallel and antiparallel arrows
+   is added. *)
 
-   (* \begin{dubious}
-        How much symmetrization is required?
-      \end{dubious} *)
+    let insert_gluon a k l (norm, arrows) =
+      let rec insert_gluon' acc left = function
+        | [] -> acc
+        | arrow :: right ->
+           insert_gluon'
+             ((Algebra.Laurent.mul (LP.int (A.dir k l arrow)) norm,
+               List.rev_append left ((A.tee a arrow) @ right)) :: acc)
+             (arrow :: left)
+             right in
+      insert_gluon' [] [] arrows
 
-    let t6_symmetrized a m n =
-      experimental "t6-tensor";
-      [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0); (n, 1) >=>> (m, 1)]);
-        (LP.int ( 1), [(n, 1) >=> a; a =>> (m, 0); (n, 0) >=>> (m, 1)]);
-        (LP.int (-1), [(n, 0) >=>> (m, 0); (n, 1) >=>> (m, 1); ?? a]);
-        (LP.int (-1), [(n, 1) >=>> (m, 0); (n, 0) >=>> (m, 1); ?? a]) ]
+    let t_of_delta delta a k l =
+      match delta k l with
+      | [] -> []
+      | (_, arrows) :: _ as delta_kl ->
+         let n =
+           List.fold_left
+             (fun acc arrow -> acc + A.dir k l arrow)
+             0 arrows in
+         let ghosts =
+           List.rev_map
+             (fun (norm, arrows) ->
+               (Algebra.Laurent.mul (LP.int (-n)) norm, ?? a :: arrows))
+             delta_kl in
+         List.fold_left
+           (fun acc arrows -> insert_gluon a k l arrows @ acc)
+           ghosts delta_kl
 
+    let t_of_delta delta a k l =
+      canonicalize (t_of_delta delta a k l)
+
+    let t_S n a k l =
+      t_of_delta (delta_S n) a k l
+
+    let t_A n a k l =
+      t_of_delta (delta_A n) a k l
+
+    let t6 = t_S 2
+    let t10 = t_S 3
+    let t15 = t_S 4
+    let t3bar = t_A 2
+
+(* Equivalent definition: *)
+    let t8' a b c =
+      t_of_delta delta8 a b c
+
+    let t_of_tableau tableau a k l =
+      t_of_delta (delta_of_tableau tableau) a k l
+
+(* \begin{dubious}
+     Check the following for a real live UFO file!
+   \end{dubious} *)
+
+(* In the UFO paper, the Clebsh-Gordan is defined
+   as~$K^{(6),ij}_{\hphantom{(6),ij}m}$.  Therefore, keeping
+   our convention for the generators~$T_{a\hphantom{(6),j}i}^{(6),j}$,
+   the must arrows \emph{end} at~$m$. *)
     let k6 m i j =
-      experimental "k6-tensor";
-      [ (LP.int 1, [(m, 0) >=> i; (m, 1) >=> j]);
-        (LP.int 1, [(m, 1) >=> i; (m, 0) >=> j]) ]
-
-    let k6bar m i j =
-      experimental "k6-tensor";
+      experimental "k6";
       [ (LP.int 1, [i =>> (m, 0); j =>> (m, 1)]);
         (LP.int 1, [i =>> (m, 1); j =>> (m, 0)]) ]
+
+(* The arrow are reversed for~$\bar K^{(6),m}_{\hphantom{(6),m}ij}$
+   and \emph{start} at~$m$. *)
+    let k6bar m i j =
+      experimental "k6bar";
+      [ (LP.int 1, [(m, 0) >=> i; (m, 1) >=> j]);
+        (LP.int 1, [(m, 1) >=> i; (m, 0) >=> j]) ]
 
     (* \thocwmodulesubsection{Unit Tests} *)
 
@@ -1680,12 +2220,17 @@ gives
             (fun (_, arrows) -> not (List.exists A.is_ghost arrows))
             vertex
 
+        let eqx v1 v2 =
+          eq (exorcise v1) (exorcise v2)
+
+(* \thocwmodulesubsection{Trivia} *)
+
         let suite_sum =
           "sum" >:::
 
             [ "atoms" >::
                 (fun () ->
-                  assert_equal_vertices
+                  eq
                     (two *** delta3 1 2)
                     (delta3 1 2 +++ delta3 1 2)) ]
 
@@ -1694,55 +2239,304 @@ gives
 
             [ "atoms" >::
                 (fun () ->
-                  assert_equal_vertices
+                  eq
                     (delta3 3 4)
                     (delta3 1 2 +++ delta3 3 4 --- delta3 1 2)) ]
 
         let suite_times =
           "times" >:::
 
-            [ "t1*t2=t2*t1" >::
+            [ "reorder components t1*t2" >:: (* trivial $T_a^{ik}T_a^{kj}=T_a^{kj}T_a^{ik}$ *)
 	        (fun () ->
                   let t1 = t (-1) 1 (-2)
                   and t2 = t (-1) (-2) 2 in
-	          assert_equal_vertices (t1 *** t2) (t2 *** t1));
+	          eq (t1 *** t2) (t2 *** t1));
 
-              "tr(t1*t2)=tr(t2*t1)" >::
+              "reorder components tr(t1*t2)" >:: (* trivial $T_a^{ij}T_a^{ji}=T_a^{ji}T_a^{ij}$ *)
 	        (fun () ->
                   let t1 = t 1 (-1) (-2)
                   and t2 = t 2 (-2) (-1) in
-	          assert_equal_vertices (t1 *** t2) (t2 *** t1));
+	          eq (t1 *** t2) (t2 *** t1));
 
               "reorderings" >::
 	        (fun () ->
                   let v1 = [(L.unit, [ 1 => -2; -2 => -1; -1 =>  1])]
                   and v2 = [(L.unit, [-1 =>  2;  2 => -2; -2 => -1])]
                   and v' = [(L.unit, [ 1 =>  1;  2 =>  2])] in
-	          assert_equal_vertices v' (v1 *** v2)) ]
+	          eq v' (v1 *** v2)) ]
 
-        let suite_loops =
-          "loops" >:::
+(* \thocwmodulesubsection{Propagators} *)
 
-            [ ]
+(* Verify the normalization of the propagators by making sure
+   that $D^{ij}D^{jk}=D^{ik}$ *)
+        let projection_id rep_d =
+	  eq (rep_d 1 2) (rep_d 1 (-1) *** rep_d (-1) 2)
+
+        let orthogonality d d' =
+          assert_zero_vertex (d 1 (-1) *** d' (-1) 2)
+
+(* Pass every arrow straight through, without (anti-)symmetrization. *)
+        let delta_unsymmetrized n k l =
+          delta_of_permutations n [(1, ThoList.range 0 (pred n))] k l
+
+        let completeness n tableaux =
+          eq
+            (delta_unsymmetrized n 1 2)
+            (sum (List.map (fun t -> delta_of_tableau t 1 2) tableaux))
+
+(* The following names are of historical origin. From the time,
+   when we didn't have full support for Young tableaux and
+   implemented figure 9.1 from the birdtrack book.
+   \ytableausetup{centertableaux,smalltableaux}
+   \begin{equation}
+     \ytableaushort{01,2}
+   \end{equation} *)
+
+        let delta_SAS i j =
+          delta_of_tableau [[0;1];[2]] i j
+
+(* \begin{equation}
+     \ytableaushort{02,1}
+   \end{equation} *)
+
+        let delta_ASA i j =
+          delta_of_tableau [[0;2];[1]] i j
+
+        let suite_propagators =
+          "propagators" >:::
+            [ "D*D=D" >:: (fun () -> projection_id delta3);
+              "D8*D8=D8" >:: (fun () -> projection_id delta8);
+              "G*G=G" >:: (fun () -> projection_id gluon);
+              "D6*D6=D6" >:: (fun () -> projection_id delta6);
+              "D10*D10=D10" >:: (fun () -> projection_id delta10);
+              "D15*D15=D15" >:: (fun () -> projection_id delta15);
+              "D3bar*D3bar=D3bar" >:: (fun () -> projection_id delta3bar);
+              "D6*D3bar=0" >:: (fun () -> orthogonality delta6 delta3bar);
+              "D_A3*D_A3=D_A3" >:: (fun () -> projection_id (delta_A 3));
+              "D10*D_A3=0" >:: (fun () -> orthogonality delta10 (delta_A 3));
+              "D_SAS*D_SAS=D_SAS" >:: (fun () -> projection_id delta_SAS);
+              "D_ASA*D_ASA=D_ASA" >:: (fun () -> projection_id delta_ASA);
+              "D_SAS*D_S3=0" >:: (fun () -> orthogonality delta_SAS (delta_S 3));
+              "D_SAS*D_A3=0" >:: (fun () -> orthogonality delta_SAS (delta_A 3));
+              "D_SAS*D_ASA=0" >:: (fun () -> orthogonality delta_SAS delta_ASA);
+              "D_ASA*D_SAS=0" >:: (fun () -> orthogonality delta_ASA delta_SAS);
+              "D_ASA*D_S3=0" >:: (fun () -> orthogonality delta_ASA (delta_S 3));
+              "D_ASA*D_A3=0" >:: (fun () -> orthogonality delta_ASA (delta_A 3));
+              "DU*DU=DU" >:: (fun () -> projection_id (delta_unsymmetrized 3));
+
+              "S3=[0123]" >::
+                (fun () ->
+                  eq (delta_S 4 1 2) (delta_of_tableau [[0;1;2;3]] 1 2));
+
+              "A3=[0,1,2,3]" >::
+                (fun () ->
+                  eq (delta_A 4 1 2) (delta_of_tableau [[0];[1];[2];[3]] 1 2));
+
+              "[0123]*[012,3]=0" >::
+                (fun () ->
+                  orthogonality
+                    (delta_of_tableau [[0;1;2;3]])
+                    (delta_of_tableau [[0;1;2];[3]]));
+
+              "[0123]*[01,23]=0" >::
+                (fun () ->
+                  orthogonality
+                    (delta_of_tableau [[0;1;2;3]])
+                    (delta_of_tableau [[0;1];[2;3]]));
+
+              "[012,3]*[012,3]=[012,3]" >::
+                (fun () -> projection_id (delta_of_tableau [[0;1;2];[3]]));
+
+(* \ytableausetup{centertableaux,smalltableaux}
+   \begin{equation}
+                       \ytableaushort{01}
+     +                 \ytableaushort{0,1}
+   \end{equation} *)
+
+              "completeness 2" >:: (fun () -> completeness 2 [ [[0;1]]; [[0];[1]] ]) ;
+
+              "completeness 2'" >::
+                (fun () ->
+                  eq
+                    (delta_unsymmetrized 2 1 2)
+                    (delta_S 2 1 2 +++ delta_A 2 1 2));
+
+(* The normalization factors are written for illustration.  They are
+   added by [delta_of_tableau] automatically.
+   \ytableausetup{centertableaux,smalltableaux}
+   \begin{equation}
+                       \ytableaushort{012}
+     + \frac{4}{3}\cdot\ytableaushort{01,2}
+     + \frac{4}{3}\cdot\ytableaushort{02,1}
+     +                 \ytableaushort{0,1,2}
+   \end{equation} *)
+
+              "completeness 3" >::
+                (fun () -> completeness 3 [ [[0;1;2]]; [[0;1];[2]]; [[0;2];[1]]; [[0];[1];[2]] ]);
+
+              "completeness 3'" >::
+                (fun () ->
+                  eq
+                    (delta_unsymmetrized 3 1 2)
+                    (delta_S 3 1 2 +++ delta_SAS 1 2 +++ delta_ASA 1 2 +++ delta_A 3 1 2));
+
+(* \ytableausetup{centertableaux,smalltableaux}
+   \begin{equation}
+                       \ytableaushort{0123}
+     + \frac{3}{2}\cdot\ytableaushort{012,3}
+     + \frac{3}{2}\cdot\ytableaushort{013,2}
+     + \frac{3}{2}\cdot\ytableaushort{023,1}
+     + \frac{4}{3}\cdot\ytableaushort{01,23}
+     + \frac{4}{3}\cdot\ytableaushort{02,13}
+     + \frac{3}{2}\cdot\ytableaushort{01,2,3}
+     + \frac{3}{2}\cdot\ytableaushort{02,1,3}
+     + \frac{3}{2}\cdot\ytableaushort{03,1,2}
+     +                 \ytableaushort{0,1,2,3}
+   \end{equation} *)
+
+              "completeness 4" >::
+                (fun () ->
+                  completeness 4
+                    [ [[0;1;2;3]];
+                      [[0;1;2];[3]]; [[0;1;3];[2]]; [[0;2;3];[1]];
+                      [[0;1];[2;3]]; [[0;2];[1;3]];
+                      [[0;1];[2];[3]]; [[0;2];[1];[3]]; [[0;3];[1];[2]];
+                      [[0];[1];[2];[3]] ]) ]
+
+(* \thocwmodulesubsection{Normalization} *)
 
         let suite_normalization =
           "normalization" >:::
 
-            [ "tr(t*t)" >::
+            [ "tr(t*t)" >:: (* $\tr(T_aT_b)=\delta_{ab} + \text{ghosts}$ *)
 	        (fun () ->
-                  (* The use of [exorcise] appears to be legitimate
-                     here in the color flow representation, cf.~(6.2)
-                     of~\cite{Kilian:2012pz}.  *)
-	          assert_equal_vertices
+	          eq
+                    (delta8_loop 1 2)
+                    (t 1 (-1) (-2) *** t 2 (-2) (-1)));
+
+              "tr(t*t) sans ghosts" >:: (* $\tr(T_aT_b)=\delta_{ab}$ *)
+	        (fun () ->
+	          eqx
                     (delta8 1 2)
-                    (exorcise (t 1 (-1) (-2) *** t 2 (-2) (-1))));
+                    (t 1 (-1) (-2) *** t 2 (-2) (-1)));
+
+(* The additional ghostly terms were unexpected, but 
+   arises like~(6.2) in our color flow paper~\cite{Kilian:2012pz}. *)
+              "t*t*t" >:: (* $T_aT_bT_a=-T_b/N_C + \ldots$ *)
+	        (fun () ->
+	          eq
+                    (minus *** over_nc *** t 1 2 3
+                     +++ [(LP.int 1, [1 => 1; 3 => 2]);
+                          (LP.nc (-1), [3 => 2; ?? 1])])
+                    (t (-1) 2 (-2) *** t 1 (-2) (-3) *** t (-1) (-3) 3));
+
+(* As expected, these ghostly terms cancel in the summed squares
+   \begin{equation}
+     \tr(T_aT_bT_aT_cT_bT_c)
+       = \tr(T_bT_b)/N_C^2
+       = \delta_{bb}/N_C^2
+       = (N_C^2-1) / N_C^2
+       = 1 - 1 / N_C^2
+   \end{equation} *)
+              "sum((t*t*t)^2)" >:: 
+	        (fun () ->
+	          eq
+                    (ints [(1, 0); (-1, -2)])
+                    (t (-1) (-11) (-12) *** t (-2) (-12) (-13) *** t (-1) (-13) (-14)
+                     *** t (-3) (-14) (-15) *** t (-2) (-15) (-16) *** t (-3) (-16) (-11)));
+
               "d*d" >::
                 (fun () ->
-                  assert_equal_vertices
+                  eqx
                     [ (LP.ints [(2, 1); (-8,-1)], 1 <=> 2);
                       (LP.ints [(2, 0); ( 4,-2)], [1=>1; 2=>2]) ]
-                    (exorcise (d 1 (-1) (-2) *** d 2 (-2) (-1)))) ]
+                    (d 1 (-1) (-2) *** d 2 (-2) (-1))) ]
 
+
+(* As proposed in our color flow paper~\cite{Kilian:2012pz},
+   we can get the correct (anti-)symmetrized generators
+   by sandwiching the following unsymmetrized generators
+   between the corresponding (anti-)symmetrized projectors.
+   Therefore, the unsymmetrized generators work as long as
+   they're used in Feynman diagrams, where they are connected
+   by propagators that contain (anti-)symmetrized projectors.
+   They even work in the Lie algebra relations and give the
+   correct normalization there.
+
+   They fail however for more general color algebra expressions
+   that can appear in UFO files.
+   In particular, the Casimir operators come out really wrong. *)
+        let t_unsymmetrized n k l =
+          t_of_delta (delta_unsymmetrized n) k l
+
+(* The following trivial vertices are \emph{not} used anymore,
+   since they don't get the normalization of the Ward identities
+   right.  For the quadratic casimir operators, they always produce a
+   result proportional to~$C_F=C_2(S_1)$.  This can be understood because
+   they correspond to a fundamental representation with spectators.
+
+   (Anti-)symmetrizing by sandwiching with projectors almost works,
+   but they must be multiplied by hand by the number of arrows to get the
+   normalization right.
+   They're here just for documenting what doesn't work. *)
+        let t_trivial n a k l =
+          let sterile =
+            List.map (fun i -> (l, i) >=>> (k, i)) (ThoList.range 1 (pred n)) in
+          [ (LP.int ( 1), ((l, 0) >=> a) :: (a =>> (k, 0)) :: sterile);
+            (LP.int (-1), (?? a) :: ((l, 0) >=>> (k, 0)) :: sterile) ]
+
+        let t6_trivial = t_trivial 2
+        let t10_trivial = t_trivial 3
+        let t15_trivial = t_trivial 4
+
+        let t_SAS = t_of_delta delta_SAS
+        let t_ASA = t_of_delta delta_ASA
+
+        let symmetrization ?rep_ts rep_tu rep_d =
+          let rep_ts =
+            match rep_ts with
+            | None -> rep_tu
+            | Some rep_t -> rep_t in
+          eq
+            (rep_ts 1 2 3)
+            (gluon 1 (-1) *** rep_d 2 (-2) *** rep_tu (-1) (-2) (-3) *** rep_d (-3) 3)
+
+	let suite_symmetrization =
+          "symmetrization" >:::
+
+            [ "t6" >:: (fun () -> symmetrization t6 delta6);
+              "t10" >:: (fun () -> symmetrization t10 delta10);
+              "t15" >:: (fun () -> symmetrization t15 delta15);
+              "t3bar" >:: (fun () -> symmetrization t3bar delta3bar);
+              "t_SAS" >:: (fun () -> symmetrization t_SAS delta_SAS);
+              "t_ASA" >:: (fun () -> symmetrization t_ASA delta_ASA);
+              "t6'" >:: (fun () -> symmetrization ~rep_ts:t6 (t_unsymmetrized 2) delta6);
+              "t10'" >:: (fun () -> symmetrization ~rep_ts:t10 (t_unsymmetrized 3) delta10);
+              "t15'" >:: (fun () -> symmetrization ~rep_ts:t15 (t_unsymmetrized 4) delta15);
+
+              "t6''" >::
+                (fun () ->
+                  eq
+                    (t6 1 2 3)
+                    (int 2 *** delta6 2 (-1) *** t6_trivial 1 (-1) (-2) *** delta6 (-2) 3));
+
+              "t10''" >::
+                (fun () ->
+                  eq
+                    (t10 1 2 3)
+                    (int 3 *** delta10 2 (-1) *** t10_trivial 1 (-1) (-2) *** delta10 (-2) 3));
+
+              "t15''" >::
+                (fun () ->
+                  eq
+                    (t15 1 2 3)
+                    (int 4 *** delta15 2 (-1) *** t15_trivial 1 (-1) (-2) *** delta15 (-2) 3)) ]
+
+(* \thocwmodulesubsection{Traces} *)
+
+(* Compute (anti-)commutators of generators in the representation~$r$,
+   i.\,e.~$[r(t_a)r(t_b)]_{ij}\mp[r(t_b)r(t_a)]_{ij}$, using
+   [isum<0] as summation index in the matrix products. *)
         let commutator rep_t i_sum a b i j =
           multiply [rep_t a i i_sum; rep_t b i_sum j]
           --- multiply [rep_t b i i_sum; rep_t a i_sum j]
@@ -1751,68 +2545,73 @@ gives
           multiply [rep_t a i i_sum; rep_t b i_sum j]
           +++ multiply [rep_t b i i_sum; rep_t a i_sum j]
 
+(* Trace of the product of three generators in the representation~$r$,
+   i.\,e.~$\tr_r(r(t_a)r(t_b)r(t_c))$, using $-1,-2,-3$ as summation indices
+   in the matrix products. *)
         let trace3 rep_t a b c =
           rep_t a (-1) (-2) *** rep_t b (-2) (-3) *** rep_t c (-3) (-1)
 
-        let trace3c rep_t a b c =
-          third ***
-            sum [trace3 rep_t a b c; trace3 rep_t b c a; trace3 rep_t c a b]
-
         let loop3 a b c =
           [ (LP.int 1, A.cycle (List.rev [a; b; c]));
-            (LP.int 1, (a <=> b) @ [?? c]);
-            (LP.int 1, (b <=> c) @ [?? a]);
-            (LP.int 1, (c <=> a) @ [?? b]);
+            (LP.int (-1), (a <=> b) @ [?? c]);
+            (LP.int (-1), (b <=> c) @ [?? a]);
+            (LP.int (-1), (c <=> a) @ [?? b]);
             (LP.int 1, [a => a; ?? b; ?? c]);
             (LP.int 1, [?? a; b => b; ?? c]);
             (LP.int 1, [?? a; ?? b; c => c]);
-            (LP.nc 1, [?? a; ?? b; ?? c]) ]
+            (LP.nc (-1), [?? a; ?? b; ?? c]) ]
 
         let suite_trace =
           "trace" >:::
 
             [ "tr(ttt)" >::
-                (fun () ->
-                  assert_equal_vertices (trace3 t 1 2 3) (loop3 1 2 3));
+                (fun () -> eq (trace3 t 1 2 3) (loop3 1 2 3));
 
-              "tr(ttt) cyclic 1" >::
-                (fun () ->
-                  assert_equal_vertices (trace3 t 1 2 3) (trace3 t 2 3 1));
+              "tr(ttt) cyclic 1" >:: (* $\tr(T_aT_bT_c)=\tr(T_bT_cT_a)$ *)
+                (fun () -> eq (trace3 t 1 2 3) (trace3 t 2 3 1));
 
-              "tr(ttt) cyclic 2" >::
+              "tr(ttt) cyclic 2" >:: (* $\tr(T_aT_bT_c)=\tr(T_cT_aT_b)$ *)
+                (fun () -> eq (trace3 t 1 2 3) (trace3 t 3 1 2));
+
+(* \begin{dubious}
+     Do we expect this?
+   \end{dubious} *)
+              "tr(tttt)" >:: (* $\tr(T_aT_bT_cT_d)=\ldots$ *)
                 (fun () ->
-                  assert_equal_vertices (trace3 t 1 2 3) (trace3 t 3 1 2)) ]
+                  eqx
+                    [(LP.int 1, A.cycle [4; 3; 2; 1])]
+                    (t 1 (-1) (-2) *** t 2 (-2) (-3) *** t 3 (-3) (-4) *** t 4 (-4) (-1))) ]
 
         let suite_ghosts =
           "ghosts" >:::
 
             [ "H->gg" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (delta8_loop 1 2)
                     (t 1 (-1) (-2) *** t 2 (-2) (-1)));
 
               "H->ggg f" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (imag *** f 1 2 3)
-                    (trace3c t 1 2 3 --- trace3c t 1 3 2));
+                    (trace3 t 1 2 3 --- trace3 t 1 3 2));
 
               "H->ggg d" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (d 1 2 3)
-                    (trace3c t 1 2 3 +++ trace3c t 1 3 2));
+                    (trace3 t 1 2 3 +++ trace3 t 1 3 2));
 
               "H->ggg f'" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (imag *** f 1 2 3)
                     (t 1 (-3) (-2) *** commutator t (-1) 2 3 (-2) (-3)));
 
               "H->ggg d'" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (d 1 2 3)
                     (t 1 (-3) (-2) *** anti_commutator t (-1) 2 3 (-2) (-3)));
 
@@ -1820,12 +2619,7 @@ gives
 	        (fun () ->
                   let trace a b c =
                     t a (-3) (-2) *** commutator t (-1) b c (-2) (-3) in
-	          assert_equal_vertices (trace 1 2 3) (trace 2 3 1)) ]
-
-        (* FIXME: note the flipped [i], [j], [l], [k]! *)
-        let tt j i l k =
-          [ (LP.int 1, [i => l; k => j]);
-            (LP.over_nc (-1), [i => j; k => l]) ]
+	          eq (trace 1 2 3) (trace 2 3 1)) ]
 
         let ff a1 a2 a3 a4 =
           [ (LP.int (-1), A.cycle [a1; a2; a3; a4]);
@@ -1839,194 +2633,343 @@ gives
 
         let suite_ff =
           "f*f" >:::
-
-            [ "1" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (ff 1 2 3 4)
-                    (f (-1) 1 2 *** f (-1) 3 4)) ]
+            [ "1" >:: (fun () -> eq (ff 1 2 3 4) (f (-1) 1 2 *** f (-1) 3 4));
+              "2" >:: (fun () -> eq (ff 1 2 3 4) (f (-1) 1 2 *** f 3 4 (-1)));
+              "3" >:: (fun () -> eq (ff 1 2 3 4) (f (-1) 1 2 *** f 4 (-1) 3)) ]
 
         let suite_tf =
           "t*f" >:::
+            [ "1" >:: (fun () -> eq (tf 1 2 3 4) (t (-1) 1 2 *** f (-1) 3 4)) ]
 
-            [ "1" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (tf 1 2 3 4)
-                    (t (-1) 1 2 *** f (-1) 3 4)) ]
+(* \thocwmodulesubsection{Completeness Relation} *)
+
+(* Check the completeness relation corresponding
+   to $q\bar q$-scattering:
+   \begin{equation}
+     \parbox{38\unitlength}{%
+       \fmfframe(4,2)(4,4){%
+       \begin{fmfgraph*}(30,20)
+         \setupFourAmp
+         \fmflabel{$i$}{i2}
+         \fmflabel{$j$}{i1}
+         \fmflabel{$k$}{o1}
+         \fmflabel{$l$}{o2}
+         \fmf{fermion}{i1,v1,i2}
+         \fmf{fermion}{o2,v2,o1}
+         \fmf{gluon}{v1,v2}
+       \end{fmfgraph*}}} =
+     \parbox{38\unitlength}{%
+       \fmfframe(4,2)(4,4){%
+       \begin{fmfgraph*}(30,20)
+         \setupFourAmp
+         \fmflabel{$i$}{i2}
+         \fmflabel{$j$}{i1}
+         \fmflabel{$k$}{o1}
+         \fmflabel{$l$}{o2}
+         \fmfi{phantom_arrow}{vpath (__i1, __v1)}
+         \fmfi{phantom_arrow}{vpath (__v1, __v2) sideways -thick}
+         \fmfi{phantom_arrow}{vpath (__v2, __o1)}
+         \fmfi{phantom_arrow}{vpath (__o2, __v2)}
+         \fmfi{phantom_arrow}{reverse vpath (__v1, __v2) sideways -thick}
+         \fmfi{phantom_arrow}{vpath (__v1, __i2)}
+         \fmfi{plain}{vpath (__i1, __v1) join 
+                      (vpath (__v1, __v2) sideways -thick) join
+                      vpath (__v2, __o1)}
+         \fmfi{plain}{vpath (__o2, __v2) join
+                      (reverse vpath (__v1, __v2) sideways -thick) join
+                      vpath (__v1, __i2)}
+       \end{fmfgraph*}}} +
+     \parbox{38\unitlength}{%
+       \fmfframe(4,2)(4,4){%
+       \begin{fmfgraph*}(30,20)
+         \setupFourAmp
+         \fmflabel{$i$}{i2}
+         \fmflabel{$j$}{i1}
+         \fmflabel{$k$}{o1}
+         \fmflabel{$l$}{o2}
+         \fmfi{phantom_arrow}{vpath (__i1, __v1)}
+         \fmfi{phantom_arrow}{vpath (__v2, __o1)}
+         \fmfi{phantom_arrow}{vpath (__o2, __v2)}
+         \fmfi{phantom_arrow}{vpath (__v1, __i2)}
+         \fmfi{plain}{vpath (__i1, __v1) join 
+                      vpath (__v1, __i2)}
+         \fmfi{plain}{vpath (__o2, __v2) join
+                      vpath (__v2, __o1)}
+         \fmfi{dots,label=$-1/N_C$}{vpath (__v1, __v2)}
+       \end{fmfgraph*}}}
+     \end{equation} *)
+
+        (* $T_{a}^{ij} T_{a}^{kl}$ *)
+        let tt i j k l =
+          t (-1) i j *** t (-1) k l
+
+        (* $ \delta^{il}\delta^{kj} - \delta^{ij}\delta^{kl}/N_C$ *)
+        let tt_expected i j k l =
+          [ (LP.int 1, [l => i; j => k]);
+            (LP.over_nc (-1), [j => i; l => k]) ]
 
         let suite_tt =
           "t*t" >:::
+            [ "1" >:: (* $T_{a}^{ij} T_{a}^{kl} = \delta^{il}\delta^{kj} - \delta^{ij}\delta^{kl}/N_C$ *)
+	        (fun () -> eq (tt_expected 1 2 3 4) (tt 1 2 3 4)) ]
 
-            [ "1" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (tt 1 2 3 4)
-                    (t (-1) 1 2 *** t (-1) 3 4)) ]
+(* \thocwmodulesubsection{Lie Algebra} *)
 
-        let trace_comm rep_t a b c =
-          rep_t a (-3) (-2) *** commutator rep_t (-1) b c (-2) (-3)
+(* Check the commutation relations $[T_a,T_b]=\ii f_{abc} T_c$
+   in various representations. *)
+        let lie_algebra_id rep_t =
+          let lhs = imag *** f 1 2 (-1) *** t (-1) 3 4
+          and rhs = commutator t (-1) 1 2 3 4 in
+          eq lhs rhs
 
-        (* FIXME: note the flipped [b], [c]! *)
-        let t8 a c b =
-          imag *** f a b c
+(* Check the normalization of the structure consistants
+   $\mathcal{N} f_{abc} = - \ii \tr(T_a[T_b,T_c])$ *)
+	let f_of_rep_id norm rep_t =
+          let lhs = norm *** f 1 2 3
+          and rhs = f_of_rep rep_t 1 2 3 in
+          eq lhs rhs
 
+(* \begin{dubious}
+     Are the normalization factors for the traces of the higher dimensional
+     representations correct?
+   \end{dubious} *)
+(* \begin{dubious}
+     The traces don't work for the symmetrized generators
+     that we need elsewhere!
+   \end{dubious} *)
         let suite_lie =
           "Lie algebra relations" >:::
+            [ "[t,t]=ift" >:: (fun () -> lie_algebra_id t);
+              "[t8,t8]=ift8" >:: (fun () -> lie_algebra_id t8);
+              "[t6,t6]=ift6" >:: (fun () -> lie_algebra_id t6);
+              "[t10,t10]=ift10" >:: (fun () -> lie_algebra_id t10);
+              "[t15,t15]=ift15" >:: (fun () -> lie_algebra_id t15);
+              "[t3bar,t3bar]=ift3bar" >:: (fun () -> lie_algebra_id t3bar);
+              "[tSAS,tSAS]=iftSAS" >:: (fun () -> lie_algebra_id t_SAS);
+              "[tASA,tASA]=iftASA" >:: (fun () -> lie_algebra_id t_ASA);
+              "[t6,t6]=ift6'" >:: (fun () -> lie_algebra_id (t_unsymmetrized 2));
+              "[t10,t10]=ift10'" >:: (fun () -> lie_algebra_id (t_unsymmetrized 3));
+              "[t15,t15]=ift15'" >:: (fun () -> lie_algebra_id (t_unsymmetrized 4));
+              "[t6,t6]=ift6''" >:: (fun () -> lie_algebra_id t6_trivial);
+              "[t10,t10]=ift10''" >:: (fun () -> lie_algebra_id t10_trivial);
+              "[t15,t15]=ift15''" >:: (fun () -> lie_algebra_id t15_trivial);
+              "if = tr(t[t,t])" >:: (fun () -> f_of_rep_id one t);
+              "2n*if = tr(t8[t8,t8])" >:: (fun () -> f_of_rep_id (two *** nc) t8);
+              "n*if = tr(t6[t6,t6])" >:: (fun () -> f_of_rep_id nc t6_trivial);
+              "n^2*if = tr(t10[t10,t10])" >:: (fun () -> f_of_rep_id (nc *** nc) t10_trivial);
+              "n^3*if = tr(t15[t15,t15])" >:: (fun () -> f_of_rep_id (nc *** nc *** nc) t15_trivial) ]
 
-            [ "[t,t]=ift" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (imag *** f 1 2 (-1) *** t (-1) 3 4)
-                    (commutator t (-1) 1 2 3 4));
+(* \thocwmodulesubsection{Ward Identities} *)
 
-              "if = tr(t[t,t])" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (f 1 2 3)
-                    (f_of_rep t 1 2 3));
+(* Testing the color part of basic Ward identities is essentially
+   the same as testing the Lie algebra equations above, but with
+   generators sandwiched between propagators, as in Feynman diagrams,
+   where the relative signs come from the kinematic part of the
+   diagrams after applying the equations of motion..   *)
 
-              "[f,f]=-ff" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (minus *** f 1 2 (-1) *** f (-1) 3 4)
-                    (commutator f (-1) 1 2 3 4));
+        (* First the diagram with the three gluon vertex
+           $\ii f_{abc} D_{cd}^{\text{gluon}} D^{ik} T_d^{kl} D^{lj}$ *)
+        let ward_ft rep_t rep_d a b i j =
+          imag *** f a b (-11) *** gluon (-11) (-12)
+          *** rep_d i (-1) *** rep_t (-12) (-1) (-2) *** rep_d (-2) j
 
-              "f = tr(f[f,f])" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (two *** nc *** f 1 2 3)
-                    (trace_comm f 1 2 3));
+        (* then one diagram with two gauge couplings
+           $D^{ik} T_c^{kl} D^{lm} T_c^{mn} D^{nj}$ *)
+        let ward_tt1 rep_t rep_d a b i j =
+          rep_d i (-1) *** rep_t a (-1) (-2) *** rep_d (-2) (-3)
+          *** rep_t b (-3) (-4) *** rep_d (-4) j
 
-              "[t8,t8]=ift8" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (imag *** f 1 2 (-1) *** t8 (-1) 3 4)
-                    (commutator t8 (-1) 1 2 3 4));
+        (* finally the difference of exchanged orders:
+           $D^{ik} T_a^{kl} D^{lm} T_b^{mn} D^{nj}
+           -D^{ik} T_b^{kl} D^{lm} T_a^{mn} D^{nj}$ *)
+        let ward_tt rep_t rep_d a b i j =
+          ward_tt1 rep_t rep_d a b i j --- ward_tt1 rep_t rep_d b a i j
 
-              "inf = tr(t8[t8,t8])" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (two *** nc *** f 1 2 3)
-                    (f_of_rep t8 1 2 3));
+        (* \begin{dubious}
+             The optional [~fudge] factor was used for
+             debugging normalizations.
+           \end{dubious} *)
+        let ward_id ?(fudge=one) rep_t rep_d =
+          let lhs = ward_ft rep_t rep_d 1 2 3 4
+          and rhs = ward_tt rep_t rep_d 1 2 3 4 in
+          eq lhs (fudge *** rhs)
 
-              "[t6,t6]=ift6" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (imag *** f 1 2 (-1) *** t6 (-1) 3 4)
-                    (commutator t6 (-1) 1 2 3 4));
+        let suite_ward =
+          "Ward identities" >:::
+            [ "fund." >:: (fun () -> ward_id t delta3);
+              "adj." >:: (fun () -> ward_id t8 delta8);
+              "S2" >:: (fun () -> ward_id t6 delta6);
+              "S3" >:: (fun () -> ward_id t10 delta10);
+              "A2" >:: (fun () -> ward_id t3bar delta3bar);
+              "A3" >:: (fun () -> ward_id (t_A 3) (delta_A 3));
+              "SAS" >:: (fun () -> ward_id t_SAS delta_SAS);
+              "ASA" >:: (fun () -> ward_id t_ASA delta_ASA);
+              "S2'" >:: (fun () -> ward_id ~fudge:two t6_trivial delta6);
+              "S3'" >:: (fun () -> ward_id ~fudge:(int 3) t10_trivial delta10) ]
 
-              "inf = tr(t6[t6,t6])" >::
-	        (fun () ->
-	          assert_equal_vertices
-                    (nc *** f 1 2 3)
-                    (f_of_rep t6 1 2 3)) ]
+        let suite_ward_long =
+          "Ward identities" >:::
+            [ "S4" >:: (fun () -> ward_id t15 delta15);
+              "S4'" >:: (fun () -> ward_id ~fudge:(int 4) t15_trivial delta15) ]
 
+(* \thocwmodulesubsection{Jacobi Identities} *)
 
+        (* $T_aT_bT_c$ *)
         let prod3 rep_t a b c i j =
           rep_t a i (-1) *** rep_t b (-1) (-2) *** rep_t c (-2) j
 
+        (* $[T_a,[T_b,T_c]]$ *)
         let jacobi1 rep_t a b c i j =
           (prod3 rep_t a b c i j --- prod3 rep_t a c b i j)
           --- (prod3 rep_t b c a i j --- prod3 rep_t c b a i j)
 
+        (* sum of cyclic permutations of $[T_a,[T_b,T_c]]$ *)
         let jacobi rep_t =
           sum [jacobi1 rep_t 1 2 3 4 5;
                jacobi1 rep_t 2 3 1 4 5;
                jacobi1 rep_t 3 1 2 4 5]
 
+        let jacobi_id rep_t =
+          assert_zero_vertex (jacobi rep_t)
+
         let suite_jacobi =
           "Jacobi identities" >:::
+            [ "fund." >:: (fun () -> jacobi_id t);
+              "adj." >:: (fun () -> jacobi_id f);
+              "S2" >:: (fun () -> jacobi_id t6);
+              "S3" >:: (fun () -> jacobi_id t10);
+              "A2" >:: (fun () -> jacobi_id (t_A 2));
+              "A3" >:: (fun () -> jacobi_id (t_A 3));
+              "SAS" >:: (fun () -> jacobi_id t_SAS);
+              "ASA" >:: (fun () -> jacobi_id t_ASA);
+              "S2'" >:: (fun () -> jacobi_id t6_trivial);
+              "S3'" >:: (fun () -> jacobi_id t10_trivial) ]
 
-            [ "fund." >:: (fun () -> assert_equal_vertices null (jacobi t));
-              "adj." >:: (fun () -> assert_equal_vertices null (jacobi f));
-              "S2" >:: (fun () -> assert_equal_vertices null (jacobi t6)) ]
+        let suite_jacobi_long =
+          "Jacobi identities" >:::
+            [ "S4" >:: (fun () -> jacobi_id t15);
+              "S4'" >:: (fun () -> jacobi_id t15_trivial) ]
 
-        (* From \texttt{hep-ph/0611341} for $\mathrm{SU}(N)$ for
-           the adjoint, symmetric and antisymmetric representations
+(* \thocwmodulesubsection{Casimir Operators}
+   \label{pg:casimir-tests} *)
+
+        (* We can read of the eigenvalues of the Casimir operators for
+           the adjoint, totally symmetric and totally antisymmetric
+           representations of~$\mathrm{SU}(N)$ from table~II of
+           \texttt{hep-ph/0611341}
            \begin{subequations}
              \begin{align}
                C_2(\text{adj}) &= 2N \\
                C_2(S_n) &= \frac{n(N-1)(N+n)}{N} \\
                C_2(A_n) &= \frac{n(N-n)(N+1)}{N}
-             \end{align}
+          \end{align}
            \end{subequations}
            adjusted for our normalization.
-           In particular
-           \begin{subequations}
-             \begin{align}
-               C_2(\text{fund.}) = C_2(S_1) &= \frac{N^2-1}{N} \\
-                                   C_2(S_2) &= \frac{2(N-1)(N+2)}{N}
-                                             = 2 \frac{N^2+N-2}{N}
-             \end{align}
-           \end{subequations} *)
+           Also from \texttt{arxiv:1912.13302}
+           \begin{equation}
+               C_3(S_1) =(N^2-1)(N^2-4)/N^2=\frac{N_C^4-5N_C^2+4}{N_C^2}
+           \end{equation} *)
 
-        (* $N_C-1/N_C=(N_C^2-1)/N_C$ *)
-        let cf = LP.ints [(1, 1); (-1, -1)]
+        (* Building blocks $n/N_C$ and $N_C+n$ *)
+        let n_over_nc n = const (LP.ints [ (n, -1) ])
+        let nc_plus n = const (LP.ints [ (1, 1); (n,0) ])
 
-        (* $N_C^2-5+4/N_C^2=(N_C^2-1)(N_C^2-4)/N_C^2$ *)
-        let c3f = LP.ints [(1, 2); (-5, 0); (4, -2)]
+        (* $C_2(S_n) = n/N_C(N_C-1)(N_C+n)$ *)
+        let c2_S n = n_over_nc n *** nc_plus (-1) *** nc_plus n
 
-        (* $2N_C$ *)
+        (* $C_2(A_n) = n/N_C(N_C-n)(N_C+1)$ *)
+        let c2_A n = n_over_nc n *** nc_plus (-n) *** nc_plus 1
+          
+        let casimir_tt i j = c2_S 1 *** delta3 i j
+        let casimir_t6t6 i j = c2_S 2 *** delta6 i j
+        let casimir_t10t10 i j = c2_S 3 *** delta10 i j
+        let casimir_t15t15 i j = c2_S 4 *** delta15 i j
+        let casimir_t3bart3bar i j = c2_A 2 *** delta3bar i j
+        let casimir_tA3tA3 i j = c2_A 3 *** delta_A 3 i j
+
+        (* $C_2(\text{adj})=2N_C$ *)
         let ca = LP.ints [(2, 1)]
+        let casimir_ff a b = [(ca, 1 <=> 2); (LP.int (-2), [1=>1; 2=>2])]
 
-        (* $2N_C+2N_C-4/N_C=2(N_C-1)(N_C+2)/N_C$ *)
-        let c6 = LP.ints [(2, 1); (2, 0); (-4, -1)]
-
-        let casimir_tt i j =
-          [(cf, i ==> j)]
-
-        let casimir_ttt i j =
-          [(c3f, i ==> j)]
-
-        let casimir_ff a b =
-          [(ca, 1 <=> 2); (LP.int (-2), [1=>1; 2=>2])]
-
-        (* FIXME: normalization and/or symmetrization? *)
-        let casimir_t6t6 i j =
-          [(cf, [(i,0) >=>> (j,0); (i,1) >=>> (j,1)])]
-
-        let casimir_t6t6_symmetrized i j =
-          half ***
-            [ (c6, [(i,0) >=>> (j,0); (i,1) >=>> (j,1)]);
-              (c6, [(i,0) >=>> (j,1); (i,1) >=>> (j,0)]) ]
+        (* $C_3(S_1)=N_C^2-5+4/N_C^2$ *)
+        let c3f = LP.ints [(1, 2); (-5, 0); (4, -2)]
+        let casimir_ttt i j = const c3f *** delta3 i j
 
         let suite_casimir =
           "Casimir operators" >:::
 
             [ "t*t" >::
-                (* Again, we appear to have the complex conjugate
-                   (transposed) representation\ldots *)
 	        (fun () ->
-	          assert_equal_vertices
-                    (casimir_tt 2 1)
-                    (t (-1) (-2) 2 *** t (-1) 1 (-2)));
+	          eq
+                    (casimir_tt 1 2)
+                    (t (-1) 1 (-2) *** t (-1) (-2) 2));
 
               "t*t*t" >::
 	        (fun () ->
-	          assert_equal_vertices
-                    (casimir_ttt 2 1)
+	          eq
+                    (casimir_ttt 1 2)
                     (d (-1) (-2) (-3) ***
                        t (-1) 1 (-4) *** t (-2) (-4) (-5) *** t (-3) (-5) 2));
 
               "f*f" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (casimir_ff 1 2)
                     (minus *** f (-1) 1 (-2) *** f (-1) (-2) 2));
 
               "t6*t6" >::
 	        (fun () ->
-	          assert_equal_vertices
-                    (casimir_t6t6 2 1)
-                    (t6 (-1) (-2) 2 *** t6 (-1) 1 (-2))) ]
+	          eq
+                    (casimir_t6t6 1 2)
+                    (t6 (-1) 1 (-2) *** t6 (-1) (-2) 2));
+
+              "t3bar*t3bar" >::
+	        (fun () ->
+	          eq
+                    (casimir_t3bart3bar 1 2)
+                    (t3bar (-1) 1 (-2) *** t3bar (-1) (-2) 2));
+
+              "tA3*tA3" >::
+	        (fun () ->
+	          eq
+                    (casimir_tA3tA3 1 2)
+                    (t_A 3 (-1) 1 (-2) *** t_A 3 (-1) (-2) 2));
+
+              "t_SAS*t_SAS" >::
+	        (fun () ->
+	          eq
+                    (const (LP.ints [(3,1); (-9,-1)]) *** delta_SAS 1 2)
+                    (t_SAS (-1) 1 (-2) *** t_SAS (-1) (-2) 2));
+
+              "t_ASA*t_ASA" >::
+	        (fun () ->
+	          eq
+                    (const (LP.ints [(3,1); (-9,-1)]) *** delta_ASA 1 2)
+                    (t_ASA (-1) 1 (-2) *** t_ASA (-1) (-2) 2));
+
+              "t10*t10" >::
+	        (fun () ->
+	          eq
+                    (casimir_t10t10 1 2)
+                    (t10 (-1) 1 (-2) *** t10 (-1) (-2) 2)) ]
+
+        let suite_casimir_long =
+          "Casimir operators" >:::
+
+            [ "t15*t15" >::
+	        (fun () ->
+	          eq
+                    (casimir_t15t15 1 2)
+                    (t15 (-1) 1 (-2) *** t15 (-1) (-2) 2)) ]
+
+(* \thocwmodulesubsection{Color Sums} *)
 
         let suite_colorsums =
           "(squared) color sums" >:::
 
             [ "gluon normalization" >::
 	        (fun () ->
-	          assert_equal_vertices
+	          eq
                     (delta8 1 2)
                     (delta8 1 (-1) *** gluon (-1) (-2) *** delta8 (-2) 2));
 
@@ -2039,7 +2982,7 @@ gives
                                gluon (-12) (-22);
                                gluon (-13) (-23) ]
                   and expected = ints [(2, 3); (-2, 1)] in
-	          assert_equal_vertices expected sum_ff);
+	          eq expected sum_ff);
 
               "d*d" >::
 	        (fun () ->
@@ -2050,7 +2993,7 @@ gives
                                gluon (-12) (-22);
                                gluon (-13) (-23) ]
                   and expected = ints [(2, 3); (-10, 1); (8, -1)] in
-	          assert_equal_vertices expected sum_dd);
+	          eq expected sum_dd);
 
               "f*d" >::
 	        (fun () ->
@@ -2060,7 +3003,7 @@ gives
                                gluon (-11) (-21);
                                gluon (-12) (-22);
                                gluon (-13) (-23) ] in
-	          assert_equal_vertices null sum_fd);
+	          assert_zero_vertex sum_fd);
 
               "Hgg" >::
 	        (fun () ->
@@ -2070,7 +3013,7 @@ gives
                                gluon (-11) (-21);
                                gluon (-12) (-22) ]
                   and expected = ints [(1, 2); (-1, 0)] in
-	          assert_equal_vertices expected sum_hgg) ]
+	          eq expected sum_hgg) ]
 
         let suite =
           "Color.SU3" >:::
@@ -2078,20 +3021,35 @@ gives
 	     suite_diff;
 	     suite_times;
 	     suite_normalization;
+	     suite_symmetrization;
 	     suite_ghosts;
-	     suite_loops;
+	     suite_propagators;
 	     suite_trace;
 	     suite_ff;
 	     suite_tf;
 	     suite_tt;
              suite_lie;
+             suite_ward;
              suite_jacobi;
 	     suite_casimir;
              suite_colorsums]
 
+        let suite_long =
+          "Color.SU3 long" >:::
+	    [suite_ward_long;
+             suite_jacobi_long;
+             suite_casimir_long]
+
       end
 
   end
+
+(* \thocwmodulesection{$\mathrm{U}(N_C)$} *)
+
+(* \begin{dubious}
+     This must not be used, because it has not yet been updated
+     to the correctly symmetrized version!
+   \end{dubious} *)
 
 module U3 : SU3 =
   struct
@@ -2101,17 +3059,21 @@ module U3 : SU3 =
 
     module B = Birdtracks
     type t = B.t
+    let canonicalize = B.canonicalize
     let to_string = B.to_string
     let pp = B.pp
     let trivial = B.trivial
     let is_null = B.is_null
     let null = B.null
-    let unit = B.unit
     let const = B.const
+    let one = B.one
     let two = B.two
+    let int = B.int
     let half = B.half
     let third = B.third
-    let nc = B.imag
+    let fraction = B.fraction
+    let nc = B.nc
+    let over_nc = B.over_nc
     let minus = B.minus
     let imag = B.imag
     let ints = B.ints
@@ -2120,14 +3082,14 @@ module U3 : SU3 =
     let scale = B.scale
     let times = B.times
     let multiply = B.multiply
-    let map = B.map
+    let relocate = B.relocate
     let fuse = B.fuse
     let f_of_rep = B.f_of_rep
     let d_of_rep = B.d_of_rep
     module Infix = B.Infix
 
     let delta3 i j =
-      [(LP.int 1, i ==> j)]
+      [(LP.int 1, j ==> i)]
 
     let delta8 a b =
       [(LP.int 1, a <=> b)]
@@ -2137,21 +3099,31 @@ module U3 : SU3 =
     let gluon a b =
       delta8 a b
 
-(* \begin{dubious}
-     Do we need to introduce an
-     index \emph{pair} for each sextet index?  Is that all?
-   \end{dubious} *)
+    let delta6 n m =
+      [ (LP.fraction 2, [(m, 0) >=>> (n, 0); (m, 1) >=>> (n, 1)]);
+        (LP.fraction 2, [(m, 0) >=>> (n, 1); (m, 1) >=>> (n, 0)]) ]
 
-    let sextet n m =
-      [ (LP.fraction 2, [(n, 0) >=>> (m, 0); (n, 1) >=>> (m, 1)]);
-        (LP.fraction 2, [(n, 0) >=>> (m, 1); (n, 1) >=>> (m, 0)]) ]
+    let triples =
+      [(0, 1, 2); (1, 2, 0); (2, 0, 1);
+       (2, 1, 0); (0, 2, 1); (1, 0, 2)]
 
-    let t a j i =
-      [ (LP.int 1, [i => a; a => j]) ]
+    let delta10 n m =
+      List.map
+        (fun (i, j, k) ->
+          (LP.fraction 6, [(m, 0) >=>> (n, i);
+                           (m, 1) >=>> (n, j);
+                           (m, 2) >=>> (n, k)]))
+        triples
+
+    let t a i j =
+      [ (LP.int 1, [j => a; a => i]) ]
 
     let f a b c =
       [ (LP.imag ( 1), A.cycle [a; b; c]);
         (LP.imag (-1), A.cycle [a; c; b]) ]
+
+    let t8 a b c =
+      Birdtracks.Infix.( minus *** imag *** f a b c )
 
     let d a b c =
       [ (LP.int 1, A.cycle [a; b; c]);
@@ -2169,17 +3141,16 @@ module U3 : SU3 =
     let epsilonbar i j k = incomplete "epsilon-tensor"
 
     let t6 a m n =
-      experimental "t6-tensor";
-      [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0); (n, 1) >=>> (m, 1)]) ]
-
-   (* \begin{dubious}
-        How much symmetrization is required?
-      \end{dubious} *)
-
-    let t6_symmetrized a m n =
-      experimental "t6-tensor";
       [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0); (n, 1) >=>> (m, 1)]);
         (LP.int ( 1), [(n, 1) >=> a; a =>> (m, 0); (n, 0) >=>> (m, 1)]) ]
+
+    let t10 a m n =
+      [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0);
+                       (n, 1) >=>> (m, 1);
+                       (n, 2) >=>> (m, 2)]);
+        (LP.int (-1), [(n, 0) >=>> (m, 0);
+                       (n, 1) >=>> (m, 1);
+                       (n, 2) >=>> (m, 2)]) ]
 
     let k6 m i j =
       experimental "k6-tensor";
@@ -2190,6 +3161,12 @@ module U3 : SU3 =
       experimental "k6-tensor";
       [ (LP.int 1, [i =>> (m, 0); j =>> (m, 1)]);
         (LP.int 1, [i =>> (m, 1); j =>> (m, 0)]) ]
+
+    let delta_of_tableau t i j =
+      incomplete "delta_of_tableau"
+
+    let t_of_tableau tableau a k l =
+      incomplete "t_of_tableau"
 
     (* \thocwmodulesubsection{Unit Tests} *)
 
@@ -2204,7 +3181,7 @@ module U3 : SU3 =
           "Lie algebra relations" >:::
 
             [ "if = tr(t[t,t])" >::
-	        (fun () -> assert_equal_vertices (f 1 2 3) (f_of_rep t 1 2 3)) ]
+	        (fun () -> eq (f 1 2 3) (f_of_rep t 1 2 3)) ]
 
         (* $N_C=N_C^2/N_C$ *)
         let cf = LP.ints [(1, 1)]
@@ -2217,14 +3194,16 @@ module U3 : SU3 =
 
             [ "t*t" >::
 	        (fun () ->
-	          assert_equal_vertices
-                    (casimir_tt 2 1)
-                    (t (-1) (-2) 2 *** t (-1) 1 (-2))) ]
+	          eq (casimir_tt 2 1) (t (-1) (-2) 2 *** t (-1) 1 (-2))) ]
 
         let suite =
           "Color.U3" >:::
 	    [suite_lie;
              suite_casimir]
+
+        let suite_long =
+          "Color.U3 long" >:::
+	    []
 
       end
 

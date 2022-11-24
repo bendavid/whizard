@@ -25,6 +25,7 @@
 module type Test =
   sig
     val suite : OUnit.test
+    val suite_long : OUnit.test
   end
 
 (* \thocwmodulesection{Quantum Numbers} *)
@@ -85,7 +86,7 @@ module Flow : Flow
 (* \thocwmodulesection{Vertex Color Flows} *)
 
 (* \begin{dubious}
-     The following is (stipp work-in-progress) infrastructure for
+     The following is (still work-in-progress) infrastructure for
      translating UFO style color factors into color flows.
    \end{dubious} *)
 
@@ -95,12 +96,22 @@ module Flow : Flow
      some complexity in [UFO] or here.
    \end{dubious} *)
 
+(* The datatypes [Arrow.free] and [Arrow.factor] will be used as
+   building blocks for [Birdtracks.t] below. *)
 module type Arrow =
   sig
 
-    (* Endpoints can be the the tip or tail of an arrow or a ghost.
-       We use the aliases for illustration. *)
+    (* For fundamental and adjoint representations, the endpoints
+       of arrows are uniquely specified by a vertex (which will
+       be represented by a number).  For representations with more
+       than one outgoing or incoming arrow, we need an additional index.
+       This is abrcated in the [endpoint] type. *)
     type endpoint
+
+    (* Endpoints can be the the tip or tail of an arrow or a ghost.
+       Currently, we use the types for illustration only, but we
+       might eventually try to make them abstract for additional
+       safety.. *)
     type tip = endpoint
     type tail = endpoint
     type ghost = endpoint
@@ -117,7 +128,8 @@ module type Arrow =
 
     (* {}\ldots and we distuish [free] arrows that must not contain
        summation indices from [factor]s that may.  Indices are
-       opaque. *)
+       opaque.  [('tail, 'tip, 'ghost) t] is polymorphic so that
+       we can use richer ['tail], ['tip] and ['ghost] in [factor]. *)
     type free = (tail, tip, ghost) t
     type factor
 
@@ -125,11 +137,17 @@ module type Arrow =
     val free_to_string : free -> string
     val factor_to_string : factor -> string
 
-    (* Change the [endpoint]s in an arrow. *)
+    (* Change the [endpoint]s in a [free] arrow. *)
     val map : (endpoint -> endpoint) -> free -> free
 
-    (* Turn the [endpoints] satisfying the predicate into a
-       left or right hand side summation index. *)
+    (* Turn the [endpoint]s satisfying the predicate into a
+       left or right hand side summation index.  Left and right
+       refer to the two factors in a product and
+       we must only match arrows with [endpoint]s in both
+       factors, not double lines on either side.
+       Typically, the predicate will be set up to select only the
+       summation indices that appear on both sides.*)
+    
     val to_left_factor : (endpoint -> bool) -> free -> factor
     val to_right_factor : (endpoint -> bool) -> free -> factor
 
@@ -139,7 +157,7 @@ module type Arrow =
     val of_factor : factor -> free
     val is_free : factor -> bool
 
-    (* Return all the endpoints of the array that have a [position]
+    (* Return all the endpoints of the arrow that have a [position]
        encoded as a negative integer.  These are treated as summation
        indices in our applications. *)
     val negatives : free -> endpoint list
@@ -155,6 +173,13 @@ module type Arrow =
       | Mismatch (* ghost meets arrow: error *)
       | No_Match (* nothing to be done *)
     val merge : factor -> factor -> merge
+
+(* Break up an arrow [tee a (i => j) -> [i => a; a => j]], i.\,e.~insert
+   a gluon. *)
+    val tee : int -> free -> free list
+
+(* [dir i j arrow] returns the direction of the arrow relative to [j => i] *)
+    val dir : int -> int -> free -> int
 
 (* It's intuitive to use infix operators to construct the lines. *)
     val single : endpoint -> endpoint -> free
@@ -177,11 +202,12 @@ module type Arrow =
       val (=>>) : int -> int * int -> free
       val (>=>>) : int * int -> int * int -> free
 
-      (* [ghost i] [?? i] creates a ghost at [i]. *)
+      (* [?? i] creates a ghost at [i]. *)
       val (??) : int -> free
 
       (* NB: I wanted to use [~~] instead of [??], but ocamlweb can't handle
          operators starting with [~] in the index properly. *)
+
     end
 
     (* [chain [1;2;3]] is a shorthand for [[1 => 2; 2 => 3]] and
@@ -200,6 +226,8 @@ module type Arrow =
 
 module Arrow : Arrow
 
+(* Possible color flows for a single propagator, as currently
+   supported by WHIZARD. *)
 module type Propagator =
   sig
     type cf_in = int
@@ -210,9 +238,16 @@ module type Propagator =
 
 module Propagator : Propagator
 
+(* Implement birdtracks operations as generally as possible.
+   Below, the signature will be extended with group specific
+   generators for $\mathrm{SU}(N_C)$ and $\mathrm{U}(N_C)$ and
+   even $N_C=3$. *)
 module type Birdtracks =
   sig
     type t
+
+    (* Strip out redundancies. *)
+    val canonicalize : t -> t
 
     (* Debugging, logging, etc. *)
     val to_string : t -> string
@@ -227,14 +262,17 @@ module type Birdtracks =
        (cf.~[Algebra.Laurent] in~$N_C$ with complex rational
        coefficients. *)
     val const : Algebra.Laurent.t -> t
-    val unit : t
-    val null : t
-    val two : t
-    val half : t
-    val third : t
-    val minus : t
-    val nc : t
-    val imag : t
+    val null : t (* $0$ *)
+    val one : t (* $1$ *)
+    val two : t (* $2$ *)
+    val half : t (* $1/2$ *)
+    val third : t (* $1/3$ *)
+    val minus : t (* $-1$ *)
+    val int : int -> t (* $n$ *)
+    val fraction : int -> t (* $1/n$ *)
+    val nc : t (* $N_C$ *)
+    val over_nc : t (* $1/N_C$ *)
+    val imag : t (* $\ii$ *)
 
     (* Shorthand: $\{(c_i,p_i)\}_i\to \sum_i c_i (N_C)^{p_i}$*)
     val ints : (int * int) list -> t
@@ -245,17 +283,41 @@ module type Birdtracks =
     val diff : t -> t -> t
     val times : t -> t -> t
     val multiply : t list -> t
+
+    (* For convenience, here are infix versions of the above operations. *)
     module Infix : sig
       val ( +++ ) : t -> t -> t
       val ( --- ) : t -> t -> t
       val ( *** ) : t -> t -> t
     end
 
+   (* We can compute the $f_{abc}$ and $d_{abc}$ invariant tensors
+      from the generators of an arbitrary representation:
+      \begin{subequations}
+      \begin{align}
+       f_{a_1a_2a_3} &=
+        - \ii \tr\left(T_{a_1}\left\lbrack T_{a_2},T_{a_3}\right\rbrack_-\right)
+          = - \ii \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+            + \ii \tr\left(T_{a_1}T_{a_3}T_{a_2}\right) \\
+       d_{a_1a_2a_3} &=
+         \tr\left(T_{a_1}\left\lbrack T_{a_2},T_{a_3}\right\rbrack_+\right)
+          =   \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+            + \tr\left(T_{a_1}T_{a_3}T_{a_2}\right)\,
+      \end{align}
+      \end{subequations}
+      assuming the normalization $ \tr(T_aT_b) = \delta_{ab}$.
+
+      NB: this uses the summation indices $-1$, $-2$ and $-3$.  Therefore
+      it \emph{must not} appear unevaluated more than once in a product! *)
     val f_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
     val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
 
-    val map : (int -> int) -> t -> t
+    (* Rename the indices of endpoints in a birdtrack. *)
+    val relocate : (int -> int) -> t -> t
 
+    (* [fuse nc vertex children] use the color flows in the [vertex]
+       to combine the color flows in the incoming [children] and return
+       the color flows for outgoing particle together with their weights. *)
     val fuse : int -> t -> Propagator.t list -> (Algebra.QC.t * Propagator.t) list
 
     module Test : Test
@@ -273,17 +335,28 @@ module type SU3 =
     val delta8 : int -> int -> t
     val delta8_loop : int -> int -> t
     val gluon : int -> int -> t
+    val delta6 : int -> int -> t
+    val delta10 : int -> int -> t
     val t : int -> int -> int -> t
     val f : int -> int -> int -> t
     val d : int -> int -> int -> t
     val epsilon : int -> int -> int -> t
     val epsilonbar : int -> int -> int -> t
+    val t8 : int -> int -> int -> t
     val t6 : int -> int -> int -> t
+    val t10 : int -> int -> int -> t
     val k6 : int -> int -> int -> t
     val k6bar : int -> int -> int -> t
+    val delta_of_tableau : int Young.tableau -> int -> int -> t
+    val t_of_tableau : int Young.tableau -> int -> int -> int -> t
   end
 
 module SU3 : SU3
+module Vertex : SU3
+
+(* \begin{dubious}
+     This must not be used, because it has not yet been updated
+     to the correctly symmetrized version!
+   \end{dubious} *)
 module U3 : SU3
 
-module Vertex : SU3

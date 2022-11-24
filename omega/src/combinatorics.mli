@@ -144,6 +144,7 @@ val permute_signed : 'a seq -> (int * 'a seq) list
 val permute_even : 'a seq -> 'a seq list
 val permute_odd : 'a seq -> 'a seq list
 val permute_cyclic : 'a seq -> 'a seq list
+val permute_cyclic_signed : 'a seq -> (int * 'a seq) list
 
 (* \thocwmodulesubsection{Tensor Products of Permutations} *)
 

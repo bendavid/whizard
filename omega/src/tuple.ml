@@ -480,7 +480,7 @@ module Nary (A : sig val max_arity : unit -> int end) =
       let ma = truncated_arity ?truncate () in
       if ma > 0 then
         List.fold_right
-          (fun n -> product_fold f (l, ThoList.clone (pred n) l))
+          (fun n -> product_fold f (l, ThoList.clone l (pred n)))
           (ThoList.range 2 ma) init
       else
         raise No_termination

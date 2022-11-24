@@ -298,13 +298,13 @@ let rec factorize l =
   in
   List.map (fun (x, ys) -> (x, List.rev ys)) (factorize' [] l)
     
-let rec clone n x =
+let rec clone x n =
   if n < 0 then
     invalid_arg "ThoList.clone"
   else if n = 0 then
     []
   else
-    x :: clone (pred n) x
+    x :: clone x (pred n)
 
 let interleave f list =
   let rec interleave' rev_head tail =

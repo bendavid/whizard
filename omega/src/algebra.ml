@@ -316,8 +316,8 @@ module type Laurent =
     type c
     type t
     val null : t
-    val unit : t
     val is_null : t -> bool
+    val unit : t
     val atom : c -> int -> t
     val const : c -> t
     val scale : c -> t -> t
@@ -328,8 +328,8 @@ module type Laurent =
     val product : t list -> t
     val pow : int -> t -> t
     val eval : c -> t -> c
-    val to_string : string -> t -> string
     val compare : t -> t -> int
+    val to_string : string -> t -> string
     val pp : Format.formatter -> t -> unit
     module Test : Test
   end
@@ -353,7 +353,7 @@ module Laurent : Laurent with type c = QC.t =
     type t = c IMap.t
 
     let null = IMap.empty
-    let is_null l = IMap.is_empty l
+    let is_null l = IMap.for_all (fun _ -> QC.is_null) l
 
     let atom qc n =
       if qc = QC.null then
@@ -801,11 +801,3 @@ module Make_Linear (C : Ring) : Linear with module C = C =
                 sum []) ^ ")"
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

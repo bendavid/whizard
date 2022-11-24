@@ -2087,7 +2087,7 @@ module Model =
     let verbatim_higgs_glue = ref false
 
     let translate_color_atom model p = function
-      | UFOx.Color_Atom.Identity (i, j) -> Color.Vertex.delta3 i j
+      | UFOx.Color_Atom.Identity (i, j) -> Color.Vertex.delta3 j i
       | UFOx.Color_Atom.Identity8 (a, b) ->
          if !verbatim_higgs_glue then
            Color.Vertex.delta8 a b
@@ -2104,7 +2104,7 @@ module Model =
 
     let translate_color_term model p = function
       | [], q ->
-         Color.Vertex.scale q Color.Vertex.unit
+         Color.Vertex.scale q Color.Vertex.one
       | [atom], q ->
          Color.Vertex.scale q (translate_color_atom model p atom)
       | atoms, q ->

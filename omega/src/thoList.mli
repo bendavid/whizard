@@ -110,8 +110,8 @@ val flatmap : ('a -> 'b list) -> 'a list -> 'b list
    It is tail recursive. *)
 val rev_flatmap : ('a -> 'b list) -> 'a list -> 'b list
 
-(* [clone n a] builds a list from [n] copies of the element [a]. *)
-val clone : int -> 'a -> 'a list
+(* [clone a n] builds a list from [n] copies of the element [a]. *)
+val clone : 'a -> int -> 'a list
 
 (* [multiply n l] concatenates [n] copies of the list [l]. *)
 val multiply : int -> 'a list -> 'a list

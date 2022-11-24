@@ -373,12 +373,27 @@ let permute_odd l =
    \end{dubious} *)
 
 let permute_cyclic l =
-  let rec permute_cyclic' acc l1 = function
+  let rec permute_cyclic' acc before = function
     | [] -> List.rev acc
-    | x :: rest as l2 ->
-       permute_cyclic' ((l2 @ List.rev l1) :: acc) (x :: l1) rest
+    | x :: rest as after ->
+       permute_cyclic' ((after @ List.rev before) :: acc) (x :: before) rest
   in
   permute_cyclic' [] [] l
+
+(* Algorithm: toggle the signs and at the end map all signs to $+1$,
+   iff the last sign is positive, i.\,e.~there's an odd number of elements. *)
+let permute_cyclic_signed l =
+  let rec permute_cyclic_signed' eps acc before = function
+    | [] ->
+       if eps > 0 then
+         List.rev_map (fun (_, p) -> (1, p)) acc
+       else
+         List.rev acc
+    | x :: rest as after ->
+       let eps' = - eps in
+       permute_cyclic_signed' eps' ((eps', after @ List.rev before) :: acc) (x :: before) rest
+  in
+  permute_cyclic_signed' (-1) [] [] l
 
 (* \thocwmodulesubsection{Tensor Products of Permutations} *)
 
@@ -504,7 +519,17 @@ module Test =
 	    (fun () ->
 	      assert_equal_perms
                 [[1;2;3;4]; [2;3;4;1]; [3;4;1;2]; [4;1;2;3]]
-                (permute_cyclic [1;2;3;4]))]
+                (permute_cyclic [1;2;3;4]));
+          "cyclic [1;2;3] signed" >::
+	    (fun () ->
+	      assert_equal
+                [(1,[1;2;3]); (1,[2;3;1]); (1,[3;1;2])]
+                (permute_cyclic_signed [1;2;3]));
+          "cyclic [1;2;3;4] signed" >::
+	    (fun () ->
+	      assert_equal
+                [(1,[1;2;3;4]); (-1,[2;3;4;1]); (1,[3;4;1;2]); (-1,[4;1;2;3])]
+                (permute_cyclic_signed [1;2;3;4]))]
 
     let sort_signed_not_unique =
       "not unique" >::

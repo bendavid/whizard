@@ -87,7 +87,7 @@ let list_opt op ll =
     ll []
 
 let power n l =
-  list (fun x -> x) (ThoList.clone n l)
+  list (fun x -> x) (ThoList.clone l n)
 
 (* Reshuffling lists: 
    \begin{equation}

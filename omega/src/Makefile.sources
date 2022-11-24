@@ -101,7 +101,7 @@ OMEGA_CORE_ML_PART1 = \
     thoString.ml sets.ml thoList.ml thoArray.ml bundle.ml powSet.ml \
     thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml \
-    permutation.ml partition.ml tree.ml \
+    permutation.ml partition.ml tree.ml young.ml \
     tuple.ml topology.ml DAG.ml momentum.ml phasespace.ml \
     charges.ml color.ml modeltools.ml whizard.ml dirac.ml
 
