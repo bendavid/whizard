@@ -135,5 +135,11 @@ val num_cells_tableau : 'a tableau -> int
 val transpose_tableau : 'a tableau -> 'a tableau
 
 (* \thocwmodulesection{Unit Tests} *)
-module Test : sig val suite : OUnit.test val suite_long : OUnit.test end
+module type Test =
+  sig
+    val suite : OUnit.test
+    val suite_long : OUnit.test
+  end
+
+module Test : Test
 

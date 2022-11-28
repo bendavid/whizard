@@ -191,11 +191,3 @@ val complement : 'a list -> 'a list -> 'a list
 val to_string : ('a -> string) -> 'a list -> string
 
 module Test : sig val suite : OUnit.test end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -26,8 +26,11 @@ let pcompare = compare
 
 type diagram = int list
 type 'a tableau = 'a list list
+
+(* Not exposed.  Just for documentation. *)
 type 'a table = 'a option array array
 
+(* The following three are candidates for [ThoList]. *)
 let rec sum = function
   | [] -> 0
   | n :: rest -> n + sum rest
@@ -36,6 +39,8 @@ let rec product = function
   | [] -> 1
   | n :: rest -> n * product rest
 
+(* Test a predicate for each pair of consecutive elements of a list.
+   Trivially true for empty and one-element lists. *)
 let rec for_all_pairs predicate = function
   | [] | [_] -> true
   | a1 :: (a2 :: _ as a_list) ->
@@ -57,14 +62,6 @@ let diagram_rows d =
 let diagram_columns = function
   | [] -> 0
   | nc :: _ -> nc
-
-let repeat n x =
-  let rec repeat' i =
-    if i >= n then
-      []
-    else
-      x :: repeat' (succ i) in
-  repeat' 0
 
 let take_column d =
   let rec take_column' len acc = function
@@ -225,6 +222,12 @@ let normalization d =
     product (List.map Combinatorics.factorial (d @ transpose_diagram d))
   and den = hook_lengths_product d in
   (num, den)
+
+module type Test =
+  sig
+    val suite : OUnit.test
+    val suite_long : OUnit.test
+  end
 
 module Test =
   struct
