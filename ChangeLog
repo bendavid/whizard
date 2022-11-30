@@ -4,12 +4,30 @@ Use svn log to see detailed changes.
 
 	Version 3.0.3+
 
+2022-11-30
+	O'Mega support for general SU(N) color representations
+
+2022-11-07
+	Modernize configure checks for Python versions v3.10+
+
 2022-10-21
         General POWHEG matching
           with optional NLO real phase space partitioning
 
+2022-09-26
+	Bug fix: accept negative scale values in SLHA block header
+
+2022-08-08
+	Numerical stability of testsuite for Apple M1 processors
+
+2022-08-07
+	Technically allow for muons as CIRCE2 beam spectra
+
 2022-06-22
         POWHEG matching for Drell-Yan and similar processes
+
+2022-06-12
+	Add unit tests for Lorentz and phase-space modules
 
 2022-05-09
 	Massive eikonals: Numeric robustness at ultrahigh energies
