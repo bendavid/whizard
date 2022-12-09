@@ -2096,8 +2096,8 @@ module Model =
       | UFOx.Color_Atom.T (a, i, j) -> Color.Vertex.t a i j
       | UFOx.Color_Atom.F (a, b, c) -> Color.Vertex.f a b c
       | UFOx.Color_Atom.D (a, b, c) -> Color.Vertex.d a b c
-      | UFOx.Color_Atom.Epsilon (i, j, k) -> Color.Vertex.epsilon i j k
-      | UFOx.Color_Atom.EpsilonBar (i, j, k) -> Color.Vertex.epsilonbar i j k
+      | UFOx.Color_Atom.Epsilon (i, j, k) -> Color.Vertex.epsilon [i; j; k]
+      | UFOx.Color_Atom.EpsilonBar (i, j, k) -> Color.Vertex.epsilon_bar [i; j; k]
       | UFOx.Color_Atom.T6 (a, i, j) -> Color.Vertex.t6 a i j
       | UFOx.Color_Atom.K6 (i, j, k) -> Color.Vertex.k6 i j k
       | UFOx.Color_Atom.K6Bar (i, j, k) -> Color.Vertex.k6bar i j k

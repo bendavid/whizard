@@ -73,12 +73,12 @@ let take_column d =
          take_column' (succ len) (pred cols :: acc) rest in
   take_column' 0 [] d
 
-let transpose_diagram_new d =
-  let rec transpose_diagram' rows =
+let conjugate_diagram_new d =
+  let rec conjugate_diagram' rows =
     match take_column rows with
     | n, [] -> [n]
-    | n, rest -> n :: transpose_diagram' rest in
-  transpose_diagram' d
+    | n, rest -> n :: conjugate_diagram' rest in
+  conjugate_diagram' d
 
 let tableau_rows t =
   List.length t
@@ -140,18 +140,18 @@ let list_of_array_row a =
 let tableau_of_array a =
   Array.fold_right (fun row acc -> list_of_array_row row :: acc) a []
 
-let transpose_tableau t =
+let conjugate_tableau t =
   array_of_tableau t |> transpose_array |> tableau_of_array
 
-let transpose_diagram d =
-  tableau_of_diagram () d |> transpose_tableau |> diagram_of_tableau
+let conjugate_diagram d =
+  tableau_of_diagram () d |> conjugate_tableau |> diagram_of_tableau
 
 let valid_tableau t =
   valid_diagram (diagram_of_tableau t)
 
 let semistandard_tableau t =
   let rows = t
-  and columns = transpose_tableau t in
+  and columns = conjugate_tableau t in
   valid_tableau t
   && List.for_all non_decreasing rows
   && List.for_all increasing columns
@@ -197,7 +197,7 @@ let hook_lengths_product d =
     0
   else
     let cols = Array.of_list d
-    and rows = Array.of_list (transpose_diagram d) in
+    and rows = Array.of_list (conjugate_diagram d) in
     let n = ref 1 in
     for ir = 0 to pred nr do
       for ic = 0 to pred cols.(ir) do
@@ -206,20 +206,20 @@ let hook_lengths_product d =
     done;
     !n
 
-let dim_rep_Sn d =
+let num_standard_tableaux d =
   let num = Combinatorics.factorial (num_cells_diagram d)
   and den = hook_lengths_product d in
   if num mod den <> 0 then
-    failwith "Young.dim_rep_Sn"
+    failwith "Young.num_standard_tableaux"
   else
     num / den
 
-(* Note that [hook_lengths_product] calls [transpose_diagram]
+(* Note that [hook_lengths_product] calls [conjugate_diagram]
    and this calls it again.
    This is wasteful, but probably no big deal for our applications. *)
 let normalization d =
   let num =
-    product (List.map Combinatorics.factorial (d @ transpose_diagram d))
+    product (List.map Combinatorics.factorial (d @ conjugate_diagram d))
   and den = hook_lengths_product d in
   (num, den)
 
@@ -251,11 +251,11 @@ module Test =
         [ "[4;3;2]" >::
 	    (fun () -> assert_equal 2160 (hook_lengths_product [4; 3; 2])) ]
 
-    let suite_dim_rep_Sn =
-      "dim_rep_Sn" >:::
+    let suite_num_standard_tableaux =
+      "num_standard_tableaux" >:::
 
         [ "[4;3;2]" >::
-	    (fun () -> assert_equal 168 (dim_rep_Sn [4; 3; 2])) ]
+	    (fun () -> assert_equal 168 (num_standard_tableaux [4; 3; 2])) ]
 
     let suite_normalization =
       "normalization" >:::
@@ -266,7 +266,7 @@ module Test =
     let suite =
       "Young" >:::
 	[suite_hook_lengths_product;
-         suite_dim_rep_Sn;
+         suite_num_standard_tableaux;
          suite_normalization]
 
     let suite_long =

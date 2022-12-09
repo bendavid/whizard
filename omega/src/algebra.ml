@@ -321,6 +321,7 @@ module type Laurent =
     val atom : c -> int -> t
     val const : c -> t
     val scale : c -> t -> t
+    val neg : t -> t
     val add : t -> t -> t
     val diff : t -> t -> t
     val sum : t list -> t
@@ -385,6 +386,9 @@ module Laurent : Laurent with type c = QC.t =
 
     let scale qc l =
       IMap.map (QC.mul qc) l
+
+    let neg l =
+      IMap.map QC.neg l
 
     let diff l1 l2 =
       add l1 (scale qc_minus_one l2)

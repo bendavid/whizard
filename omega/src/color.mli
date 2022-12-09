@@ -125,6 +125,8 @@ module type Arrow =
     type ('tail, 'tip, 'ghost) t =
       | Arrow of 'tail * 'tip
       | Ghost of 'ghost
+      | Epsilon of 'tip list
+      | Epsilon_bar of 'tail list
 
     (* {}\ldots and we distuish [free] arrows that must not contain
        summation indices from [factor]s that may.  Indices are
@@ -165,9 +167,17 @@ module type Arrow =
     (* We will need to test whether an arrow represents a ghost. *)
     val is_ghost : free -> bool
 
-    (* Merging two arrows can give a variety of results: *)
+    (* An arrow looping back to itself. *)
+    val is_tadpole : factor -> bool
+
+    (* Merging two arrows can give a variety of results.  Note that
+       we return the determinant resulting from merging an~$\epsilon$
+       and an~$\bar\epsilon$ rather than the list of [Arrow]s
+       with permuted tips to avoid having to pass the relative signs.
+       These will be handled by [Birdtracks] below. *)
     type merge =
       | Match of factor  (* a tip fits the other's tail: make one arrow out of two *)
+      | Determinant of factor list list * factor list list (* even and odd parts of $\bar\epsilon_{kj_1j_2\ldots}\epsilon_{ki_1i_2\ldots}$ *)
       | Ghost_Match (* two matching ghosts *)
       | Loop_Match (* both tips fit both tails: drop the arrows *)
       | Mismatch (* ghost meets arrow: error *)
@@ -175,10 +185,13 @@ module type Arrow =
     val merge : factor -> factor -> merge
 
 (* Break up an arrow [tee a (i => j) -> [i => a; a => j]], i.\,e.~insert
-   a gluon. *)
+   a gluon. Returns an empty list for a ghost and raises an exception
+   for~$\epsilon$ and~$\bar\epsilon$. *)
     val tee : int -> free -> free list
 
-(* [dir i j arrow] returns the direction of the arrow relative to [j => i] *)
+(* [dir i j arrow] returns the direction of the arrow relative to [j => i].
+   Returns 0 for a ghost and raises an exception for~$\epsilon$
+   and~$\bar\epsilon$. *)
     val dir : int -> int -> free -> int
 
 (* It's intuitive to use infix operators to construct the lines. *)
@@ -209,6 +222,9 @@ module type Arrow =
          operators starting with [~] in the index properly. *)
 
     end
+
+    val epsilon : int list -> free
+    val epsilon_bar : int list -> free
 
     (* [chain [1;2;3]] is a shorthand for [[1 => 2; 2 => 3]] and
        [cycle [1;2;3]] for [[1 => 2; 2 => 3; 3 => 1]].  Other lists
@@ -340,8 +356,8 @@ module type SU3 =
     val t : int -> int -> int -> t
     val f : int -> int -> int -> t
     val d : int -> int -> int -> t
-    val epsilon : int -> int -> int -> t
-    val epsilonbar : int -> int -> int -> t
+    val epsilon : int list -> t
+    val epsilon_bar : int list -> t
     val t8 : int -> int -> int -> t
     val t6 : int -> int -> int -> t
     val t10 : int -> int -> int -> t

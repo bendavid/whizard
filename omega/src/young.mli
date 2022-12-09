@@ -51,11 +51,11 @@ val valid_diagram : diagram -> bool
 (* Count the number of cells. *)
 val num_cells_diagram : diagram -> int
 
-(* Transpose a diagram:
+(* Conjugate a diagram:
    \begin{equation}
      \ydiagram{5,4,4,2} \mapsto \ydiagram{4,4,3,3,1}
    \end{equation} *)
-val transpose_diagram : diagram -> diagram
+val conjugate_diagram : diagram -> diagram
 
 (* The product of all the ``hook lengths'' in the diagram, e.\,g.
    \begin{equation}
@@ -68,13 +68,15 @@ val transpose_diagram : diagram -> diagram
    represent a Young tableau! *)
 val hook_lengths_product : diagram -> int
 
-(* Dimension of the representation of~$S_n$ described by the diagram
+(* Number of standard tableaux corresponding to the diagram.
+   Also, the dimension of the representation of~$S_n$ described
+   by this diagram
    \begin{equation}
      d = \frac{n!}{\prod_{i=1}^n h_i}
    \end{equation}
    with~$n$ the number of cells and~$h_i$ the hook length of
    the $i$th cell. *)
-val dim_rep_Sn : diagram -> int
+val num_standard_tableaux : diagram -> int
 
 (* Normalization of the projector on the representation of $\mathrm{GL(N)}$
    described by the diagram
@@ -111,7 +113,7 @@ val valid_tableau : 'a tableau -> bool
 
 (* A tableau is called \textit{semistandard}, iff the entries
    don't increase along rows and strictly increase along columns.
-   Therefore, the transpose of a semistandard tableau is \emph{not}
+   Therefore, the conjugate of a semistandard tableau is \emph{not}
    necessarily semistandard. *)
 val semistandard_tableau : 'a tableau -> bool
 
@@ -120,19 +122,19 @@ val semistandard_tableau : 'a tableau -> bool
    If the optional [offset] is specified, it must match the smallest
    of these numbers.  Some authors expect [offset=1], but we want
    to be able to start from 0 as well.
-   The transpose of a standard tableau is again a standard tableau. *)
+   The conjugate of a standard tableau is again a standard tableau. *)
 val standard_tableau : ?offset:int -> int tableau -> bool
 
 (* The contents of the cells and their number. *)
 val cells_tableau : 'a tableau -> 'a list
 val num_cells_tableau : 'a tableau -> int
 
-(* Transpose a Young tableau
+(* Conjugate a Young tableau
    \begin{equation}
      \ytableaushort{023,14}
      \mapsto \ytableaushort{01,24,3}
    \end{equation} *)
-val transpose_tableau : 'a tableau -> 'a tableau
+val conjugate_tableau : 'a tableau -> 'a tableau
 
 (* \thocwmodulesection{Unit Tests} *)
 module type Test =

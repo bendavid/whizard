@@ -150,6 +150,7 @@ module type Laurent =
 
     (* Elementary arithmetic *)
     val scale : c -> t -> t
+    val neg : t -> t
     val add : t -> t -> t
     val diff : t -> t -> t
     val sum : t list -> t
