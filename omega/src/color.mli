@@ -170,14 +170,30 @@ module type Arrow =
     (* An arrow looping back to itself. *)
     val is_tadpole : factor -> bool
 
-    (* Merging two arrows can give a variety of results.  Note that
-       we return the determinant resulting from merging an~$\epsilon$
-       and an~$\bar\epsilon$ rather than the list of [Arrow]s
-       with permuted tips to avoid having to pass the relative signs.
-       These will be handled by [Birdtracks] below. *)
+    (* An $\epsilon$ or an $\bar\epsilon$ *)
+    val is_epsilon : factor -> bool
+
+(* If [arrow] is an~$\epsilon$ (or $\bar\epsilon$) and [arrows] contains
+   an~$\bar\epsilon$ (or $\epsilon$), use
+   \begin{equation}
+      \forall n, N \in\mathbf{N}, 2\le n \le N:\;
+      \epsilon_{i_1i_2\cdots i_n} \bar\epsilon^{j_1j_2\cdots j_n}
+        = \sum_{\sigma\in S_n} (-1)^{\varepsilon(\sigma)}
+            \delta_{i_1}^{\sigma(j_1)} 
+            \delta_{i_2}^{\sigma(j_2)} 
+            \cdots
+            \delta_{i_n}^{\sigma(j_n)}\,,
+   \end{equation}
+   where~$N=\delta_i^i$ is the dimension, to expand the pair into two lists of
+   list of arrows: the first corresponding to the even permutations, the
+   second to the odd ones.  In addition, return the remaining arrows. *)
+    val match_epsilon : factor -> factor list -> (factor list list * factor list list * factor list) option
+
+    (* Merging two arrows can give a variety of results.
+       NB: $\epsilon$-$\bar\epsilon$ pairs are assumed to have been
+       already expanded by [match_epsilon]. *)
     type merge =
       | Match of factor  (* a tip fits the other's tail: make one arrow out of two *)
-      | Determinant of factor list list * factor list list (* even and odd parts of $\bar\epsilon_{kj_1j_2\ldots}\epsilon_{ki_1i_2\ldots}$ *)
       | Ghost_Match (* two matching ghosts *)
       | Loop_Match (* both tips fit both tails: drop the arrows *)
       | Mismatch (* ghost meets arrow: error *)

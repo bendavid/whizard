@@ -660,9 +660,10 @@ module type Arrow =
     val negatives : free -> endpoint list
     val is_ghost : free -> bool
     val is_tadpole : factor -> bool
+    val is_epsilon : factor -> bool
+    val match_epsilon : factor -> factor list -> (factor list list * factor list list * factor list) option
     type merge =
       | Match of factor
-      | Determinant of factor list list * factor list list
       | Ghost_Match
       | Loop_Match
       | Mismatch
@@ -820,6 +821,10 @@ module Arrow : Arrow =
       | Arrow _ -> false
       | Epsilon _ | Epsilon_bar _ -> false
                  
+    let is_epsilon = function
+      | Epsilon _ | Epsilon_bar _ -> true
+      | Ghost _ | Arrow _ -> false
+
     let single tail tip =
       Arrow (tail, tip)
 
@@ -902,7 +907,6 @@ module Arrow : Arrow =
 
     type merge =
       | Match of factor
-      | Determinant of factor list list * factor list list
       | Ghost_Match
       | Loop_Match
       | Mismatch
@@ -910,8 +914,9 @@ module Arrow : Arrow =
 
 (* When computing
     \begin{equation}
+    \label{eq:epsilon*epsilonbar-single-contraction-N=n}
       \epsilon_{ki_1i_2\cdots i_n} \bar\epsilon^{kj_1j_2\cdots j_n}
-        = \sum_{\sigma} (-1)^{\epsilon(\sigma)}
+        = \sum_{\sigma\in S_n} (-1)^{\epsilon(\sigma)}
             \delta_{i_1}^{\sigma(j_1)} 
             \delta_{i_2}^{\sigma(j_2)} 
             \cdots
@@ -922,9 +927,9 @@ module Arrow : Arrow =
     $\epsilon$-tensors with an odd number of indices, corresponding
     to $n$ even and odd otherwise. *)
 
-    let fuse_epsilons tails tips =
+    let fuse_epsilons1 tails tips =
       match take_first_matching_pair_opt ~eq:index_matches tails tips with
-      | None -> No_Match
+      | None -> None
       | Some ((rev_tails_head, tails_tail), (rev_tips_head, tips_tail)) ->
          let tails = tails_tail @ List.rev rev_tails_head
          and tips = tips_tail @ List.rev rev_tips_head  in
@@ -933,7 +938,7 @@ module Arrow : Arrow =
          if num_tails <> num_tips then
            invalid_arg
              (Printf.sprintf
-                "Color.Arrow.fuse_epsilons: length mismatch %d <> %d"
+                "Color.Arrow.fuse_epsilons1: length mismatch %d <> %d"
                 (succ num_tails) (succ num_tips))
          else
            let is_odd n = n mod 2 <> 0 in
@@ -945,9 +950,107 @@ module Arrow : Arrow =
            let even = List.rev_map (List.rev_map2 single tails) even_tips
            and odd = List.rev_map (List.rev_map2 single tails) odd_tips in
            if flip then
-             Determinant (odd, even)
+             Some (odd, even)
            else
-             Determinant (even, odd)
+             Some (even, odd)
+
+(* We can also use the following (slightly less efficient)
+   version that does not need to keep track of signs by itself and
+   is more general, since it does not depend on~$N=n$ and works
+   for~$N\ge n$.
+
+   Starting with the case of matching dimension~$N$ and rank
+   of~$\epsilon$ and $\bar\epsilon$, there is the well known formula
+   \begin{equation}
+      \forall k, n = N \in \mathbf{N}, 0\le k \le n \ge 2:\;
+      \epsilon_{i_1\cdots i_n}
+      \bar\epsilon^{i_1\cdots i_kj_{k+1}\cdots j_n}
+        = k! \sum_{\sigma\in S_{n-k}} (-1)^{\varepsilon(\sigma)}
+            \delta_{i_{k+1}}^{\sigma(j_{k+1})} 
+            \delta_{i_{k+2}}^{\sigma(j_{k+2})} 
+            \cdots
+            \delta_{i_n}^{\sigma(j_n)}\,.
+   \end{equation}
+   In the general case, we have from anti-symmetry alone
+   \begin{equation}
+      \forall n, N \in\mathbf{N}, 2\le n \le N:\;
+      \epsilon_{i_1i_2\cdots i_n} \bar\epsilon^{j_1j_2\cdots j_n}
+        = \sum_{\sigma\in S_n} (-1)^{\varepsilon(\sigma)}
+            \delta_{i_1}^{\sigma(j_1)} 
+            \delta_{i_2}^{\sigma(j_2)} 
+            \cdots
+            \delta_{i_n}^{\sigma(j_n)}\,,
+   \end{equation}
+   where~$N=\delta_i^i$ is the dimension. *)
+
+    let fuse_epsilons tails tips =
+      if List.length tails = List.length tips then
+        List.fold_left
+          (fun (even, odd) (eps, tips) ->
+            if eps > 0 then
+              (List.rev_map2 single tails tips :: even, odd)
+            else if eps < 0 then
+              (even, List.rev_map2 single tails tips :: odd)
+            else
+              failwith "Color.Arrow.fuse_epsilons: Combinatorics.permute_signed returned garbage")
+          ([], []) (Combinatorics.permute_signed tips)
+      else
+        invalid_arg "Color.Arrow.fuse_epsilons: |tails| <> |tips|"
+
+(* From this, we derive
+   \begin{multline}
+   \label{eq:epsilon*epsilonbar-single-contraction}
+      \forall n, N \in\mathbf{N}, 2\le n \le N:\;
+      \epsilon_{ki_2\cdots i_n} \bar\epsilon^{kj_2\cdots j_n}
+        = \sum_{\sigma\in S_n} (-1)^{\varepsilon(\sigma)}
+            \delta_{k}^{\sigma(k)} 
+            \delta_{i_2}^{\sigma(j_2)} 
+            \cdots
+            \delta_{i_n}^{\sigma(j_n)} \\
+        = (N-n+1)
+            \sum_{\sigma\in S_{n-1}} (-1)^{\varepsilon(\sigma)}
+            \delta_{i_2}^{\sigma(j_2)} 
+            \cdots
+            \delta_{i_n}^{\sigma(j_n)}\,,
+   \end{multline}
+   where the~$N=\delta_k^k$ comes from the permutations with~$\sigma(k)=k$
+   that correspond to a loop in the color flow and the~$n-1$ from the
+   permutations with~$\sigma(k)\in\{i_2,\ldots,i_n\}$ that do not
+   lead to a loop.  Note that~$N-n+1=1$ in the special case~$N=n$ when
+   rank and dimension match.
+
+   By induction
+   \begin{multline}
+      \forall k, n, N \in \mathbf{N}, 2\le n \le N \land 1\le k \le n:\;
+      \epsilon_{i_1\cdots i_n}
+      \bar\epsilon^{i_1\cdots i_kj_{k+1}\cdots j_n}\\
+        = \frac{(N-n+k)!}{(N-n)!}
+            \sum_{\sigma\in S_{n-k}} (-1)^{\varepsilon(\sigma)}
+            \delta_{i_{k+1}}^{\sigma(j_{k+1})} 
+            \delta_{i_{k+2}}^{\sigma(j_{k+2})} 
+            \cdots
+            \delta_{i_n}^{\sigma(j_n)}\,,
+   \end{multline}
+   where
+   \begin{equation}
+     \frac{(N-n+k)!}{(N-n)!} = (N-n+1)(N-n+2)\cdots(N-n+k)
+   \end{equation}
+   and in the special case~$N=n$
+   \begin{equation}
+     \frac{(N-n+k)!}{(N-n)!} = k!\,.
+   \end{equation}
+   In the case~$k=1$ we
+   get~\eqref{eq:epsilon*epsilonbar-single-contraction}, which reduces
+   to~\eqref{eq:epsilon*epsilonbar-single-contraction-N=n} for $N=n$,
+   of course. *)
+ 
+(* \begin{dubious}
+      We also need to handle disconnected pairs of~$\epsilon$
+      and~$\bar\epsilon$.  These never appear in [merge']
+      below, because [merge] skips all cases without matching
+      summation indices.  Handling them in [merge] doesn't work
+      yet.
+   \end{dubious} *)
 
     let merge' arrow1 arrow2 =
       match arrow1, arrow2 with
@@ -995,9 +1098,9 @@ module Arrow : Arrow =
       | Epsilon _, Epsilon _ | Epsilon_bar _, Epsilon_bar _ ->
          No_Match
       | Epsilon tips, Epsilon_bar tails | Epsilon_bar tails, Epsilon tips ->
-         fuse_epsilons tails tips
+         failwith "Color.Arrow.merge': impossible"
 
-(* As an optimization, don't attempt to merge neither of the arrows
+(* As an optimization, don't attempt to merge if neither of the arrows
    contains a summation index and return immediately. *)
 
     let merge arrow1 arrow2 =
@@ -1009,11 +1112,6 @@ module Arrow : Arrow =
     let merge_to_string = function
       | Match factor ->
          Printf.sprintf "Match (%s)" (factor_to_string factor)
-      | Determinant (even, odd) ->
-         Printf.sprintf
-           "Det (%s, %s)"
-           (ThoList.to_string (ThoList.to_string factor_to_string) even)
-           (ThoList.to_string (ThoList.to_string factor_to_string) odd)
       | Ghost_Match -> "Ghost"
       | Loop_Match -> "Loop"
       | Mismatch -> "Mismatch"
@@ -1032,6 +1130,23 @@ module Arrow : Arrow =
       | Arrow (tail, tip) ->
          index_matches tail tip
       | _ -> false
+
+    let merge_epsilon_pair arrow1 arrow2 =
+      match arrow1, arrow2 with
+      | Epsilon tips, Epsilon_bar tails | Epsilon_bar tails, Epsilon tips ->
+         Some (fuse_epsilons tails tips)
+      | _ -> None
+
+    let match_epsilon arrow arrows =
+      let rec match_epsilon' seen = function
+        | [] -> None
+        | arrow' :: arrows' ->
+           begin match merge_epsilon_pair arrow arrow' with
+           | Some (even, odd) ->
+              Some (even, odd, List.rev_append seen arrows')
+           | None -> match_epsilon' (arrow' :: seen) arrows'
+           end in
+      match_epsilon' [] arrows
 
 (*i
     let merge = logging_merge
@@ -1140,7 +1255,7 @@ i*)
               "2 [1;2;3]" >:: (fun () -> assert_equal (Some [1;10;3]) (replace_first_opt 2 10 [1;2;3]));
               "3 [1;2;3]" >:: (fun () -> assert_equal (Some [1;2;10]) (replace_first_opt 3 10 [1;2;3])) ]
 
-        let determinant_to_string = function
+(*i     let determinant_to_string = function
           | Determinant (even, odd) ->
              Printf.sprintf
                "Determinant (even = %s, odd = %s)"
@@ -1196,8 +1311,8 @@ i*)
           else
             assert_eps_aux [[(tail,tip)]] [] eps eps_bar
 
-        let suite_fuse_epsilons =
-          "fuse_epsilons" >:::
+        let suite_fuse_epsilons1 =
+          "fuse_epsilons1" >:::
 
             [ "1a*2a" >:: (fun () -> assert_eps1 false (1,2) [1;-9] [2;-9]);
               "a1*a2" >:: (fun () -> assert_eps1 false (1,2) [-9;1] [-9;2]);
@@ -1212,7 +1327,7 @@ i*)
               "135a*246a" >:: (fun () -> assert_eps [(1,2);(3,4);(5,6)] [1;3;5;-9] [2;4;6;-9]);
               "315a*246a" >:: (fun () -> assert_eps [(3,2);(1,4);(5,6)] [3;1;5;-9] [2;4;6;-9]);
               "5a13*246a" >:: (fun () -> assert_eps [(1,2);(3,4);(5,6)] [5;-9;1;3] [2;4;6;-9]);
-              "a135*2a46" >:: (fun () -> assert_eps [(3,2);(1,4);(5,6)] [-9;1;3;5] [2;-9;4;6]) ]
+              "a135*2a46" >:: (fun () -> assert_eps [(3,2);(1,4);(5,6)] [-9;1;3;5] [2;-9;4;6]) ] i*)
 
         let suite =
           "Color.Arrow" >:::
@@ -1220,8 +1335,7 @@ i*)
              suite_cycle;
              suite_take;
              suite_take2;
-             suite_replace;
-             suite_fuse_epsilons]
+             suite_replace]
 
         let suite_long =
           "Color.Arrow long" >:::
@@ -1467,14 +1581,23 @@ module Birdtracks =
        a coefficient. *)
     type term = L.t * A.factor list
 
+    (* \begin{dubious}
+         New version: there can be $\epsilon$ or $\bar\epsilon$, but
+         not both at the same time.
+       \end{dubious} *)
+    type term_new =
+      | Only_Deltas of L.t * A.factor list
+      | Epsilons of L.t * A.factor list * A.endpoint list list
+      | Epsilon_Bars of L.t * A.factor list * A.endpoint list list
+
     (* Avoid the recursion, if there is no summation index in [arrow].
        If [arrow] loops back to itself, replace it by a factor of~$N_C$. *)
-    let rec add_arrow : A.factor -> term -> term list =
+    let rec add_arrow : A.factor -> term -> term option =
       fun arrow (coeff, arrows) ->
       if A.is_free arrow then
-        [(coeff, arrow :: arrows)]
+        Some (coeff, arrow :: arrows)
       else if A.is_tadpole arrow then
-        [(L.mul (LP.nc 1) coeff, arrows)]
+        Some (L.mul (LP.nc 1) coeff, arrows)
       else
         add_arrow' coeff [] arrow arrows
 
@@ -1486,25 +1609,23 @@ module Birdtracks =
        because matching $\epsilon$ and $\bar\epsilon$ results
        in a sum over permutations. *)
 
-    and add_arrow' : L.t -> A.factor list -> A.factor -> A.factor list -> term list =
+    and add_arrow' : L.t -> A.factor list -> A.factor -> A.factor list -> term option =
       fun coeff seen arrow -> function
       | [] -> (* visited all [arrows]: no opportunities for further matches *)
-         [(coeff, arrow :: seen)]
+         Some (coeff, arrow :: seen)
       | arrow' :: arrows' ->
          begin match A.merge arrow arrow' with
          | A.Mismatch ->
-            []
+            None
          | A.Ghost_Match -> (* replace matching ghosts by $-1/N_C$ *)
-            [(L.mul (LP.over_nc (-1)) coeff, List.rev_append seen arrows')]
+            Some (L.mul (LP.over_nc (-1)) coeff, List.rev_append seen arrows')
          | A.Loop_Match -> (* replace a loop by $N_C$ *)
-            [(L.mul (LP.nc 1) coeff, List.rev_append seen arrows')]
+            Some (L.mul (LP.nc 1) coeff, List.rev_append seen arrows')
          | A.Match arrow'' -> (* two arrows have been merged into one *)
             if A.is_free arrow'' then (* no opportunities for further matches *)
-              [(coeff, arrow'' :: List.rev_append seen arrows')]
+              Some (coeff, arrow'' :: List.rev_append seen arrows')
             else (* the new [arrow''] ist not yet saturated, try again: *)
               add_arrow' coeff seen arrow'' arrows'
-         | A.Determinant (even, odd) ->
-            add_determinant seen even odd (coeff, arrows')
          | A.No_Match -> (* recurse to the remaining arrows *)
             add_arrow' coeff (arrow' :: seen)  arrow arrows'
          end
@@ -1528,7 +1649,8 @@ module Birdtracks =
          Here we would like to use the type system to prove
          that the two failing cases can't happen.
          In real life they can't happen, because [arrow] is
-         never [A.Epsilon] \ldots
+         never [A.Epsilon].  Can we use the version of GADTs
+         that are available in O'Caml 4.05?
        \end{dubious} *)
     and add_arrow_list : A.factor list -> term -> term =
       fun arrows term ->
@@ -1536,9 +1658,8 @@ module Birdtracks =
       | [] -> term
       | arrow :: rest ->
          begin match add_arrow arrow term with
-         | [term] -> add_arrow_list rest term
-         | [] -> failwith "add_arrow_list: unexpected empty list"
-         | _ -> failwith "add_arrow_list: unexpected multi element list"
+         | Some term -> add_arrow_list rest term
+         | None -> failwith "add_arrow_list: unexpected None"
          end
 
 (*i   and add_arrow_list arrows (coeff, acc as term) =
@@ -1552,6 +1673,7 @@ module Birdtracks =
       result
 i*)
 
+(*i
     let logging_add_arrow arrow (coeff, arrows) =
       let result = add_arrow arrow (coeff, arrows) in
       Printf.eprintf
@@ -1561,39 +1683,62 @@ i*)
         (ThoList.to_string factor_to_string1 result);
       result
 
-(*i
     let add_arrow = logging_add_arrow
 i*)
 
-    (* [add_arrows term arrows] add the [arrows] to [term] by calling
-       [add_arrow] for each one.  Return an empty list if there are
-       leftover summation indices in the end. *)
+(* The return type is [term list], because adding an~$\epsilon$
+   (or~$\bar\epsilon$) will turn a term to a sum of terms iff
+   the term contains a $\bar\epsilon$ (or~$\epsilon$), since
+   $\epsilon$-$\bar\epsilon$ pairs will
+   be expanded by [add_determinant]. *)
+
+    let add_arrow_or_epsilon : A.factor -> term -> term list =
+      fun arrow (coeff, arrows as term) ->
+      if A.is_epsilon arrow then
+        match A.match_epsilon arrow arrows with
+        | None ->
+           begin match add_arrow' coeff [] arrow arrows with
+           | None -> []
+           | Some term -> [term]
+           end
+        | Some (even, odd, arrows') ->
+           add_determinant [] even odd (coeff, arrows')
+      else
+        match add_arrow arrow term with
+        | None -> []
+        | Some term -> [term]
+
+    (* [add_arrows_or_epsilons arrows term] add the [arrows] to [term] by
+       calling [add_arrow_or_epsilon] for each one.  Return an empty list
+       if there are leftover summation indices in the end. *)
 
     (* NB: we can reject the contributions with unsaturated summation indices
        from Ghost contributions to~$T_a$ only \emph{after} adding all
        arrows that might saturate an open index. *)
 
-    let rec add_arrows : term -> A.factor list -> term list =
-      fun (_, acc_arrows as acc) -> function
+    let rec add_arrows_or_epsilons : A.factor list -> term -> term list =
+      fun arrows (_, acc_arrows as term) ->
+      match arrows with
       | [] ->
          if List.for_all A.is_free acc_arrows then
-           [acc]
+           [term]
          else
            []
-      | arrow :: arrows ->
-         ThoList.flatmap (fun term -> add_arrows term arrows) (add_arrow arrow acc)
+      | arrow :: rest ->
+         ThoList.flatmap (add_arrows_or_epsilons rest) (add_arrow_or_epsilon arrow term)
 
-    let logging_add_arrows factor1 arrows2 =
-      let result = add_arrows factor1 arrows2 in
+
+    let logging_add_arrows_or_epsilons arrows term =
+      let result = add_arrows_or_epsilons arrows term in
       Printf.eprintf
-        "add_arrows %s to %s ==> %s\n"
-        (factor_to_string1 factor1)
-        (factor_arrows_to_string arrows2)
+        "add_arrows_or_epsilons %s to %s ==> %s\n"
+        (factor_to_string1 term)
+        (factor_arrows_to_string arrows)
         (ThoList.to_string factor_to_string1 result);
       result
 
 (*i
-    let add_arrows = logging_add_arrows
+    let add_arrows_or_epsilons = logging_add_arrows_or_epsilons
 i*)
     (* Note that a negative index might be summed only
        later in a sequence of binary products and must
@@ -1626,7 +1771,7 @@ i*)
       List.map
         (fun (coeff1, arrows) ->
           (L.mul coeff1 coeff2, List.map A.of_factor arrows))
-        (add_arrows (coeff1, arrows1') arrows2')
+        (add_arrows_or_epsilons arrows2' (coeff1, arrows1'))
 
     let logging_times1 factor1 factor2 =
       let result = times1 factor1 factor2 in
@@ -2587,6 +2732,31 @@ module SU3 : SU3 =
                     (delta3 3 4)
                     (delta3 1 2 +++ delta3 3 4 --- delta3 1 2)) ]
 
+
+(* \begin{equation}
+      \prod_{k=i}^j f(k)
+   \end{equation} *)
+        let rec product f i j =
+          if i > j then
+            null
+          else if i = j then
+            f i
+          else
+            f i *** product f (succ i) j
+
+(* In particular
+   \begin{multline}
+      \text{[product (nc_minus_n_plus n) i j]}\, \mapsto \\
+         \prod_{k=i}^j (N_C-n+k)
+          = \frac{(N_C-n+j)!}{(N_C-n+i-1)!}
+          = (N_C-n+j)(N_C-n+j-1)\cdots(N_C-n+i)
+   \end{multline} *)
+        let nc_minus_n_plus n k =
+          const (LP.ints [ (1, 1); (-n + k, 0) ])
+
+        let contractions rank k =
+          product (nc_minus_n_plus rank) 1 k
+
         let suite_times =
           "times" >:::
 
@@ -2613,31 +2783,60 @@ module SU3 : SU3 =
 	        (fun () ->
 	          eq
                     (delta3 1 2 *** delta3 3 4 --- delta3 1 4 *** delta3 3 2)
+                    (epsilon [1; 3] *** epsilon_bar [2; 4]));
+ 
+              "eps*epsbar -" >::
+	        (fun () ->
+	          eq
+                    (delta3 1 4 *** delta3 3 2 --- delta3 1 2 *** delta3 3 4)
+                    (epsilon [1; 3] *** epsilon_bar [4; 2]));
+ 
+              "eps*epsbar 1" >::
+	        (fun () ->
+	          eq (* $N_C-3+1=(N_C-2)$, for $NC=3$: $1$ *)
+                    (contractions 3 1 ***
+                       (delta3 1 2 *** delta3 3 4 --- delta3 1 4 *** delta3 3 2))
                     (epsilon [-1; 1; 3] *** epsilon_bar [-1; 2; 4]));
  
               "eps*epsbar cyclic 1" >::
 	        (fun () ->
-	          eq
-                    (delta3 1 2 *** delta3 3 4 --- delta3 1 4 *** delta3 3 2)
+	          eq (* $N_C-3+1=(N_C-2)$, for $NC=3$: $1$ *)
+                    (contractions 3 1 ***
+                       (delta3 1 2 *** delta3 3 4 --- delta3 1 4 *** delta3 3 2))
                     (epsilon [3; -1; 1] *** epsilon_bar [-1; 2; 4]));
  
               "eps*epsbar cyclic 2" >::
 	        (fun () ->
-	          eq
-                    (delta3 1 2 *** delta3 3 4 --- delta3 1 4 *** delta3 3 2)
+	          eq (* $N_C-3+1=(N_C-2)$, for $NC=3$: $1$ *)
+                    (contractions 3 1 ***
+                       (delta3 1 2 *** delta3 3 4 --- delta3 1 4 *** delta3 3 2))
                     (epsilon [-1; 1; 3] *** epsilon_bar [4; -1; 2]));
  
               "eps*epsbar 2" >::
 	        (fun () ->
-	          eq
-                    (const (LP.ints [ (1, 1); (-1,0) ]) *** delta3 1 2)
+	          eq (* $(N_C-3+2)(N_C-3+1)=(N_C-1)(N_C-2)$, for $NC=3$: $2$ *)
+                    (contractions 3 2 *** delta3 1 2)
                     (epsilon [-1; -2; 1] *** epsilon_bar [-1; -2; 2]));
  
               "eps*epsbar 3" >::
 	        (fun () ->
-	          eq
-                    (const (LP.ints [ (1, 2); (-1,1) ]))
-                    (epsilon [-1; -2; -3] *** epsilon_bar [-1; -2; -3])) ]
+	          eq (* $(N_C-3+3)(N_C-3+2)(N_C-3+1)=N_C(N_C-1)(N_C-2)$, for $NC=3$: $3!$ *)
+                    (contractions 3 3)
+                    (epsilon [-1; -2; -3] *** epsilon_bar [-1; -2; -3]));
+ 
+              "eps*epsbar big" >::
+	        (fun () ->
+	          eq (* $(N_C-5+3)(N_C-5+2)(N_C-5+1)=(N_C-2)(N_C-3)(N_C-4)$, for $NC=5$: $3!$ *)
+                    (contractions 5 3 ***
+                       (epsilon [4; 5] *** epsilon_bar [6; 7]))
+                    (epsilon [-1; -2; -3; 4; 5] *** epsilon_bar [-1; -2; -3; 6; 7]));
+ 
+              "eps*epsbar big -" >::
+	        (fun () ->
+	          eq (* $(N_C-5+3)(N_C-5+2)(N_C-5+1)=(N_C-2)(N_C-3)(N_C-4)$, for $NC=5$: $3!$ *)
+                    (contractions 5 3 ***
+                       (epsilon [5; 4] *** epsilon_bar [6; 7]))
+                    (epsilon [-1; 4; -3; -2; 5] *** epsilon_bar [-1; -2; -3; 6; 7])) ]
 
 (* \thocwmodulesubsection{Propagators} *)
 
