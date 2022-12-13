@@ -4875,10 +4875,15 @@ the particle has been read from file.
 assignment, because we need to know wheter the particle is spacelike
 or timelike.  The resonance flag is defined only for virtual
 particles.
-<<Particle: particle: TBP>>=
+<<Particles: particle: TBP>>=
   procedure :: set_resonance_flag => particle_set_resonance_flag
+<<Particles: sub interfaces>>=
+    elemental module subroutine particle_set_resonance_flag (prt, resonant)
+      class(particle_t), intent(inout) :: prt
+      logical, intent(in) :: resonant
+    end subroutine particle_set_resonance_flag
 <<Particles: procedures>>=
-  elemental subroutine particle_set_resonance_flag (prt, resonant)
+  elemental module subroutine particle_set_resonance_flag (prt, resonant)
     class(particle_t), intent(inout) :: prt
     logical, intent(in) :: resonant
     select case (prt%status)

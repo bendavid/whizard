@@ -753,6 +753,8 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/process_log.ref \
     functional_tests/ref-output/pythia6_1.ref \
     functional_tests/ref-output/pythia6_2.ref \
+    functional_tests/ref-output/pythia8_1.ref \
+    functional_tests/ref-output/pythia8_2.ref \
     functional_tests/ref-output/qcdtest_4.ref \
     functional_tests/ref-output/qcdtest_5.ref \
     functional_tests/ref-output/qcdtest_6.ref \

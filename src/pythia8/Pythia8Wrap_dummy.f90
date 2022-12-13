@@ -230,3 +230,15 @@ subroutine pythia8_get_decay_vertex (cptr, i_prt, time, vertex) bind(C)
   write (0, "(A)")  "**************************************************************"
   stop
 end subroutine pythia8_get_decay_vertex
+
+subroutine pythia8_get_production_vertex (cptr, i_prt, time, vertex) bind(C)
+  use iso_c_binding !NODEP!
+  type(c_ptr), intent(in), value :: cptr
+  integer(c_int), value, intent(in) :: i_prt
+  real(c_double), intent(out) :: time
+  real(c_double), dimension(3), intent(out) :: vertex
+  write (0, "(A)")  "**************************************************************"
+  write (0, "(A)")  "*** Pythia8: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "**************************************************************"
+  stop
+end subroutine pythia8_get_production_vertex

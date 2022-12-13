@@ -1541,7 +1541,6 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
   module subroutine hadrons_pythia8_import_particle_set (hadrons, particle_set)
     class(hadrons_pythia8_t), target, intent(inout) :: hadrons
     type(particle_set_t), intent(in) :: particle_set
-    type(particle_set_t) :: pset_reduced
     integer, parameter :: PROCESS_ID = 1
     if (debug_on)  call msg_debug &
          (D_TRANSFORMS, "hadrons_pythia8_import_particle_set")

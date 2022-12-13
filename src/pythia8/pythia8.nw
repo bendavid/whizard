@@ -361,8 +361,8 @@ From this we fill the LHA particle type.
     type(lha_particle_t), dimension(:), allocatable :: c_particle_set
     integer(c_int) :: c_process_id, c_n_particles
     logical(c_bool) :: flag
-    kr = .true.; if (present (keep_remnants)) kr = keep_remnants
-    pol = .true.; if (present (polarization)) pol = polarization
+    kr = .true.; if (present (keep_remnants))  kr = keep_remnants
+    pol = .true.; if (present (polarization))  pol = polarization
     if (.not. whizard_lha%new_event) then
        call msg_bug ("[whizard_lha_set_event] new event was not prepared.")
     end if
@@ -413,7 +413,7 @@ From this we fill the LHA particle type.
            case (2)
               c_prt(i)%mother(1) = parent(1); c_prt(i)%mother(2) = parent(2)
            case default
-              call msg_bug("[c_fill_particle_set] Too many parents. &
+              call msg_bug("[fill_c_particle_set] Too many parents. &
                    &Please contact the WHIZARD developers.")
            end select
            color = prt%get_color ()
@@ -1219,7 +1219,7 @@ found in a reference particle set, or are too soft.
 
 @ %def pythia8_get_shower_mask
 @ Reverse find an existing entry in [[particle_set]].
-Returns zero if non is found.
+Returns zero if none is found.
 <<pythia8: procedures>>=
   pure function reverse_find_particle (c_prt, particle_set) result (idx)
     type(lha_particle_t), intent(in) :: c_prt
@@ -1227,15 +1227,17 @@ Returns zero if non is found.
     integer :: idx
     type(vector4_t) :: momentum
     momentum = real (c_prt%momentum, default)
-    idx = particle_set%reverse_find_particle (c_prt%id, momentum, tiny_10, tiny_07)
+    idx = particle_set%reverse_find_particle &
+         (c_prt%id, momentum, tiny_10, tiny_07)
   end function reverse_find_particle
 
 @ %def reverse_find_particle
 # Get a logical mask on the full hadronic entries in the current [[PYTHIA8]]
 event record.
 
-The hadronic event record doesn't hold information about beams as those are only relevant in context of a partonic event.
-We expect that the event record has been generated with [[ProcessLevel:all = Off]].
+The hadronic event record does not hold information about beams as
+those are only relevant in context of a partonic event. We expect that
+the event record has been generated with [[ProcessLevel:all = Off]].
 Furthermore, we skip entries which are found in a reference particle set.
 <<pythia8: pythia8: TBP>>=
   procedure, private :: get_hadron_mask => pythia8_get_hadron_mask
@@ -1318,6 +1320,14 @@ We simply discard the zeroth event.
        real(c_double), intent(out) :: time
        real(c_double), dimension(3), intent(out) :: vertex
      end subroutine pythia8_get_decay_vertex
+
+     subroutine pythia8_get_production_vertex (cptr, i_prt, time, vertex) bind(C)
+       import
+       type(c_ptr), intent(in), value :: cptr
+       integer(c_int), value, intent(in) :: i_prt
+       real(c_double), intent(out) :: time
+       real(c_double), dimension(3), intent(out) :: vertex
+     end subroutine pythia8_get_production_vertex
   end interface
 <<pythia8: procedures>>=
   subroutine whizard_pythia8_get_shower_particles &
@@ -1396,9 +1406,11 @@ We take care of the status code of former outgoing particles (i.e. the unchanged
     call particle_set%replace (particle)
     call pythia%get_parent_child_relation (&
          pythia_idx, whizard_idx, particle_set, recover_beams)
-    where (particle_set%prt%status == PRT_OUTGOING .and. &
+    where ((particle_set%prt%status == PRT_OUTGOING .or. &
+            particle_set%prt%status == PRT_VIRTUAL .or. &
+            particle_set%prt%status == PRT_BEAM_REMNANT) .and. &
             particle_set%prt%has_children ()) &
-         particle_set%prt%status = PRT_VIRTUAL
+            particle_set%prt%status = PRT_RESONANT
   end subroutine whizard_pythia8_get_particles
 
 @ %def whizard_pythia8_get_particles
@@ -1539,7 +1551,7 @@ subroutine pythia8_import_pythia_particles (&
       real(c_double) :: time
       real(c_double), dimension(3) :: vertex
       type(vector4_t) :: vtx4
-      call pythia8_get_decay_vertex (pythia%cptr, i_pythia, time, vertex)
+      call pythia8_get_production_vertex (pythia%cptr, i_pythia, time, vertex)
       vtx4 = vector4_moving (real (time, kind=default), &
            vector3_moving (real (vertex, kind=default)))
       if (vtx4 /= vector4_null) call particle%set_vertex (vtx4)

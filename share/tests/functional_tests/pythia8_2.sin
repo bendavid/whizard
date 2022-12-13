@@ -41,6 +41,8 @@ sample_format = debug
 $shower_method = "PYTHIA8"
 $hadronization_method = "PYTHIA8"
 
+?unweighted = false
+
 $sample = "pythia8_2a"
 simulate (pythia8_2_p1)
 

@@ -283,7 +283,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{3.0.3}
+\newcommand{\thisversion}{3.1.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -292,9 +292,9 @@ Parameter & Value & Default & Description \\
 %%%\preprintno{arXiv:0708.4233 (also based on LC-TOOL-2001-039 (revised))}
 %END LATEX
 \title{%
-%HEVEA WHIZARD 3.0 \\
+%HEVEA WHIZARD 3.1 \\
 %BEGIN LATEX
- \ttt{\huge WHIZARD 3.0} \\[\baselineskip]
+ \ttt{\huge WHIZARD 3.1} \\[\baselineskip]
 %END LATEX
  A generic \\ Monte-Carlo integration and event generation package \\
  for multi-particle processes\\[\baselineskip]
@@ -754,6 +754,8 @@ development, ca. 2015-2020:
     \sindarin\
     \\
     3.0.3 & 04/2022 & NLO EW/QCD mixed processes, NLL electron PDFs
+    \\\hline
+    3.1.0 & 12/2022 & General POWHEG matching (hadron/lepton colliders)
     \\\hline\hline
   \end{tabular}
 \end{center}
@@ -1953,7 +1955,7 @@ named \verb|hello.sin|.
     |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
     |                                                                             |
     |=============================================================================|
-    |                               WHIZARD 3.0.3
+    |                               WHIZARD 3.1.0
     |=============================================================================|
     | Reading model file '/usr/local/share/whizard/models/SM.mdl'
     | Preloaded model: SM
@@ -1984,7 +1986,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 3.0.3
+|                               WHIZARD 3.1.0
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2043,7 +2045,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 3.0.3
+ |                               WHIZARD 3.1.0
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -12053,7 +12055,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>3.0.3</generator_version>
+  <generator_version>3.1.0</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1

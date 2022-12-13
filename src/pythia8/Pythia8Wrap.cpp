@@ -130,6 +130,13 @@ extern "C" {
     space_vertex[2] = pythia->event[i].zDec();
   }
 
+  void pythia8_get_production_vertex (Pythia* pythia, const int i, double* time, double space_vertex[3]) {
+    *time = pythia->event[i].tProd();
+    space_vertex[0] = pythia->event[i].xProd();
+    space_vertex[1] = pythia->event[i].yProd();
+    space_vertex[2] = pythia->event[i].zProd();
+  }
+
   void pythia8_get_event_info (Pythia* pythia, double* alpha_s, double* alpha_em, double* scale) {
     *alpha_s = pythia->info.alphaS();
     *alpha_em = pythia->info.alphaEM();

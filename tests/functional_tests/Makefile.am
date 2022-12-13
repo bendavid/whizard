@@ -378,9 +378,9 @@ TESTS_REQ_PYTHIA6 = \
     mlm_matching_isr.run
 XFAIL_TESTS_REQ_PYTHIA6 =
 
-TESTS_REQ_PYTHIA8 =
-#    pythia8_1.run \
-#    pythia8_2.run
+TESTS_REQ_PYTHIA8 = \
+    pythia8_1.run \
+    pythia8_2.run
 XFAIL_TESTS_REQ_PYTHIA8 =
 
 TESTS_REQ_EV_ANA = \
@@ -399,6 +399,7 @@ TEST_DRIVERS_RUN = \
     $(TESTS_REQ_LCIO) \
     $(TESTS_REQ_FASTJET) \
     $(TESTS_REQ_PYTHIA6) \
+    $(TESTS_REQ_PYTHIA8) \
     $(TESTS_REQ_EV_ANA) \
     $(TESTS_STATIC)
 

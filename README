@@ -26,6 +26,9 @@
 
 WHIZARD is a program system designed for the efficient calculation of
 multi-particle scattering cross sections and simulated event samples.
+It has now full NLO capabilities for the Standard Model in QCD, EW and mixed
+coupling orders for fixed-order distributions as well as a general
+POWHEG-type NLO matching.
 
 The events can be written to file in HepMC, LHEF, LCIO or ASCII format.
 Tree-level matrix elements are generated automatically for arbitrary
