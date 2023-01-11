@@ -194,7 +194,7 @@ let suite =
      Color.Arrow.Test.suite;
      Color.Birdtracks.Test.suite;
      Color.SU3.Test.suite;
-     Color.U3.Test.suite;
+     (* [Color.U3.Test.suite;] *)
      UFO_targets.Fortran.Test.suite;
      UFO_Lorentz.Test.suite;
      UFO.Test.suite;
@@ -210,7 +210,7 @@ let suite_long =
      Color.Arrow.Test.suite_long;
      Color.Birdtracks.Test.suite_long;
      Color.SU3.Test.suite_long;
-     Color.U3.Test.suite_long]
+     (* [Color.U3.Test.suite_long] *) ]
 
 let run_suite_long = ref false
 

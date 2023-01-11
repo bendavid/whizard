@@ -632,9 +632,7 @@ module General_Flow =
        cfill (arrow po);
      enddef;} *)
 
-module Q = Algebra.Q
-module QC = Algebra.QC
-
+(* \thocwmodulesubsection{Arrows and Epsilons} *)
 module type Arrow =
   sig
     type endpoint
@@ -646,29 +644,56 @@ module type Arrow =
     type ('tail, 'tip, 'ghost) t =
       | Arrow of 'tail * 'tip
       | Ghost of 'ghost
-      | Epsilon of 'tip list
-      | Epsilon_bar of 'tail list
+    type 'tip eps = 'tip list
+    type 'tail eps_bar = 'tail list
     type free = (tail, tip, ghost) t
+    type free_eps = tip eps
+    type free_eps_bar = tail eps_bar
     type factor
+    type factor_eps
+    type factor_eps_bar
+    val tips : free -> tip list
+    val tips_eps : free_eps -> tip list
+    val tails : free -> tail list
+    val tails_eps_bar : free_eps_bar -> tail list
     val free_to_string : free -> string
+    val free_eps_to_string : free_eps -> string
+    val free_eps_bar_to_string : free_eps_bar -> string
     val factor_to_string : factor -> string
+    val factor_eps_to_string : factor_eps -> string
+    val factor_eps_bar_to_string : factor_eps_bar -> string
     val map : (endpoint -> endpoint) -> free -> free
     val to_left_factor : (endpoint -> bool) -> free -> factor
+    val to_left_factor_eps : (endpoint -> bool) -> free_eps -> factor_eps
+    val to_left_factor_eps_bar : (endpoint -> bool) -> free_eps_bar -> factor_eps_bar
     val to_right_factor : (endpoint -> bool) -> free -> factor
+    val to_right_factor_eps : (endpoint -> bool) -> free_eps -> factor_eps
+    val to_right_factor_eps_bar : (endpoint -> bool) -> free_eps_bar -> factor_eps_bar
     val of_factor : factor -> free
+    val of_factor_eps : factor_eps -> free_eps
+    val of_factor_eps_bar : factor_eps_bar -> free_eps_bar
     val is_free : factor -> bool
+    val is_free_eps : factor_eps -> bool
+    val is_free_eps_bar : factor_eps_bar -> bool
     val negatives : free -> endpoint list
+    val negatives_eps : free_eps -> endpoint list
+    val negatives_eps_bar : free_eps_bar -> endpoint list
     val is_ghost : free -> bool
     val is_tadpole : factor -> bool
-    val is_epsilon : factor -> bool
-    val match_epsilon : factor -> factor list -> (factor list list * factor list list * factor list) option
     type merge =
       | Match of factor
       | Ghost_Match
       | Loop_Match
       | Mismatch
       | No_Match
-    val merge : factor -> factor -> merge
+    val merge_arrow_arrow : factor -> factor -> merge
+    type 'a merge_eps =
+      | Match_Eps of 'a
+      | Mismatch_Eps
+      | No_Match_Eps
+    val merge_arrow_eps : factor -> factor_eps -> factor_eps merge_eps
+    val merge_arrow_eps_bar : factor -> factor_eps_bar -> factor_eps_bar merge_eps
+    val merge_eps_eps_bar : factor_eps -> factor_eps_bar -> (factor list list * factor list list) option
     val tee : int -> free -> free list
     val dir : int -> int -> free -> int
     val single : endpoint -> endpoint -> free
@@ -683,8 +708,8 @@ module type Arrow =
       val (>=>>) : int * int -> int * int -> free
       val (??) : int -> free
     end
-    val epsilon : int list -> free
-    val epsilon_bar : int list -> free
+    val epsilon : int list -> free_eps
+    val epsilon_bar : int list -> free_eps_bar
     val chain : int list -> free list
     val cycle : int list -> free list
     module Test : Test
@@ -734,11 +759,25 @@ module Arrow : Arrow =
     type ('tail, 'tip, 'ghost) t =
       | Arrow of 'tail * 'tip
       | Ghost of 'ghost
-      | Epsilon of 'tip list
-      | Epsilon_bar of 'tail list
+    type 'tip eps = 'tip list
+    type 'tail eps_bar = 'tail list
 
     type free = (tail, tip, ghost) t
+    type free_eps = tip eps
+    type factor_eps = tip index eps
+
     type factor = (tail index, tip index, ghost index) t
+    type free_eps_bar = tail eps_bar
+    type factor_eps_bar = tail index eps_bar
+
+    let tips = function
+      | Arrow (_, tip) -> [tip]
+      | Ghost _ -> []
+    let tails = function
+      | Arrow (tail, _) -> [tail]
+      | Ghost _ -> []
+    let tips_eps tips = tips
+    let tails_eps_bar tails = tails
 
     let endpoint_to_string = function
       | I i -> string_of_int i
@@ -752,12 +791,16 @@ module Arrow : Arrow =
     let to_string i2s = function
       | Arrow (tail, tip) -> Printf.sprintf "%s>%s" (i2s tail) (i2s tip)
       | Ghost ghost -> Printf.sprintf "{%s}" (i2s ghost)
-      | Epsilon tips -> Printf.sprintf ">>>%s" (ThoList.to_string i2s tips)
-      | Epsilon_bar tails -> Printf.sprintf "<<<%s" (ThoList.to_string i2s tails)
+    let to_string_eps i2s tips = Printf.sprintf ">>>%s" (ThoList.to_string i2s tips)
+    let to_string_eps_bar i2s tails = Printf.sprintf "<<<%s" (ThoList.to_string i2s tails)
 
     let free_to_string = to_string endpoint_to_string
+    let free_eps_to_string = to_string_eps endpoint_to_string
+    let free_eps_bar_to_string = to_string_eps_bar endpoint_to_string
 
     let factor_to_string = to_string index_to_string
+    let factor_eps_to_string = to_string_eps index_to_string
+    let factor_eps_bar_to_string = to_string_eps_bar index_to_string
 
     let index_matches i1 i2 =
       match i1, i2 with
@@ -767,8 +810,8 @@ module Arrow : Arrow =
     let map f = function
       | Arrow (tail, tip) -> Arrow (f tail, f tip)
       | Ghost ghost -> Ghost (f ghost)
-      | Epsilon tips -> Epsilon (List.map f tips)
-      | Epsilon_bar tails -> Epsilon_bar (List.map f tails)
+    let map_eps = List.map
+    let map_eps_bar = List.map
 
     let free_index = function
       | Free i -> i
@@ -791,6 +834,14 @@ module Arrow : Arrow =
     let to_right_factor is_sum = map (to_right_index is_sum)
     let of_factor = map free_index
 
+    let to_left_factor_eps is_sum = map_eps (to_left_index is_sum)
+    let to_right_factor_eps is_sum = map_eps (to_right_index is_sum)
+    let of_factor_eps = map_eps free_index
+
+    let to_left_factor_eps_bar is_sum = map_eps_bar (to_left_index is_sum)
+    let to_right_factor_eps_bar is_sum = map_eps_bar (to_right_index is_sum)
+    let of_factor_eps_bar = map_eps_bar free_index
+
     let negatives = function
       | Arrow (tail, tip) ->
          if position tail < 0 then
@@ -807,24 +858,19 @@ module Arrow : Arrow =
            [ghost]
          else
            []
-      | Epsilon tips -> List.filter (fun tip -> position tip < 0) tips
-      | Epsilon_bar tails -> List.filter (fun tail -> position tail < 0) tails
+    let negatives_eps = List.filter (fun tip -> position tip < 0)
+    let negatives_eps_bar = List.filter (fun tip -> position tip < 0)
 
     let is_free = function
       | Arrow (Free _, Free _) | Ghost (Free _) -> true
       | Arrow (_, _) | Ghost _ -> false
-      | Epsilon tips -> List.for_all is_free_index tips
-      | Epsilon_bar tails -> List.for_all is_free_index tails
+    let is_free_eps = List.for_all is_free_index
+    let is_free_eps_bar = List.for_all is_free_index
 
     let is_ghost = function
       | Ghost _ -> true
       | Arrow _ -> false
-      | Epsilon _ | Epsilon_bar _ -> false
                  
-    let is_epsilon = function
-      | Epsilon _ | Epsilon_bar _ -> true
-      | Ghost _ | Arrow _ -> false
-
     let single tail tip =
       Arrow (tail, tip)
 
@@ -890,8 +936,6 @@ module Arrow : Arrow =
     let tee a = function
       | Arrow (tail, tip) -> [Arrow (tail, I a); Arrow (I a, tip)]
       | Ghost _ as g -> [g]
-      | Epsilon _ -> invalid_arg "Arrow.tee not defined for Epsilon"
-      | Epsilon_bar _ -> invalid_arg "Arrow.tee not defined for Epsilon_bar"
 
     let dir i j = function
       | Arrow (tail, tip) ->
@@ -903,7 +947,7 @@ module Arrow : Arrow =
            -1
          else
            invalid_arg "Arrow.dir"
-      | Ghost _ | Epsilon _ | Epsilon_bar _ -> 0
+      | Ghost _ -> 0
 
     type merge =
       | Match of factor
@@ -912,54 +956,74 @@ module Arrow : Arrow =
       | Mismatch
       | No_Match
 
-(* When computing
-    \begin{equation}
-    \label{eq:epsilon*epsilonbar-single-contraction-N=n}
-      \epsilon_{ki_1i_2\cdots i_n} \bar\epsilon^{kj_1j_2\cdots j_n}
-        = \sum_{\sigma\in S_n} (-1)^{\epsilon(\sigma)}
-            \delta_{i_1}^{\sigma(j_1)} 
-            \delta_{i_2}^{\sigma(j_2)} 
-            \cdots
-            \delta_{i_n}^{\sigma(j_n)}\,,
-    \end{equation}
-    we must keep track of the position of summation indices.
-    We can use the fact that cyclic permutations are even for
-    $\epsilon$-tensors with an odd number of indices, corresponding
-    to $n$ even and odd otherwise. *)
+(* As an optimization, don't attempt to merge if neither of the arrows
+   contains a summation index and return immediately. *)
 
-    let fuse_epsilons1 tails tips =
-      match take_first_matching_pair_opt ~eq:index_matches tails tips with
-      | None -> None
-      | Some ((rev_tails_head, tails_tail), (rev_tips_head, tips_tail)) ->
-         let tails = tails_tail @ List.rev rev_tails_head
-         and tips = tips_tail @ List.rev rev_tips_head  in
-         let num_tails = List.length tails
-         and num_tips = List.length tips in
-         if num_tails <> num_tips then
-           invalid_arg
-             (Printf.sprintf
-                "Color.Arrow.fuse_epsilons1: length mismatch %d <> %d"
-                (succ num_tails) (succ num_tips))
-         else
-           let is_odd n = n mod 2 <> 0 in
-           let flip =
-             is_odd num_tips &&
-               is_odd (List.length rev_tails_head - List.length rev_tips_head) in
-           let even_tips = Combinatorics.permute_even tips
-           and odd_tips = Combinatorics.permute_odd tips in
-           let even = List.rev_map (List.rev_map2 single tails) even_tips
-           and odd = List.rev_map (List.rev_map2 single tails) odd_tips in
-           if flip then
-             Some (odd, even)
+    let merge_arrow_arrow arrow1 arrow2 =
+      if is_free arrow1 || is_free arrow2 then
+        No_Match
+      else
+        match arrow1, arrow2 with
+        | Ghost g1, Ghost g2 ->
+           if index_matches g1 g2 then
+             Ghost_Match
            else
-             Some (even, odd)
+             No_Match
+        | Arrow (tail, tip), Ghost g
+          | Ghost g, Arrow (tail, tip) ->
+           if index_matches g tail || index_matches g tip then
+             Mismatch
+           else
+             No_Match
+        | Arrow (tail, tip), Arrow (tail', tip') ->
+           if index_matches tip tail' then
+             if index_matches tip' tail then
+               Loop_Match
+             else
+               Match (Arrow (tail, tip'))
+           else if index_matches tip' tail then
+             Match (Arrow (tail', tip))
+           else
+             No_Match
 
-(* We can also use the following (slightly less efficient)
-   version that does not need to keep track of signs by itself and
-   is more general, since it does not depend on~$N=n$ and works
-   for~$N\ge n$.
+    type 'a merge_eps =
+      | Match_Eps of 'a
+      | Mismatch_Eps
+      | No_Match_Eps
 
-   Starting with the case of matching dimension~$N$ and rank
+    let merge_arrow_eps arrow tips =
+      if is_free_eps tips || is_free arrow then
+        No_Match_Eps
+      else
+        match arrow with
+        | Arrow (tail, tip) ->
+           begin match replace_first_opt ~eq:index_matches tail tip tips with
+           | None -> No_Match_Eps
+           | Some tips -> Match_Eps tips
+           end
+        | Ghost g ->
+           if List.exists (index_matches g) tips then
+             Mismatch_Eps
+           else
+             No_Match_Eps
+
+    let merge_arrow_eps_bar arrow tails =
+      if is_free_eps_bar tails || is_free arrow then
+        No_Match_Eps
+      else
+        match arrow with
+        | Arrow (tail, tip) ->
+           begin match replace_first_opt ~eq:index_matches tip tail tails with
+           | None -> No_Match_Eps
+           | Some tails -> Match_Eps tails
+           end
+        | Ghost g ->
+           if List.exists (index_matches g) tails then
+             Mismatch_Eps
+           else
+             No_Match_Eps
+
+(* Starting with the case of matching dimension~$N$ and rank
    of~$\epsilon$ and $\bar\epsilon$, there is the well known formula
    \begin{equation}
       \forall k, n = N \in \mathbf{N}, 0\le k \le n \ge 2:\;
@@ -983,19 +1047,17 @@ module Arrow : Arrow =
    \end{equation}
    where~$N=\delta_i^i$ is the dimension. *)
 
-    let fuse_epsilons tails tips =
-      if List.length tails = List.length tips then
-        List.fold_left
-          (fun (even, odd) (eps, tips) ->
-            if eps > 0 then
-              (List.rev_map2 single tails tips :: even, odd)
-            else if eps < 0 then
-              (even, List.rev_map2 single tails tips :: odd)
-            else
-              failwith "Color.Arrow.fuse_epsilons: Combinatorics.permute_signed returned garbage")
-          ([], []) (Combinatorics.permute_signed tips)
+    let merge_eps_eps_bar tips tails =
+      if List.length tails <> List.length tips then
+        None
       else
-        invalid_arg "Color.Arrow.fuse_epsilons: |tails| <> |tips|"
+        Some (List.fold_left
+                (fun (even, odd) (eps, tips) ->
+                  if eps > 0 then
+                    (List.rev_map2 single tails tips :: even, odd)
+                  else
+                    (even, List.rev_map2 single tails tips :: odd))
+                ([], []) (Combinatorics.permute_signed tips))
 
 (* From this, we derive
    \begin{multline}
@@ -1040,128 +1102,22 @@ module Arrow : Arrow =
      \frac{(N-n+k)!}{(N-n)!} = k!\,.
    \end{equation}
    In the case~$k=1$ we
-   get~\eqref{eq:epsilon*epsilonbar-single-contraction}, which reduces
-   to~\eqref{eq:epsilon*epsilonbar-single-contraction-N=n} for $N=n$,
+   get~\eqref{eq:epsilon*epsilonbar-single-contraction},
    of course. *)
  
-(* \begin{dubious}
-      We also need to handle disconnected pairs of~$\epsilon$
-      and~$\bar\epsilon$.  These never appear in [merge']
-      below, because [merge] skips all cases without matching
-      summation indices.  Handling them in [merge] doesn't work
-      yet.
-   \end{dubious} *)
-
-    let merge' arrow1 arrow2 =
-      match arrow1, arrow2 with
-      | Ghost g1, Ghost g2 ->
-         if index_matches g1 g2 then
-           Ghost_Match
-         else
-           No_Match
-      | Arrow (tail, tip), Ghost g
-      | Ghost g, Arrow (tail, tip) ->
-         if index_matches g tail || index_matches g tip then
-           Mismatch
-         else
-           No_Match
-      | Arrow (tail, tip), Arrow (tail', tip') ->
-         if index_matches tip tail' then
-           if index_matches tip' tail then
-             Loop_Match
-           else
-             Match (Arrow (tail, tip'))
-         else if index_matches tip' tail then
-           Match (Arrow (tail', tip))
-         else
-           No_Match
-      | Arrow (tail, tip), Epsilon tips | Epsilon tips, Arrow (tail, tip) ->
-         begin match replace_first_opt ~eq:index_matches tail tip tips with
-         | None -> No_Match
-         | Some tips -> Match (Epsilon tips)
-         end
-      | Arrow (tail, tip), Epsilon_bar tails | Epsilon_bar tails, Arrow (tail, tip) ->
-         begin match replace_first_opt ~eq:index_matches tip tail tails with
-         | None -> No_Match
-         | Some tails -> Match (Epsilon_bar tails)
-         end
-      | Epsilon tips, Ghost g | Ghost g, Epsilon tips ->
-         if List.exists (index_matches g) tips then
-           Mismatch
-         else
-           No_Match
-      | Epsilon_bar tails, Ghost g | Ghost g, Epsilon_bar tails ->
-         if List.exists (index_matches g) tails then
-           Mismatch
-         else
-           No_Match
-      | Epsilon _, Epsilon _ | Epsilon_bar _, Epsilon_bar _ ->
-         No_Match
-      | Epsilon tips, Epsilon_bar tails | Epsilon_bar tails, Epsilon tips ->
-         failwith "Color.Arrow.merge': impossible"
-
-(* As an optimization, don't attempt to merge if neither of the arrows
-   contains a summation index and return immediately. *)
-
-    let merge arrow1 arrow2 =
-      if is_free arrow1 || is_free arrow2 then
-        No_Match
-      else
-        merge' arrow1 arrow2
-
-    let merge_to_string = function
-      | Match factor ->
-         Printf.sprintf "Match (%s)" (factor_to_string factor)
-      | Ghost_Match -> "Ghost"
-      | Loop_Match -> "Loop"
-      | Mismatch -> "Mismatch"
-      | No_Match -> "No_Match"
-
-    let logging_merge arrow1 arrow2 =
-      let result = merge arrow1 arrow2 in
-      Printf.eprintf
-        "merge %s with %s ==> %s\n"
-        (factor_to_string arrow1)
-        (factor_to_string arrow2)
-        (merge_to_string result);
-      result
-
     let is_tadpole = function
-      | Arrow (tail, tip) ->
-         index_matches tail tip
-      | _ -> false
+      | Arrow (tail, tip) -> index_matches tail tip
+      | Ghost _ -> false
 
-    let merge_epsilon_pair arrow1 arrow2 =
-      match arrow1, arrow2 with
-      | Epsilon tips, Epsilon_bar tails | Epsilon_bar tails, Epsilon tips ->
-         Some (fuse_epsilons tails tips)
-      | _ -> None
-
-    let match_epsilon arrow arrows =
-      let rec match_epsilon' seen = function
-        | [] -> None
-        | arrow' :: arrows' ->
-           begin match merge_epsilon_pair arrow arrow' with
-           | Some (even, odd) ->
-              Some (even, odd, List.rev_append seen arrows')
-           | None -> match_epsilon' (arrow' :: seen) arrows'
-           end in
-      match_epsilon' [] arrows
-
-(*i
-    let merge = logging_merge
-i*)
     let epsilon = function
       | [] -> invalid_arg "Color.Arrow.epsilon []"
       | [_] -> invalid_arg "Color.Arrow.epsilon lone index"
-      | tips ->
-         Epsilon (List.map (fun tip -> I tip) tips)
+      | tips -> List.map (fun tip -> I tip) tips
 
     let epsilon_bar = function
       | [] -> invalid_arg "Color.Arrow.epsilon []"
       | [_] -> invalid_arg "Color.Arrow.epsilon lone index"
-      | tails ->
-         Epsilon_bar (List.map (fun tail -> I tail) tails)
+      | tails -> List.map (fun tail -> I tail) tails
 
     (* Composite Arrows. *)
 
@@ -1255,80 +1211,6 @@ i*)
               "2 [1;2;3]" >:: (fun () -> assert_equal (Some [1;10;3]) (replace_first_opt 2 10 [1;2;3]));
               "3 [1;2;3]" >:: (fun () -> assert_equal (Some [1;2;10]) (replace_first_opt 3 10 [1;2;3])) ]
 
-(*i     let determinant_to_string = function
-          | Determinant (even, odd) ->
-             Printf.sprintf
-               "Determinant (even = %s, odd = %s)"
-               (ThoList.to_string (ThoList.to_string factor_to_string) even)
-               (ThoList.to_string (ThoList.to_string factor_to_string) odd)
-          | _ -> "not a Determinant"
-
-        let make_determinant even odd =
-          let make_free_single (tail, tip) =
-            single (Free (I tail)) (Free (I tip)) in
-          Determinant
-            (List.map (List.map make_free_single) even,
-             List.map (List.map make_free_single) odd)
-
-        let canonicalize_determinant = function
-          | Determinant (even, odd) ->
-             Determinant
-               (List.sort pcompare (List.map (List.sort pcompare) even),
-                List.sort pcompare (List.map (List.sort pcompare) odd))
-          | other -> other
-
-        let merge_epsilon_pair eps eps_bar =
-          merge
-            (to_left_factor (fun i -> position i < 0) (epsilon eps))
-            (to_right_factor (fun i -> position i < 0) (epsilon_bar eps_bar))
-
-        let make_even tails tips =
-          List.rev_map
-            (List.rev_map2 (fun tail tip -> (tail, tip)) tails)
-            (Combinatorics.permute_even tips)
-
-        let make_odd tails tips =
-          List.rev_map
-            (List.rev_map2 (fun tail tip -> (tail, tip)) tails)
-            (Combinatorics.permute_odd tips)
-
-        let assert_eps_aux even odd eps eps_bar =
-          assert_equal ~printer:determinant_to_string
-            (canonicalize_determinant (make_determinant even odd))
-            (canonicalize_determinant (merge_epsilon_pair eps eps_bar))
-
-        let assert_eps unit eps eps_bar =
-          let tips, tails = List.split unit in
-          let even = make_even tails tips
-          and odd = make_odd tails tips in
-          assert_eps_aux even odd eps eps_bar
-
-        (* A single arrow needs special treatment to get the
-           sign to the proper place.*)
-        let assert_eps1 odd (tip, tail) eps eps_bar =
-          if odd then
-            assert_eps_aux [] [[(tail,tip)]] eps eps_bar
-          else
-            assert_eps_aux [[(tail,tip)]] [] eps eps_bar
-
-        let suite_fuse_epsilons1 =
-          "fuse_epsilons1" >:::
-
-            [ "1a*2a" >:: (fun () -> assert_eps1 false (1,2) [1;-9] [2;-9]);
-              "a1*a2" >:: (fun () -> assert_eps1 false (1,2) [-9;1] [-9;2]);
-              "1a*a2" >:: (fun () -> assert_eps1 true (1,2) [1;-9] [-9;2]);
-              "a1*2a" >:: (fun () -> assert_eps1 true (1,2) [-9;1] [2;-9]);
-
-              "13a*24a" >:: (fun () -> assert_eps [(1,2);(3,4)] [1;3;-9] [2;4;-9]);
-              "1a3*24a" >:: (fun () -> assert_eps [(1,4);(3,2)] [1;-9;3] [2;4;-9]);
-              "a13*2a4" >:: (fun () -> assert_eps [(1,4);(3,2)] [-9;1;3] [2;-9;4]);
-              "1a3*2a4" >:: (fun () -> assert_eps [(1,2);(3,4)] [1;-9;3] [2;-9;4]);
-
-              "135a*246a" >:: (fun () -> assert_eps [(1,2);(3,4);(5,6)] [1;3;5;-9] [2;4;6;-9]);
-              "315a*246a" >:: (fun () -> assert_eps [(3,2);(1,4);(5,6)] [3;1;5;-9] [2;4;6;-9]);
-              "5a13*246a" >:: (fun () -> assert_eps [(1,2);(3,4);(5,6)] [5;-9;1;3] [2;4;6;-9]);
-              "a135*2a46" >:: (fun () -> assert_eps [(3,2);(1,4);(5,6)] [-9;1;3;5] [2;-9;4;6]) ] i*)
-
         let suite =
           "Color.Arrow" >:::
 	    [suite_chain;
@@ -1351,6 +1233,8 @@ i*)
 
   end
 
+(* \thocwmodulesubsection{Whizard Interface} *)
+
 module type Propagator =
   sig
     type cf_in = int
@@ -1371,6 +1255,11 @@ module Propagator : Propagator =
       | IO (cf, cf') -> Printf.sprintf "IO(%d,%d)" cf cf'
       | G -> "G"
   end
+
+(* \thocwmodulesubsection{Rational Algebra} *)
+
+module Q = Algebra.Q
+module QC = Algebra.QC
 
 module type LP =
   sig
@@ -1414,6 +1303,146 @@ module LP : LP =
     let over_nc n = ints [(n, -1)]
 
   end
+
+(* \thocwmodulesubsection{Lists with Typed Lengths} *)
+
+(* Inspired by an example posted on github by Izaak Meckler that in turn
+   appears to be based on ideas well known in the Haskell community. *)
+
+(* \begin{dubious}
+     This will become a seperate file, after we have convinced ourselves of
+     its utility.
+   \end{dubious} *)
+
+module type NList =
+  sig
+
+    (* These types are just Peano numerals ['n] used as indices
+       for [('n, 'a) t].  [z] encodes 0 and ['a s] the successor. *)
+    type z
+    type 'a s
+
+    (* A [('n, 'a) t] is a list of ['a] of length ['n] with ['n]
+       encoded as a church numeral and must not be too large! *)
+    type ('n, 'a) t
+
+    (* Constructors. *)
+    val empty : (z, 'a) t
+    val cons : 'a -> ('n, 'a) t -> ('n s, 'a) t
+
+    (* Deconstructors. Note that they cannot be applied to the empty list. *)
+    val hd : ('n s, 'a) t -> 'a
+    val tl : ('n s, 'a) t -> ('n, 'a) t
+
+    (* Turn the a list with typed length into an ordinary list.
+       Note also, that we can not implement the inverse function
+       [of_list : 'a list -> ('n, 'a t)], because in that case the
+       type ['n] depends on the list and is \emph{not} known at
+       compile time. *)
+    val to_list : ('n, 'a) t -> 'a list
+
+    (* The usual suspects. *)
+    val map : ('a -> 'b) -> ('n, 'a) t -> ('n, 'b) t
+    val fold_right : ('a -> 'b -> 'b) -> ('n, 'a) t -> 'b -> 'b
+
+    (* A version of [append] is complicated, since we need to compute
+       the sum of the lengths in the type system.  It can be done by
+       introducing additional wrappers, but the result is difficult to
+       deconstruct and we don't need it for our applications.
+       The usual implementation of [rev] will also not work, because we
+       need again to maintain the sum of the lengths as an invariant.
+       Simple successor relationships are not enough. *)
+
+    (* On the other hand, [map2], [fold_right2] etc.{} can be
+       implemented easily.  Here, the type shines, because it can
+       avoid the [Invalid_argument] exception. *)
+    val map2 : ('a -> 'b -> 'c) -> ('n, 'a) t -> ('n, 'b) t -> ('n, 'c) t
+
+    (* The algorithm is not suitable for long lists, but we expect the
+       lists to be very short anyway. *)
+    val sort : ('a -> 'a -> int) -> ('n, 'a) t -> ('n, 'a) t
+
+  end
+
+module NList : NList =
+  struct
+
+    (* The constructor [Zero] appears to be not needed,
+       but the constructor [Successor] is required. *)    
+    type z = Zero
+    type 'a s = Successor
+
+    type (_, _) t =
+      | Nil  : (z, 'a) t
+      | Cons : 'a * ('n, 'a) t -> ('n s, 'a) t
+
+    let empty = Nil
+
+    let cons : type n. 'a -> (n, 'a) t -> (n s, 'a) t =
+      fun x xs ->
+      Cons (x, xs)
+
+    let hd : type n. (n s, 'a) t -> 'a = function
+      | Cons (x, _) -> x
+
+    let tl : type n. (n s, 'a) t -> (n, 'a) t = function
+      | Cons (_, xs) -> xs
+
+    let rec fold_right : type n. ('a -> 'b -> 'b) -> (n, 'a) t -> 'b -> 'b=
+      fun f alist b ->
+      match alist with
+      | Nil -> b
+      | Cons (a, rest) -> f a (fold_right f rest b)
+
+    let rec map : type n. ('a -> 'b) -> (n, 'a) t -> (n, 'b) t =
+      fun f ->
+      function
+      | Nil -> Nil
+      | Cons (x, xs) -> Cons (f x, map f xs)
+
+    let rec to_list : type n. (n, 'a) t -> 'a list = function
+      | Nil -> []
+      | Cons (a, a_list) -> a :: to_list a_list
+
+    let rec map2 : type n. ('a -> 'b -> 'c) -> (n, 'a) t -> (n, 'b) t -> (n, 'c) t =
+      fun f a_list b_list ->
+      match a_list, b_list with
+      | Nil, Nil -> Nil
+      | Cons (x, xs), Cons (y, ys) -> Cons (f x y, map2 f xs ys)
+
+(* This corresponds to a bubble sort. Don't use this for long lists!
+   However, we expect the lists to be very short anyway and type safe
+   reversing or concatenating two lists as required by the better performing
+   algorithms requires to much effort for our applications. *)
+
+(* Inner step: find an element that is out of order and push it past
+   the adjacent lesser elements.  Report whether a transposition was made. *)
+
+    let rec cycle : type n. ('a -> 'a -> int) -> (n, 'a) t -> bool * (n, 'a) t =
+      fun cmp -> function
+      | Nil -> (false, Nil)
+      | Cons (_, Nil) as a -> (false, a)
+      | Cons (a1, (Cons (a2, alist2) as alist1)) ->
+         if cmp a1 a2 <= 0 then
+           let flipped, alist = cycle cmp alist1 in
+           (flipped, Cons (a1, alist))
+         else
+           let flipped, alist = cycle cmp (Cons (a1, alist2)) in
+           (true, Cons (a2, alist))
+
+(* Repeat the inner step until no more elements are out of order. *)
+
+    let rec sort : type n. ('a -> 'a -> int) -> (n, 'a) t -> (n, 'a) t =
+      fun cmp alist ->
+      let flipped, cycled = cycle cmp alist in
+      if flipped then
+        sort cmp cycled
+      else
+        cycled
+
+  end
+
+(* \thocwmodulesubsection{Expressions of Arrows and Epsilons} *)
 
 module type Birdtracks =
   sig
@@ -1461,12 +1490,76 @@ module Birdtracks =
     module P = Propagator
     module L = Algebra.Laurent
 
-    type connection = L.t * A.free list
-    type t = connection list
+    (* There can be one or more $\epsilon$ or $\bar\epsilon$, but
+       not both at the same time. *)
+
+    (* I wanted to use a GADT with Peano numerals to track the number
+       of $\epsilon$ and $\bar\epsilon$ in the type system.  However,
+       I would have needed to implement a ``multiplication'' function
+       of the type ['n1 term -> 'n2 term -> ('n1 + 'n2) term]
+       that I have not been able to implement using Peano numerals for
+       the type variables ['n1] and ['n2], due to the lack of an
+       addition operator for Peano numerals in the type system.
+
+       Therefore I will use normal lists, sacrificing some type safety. *)
+
+    type 'a aterm = { coeff : L.t; arrows : 'a list }
+    type ('a, 'e) eterm = 'a aterm * 'e list
+    type ('a, 'b) bterm = 'a aterm * 'b list
+
+    type ('a, 'e, 'b) term =
+      | Arrows of 'a aterm
+      | Epsilons of ('a, 'e) eterm
+      | Epsilon_Bars of ('a, 'b) bterm
+
+(* \begin{dubious}
+       Having already added type annotations for polymorphic
+       recursion, I could use a simple GADT instead of an ADT at the toplevel, trying
+       to maintain some unboxing potential:
+
+  [ type ('a, 'e, 'b) term =
+      | Arrows : 'a aterm -> ('a, 'e, 'b) term
+      | Epsilons : ('a, 'e) eterm -> ('a, 'e, 'b) term
+      | Epsilon_Bars : ('a, 'b) bterm -> ('a, 'e, 'b) term ]
+
+       but it is not obvious that this produces a real performance benefit.
+   \end{dubious} *)
+
+    type afree = A.free aterm
+    type efree = (A.free, A.free_eps) eterm
+    type bfree = (A.free, A.free_eps_bar) bterm
+    type free = (A.free, A.free_eps, A.free_eps_bar) term
+
+    type afactor = A.factor aterm
+    type efactor = (A.factor, A.factor_eps) eterm
+    type bfactor = (A.factor, A.factor_eps_bar) bterm
+    type factor = (A.factor, A.factor_eps, A.factor_eps_bar) term
+
+    type t = free list
+
+    let tips_and_tails_of_aterm { arrows } =
+      List.fold_left
+        (fun (tips, tails) arrow ->
+          (List.rev_append (A.tips arrow) tips,
+           List.rev_append (A.tails arrow) tails))
+        ([], []) arrows
+          
+    let tips_and_tails_raw = function
+      | Arrows aterm -> tips_and_tails_of_aterm aterm
+      | Epsilons (aterm, epsilons) ->
+         let tips, tails = tips_and_tails_of_aterm aterm in
+         (List.rev_append epsilons tips, tails)
+      | Epsilon_Bars (aterm, epsilon_bars) ->
+         let tips, tails = tips_and_tails_of_aterm aterm in
+         (tips, List.rev_append epsilon_bars tails)
+
+    let tips_and_tails term =
+      let tips, tails =tips_and_tails_raw term in
+      (List.sort pcompare tips, List.sort pcompare tails)
 
     let trivial = function
       | [] -> true
-      | [(coeff, [])] -> coeff = L.unit
+      | [Arrows { coeff; arrows = [] }] -> coeff = L.unit
       | _ -> false
 
     (* Rationals from integers. *)
@@ -1494,7 +1587,7 @@ module Birdtracks =
     let l_over_nc n = l_ints [(n, -1)]
 
     (* Expressions *)
-    let const c = [c, []]
+    let const coeff = [ Arrows { coeff; arrows = [] } ]
     let ints pairs = const (LP.ints pairs)
     let null = const L.null
     let half = const (LP.fraction 2)
@@ -1510,236 +1603,437 @@ module Birdtracks =
 
     module AMap = Pmap.Tree
 
-    let find_arrows_opt arrows map =
-      try Some (AMap.find pcompare arrows map) with Not_found -> None
+    let id a = a
+    let psort alist = List.sort pcompare alist
 
-    let canonicalize1 (coeff, io_list) =
-      (coeff, List.sort pcompare io_list)
+    let find_term_opt term map =
+      AMap.find_opt pcompare term map
 
-    let canonicalize terms =
+    let map_aterm fc fa aterm =
+      { coeff = fc aterm.coeff; arrows = fa aterm.arrows }
+
+    let map_term fc fa fe fb = function
+      | Arrows aterm -> Arrows (map_aterm fc fa aterm)
+      | Epsilons (aterm, elist) -> Epsilons (map_aterm fc fa aterm, fe elist)
+      | Epsilon_Bars (aterm, blist) -> Epsilon_Bars (map_aterm fc fa aterm, fb blist)
+
+    let canonicalize_aterm term =
+      map_aterm id psort term
+
+    (* \begin{dubious}
+         We're \emph{not yet} canonicalizing the $\epsilon$ and
+         $\bar\epsilon$ themselves.  This could be done, if
+         necessary, using [Combinatorics.sort_signed] to keep track of
+         the signs.  While we're debugging, it could be beneficial to
+         keep the indices where they are.
+       \end{dubious} *)
+
+    let canonicalize_term : type a e b. (a, e, b) term -> (a, e, b) term =
+      fun term ->
+      map_term id psort psort psort term
+
+    let split_coeff : type a e b. (a, e, b) term -> L.t * (a, e, b) term  = function
+      | Arrows aterm -> (aterm.coeff, Arrows { aterm with coeff = LP.int 1 })
+      | Epsilons (aterm, epsilons) ->
+         (aterm.coeff, Epsilons ({ aterm with coeff = LP.int 1 }, epsilons))
+      | Epsilon_Bars (aterm, epsilon_bars) ->
+         (aterm.coeff, Epsilon_Bars ({ aterm with coeff = LP.int 1 }, epsilon_bars))
+
+    let inject_coeff : type a e b. L.t -> (a, e, b) term -> (a, e, b) term =
+      fun coeff -> map_term (fun _ -> coeff) id id id
+
+(* \begin{dubious}
+     Note that the final result
+     must be a homogeneous list with all elements containing the same
+     number of $\epsilon$ and $\bar\epsilon$, because otherwise the number
+     of incoming and outgoing color lince would not match.
+
+     Nevertheless, we might have to work very hard to avoid too much code
+     duplication.
+   \end{dubious} *)
+
+    let canonicalize : type a e b. (a, e, b) term list -> (a, e, b) term list =
+      fun terms ->
       let map =
         List.fold_left
           (fun acc term ->
-            let coeff, arrows = canonicalize1 term in
+            let coeff, term = split_coeff (canonicalize_term term) in
             if L.is_null coeff then
               acc
             else
-              match find_arrows_opt arrows acc with
-              | None -> AMap.add pcompare arrows coeff acc
-              | Some coeff' ->
-                 let coeff'' = L.add coeff coeff' in
-                 if L.is_null coeff'' then
-                   AMap.remove pcompare arrows acc
-                 else
-                   AMap.add pcompare arrows coeff'' acc)
+              match find_term_opt term acc with
+                 | None -> AMap.add pcompare term coeff acc
+                 | Some coeff' ->
+                    let coeff'' = L.add coeff coeff' in
+                    if L.is_null coeff'' then
+                      AMap.remove pcompare term acc
+                    else
+                      AMap.add pcompare term coeff'' acc)
           AMap.empty terms in
       if AMap.is_empty map then
-        null
+        []
       else
-        AMap.fold (fun arrows coeff acc -> (coeff, arrows) :: acc) map []
+        AMap.fold (fun term coeff acc -> inject_coeff coeff term :: acc) map []
 
-    let arrows_to_string_aux f arrows =
-      ThoList.to_string f arrows
+    let aterm_to_string f term =
+      match term.arrows with
+      | [] -> Printf.sprintf "(%s)" (L.to_string "N" term.coeff)
+      | arrows ->
+         Printf.sprintf
+           "(%s) * %s"
+           (L.to_string "N" term.coeff) (ThoList.to_string f arrows)
+      
+    let to_string1_aux fa fe fb = function
+      | Arrows aterm -> aterm_to_string fa aterm
+      | Epsilons (aterm, epsilons) ->
+         aterm_to_string fa aterm ^ " * " ^ ThoList.to_string fe epsilons
+      | Epsilon_Bars (aterm, epsilon_bars) ->
+         aterm_to_string fa aterm ^ " * " ^ ThoList.to_string fb epsilon_bars
 
-    let to_string1_aux f (coeff, arrows) =
-      Printf.sprintf
-        "(%s) * %s"
-        (L.to_string "N" coeff) (arrows_to_string_aux f arrows)
+    let to_string1 term =
+      to_string1_aux A.free_to_string A.free_eps_to_string A.free_eps_bar_to_string term
 
-    let to_string_raw_aux f v =
-      ThoList.to_string (to_string1_aux f) v
+    let to_string_raw terms =
+      ThoList.to_string to_string1 terms
 
-    let to_string_aux f v =
-      to_string_raw_aux f (canonicalize v)
+    let to_string terms =
+      to_string_raw (canonicalize terms)
 
-    let factor_arrows_to_string = arrows_to_string_aux A.factor_to_string
-    let factor_to_string1 = to_string1_aux A.factor_to_string
-    let factor_to_string_raw = to_string_raw_aux A.factor_to_string
-    let factor_to_string = to_string_aux A.factor_to_string
-
-    let arrows_to_string = arrows_to_string_aux A.free_to_string
-    let to_string1 = to_string1_aux A.free_to_string
-    let to_string_raw = to_string_raw_aux A.free_to_string
-    let to_string = to_string_aux A.free_to_string
+(*i
+    let trivial terms =
+      let result = trivial terms in
+      Printf.eprintf
+        "trivial %s -> %b\n"
+        (to_string terms)
+        result;
+      trivial terms
+i*)
 
     let pp fmt v =
       Format.fprintf fmt "%s" (to_string v)
 
     let is_null v =
-      List.for_all (fun (c, _) -> L.is_null c) (canonicalize v)
+      match canonicalize v with
+      | [] -> true
+      | _ -> false
 
     let is_white = function
       | P.W -> true
       | _ -> false
 
-    let relocate1 f (c, v) =
-      (c, List.map (A.map (A.relocate f)) v)
+    let relocate1 f term =
+      map_term id
+        (List.map (A.map (A.relocate f)))
+        (List.map (List.map (A.relocate f)))
+        (List.map (List.map (A.relocate f)))
+        term
 
     let relocate f = List.map (relocate1 f)
 
-    (* Only for documentiation: a [term] is a list of arrows with
-       a coefficient. *)
-    type term = L.t * A.factor list
+    let of_afactor aterm =
+      map_aterm id (List.map A.of_factor) aterm
+      
+    let of_factor term =
+      map_term id
+        (List.map A.of_factor)
+        (List.map A.of_factor_eps)
+        (List.map A.of_factor_eps_bar)
+        term
+      
+    let to_left_factor is_sum term =
+      map_term id
+        (List.map (A.to_left_factor is_sum))
+        (List.map (A.to_left_factor_eps is_sum))
+        (List.map (A.to_left_factor_eps_bar is_sum))
+        term
+      
+    let to_right_factor is_sum term =
+      map_term id
+        (List.map (A.to_right_factor is_sum))
+        (List.map (A.to_right_factor_eps is_sum))
+        (List.map (A.to_right_factor_eps_bar is_sum))
+        term
 
-    (* \begin{dubious}
-         New version: there can be $\epsilon$ or $\bar\epsilon$, but
-         not both at the same time.
-       \end{dubious} *)
-    type term_new =
-      | Only_Deltas of L.t * A.factor list
-      | Epsilons of L.t * A.factor list * A.endpoint list list
-      | Epsilon_Bars of L.t * A.factor list * A.endpoint list list
+    (* The will be [Option.map] from [Stdlib] from 4.08 on. *)
+    let option_map f = function
+      | None -> None
+      | Some x -> Some (f x)
 
-    (* Avoid the recursion, if there is no summation index in [arrow].
-       If [arrow] loops back to itself, replace it by a factor of~$N_C$. *)
-    let rec add_arrow : A.factor -> term -> term option =
-      fun arrow (coeff, arrows) ->
-      if A.is_free arrow then
-        Some (coeff, arrow :: arrows)
-      else if A.is_tadpole arrow then
-        Some (L.mul (LP.nc 1) coeff, arrows)
-      else
-        add_arrow' coeff [] arrow arrows
+    (* The will be [Fun.flip] from [Stdlib] from 4.08 on. *)
+    let fun_flip f x y = f y x
+
+    (* We start with the simply recursive evaluation functions,
+       leaving the the more complicated mutually recursive
+       functions for later. *)
 
     (* Add one [arrow] to a list of arrows, updating [coeff]
        if necessary. Accumulate already processed arrows in [seen].
-       Returns an empty list if there is a mismatch (a gluon meeting
-       a ghost) and a list of pairs consisting of a coefficient and a
-       list of arrows otherwise.   There can be more than one pair,
-       because matching $\epsilon$ and $\bar\epsilon$ results
-       in a sum over permutations. *)
+       Returns [None] if there is a mismatch (a gluon meeting
+       a ghost) and [Some afactor] containing a coefficient and a
+       list of arrows otherwise. *)
 
-    and add_arrow' : L.t -> A.factor list -> A.factor -> A.factor list -> term option =
-      fun coeff seen arrow -> function
+    (* We assume that the trivial cases of no summation indices
+       and the arrow looping back to itself have already been filtered
+       out. *)
+
+    let rec add_arrow_to_arrows_list' coeff seen arrow = function
       | [] -> (* visited all [arrows]: no opportunities for further matches *)
-         Some (coeff, arrow :: seen)
+         Some ({ coeff; arrows = arrow :: seen })
       | arrow' :: arrows' ->
-         begin match A.merge arrow arrow' with
+         begin match A.merge_arrow_arrow arrow arrow' with
          | A.Mismatch ->
             None
          | A.Ghost_Match -> (* replace matching ghosts by $-1/N_C$ *)
-            Some (L.mul (LP.over_nc (-1)) coeff, List.rev_append seen arrows')
+            Some ({ coeff = L.mul (LP.over_nc (-1)) coeff;
+                    arrows = List.rev_append seen arrows' })
          | A.Loop_Match -> (* replace a loop by $N_C$ *)
-            Some (L.mul (LP.nc 1) coeff, List.rev_append seen arrows')
+            Some ({ coeff = L.mul (LP.nc 1) coeff;
+                    arrows = List.rev_append seen arrows' })
          | A.Match arrow'' -> (* two arrows have been merged into one *)
             if A.is_free arrow'' then (* no opportunities for further matches *)
-              Some (coeff, arrow'' :: List.rev_append seen arrows')
+              Some ({ coeff; arrows = arrow'' :: List.rev_append seen arrows' })
             else (* the new [arrow''] ist not yet saturated, try again: *)
-              add_arrow' coeff seen arrow'' arrows'
+              add_arrow_to_arrows_list' coeff seen arrow'' arrows'
          | A.No_Match -> (* recurse to the remaining arrows *)
-            add_arrow' coeff (arrow' :: seen)  arrow arrows'
+            add_arrow_to_arrows_list' coeff (arrow' :: seen)  arrow arrows'
          end
 
-    and add_determinant : A.factor list -> A.factor list list -> A.factor list list -> term -> term list =
-      fun seen even odd (coeff, arrows as term) ->
-      distribute seen even term (distribute seen odd (L.neg coeff, arrows) [])
+    let add_arrow_to_arrows_list coeff arrow arrows =
+      add_arrow_to_arrows_list' coeff [] arrow arrows
 
-    and distribute : A.factor list -> A.factor list list-> term -> term list -> term list =
-      fun seen permutations term terms ->
-      List.fold_left
-        (fun acc permutation -> splice_arrows seen permutation term :: acc)
-        terms permutations
+    (* Similarly, add one [arrow] to a list of $\epsilon$ and
+       accumulate already processed arrows in [seen].
+       Returns [[]] if there is no match.  Note that there is
+       never the need to update the coefficient and that only
+       the tail of the [arrow] can match. *)
 
-    and splice_arrows : A.factor list -> A.factor list -> term -> term =
-      fun seen arrows term  ->
-      let coeff', arrows' = add_arrow_list arrows term in
-      (coeff', List.rev_append seen arrows')
+    let rec add_arrow_to_epsilon_list' seen arrow = function
+      | [] -> []
+      | epsilon :: epsilons ->
+         begin match A.merge_arrow_eps arrow epsilon with
+         | A.Mismatch_Eps -> []
+         | A.Match_Eps epsilon' -> List.rev_append seen (epsilon' :: epsilons)
+         | A.No_Match_Eps -> add_arrow_to_epsilon_list' (epsilon :: seen) arrow epsilons
+         end
+
+    let add_arrow_to_epsilon_list arrow epsilons =
+      add_arrow_to_epsilon_list' [] arrow epsilons
+
+    (* Same preocedure for adding one [arrow] to a list of $\bar\epsilon$. *)
+
+    let rec add_arrow_to_epsilon_bar_list' seen arrow = function
+      | [] -> []
+      | epsilon_bar :: epsilon_bars ->
+         begin match A.merge_arrow_eps_bar arrow epsilon_bar with
+         | A.Mismatch_Eps -> []
+         | A.Match_Eps epsilon_bar' -> List.rev_append seen (epsilon_bar' :: epsilon_bars)
+         | A.No_Match_Eps -> add_arrow_to_epsilon_bar_list' (epsilon_bar :: seen) arrow epsilon_bars
+         end
+
+    let add_arrow_to_epsilon_bar_list arrow epsilon_bars =
+      add_arrow_to_epsilon_bar_list' [] arrow epsilon_bars
+
+    (* Avoid a recursion, if there is no summation index in [arrow].
+       Likewise, if [arrow] loops back to itself, just replace it by
+       a factor of~$N_C$. *)
+
+    let add_arrow_to_aterm_trivial : A.factor -> afactor -> afactor option =
+      fun arrow term ->
+      if A.is_free arrow then
+        Some ({ coeff = term.coeff; arrows = arrow :: term.arrows })
+      else if A.is_tadpole arrow then
+        Some ({ coeff = L.mul (LP.nc 1) term.coeff; arrows = term.arrows })
+      else
+        None
+
+    (* Straightforwardly add an arrow or an arrow list to a term
+       containing no $\epsilon$ or $\bar\epsilon$, using the functions
+       implemented above. *)
+
+    let add_arrow_to_aterm : A.factor -> afactor -> afactor option =
+      fun arrow term ->
+      match add_arrow_to_aterm_trivial arrow term with
+      | None -> add_arrow_to_arrows_list term.coeff arrow term.arrows
+      | term_opt -> term_opt
+
+    let add_arrow_list_to_aterm : A.factor list -> afactor -> afactor option =
+      fun arrows term ->
+      ThoList.fold_left_opt (fun_flip add_arrow_to_aterm) term arrows
+
+    (* Adding an arrow or an arrow list to a term containing
+       $\epsilon$ or $\bar\epsilon$ is not more complicated, we only
+       have to make two attempts. *)
 
     (* \begin{dubious}
-         Here we would like to use the type system to prove
-         that the two failing cases can't happen.
-         In real life they can't happen, because [arrow] is
-         never [A.Epsilon].  Can we use the version of GADTs
-         that are available in O'Caml 4.05?
+         Caveat: if the arrow matches one of the $\epsilon$s and
+         this $\epsilon$ has a tip appearing among the remaining
+         tips of this $\epsilon$, the result should be set to zero
+         explicitelty.  But such expressions are illegal anyway!
        \end{dubious} *)
-    and add_arrow_list : A.factor list -> term -> term =
-      fun arrows term ->
-      match arrows with
-      | [] -> term
-      | arrow :: rest ->
-         begin match add_arrow arrow term with
-         | Some term -> add_arrow_list rest term
-         | None -> failwith "add_arrow_list: unexpected None"
+
+    let add_arrow_to_eterm : A.factor -> efactor -> efactor option =
+      fun arrow (aterm, epsilons) ->
+      match add_arrow_to_aterm_trivial arrow aterm with
+      | Some aterm -> Some (aterm, epsilons)
+      | None ->
+         begin match add_arrow_to_epsilon_list arrow epsilons with
+         | [] ->
+            begin match add_arrow_to_arrows_list aterm.coeff arrow aterm.arrows with
+            | None -> None
+            | Some aterm -> Some (aterm, epsilons)
+            end
+         | epsilons -> Some (aterm, epsilons)
          end
 
-(*i   and add_arrow_list arrows (coeff, acc as term) =
-      let result = add_arrow_list_raw arrows term in
-      Printf.eprintf
-        "add_arrow_list (%s) * %s %s ==> %s\n"
-        (factor_arrows_to_string arrows)
-        (L.to_string "N" coeff)
-        (factor_arrows_to_string acc)
-        (factor_to_string1 result);
-      result
-i*)
+    let add_arrow_list_to_eterm : A.factor list -> efactor -> efactor option =
+      fun arrows term ->
+      ThoList.fold_left_opt (fun_flip add_arrow_to_eterm) term arrows
 
-(*i
-    let logging_add_arrow arrow (coeff, arrows) =
-      let result = add_arrow arrow (coeff, arrows) in
-      Printf.eprintf
-        "add_arrow %s to %s ==> %s\n"
-        (A.factor_to_string arrow)
-        (factor_to_string1 (coeff, arrows))
-        (ThoList.to_string factor_to_string1 result);
-      result
+    let add_arrow_to_bterm : A.factor -> bfactor -> bfactor option =
+      fun arrow (aterm, epsilon_bars) ->
+      match add_arrow_to_aterm_trivial arrow aterm with
+      | Some aterm -> Some (aterm, epsilon_bars)
+      | None ->
+         begin match add_arrow_to_epsilon_bar_list arrow epsilon_bars  with
+         | [] ->
+            begin match add_arrow_to_arrows_list aterm.coeff arrow aterm.arrows with
+            | None -> None
+            | Some aterm -> Some (aterm, epsilon_bars)
+            end
+         | epsilon_bars -> Some (aterm, epsilon_bars)
+         end
 
-    let add_arrow = logging_add_arrow
-i*)
+    let add_arrow_list_to_bterm : A.factor list -> bfactor -> bfactor option =
+      fun arrows term ->
+      ThoList.fold_left_opt (fun_flip add_arrow_to_bterm) term arrows
 
-(* The return type is [term list], because adding an~$\epsilon$
-   (or~$\bar\epsilon$) will turn a term to a sum of terms iff
-   the term contains a $\bar\epsilon$ (or~$\epsilon$), since
-   $\epsilon$-$\bar\epsilon$ pairs will
-   be expanded by [add_determinant]. *)
+    (* Adding an $\epsilon$ to a term containing $\epsilon$s is trivial,
+       if there are no summation indices.  Otherwise, we add the arrows
+       back in to find matches.
+       \begin{dubious}
+         Here's potential for optimization, since the arrows can only
+         match the new $\epsilon$.
+       \end{dubious} *)
 
-    let add_arrow_or_epsilon : A.factor -> term -> term list =
-      fun arrow (coeff, arrows as term) ->
-      if A.is_epsilon arrow then
-        match A.match_epsilon arrow arrows with
-        | None ->
-           begin match add_arrow' coeff [] arrow arrows with
-           | None -> []
-           | Some term -> [term]
-           end
-        | Some (even, odd, arrows') ->
-           add_determinant [] even odd (coeff, arrows')
+    let add_epsilon_to_eterm : A.factor_eps -> efactor -> efactor option =
+      fun epsilon (aterm, epsilons) ->
+      if A.is_free_eps epsilon then
+        Some (aterm, epsilon :: epsilons)
       else
-        match add_arrow arrow term with
-        | None -> []
-        | Some term -> [term]
+        let coeff = { coeff = aterm.coeff; arrows = []} in
+        add_arrow_list_to_eterm aterm.arrows (coeff, epsilon :: epsilons)
 
-    (* [add_arrows_or_epsilons arrows term] add the [arrows] to [term] by
-       calling [add_arrow_or_epsilon] for each one.  Return an empty list
-       if there are leftover summation indices in the end. *)
+    let add_epsilon_list_to_eterm : A.factor_eps list -> efactor -> efactor option =
+      fun epsilons eterm ->
+      ThoList.fold_left_opt (fun_flip add_epsilon_to_eterm) eterm epsilons
+
+    (* Once more for $\bar\epsilon$. *)
+
+    let add_epsilon_bar_to_bterm : A.factor_eps_bar -> bfactor -> bfactor option =
+      fun epsilon_bar (aterm, epsilon_bars) ->
+      if A.is_free_eps_bar epsilon_bar then
+        Some (aterm, epsilon_bar :: epsilon_bars)
+      else
+        let coeff = { coeff = aterm.coeff; arrows = []} in
+        add_arrow_list_to_bterm aterm.arrows (coeff, epsilon_bar :: epsilon_bars)
+
+    let add_epsilon_bar_list_to_bterm : A.factor_eps_bar list -> bfactor -> bfactor option =
+      fun epsilon_bars bterm ->
+      ThoList.fold_left_opt (fun_flip add_epsilon_bar_to_bterm) bterm epsilon_bars
+
+    (* Here we simply have to select the correct function. *)
+
+    let add_arrow_to_term : A.factor -> factor -> factor option =
+      fun arrow -> function
+      | Arrows aterm ->
+         option_map (fun a -> Arrows a) (add_arrow_to_aterm arrow aterm)
+      | Epsilons eterm ->
+         option_map (fun e -> Epsilons e) (add_arrow_to_eterm arrow eterm)
+      | Epsilon_Bars bterm ->
+         option_map (fun b -> Epsilon_Bars b) (add_arrow_to_bterm arrow bterm)
+
+    let add_arrow_list_to_term : A.factor list -> factor -> factor option =
+      fun arrows term ->
+      ThoList.fold_left_opt (fun_flip add_arrow_to_term) term arrows
+
+    let scale_aterm : L.t -> afactor -> afactor =
+      fun coeff aterm ->
+      { coeff = L.mul coeff aterm.coeff; arrows = aterm.arrows}
+
+    let scale_eterm : L.t -> efactor -> efactor =
+      fun coeff (aterm, epsilons) ->
+      (scale_aterm coeff aterm, epsilons)
+
+    let scale_bterm : L.t -> bfactor -> bfactor =
+      fun coeff (aterm, epsilon_bars) ->
+      (scale_aterm coeff aterm, epsilon_bars)
+
+    let scale_term : L.t -> factor -> factor =
+      fun coeff -> function
+      | Arrows aterm -> Arrows (scale_aterm coeff aterm)
+      | Epsilons eterm -> Epsilons (scale_eterm coeff eterm)
+      | Epsilon_Bars bterm -> Epsilon_Bars (scale_bterm coeff bterm)
+
+    let aterm_times_aterm : afactor -> afactor -> afactor option =
+      fun aterm1 aterm2 ->
+      option_map (scale_aterm aterm1.coeff) (add_arrow_list_to_aterm aterm1.arrows aterm2)
+
+    (* Almost the same as [aterm_times_term] below, but the arguments
+       are exchanged an the result are [factor]s and not [free]. *)
+
+    let term_times_aterm : factor -> afactor -> factor list =
+      fun term aterm ->
+      match add_arrow_list_to_term aterm.arrows term with
+      | None -> []
+      | Some factor -> [scale_term aterm.coeff factor]
+
+    (* The return type is [factor list], because adding a
+       product of~$\epsilon$ and~$\bar\epsilon$ will produce
+       a sum of terms and the result can be a [afactor], [efactor]
+       or [bfactor] depending on the number of~$\epsilon$s
+       and~$\bar\epsilon$s in the arguments. *)
+
+    (* \begin{dubious}
+         Add more tests for multiple $\epsilon$ and $\bar\epsilon$!
+         I'm not yet convinced by playing with the toplevel.
+       \end{dubious} *)
+
+    (* \begin{dubious}
+         Calling [aterm_times_aterm] in each recursion step and
+         only using the last result ist wasteful.  Find a better
+         way!
+       \end{dubious} *)
+
+    let rec match_eterm_and_bterm : efactor -> bfactor -> factor list =
+      fun (aterm1, epsilons) (aterm2, epsilon_bars) ->
+      match epsilons, epsilon_bars with
+      | [], _ | _, [] -> failwith "add_epsilon_to_bterm: unexpected []"
+      | epsilon :: epsilons, epsilon_bar :: epsilon_bars ->
+         begin match aterm_times_aterm aterm1 aterm2 with
+         | None -> []
+         | Some aterm ->
+            match A.merge_eps_eps_bar epsilon epsilon_bar with
+            | None -> []
+            | Some (even, odd) ->
+               let even = List.rev_map (fun arrows -> { coeff = L.unit; arrows }) even
+               and odd = List.rev_map (fun arrows -> { coeff = L.neg L.unit; arrows }) odd in
+               let terms =
+                 match epsilons, epsilon_bars with
+                 | [], [] -> [Arrows aterm]
+                 | epsilons, []-> [Epsilons (aterm, epsilons)]
+                 | [], epsilon_bars-> [Epsilon_Bars (aterm, epsilon_bars)]
+                 | epsilon, epsilon_bars ->
+                    match_eterm_and_bterm (aterm1, epsilon) (aterm2, epsilon_bars) in
+               Product.fold2
+                 (fun term aterm acc ->
+                   List.rev_append (term_times_aterm term aterm) acc)
+                 terms (List.rev_append even odd) []
+         end
 
     (* NB: we can reject the contributions with unsaturated summation indices
        from Ghost contributions to~$T_a$ only \emph{after} adding all
        arrows that might saturate an open index. *)
 
-    let rec add_arrows_or_epsilons : A.factor list -> term -> term list =
-      fun arrows (_, acc_arrows as term) ->
-      match arrows with
-      | [] ->
-         if List.for_all A.is_free acc_arrows then
-           [term]
-         else
-           []
-      | arrow :: rest ->
-         ThoList.flatmap (add_arrows_or_epsilons rest) (add_arrow_or_epsilon arrow term)
-
-
-    let logging_add_arrows_or_epsilons arrows term =
-      let result = add_arrows_or_epsilons arrows term in
-      Printf.eprintf
-        "add_arrows_or_epsilons %s to %s ==> %s\n"
-        (factor_to_string1 term)
-        (factor_arrows_to_string arrows)
-        (ThoList.to_string factor_to_string1 result);
-      result
-
-(*i
-    let add_arrows_or_epsilons = logging_add_arrows_or_epsilons
-i*)
     (* Note that a negative index might be summed only
        later in a sequence of binary products and must
        therefore be treated as free in this product.  Therefore,
@@ -1755,32 +2049,69 @@ i*)
           let compare = pcompare
         end)
 
-    let negatives arrows =
-      List.fold_left
-        (fun acc arrow ->
-          List.fold_left
-            (fun acc' i -> ESet.add i acc')
-            acc (A.negatives arrow))
-        ESet.empty arrows
+    let negatives_arrows arrows acc =
+      List.fold_right (fun a -> List.fold_right ESet.add (A.negatives a)) arrows acc
 
-    let times1 (coeff1, arrows1) (coeff2, arrows2) =
-      let summations = ESet.inter (negatives arrows1) (negatives arrows2) in
+    let negatives_eps epsilons acc =
+      List.fold_right
+        (fun e -> List.fold_right ESet.add (A.negatives_eps e))
+        epsilons acc
+
+    let negatives_eps_bar epsilon_bars acc =
+      List.fold_right
+        (fun b -> List.fold_right ESet.add (A.negatives_eps_bar b))
+        epsilon_bars acc
+
+    let negatives = function
+      | Arrows aterm -> negatives_arrows aterm.arrows ESet.empty
+      | Epsilons (aterm, epsilons) ->
+         negatives_eps epsilons (negatives_arrows aterm.arrows ESet.empty)
+      | Epsilon_Bars (aterm, epsilon_bars) ->
+         negatives_eps_bar epsilon_bars (negatives_arrows aterm.arrows ESet.empty)
+
+    let aterm_times_term : afactor -> factor -> free list =
+      fun aterm term ->
+      match add_arrow_list_to_term aterm.arrows term with
+      | None -> []
+      | Some factor -> [of_factor (scale_term aterm.coeff factor)]
+
+    let eterm_times_eterm : efactor -> efactor -> free list =
+      fun (aterm, epsilons) eterm ->
+      match add_epsilon_list_to_eterm epsilons eterm with
+      | None -> []
+      | Some factor ->
+         begin match add_arrow_list_to_eterm aterm.arrows factor with
+         | None -> []
+         | Some factor -> [of_factor (Epsilons (scale_eterm aterm.coeff factor))]
+         end
+
+    let bterm_times_bterm : bfactor -> bfactor -> free list =
+      fun (aterm, epsilon_bars) bterm ->
+      match add_epsilon_bar_list_to_bterm epsilon_bars bterm with
+      | None -> []
+      | Some factor ->
+         begin match add_arrow_list_to_bterm aterm.arrows factor with
+         | None -> []
+         | Some factor -> [of_factor (Epsilon_Bars (scale_bterm aterm.coeff factor))]
+         end
+
+    let eterm_times_bterm : efactor -> bfactor -> free list =
+      fun eterm bterm ->
+      List.map of_factor (match_eterm_and_bterm eterm bterm)
+
+    let times1 term1 term2 =
+      let summations = ESet.inter (negatives term1) (negatives term2) in
       let is_sum i = ESet.mem i summations in
-      let arrows1' = List.map (A.to_left_factor is_sum) arrows1
-      and arrows2' = List.map (A.to_right_factor is_sum) arrows2 in
-      List.map
-        (fun (coeff1, arrows) ->
-          (L.mul coeff1 coeff2, List.map A.of_factor arrows))
-        (add_arrows_or_epsilons arrows2' (coeff1, arrows1'))
-
-    let logging_times1 factor1 factor2 =
-      let result = times1 factor1 factor2 in
-      Printf.eprintf
-        "%s times1 %s ==> %s\n"
-        (to_string1 factor1)
-        (to_string1 factor2)
-        (ThoList.to_string to_string1 result);
-      result
+      match to_left_factor is_sum term1, to_right_factor is_sum term2 with
+      | Arrows aterm, factor | factor, Arrows aterm ->
+         aterm_times_term aterm factor
+      | Epsilons eterm1, Epsilons eterm2 ->
+         eterm_times_eterm eterm1 eterm2
+      | Epsilon_Bars bterm1, Epsilon_Bars bterm2 ->
+         bterm_times_bterm bterm1 bterm2
+      | Epsilons eterm, Epsilon_Bars bterm
+      | Epsilon_Bars bterm, Epsilons eterm ->
+         eterm_times_bterm eterm bterm
 
     let sum terms =
       canonicalize (List.concat terms)
@@ -1795,6 +2126,7 @@ i*)
          Is that more efficient than the following implementation?
        \end{dubious} *)
 
+(*i
     let rec multiply1' acc = function
       | [] -> [acc]
       | factor :: factors ->
@@ -1809,6 +2141,7 @@ i*)
       canonicalize
         (Product.fold (fun x -> List.rev_append (multiply1 x)) terms [])
 
+i*)
     (* \begin{dubious}
          Isn't that the more straightforward implementation?
        \end{dubious} *)
@@ -1818,8 +2151,10 @@ i*)
       | term :: terms ->
          canonicalize (List.fold_left times term terms)
 
-    let scale1 q (coeff, arrows) =
-      (L.scale q coeff, arrows)
+    let scale1 : type a e b. L.c -> (a, e, b) term -> (a, e, b) term =
+      fun q term ->
+      map_term (L.scale q) id id id term
+
     let scale q = List.map (scale1 q)
 
     let diff term1 term2 =
@@ -1847,10 +2182,31 @@ i*)
     let d_of_rep r a b c =
       trace3 r a b c +++ trace3 r a c b
 
-(* \thocwmodulesubsection{Feynman Rules} *)
+(* \thocwmodulesubsection{Fusions} *)
+
+(* Here we will use the color flow described by a [Arrow.free list]
+   to determine the possible outgoing color flows for the incoming
+   color flows in a fusion.  This translates from vertices described
+   by connections among integers describing factors in the tensor product
+   to color flows with integers describing individual color flow lines. *)
+
+(* \begin{dubious}
+     At the moment both the factors in the tensor product and
+     the color flow lines are [int]s.  This could be make clearer
+     by abstract types.
+   \end{dubious} *)
+
+(* \begin{dubious}
+     This still needs to be extended to $\epsilon$ and $\bar\epsilon$,
+     i.\,e.~[Arrow.free_eps] and [Arrow.free_eps_bar].
+   \end{dubious} *)
+
     module IMap =
       Map.Make (struct type t = int let compare = pcompare end)
 
+    (* Take a [Propagator.t list], ignore the uncolored ([Propagator.W])
+       ones and construct a map of the colored ones indexed by
+       the offset into the original list. *)
     let line_map lines =
       let _, map =
         List.fold_left
@@ -1863,11 +2219,7 @@ i*)
           lines in
       map
 
-(*i Redundant since ocaml 4.05
-     let find_opt i map =
-      try Some (IMap.find i map) with Not_found -> None
-i*)
-
+    (* For debugging: *)
     let lines_to_string lines =
       match IMap.bindings lines with
       | [] -> "W"
@@ -1878,70 +2230,89 @@ i*)
               (fun (i, c) -> Printf.sprintf "%s@%d" (P.to_string c) i)
               lines)
 
+    (* [clear i lines] removes the [Propagator.t] at position [i]
+       from the map [lines]. *)
     let clear = IMap.remove
 
+    (* Add the incoming color flow line [cf] at position [i]
+       to the map [lines].  If there is already an outgoing
+       color flow, replace it by an incoming/outgoing pair.
+       \begin{dubious}
+         This will overwrite any other [Propagator.t] in [lines].
+         Should we be more careful and raise an exception, if the
+         spot has already been taken?
+       \end{dubious} *)
     let add_in i cf lines =
       match IMap.find_opt i lines with
       | Some (P.O cf') -> IMap.add i (P.IO (cf, cf')) lines
       | _ -> IMap.add i (P.I cf) lines
 
+    (* Again for an outgoing color flow line \ldots *)
     let add_out i cf' lines =
       match IMap.find_opt i lines with
       | Some (P.I cf) -> IMap.add i (P.IO (cf, cf')) lines
       | _ -> IMap.add i (P.O cf') lines
 
+    (* \ldots{} and a ghost without color flow. *)
     let add_ghost i lines =
       IMap.add i P.G lines
 
-    let connect1 n arrow lines =
-      match arrow with
-      | A.Ghost g ->
-         let g = A.position g in
-         if g = n then
-           Some (add_ghost n lines)
-         else
-           begin match IMap.find_opt g lines with
-           | Some P.G -> Some (clear g lines)
-           | _ -> None
-           end
-      | A.Arrow (i, o) ->
-         let i = A.position i
-         and o = A.position o in
-         if o = n then
-           begin match IMap.find_opt i lines with
-           | Some (P.I cfi) -> Some (add_in o cfi (clear i lines))
-           | Some (P.IO (cfi, cfi')) -> Some (add_in o cfi (add_out i cfi' lines))
-           | _ -> None
-           end
-         else if i = n then
-           begin match IMap.find_opt o lines with
-           | Some (P.O cfo') -> Some (add_out i cfo' (clear o lines))
-           | Some (P.IO (cfo, cfo')) -> Some (add_out i cfo' (add_in o cfo lines))
-           | _ -> None
-           end
-         else
-           begin match IMap.find_opt i lines, IMap.find_opt o lines with
-           | Some (P.I cfi), Some (P.O cfo') when cfi = cfo' ->
-              Some (clear o (clear i lines))
-           | Some (P.I cfi), Some (P.IO (cfo, cfo')) when cfi = cfo'->
-              Some (add_in o cfo (clear i lines))
-           | Some (P.IO (cfi, cfi')), Some (P.O cfo') when cfi = cfo' ->
-              Some (add_out i cfi' (clear o lines))
-           | Some (P.IO (cfi, cfi')), Some (P.IO (cfo, cfo')) when cfi = cfo' ->
-              Some (add_in o cfo (add_out i cfi' lines))
-           | _ -> None
-           end
-      | A.Epsilon _  ->
-        failwith "Birdtracks.connect not yet defined for Epsilon"
-      | A.Epsilon_bar _ ->
-         failwith "Birdtracks.connect not yet defined for Epsilon_bar"
-        
-    let connect connections lines =
+    (* [connect_opt n lines arrow] tries to form a new connection in the
+       map [lines] using a single [arrow].  The outgoing line in the fusion
+       is represented by the index [n]. *)
+
+    (* If the arrow is a ghost and is connected to the outgoing line,
+       just add it.  If it is connected to an incoming line, remove
+       this propagator, as it is saturated. *)
+    let connect_ghost_opt n g lines =
+      let g = A.position g in
+      if g = n then
+        Some (add_ghost n lines)
+      else
+        match IMap.find_opt g lines with
+        | Some P.G -> Some (clear g lines)
+        | _ -> None
+
+    (* If the arrow is a connection and is connected on one side
+       to the outgoing line, find the matching incoming line.
+       If it is connected to two incoming lines, merge them. *)
+    let connect_arrow_opt n i o lines =
+      let i = A.position i and o = A.position o in
+        if o = n then
+        match IMap.find_opt i lines with
+        | Some (P.I cfi) -> Some (add_in o cfi (clear i lines))
+        | Some (P.IO (cfi, cfi')) -> Some (add_in o cfi (add_out i cfi' lines))
+        | _ -> None
+      else if i = n then
+        match IMap.find_opt o lines with
+        | Some (P.O cfo') -> Some (add_out i cfo' (clear o lines))
+        | Some (P.IO (cfo, cfo')) -> Some (add_out i cfo' (add_in o cfo lines))
+        | _ -> None
+      else
+        match IMap.find_opt i lines, IMap.find_opt o lines with
+        | Some (P.I cfi), Some (P.O cfo') when cfi = cfo' ->
+           Some (clear o (clear i lines))
+        | Some (P.I cfi), Some (P.IO (cfo, cfo')) when cfi = cfo'->
+           Some (add_in o cfo (clear i lines))
+        | Some (P.IO (cfi, cfi')), Some (P.O cfo') when cfi = cfo' ->
+           Some (add_out i cfi' (clear o lines))
+        | Some (P.IO (cfi, cfi')), Some (P.IO (cfo, cfo')) when cfi = cfo' ->
+           Some (add_in o cfo (add_out i cfi' lines))
+        | _ -> None
+
+    let connect_opt n lines = function
+      | A.Ghost g -> connect_ghost_opt n g lines
+      | A.Arrow (i, o) -> connect_arrow_opt n i o lines
+
+    (* Use the ghosts and arrows in [connections] to combine the color flows
+       in [lines]. *)
+    let connect : A.free list -> P.t list -> P.t option =
+      fun connections lines -> 
       let n = succ (List.length lines)
       and lines = line_map lines in
       let rec connect' acc = function
         | arrow :: arrows ->
-           begin match connect1 n arrow acc with
+           begin match connect_opt n acc arrow with
            | None -> None
            | Some acc -> connect' acc arrows
            end
@@ -1955,11 +2326,16 @@ i*)
          | _ -> None
          end
 
-    let fuse1 nc lines (c, vertex) =
-      match connect vertex lines with
-      | None -> []
-      | Some cf -> [(L.eval (qc_int nc) c, cf)]
-             
+    let fuse1 nc lines vertex =
+      match vertex with
+      | Arrows { coeff; arrows } ->
+         begin match connect arrows lines with
+         | None -> []
+         | Some cf -> [(L.eval (qc_int nc) coeff, cf)]
+         end
+      | Epsilons _ -> failwith "Birdtracks.fuse1: Epsilons"
+      | Epsilon_Bars _ -> failwith "Birdtracks.fuse1: Epsilon_Bars"
+
     let fuse nc vertex lines =
       match vertex with
       | [] ->
@@ -1970,6 +2346,16 @@ i*)
       | vertex ->
          ThoList.flatmap (fuse1 nc lines) vertex
 
+(*i
+    let fuse nc vertex lines =
+      let fused = fuse nc vertex lines in
+      Printf.eprintf
+        "%s >>> %s\n"
+        (ThoList.to_string P.to_string lines)
+        (ThoList.to_string (fun (_, p) -> P.to_string p) fused);
+      fused
+i*)
+
     module Test : Test =
       struct
         open OUnit
@@ -1978,7 +2364,7 @@ i*)
           (canonicalize v1) = (canonicalize v2)
 
         let eq v1 v2 =
-          assert_equal ~printer:(ThoList.to_string to_string1) ~cmp:vertices_equal v1 v2
+          assert_equal ~printer:to_string_raw ~cmp:vertices_equal v1 v2
 
         let suite_times1 =
           "times1" >:::
@@ -1986,38 +2372,42 @@ i*)
             [ "merge two" >::
 	        (fun () ->
 	          eq
-                    [(L.unit, 1 ==> 2)]
-                    (times1 (L.unit,  1 ==> -1) (L.unit, -1 ==>  2)));
+                    [Arrows { coeff = L.unit; arrows = 1 ==> 2 }]
+                    (times1
+                       (Arrows { coeff = L.unit; arrows =  1 ==> -1 })
+                       (Arrows { coeff = L.unit; arrows = -1 ==>  2 })));
 
               "merge two exchanged" >::
 	        (fun () ->
 	          eq
-                    [(L.unit, 1 ==> 2)]
-                    (times1 (L.unit, -1 ==>  2) (L.unit,  1 ==> -1)));
+                    [Arrows { coeff = L.unit; arrows = 1 ==> 2 }]
+                    (times1
+                       (Arrows { coeff = L.unit; arrows = -1 ==>  2 })
+                       (Arrows { coeff = L.unit; arrows =  1 ==> -1 })));
 
               "ghost1" >::
 	        (fun () ->
 	          eq
-                    [(l_over_nc (-1), 1 ==> 2)]
+                    [Arrows { coeff = l_over_nc (-1); arrows = 1 ==> 2 }]
                     (times1
-                       (L.unit, [-1 =>  2; ?? (-3)])
-                       (L.unit, [ 1 => -1; ?? (-3)])));
+                       (Arrows { coeff = L.unit; arrows = [-1 =>  2; ?? (-3)] })
+                       (Arrows { coeff = L.unit; arrows = [ 1 => -1; ?? (-3)] })));
 
               "ghost2" >::
 	        (fun () ->
 	          eq
                     []
                     (times1
-                       (L.unit, [ 1 => -1; ?? (-3)])
-                       (L.unit, [-1 =>  2; -3 => -4; -4 => -3])));
+                       (Arrows { coeff = L.unit; arrows = [ 1 => -1; ?? (-3)] })
+                       (Arrows { coeff = L.unit; arrows = [-1 =>  2; -3 => -4; -4 => -3] })));
 
               "ghost2 exchanged" >::
 	        (fun () ->
 	          eq
                     []
                     (times1
-                       (L.unit, [-1 =>  2; -3 => -4; -4 => -3])
-                       (L.unit, [ 1 => -1; ?? (-3)]))) ]
+                       (Arrows { coeff = L.unit; arrows = [-1 =>  2; -3 => -4; -4 => -3] })
+                       (Arrows { coeff = L.unit; arrows = [ 1 => -1; ?? (-3)] }))) ]
 
         let suite_canonicalize =
           "canonicalize" >:::
@@ -2032,7 +2422,7 @@ i*)
           Format.fprintf
             formatter
             "[%s]: expected %s, got %s"
-            (arrows_to_string vertex)
+            (ThoList.to_string A.free_to_string vertex)
             (line_option_to_string expected)
             (line_option_to_string result)
 
@@ -2082,7 +2472,6 @@ i*)
         let suite_long =
           "Color.Birdtracks long" >:::
 	    []
-
       end
 
     let vertices_equal v1 v2 =
@@ -2263,10 +2652,10 @@ module SU3 : SU3 =
 (* \thocwmodulesubsection{Fundamental and Adjoint Representation} *)
 
     let delta3 i j =
-      [(LP.int 1, j ==> i)]
+      Birdtracks.( [ Arrows { coeff = LP.int 1; arrows = j ==> i } ] )
 
     let delta8 a b =
-      [(LP.int 1, a <=> b)]
+      Birdtracks.( [ Arrows { coeff = LP.int 1; arrows = a <=> b } ] )
 
     (* If the~$\delta_{ab}$ originates from
        a~$\tr(T_aT_b)$, like an effective~$gg\to H$
@@ -2277,10 +2666,11 @@ module SU3 : SU3 =
        has not been spelled out in that reference. *)
 
     let delta8_loop a b =
-      [(LP.int 1, a <=> b);
-       (LP.int (-1), [a => a; ?? b]);
-       (LP.int (-1), [?? a; b => b]);
-       (LP.nc 1, [?? a; ?? b])]
+      let open Birdtracks in
+      [ Arrows { coeff = LP.int 1; arrows = a <=> b };
+        Arrows { coeff = LP.int (-1); arrows = [a => a; ?? b] };
+        Arrows { coeff = LP.int (-1); arrows = [?? a; b => b] };
+        Arrows { coeff = LP.nc 1; arrows = [?? a; ?? b] } ]
 
     (* The following can be used for computing polarization sums
        (eventually, this could make the [Flow] module redundant).
@@ -2293,7 +2683,7 @@ module SU3 : SU3 =
         = delta8 1 2]. *)
 
     let ghost a b =
-      [ (LP.nc (-1), [?? a; ?? b])]
+      Birdtracks.( [ Arrows { coeff = LP.nc (-1); arrows = [?? a; ?? b] } ] )
 
     let gluon a b =
       delta8 a b @ ghost a b
@@ -2355,8 +2745,9 @@ module SU3 : SU3 =
 \end{subequations} *)
 
     let t a i j =
-      [ (LP.int 1, [j => a; a => i]);
-        (LP.int (-1), [j => i; ?? a]) ]
+      let open Birdtracks in
+      [ Arrows { coeff = LP.int 1; arrows = [j => a; a => i] };
+        Arrows { coeff = LP.int (-1); arrows = [j => i; ?? a] } ]
 
 (* Note that while we expect $\tr(T_a)=T_a^{ii}=0$,
    the evaluation of the expression [t 1 (-1) (-1)] will stop
@@ -2437,8 +2828,9 @@ module SU3 : SU3 =
 \end{equation} *)
 
     let f a b c =
-      [ (LP.imag ( 1), A.cycle [a; b; c]);
-        (LP.imag (-1), A.cycle [a; c; b]) ]
+      let open Birdtracks in
+      [ Arrows { coeff = LP.imag ( 1); arrows = A.cycle [a; b; c] };
+        Arrows { coeff = LP.imag (-1); arrows = A.cycle [a; c; b] } ]
 
 (* The generator in the adjoint representation $T_a^{bc}=-\ii f_{abc}$: *)
     let t8 a b c =
@@ -2451,15 +2843,16 @@ module SU3 : SU3 =
    above. *)
 
     let d a b c =
-      [ (LP.int 1, A.cycle [a; b; c]);
-        (LP.int 1, A.cycle [a; c; b]);
-        (LP.int (-2), (a <=> b) @ [?? c]);
-        (LP.int (-2), (b <=> c) @ [?? a]);
-        (LP.int (-2), (c <=> a) @ [?? b]);
-        (LP.int 2, [a => a; ?? b; ?? c]);
-        (LP.int 2, [?? a; b => b; ?? c]);
-        (LP.int 2, [?? a; ?? b; c => c]);
-        (LP.nc (-2), [?? a; ?? b; ?? c]) ]
+      let open Birdtracks in
+      [ Arrows { coeff = LP.int 1; arrows =  A.cycle [a; b; c] };
+        Arrows { coeff = LP.int 1; arrows =  A.cycle [a; c; b] };
+        Arrows { coeff = LP.int (-2); arrows =  (a <=> b) @ [?? c] };
+        Arrows { coeff = LP.int (-2); arrows =  (b <=> c) @ [?? a] };
+        Arrows { coeff = LP.int (-2); arrows =  (c <=> a) @ [?? b] };
+        Arrows { coeff = LP.int 2; arrows =  [a => a; ?? b; ?? c] };
+        Arrows { coeff = LP.int 2; arrows =  [?? a; b => b; ?? c] };
+        Arrows { coeff = LP.int 2; arrows =  [?? a; ?? b; c => c] };
+        Arrows { coeff = LP.nc (-2); arrows =  [?? a; ?? b; ?? c] } ]
 
 (* \thocwmodulesubsection{Decomposed Tensor Product Representations} *)
 
@@ -2471,8 +2864,8 @@ module SU3 : SU3 =
       and normalization = List.length permutations in
       List.rev_map
         (fun (eps, outgoing) ->
-          (LP.fraction (eps * normalization),
-           pass_through l k incoming outgoing))
+          Birdtracks.( Arrows { coeff = LP.fraction (eps * normalization);
+                                arrows = pass_through l k incoming outgoing } ))
         permutations
 
     let totally_symmetric n =
@@ -2591,16 +2984,16 @@ module SU3 : SU3 =
     (* All lines start here: they point towards the vertex. *)
     let epsilon tips =
       if distinct tips then
-        [(LP.int 1, [Arrow.epsilon tips])]
+        Birdtracks.( [ Epsilons ({ coeff = LP.int 1; arrows = [] }, [A.epsilon tips]) ] )
       else
-        null
+        []
 
     (* All lines end here: they point away from the vertex. *)
     let epsilon_bar tails =
       if distinct tails then
-        [(LP.int 1, [Arrow.epsilon_bar tails])]
+        Birdtracks.( [ Epsilon_Bars ({ coeff = LP.int 1; arrows = [] }, [A.epsilon_bar tails]) ] )
       else
-        null
+        []
 
 
 (* In order to get the correct $N_C$ dependence of
@@ -2622,33 +3015,46 @@ module SU3 : SU3 =
    difference of the number of parallel and antiparallel arrows
    is added. *)
 
-    let insert_gluon a k l (norm, arrows) =
+    let insert_gluon a k l term =
+      let open Birdtracks in
       let rec insert_gluon' acc left = function
         | [] -> acc
         | arrow :: right ->
            insert_gluon'
-             ((Algebra.Laurent.mul (LP.int (A.dir k l arrow)) norm,
-               List.rev_append left ((A.tee a arrow) @ right)) :: acc)
+             (Arrows { coeff = Algebra.Laurent.mul (LP.int (A.dir k l arrow)) term.B.coeff;
+                       arrows = List.rev_append left ((A.tee a arrow) @ right) } :: acc)
              (arrow :: left)
              right in
-      insert_gluon' [] [] arrows
+      insert_gluon' [] [] term.arrows
 
     let t_of_delta delta a k l =
+      let open Birdtracks in
       match delta k l with
       | [] -> []
-      | (_, arrows) :: _ as delta_kl ->
+      | Arrows { arrows = arrows } :: _ as delta_kl ->
          let n =
            List.fold_left
              (fun acc arrow -> acc + A.dir k l arrow)
              0 arrows in
          let ghosts =
            List.rev_map
-             (fun (norm, arrows) ->
-               (Algebra.Laurent.mul (LP.int (-n)) norm, ?? a :: arrows))
+             (fun term ->
+               match term with
+               | Arrows aterm ->
+                  Arrows { coeff = Algebra.Laurent.mul (LP.int (-n)) aterm.coeff;
+                             arrows = ?? a :: aterm.arrows }
+               | Epsilons _ -> failwith "t_of_delta: unexpected epsilon"
+               | Epsilon_Bars _ -> failwith "t_of_delta: unexpected epsilon_bar")
              delta_kl in
          List.fold_left
-           (fun acc arrows -> insert_gluon a k l arrows @ acc)
+           (fun acc ->
+             function
+             | Arrows aterm -> insert_gluon a k l aterm @ acc
+             | Epsilons _ -> failwith "t_of_delta: unexpected epsilon"
+             | Epsilon_Bars _ -> failwith "t_of_delta: unexpected epsilon_bar")
            ghosts delta_kl
+      | Epsilons _ :: _ -> failwith "t_of_delta: unexpected epsilon"
+      | Epsilon_Bars _ :: _ -> failwith "t_of_delta: unexpected epsilon_bar"
 
     let t_of_delta delta a k l =
       canonicalize (t_of_delta delta a k l)
@@ -2681,21 +3087,22 @@ module SU3 : SU3 =
    the must arrows \emph{end} at~$m$. *)
     let k6 m i j =
       experimental "k6";
-      [ (LP.int 1, [i =>> (m, 0); j =>> (m, 1)]);
-        (LP.int 1, [i =>> (m, 1); j =>> (m, 0)]) ]
+      let open Birdtracks in
+      [ Arrows { coeff = LP.int 1; arrows = [i =>> (m, 0); j =>> (m, 1)] };
+        Arrows { coeff = LP.int 1; arrows = [i =>> (m, 1); j =>> (m, 0)] } ]
 
 (* The arrow are reversed for~$\bar K^{(6),m}_{\hphantom{(6),m}ij}$
    and \emph{start} at~$m$. *)
     let k6bar m i j =
       experimental "k6bar";
-      [ (LP.int 1, [(m, 0) >=> i; (m, 1) >=> j]);
-        (LP.int 1, [(m, 1) >=> i; (m, 0) >=> j]) ]
+      let open Birdtracks in
+      [ Arrows { coeff = LP.int 1; arrows = [(m, 0) >=> i; (m, 1) >=> j] };
+        Arrows { coeff = LP.int 1; arrows = [(m, 1) >=> i; (m, 0) >=> j] } ]
 
     (* \thocwmodulesubsection{Unit Tests} *)
 
     module Test : Test =
       struct
-
         open OUnit
         module L = Algebra.Laurent
 
@@ -2706,7 +3113,9 @@ module SU3 : SU3 =
 
         let exorcise vertex =
           List.filter
-            (fun (_, arrows) -> not (List.exists A.is_ghost arrows))
+            (function
+             | Arrows aterm | Epsilons (aterm, _) | Epsilon_Bars (aterm, _) ->
+                not (List.exists A.is_ghost aterm.arrows))
             vertex
 
         let eqx v1 v2 =
@@ -2720,7 +3129,7 @@ module SU3 : SU3 =
             [ "atoms" >::
                 (fun () ->
                   eq
-                    (two *** delta3 1 2)
+                    (int 2 *** delta3 1 2)
                     (delta3 1 2 +++ delta3 1 2)) ]
 
         let suite_diff =
@@ -2774,9 +3183,9 @@ module SU3 : SU3 =
 
               "reorderings" >::
 	        (fun () ->
-                  let v1 = [(L.unit, [ 1 => -2; -2 => -1; -1 =>  1])]
-                  and v2 = [(L.unit, [-1 =>  2;  2 => -2; -2 => -1])]
-                  and v' = [(L.unit, [ 1 =>  1;  2 =>  2])] in
+                  let v1 = [Arrows { coeff = L.unit; arrows = [ 1 => -2; -2 => -1; -1 =>  1] }]
+                  and v2 = [Arrows { coeff = L.unit; arrows = [-1 =>  2;  2 => -2; -2 => -1] }]
+                  and v' = [Arrows { coeff = L.unit; arrows = [ 1 =>  1;  2 =>  2] }] in
 	          eq v' (v1 *** v2));
  
               "eps*epsbar" >::
@@ -2999,8 +3408,8 @@ module SU3 : SU3 =
 	        (fun () ->
 	          eq
                     (minus *** over_nc *** t 1 2 3
-                     +++ [(LP.int 1, [1 => 1; 3 => 2]);
-                          (LP.nc (-1), [3 => 2; ?? 1])])
+                     +++ [Arrows { coeff = LP.int 1; arrows = [1 => 1; 3 => 2] };
+                          Arrows { coeff = LP.nc (-1); arrows = [3 => 2; ?? 1] }])
                     (t (-1) 2 (-2) *** t 1 (-2) (-3) *** t (-1) (-3) 3));
 
 (* As expected, these ghostly terms cancel in the summed squares
@@ -3021,8 +3430,8 @@ module SU3 : SU3 =
               "d*d" >::
                 (fun () ->
                   eqx
-                    [ (LP.ints [(2, 1); (-8,-1)], 1 <=> 2);
-                      (LP.ints [(2, 0); ( 4,-2)], [1=>1; 2=>2]) ]
+                    [ Arrows { coeff = LP.ints [(2, 1); (-8,-1)]; arrows = 1 <=> 2 };
+                      Arrows { coeff = LP.ints [(2, 0); ( 4,-2)]; arrows = [1=>1; 2=>2] }]
                     (d 1 (-1) (-2) *** d 2 (-2) (-1))) ]
 
 
@@ -3055,8 +3464,8 @@ module SU3 : SU3 =
         let t_trivial n a k l =
           let sterile =
             List.map (fun i -> (l, i) >=>> (k, i)) (ThoList.range 1 (pred n)) in
-          [ (LP.int ( 1), ((l, 0) >=> a) :: (a =>> (k, 0)) :: sterile);
-            (LP.int (-1), (?? a) :: ((l, 0) >=>> (k, 0)) :: sterile) ]
+          [ Arrows { coeff = LP.int ( 1); arrows = ((l, 0) >=> a) :: (a =>> (k, 0)) :: sterile };
+            Arrows { coeff = LP.int (-1); arrows = (?? a) :: ((l, 0) >=>> (k, 0)) :: sterile }]
 
         let t6_trivial = t_trivial 2
         let t10_trivial = t_trivial 3
@@ -3125,14 +3534,14 @@ module SU3 : SU3 =
           rep_t a (-1) (-2) *** rep_t b (-2) (-3) *** rep_t c (-3) (-1)
 
         let loop3 a b c =
-          [ (LP.int 1, A.cycle (List.rev [a; b; c]));
-            (LP.int (-1), (a <=> b) @ [?? c]);
-            (LP.int (-1), (b <=> c) @ [?? a]);
-            (LP.int (-1), (c <=> a) @ [?? b]);
-            (LP.int 1, [a => a; ?? b; ?? c]);
-            (LP.int 1, [?? a; b => b; ?? c]);
-            (LP.int 1, [?? a; ?? b; c => c]);
-            (LP.nc (-1), [?? a; ?? b; ?? c]) ]
+          [ Arrows { coeff = LP.int 1; arrows =  A.cycle (List.rev [a; b; c]) };
+            Arrows { coeff = LP.int (-1); arrows =  (a <=> b) @ [?? c] };
+            Arrows { coeff = LP.int (-1); arrows =  (b <=> c) @ [?? a] };
+            Arrows { coeff = LP.int (-1); arrows =  (c <=> a) @ [?? b] };
+            Arrows { coeff = LP.int 1; arrows =  [a => a; ?? b; ?? c] };
+            Arrows { coeff = LP.int 1; arrows =  [?? a; b => b; ?? c] };
+            Arrows { coeff = LP.int 1; arrows =  [?? a; ?? b; c => c] };
+            Arrows { coeff = LP.nc (-1); arrows =  [?? a; ?? b; ?? c] } ]
 
         let suite_trace =
           "trace" >:::
@@ -3152,7 +3561,7 @@ module SU3 : SU3 =
               "tr(tttt)" >:: (* $\tr(T_aT_bT_cT_d)=\ldots$ *)
                 (fun () ->
                   eqx
-                    [(LP.int 1, A.cycle [4; 3; 2; 1])]
+                    [ Arrows { coeff = LP.int 1; arrows = A.cycle [4; 3; 2; 1] }]
                     (t 1 (-1) (-2) *** t 2 (-2) (-3) *** t 3 (-3) (-4) *** t 4 (-4) (-1))) ]
 
         let suite_ghosts =
@@ -3195,14 +3604,14 @@ module SU3 : SU3 =
 	          eq (trace 1 2 3) (trace 2 3 1)) ]
 
         let ff a1 a2 a3 a4 =
-          [ (LP.int (-1), A.cycle [a1; a2; a3; a4]);
-            (LP.int ( 1), A.cycle [a2; a1; a3; a4]);
-            (LP.int ( 1), A.cycle [a1; a2; a4; a3]);
-            (LP.int (-1), A.cycle [a2; a1; a4; a3]) ]
+          [ Arrows { coeff = LP.int (-1); arrows = A.cycle [a1; a2; a3; a4] };
+            Arrows { coeff = LP.int ( 1); arrows = A.cycle [a2; a1; a3; a4] };
+            Arrows { coeff = LP.int ( 1); arrows = A.cycle [a1; a2; a4; a3] };
+            Arrows { coeff = LP.int (-1); arrows = A.cycle [a2; a1; a4; a3] } ]
 
         let tf j i a b =
-          [ (LP.imag ( 1), A.chain [i; a; b; j]);
-            (LP.imag (-1), A.chain [i; b; a; j]) ]
+          [ Arrows { coeff = LP.imag ( 1); arrows = A.chain [i; a; b; j] };
+            Arrows { coeff = LP.imag (-1); arrows = A.chain [i; b; a; j] } ]
 
         let suite_ff =
           "f*f" >:::
@@ -3278,8 +3687,8 @@ module SU3 : SU3 =
 
         (* $ \delta^{il}\delta^{kj} - \delta^{ij}\delta^{kl}/N_C$ *)
         let tt_expected i j k l =
-          [ (LP.int 1, [l => i; j => k]);
-            (LP.over_nc (-1), [j => i; l => k]) ]
+          [ Arrows { coeff = LP.int 1; arrows = [l => i; j => k] };
+            Arrows { coeff = LP.over_nc (-1); arrows = [j => i; l => k] }]
 
         let suite_tt =
           "t*t" >:::
@@ -3462,7 +3871,9 @@ module SU3 : SU3 =
 
         (* $C_2(\text{adj})=2N_C$ *)
         let ca = LP.ints [(2, 1)]
-        let casimir_ff a b = [(ca, 1 <=> 2); (LP.int (-2), [1=>1; 2=>2])]
+        let casimir_ff a b =
+          [ Arrows { coeff = ca; arrows = 1 <=> 2 };
+            Arrows { coeff = LP.int (-2); arrows = [1=>1; 2=>2] }]
 
         (* $C_3(S_1)=N_C^2-5+4/N_C^2$ *)
         let c3f = LP.ints [(1, 2); (-5, 0); (4, -2)]
@@ -3591,10 +4002,10 @@ module SU3 : SU3 =
         let suite =
           "Color.SU3" >:::
 	    [suite_sum;
-	     suite_diff;
-	     suite_times;
-	     suite_normalization;
-	     suite_symmetrization;
+             suite_diff;
+             suite_times;
+             suite_normalization;
+             suite_symmetrization;
 	     suite_ghosts;
 	     suite_propagators;
 	     suite_trace;
@@ -3612,171 +4023,6 @@ module SU3 : SU3 =
 	    [suite_ward_long;
              suite_jacobi_long;
              suite_casimir_long]
-
-      end
-
-  end
-
-(* \thocwmodulesection{$\mathrm{U}(N_C)$} *)
-
-(* \begin{dubious}
-     This must not be used, because it has not yet been updated
-     to the correctly symmetrized version!
-   \end{dubious} *)
-
-module U3 : SU3 =
-  struct
-
-    module A = Arrow
-    open Arrow.Infix
-
-    module B = Birdtracks
-    type t = B.t
-    let canonicalize = B.canonicalize
-    let to_string = B.to_string
-    let pp = B.pp
-    let trivial = B.trivial
-    let is_null = B.is_null
-    let null = B.null
-    let const = B.const
-    let one = B.one
-    let two = B.two
-    let int = B.int
-    let half = B.half
-    let third = B.third
-    let fraction = B.fraction
-    let nc = B.nc
-    let over_nc = B.over_nc
-    let minus = B.minus
-    let imag = B.imag
-    let ints = B.ints
-    let sum = B.sum
-    let diff = B.diff
-    let scale = B.scale
-    let times = B.times
-    let multiply = B.multiply
-    let relocate = B.relocate
-    let fuse = B.fuse
-    let f_of_rep = B.f_of_rep
-    let d_of_rep = B.d_of_rep
-    module Infix = B.Infix
-
-    let delta3 i j =
-      [(LP.int 1, j ==> i)]
-
-    let delta8 a b =
-      [(LP.int 1, a <=> b)]
-
-    let delta8_loop = delta8
-
-    let gluon a b =
-      delta8 a b
-
-    let delta6 n m =
-      [ (LP.fraction 2, [(m, 0) >=>> (n, 0); (m, 1) >=>> (n, 1)]);
-        (LP.fraction 2, [(m, 0) >=>> (n, 1); (m, 1) >=>> (n, 0)]) ]
-
-    let triples =
-      [(0, 1, 2); (1, 2, 0); (2, 0, 1);
-       (2, 1, 0); (0, 2, 1); (1, 0, 2)]
-
-    let delta10 n m =
-      List.map
-        (fun (i, j, k) ->
-          (LP.fraction 6, [(m, 0) >=>> (n, i);
-                           (m, 1) >=>> (n, j);
-                           (m, 2) >=>> (n, k)]))
-        triples
-
-    let t a i j =
-      [ (LP.int 1, [j => a; a => i]) ]
-
-    let f a b c =
-      [ (LP.imag ( 1), A.cycle [a; b; c]);
-        (LP.imag (-1), A.cycle [a; c; b]) ]
-
-    let t8 a b c =
-      Birdtracks.Infix.( minus *** imag *** f a b c )
-
-    let d a b c =
-      [ (LP.int 1, A.cycle [a; b; c]);
-        (LP.int 1, A.cycle [a; c; b]) ]
-
-    let incomplete tensor =
-      failwith ("Color.Vertex: " ^ tensor ^ " not supported yet!")
-
-    let experimental tensor =
-      Printf.eprintf
-        "Color.Vertex: %s support still experimental and untested!\n"
-        tensor
-
-    let epsilon tips = incomplete "epsilon-tensor"
-    let epsilon_bar tails = incomplete "epsilon-tensor"
-
-    let t6 a m n =
-      [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0); (n, 1) >=>> (m, 1)]);
-        (LP.int ( 1), [(n, 1) >=> a; a =>> (m, 0); (n, 0) >=>> (m, 1)]) ]
-
-    let t10 a m n =
-      [ (LP.int ( 1), [(n, 0) >=> a; a =>> (m, 0);
-                       (n, 1) >=>> (m, 1);
-                       (n, 2) >=>> (m, 2)]);
-        (LP.int (-1), [(n, 0) >=>> (m, 0);
-                       (n, 1) >=>> (m, 1);
-                       (n, 2) >=>> (m, 2)]) ]
-
-    let k6 m i j =
-      experimental "k6-tensor";
-      [ (LP.int 1, [(m, 0) >=> i; (m, 1) >=> j]);
-        (LP.int 1, [(m, 1) >=> i; (m, 0) >=> j]) ]
-
-    let k6bar m i j =
-      experimental "k6-tensor";
-      [ (LP.int 1, [i =>> (m, 0); j =>> (m, 1)]);
-        (LP.int 1, [i =>> (m, 1); j =>> (m, 0)]) ]
-
-    let delta_of_tableau t i j =
-      incomplete "delta_of_tableau"
-
-    let t_of_tableau tableau a k l =
-      incomplete "t_of_tableau"
-
-    (* \thocwmodulesubsection{Unit Tests} *)
-
-    module Test : Test =
-      struct
-
-        open OUnit
-        open Birdtracks
-        open Infix
-
-        let suite_lie =
-          "Lie algebra relations" >:::
-
-            [ "if = tr(t[t,t])" >::
-	        (fun () -> eq (f 1 2 3) (f_of_rep t 1 2 3)) ]
-
-        (* $N_C=N_C^2/N_C$ *)
-        let cf = LP.ints [(1, 1)]
-
-        let casimir_tt i j =
-          [(cf, i ==> j)]
-
-        let suite_casimir =
-          "Casimir operators" >:::
-
-            [ "t*t" >::
-	        (fun () ->
-	          eq (casimir_tt 2 1) (t (-1) (-2) 2 *** t (-1) 1 (-2))) ]
-
-        let suite =
-          "Color.U3" >:::
-	    [suite_lie;
-             suite_casimir]
-
-        let suite_long =
-          "Color.U3 long" >:::
-	    []
 
       end
 

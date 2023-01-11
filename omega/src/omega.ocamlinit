@@ -6,13 +6,13 @@
 #install_printer Color.Arrow.pp_factor;;
 #install_printer Color.Birdtracks.pp;;
 #install_printer Color.SU3.pp;;
-#install_printer Color.U3.pp;;
+(* #install_printer Color.U3.pp;; *)
 #install_printer Dirac.Chiral.pp;;
 #install_printer Dirac.Dirac.pp;;
 #install_printer Dirac.Majorana.pp;;
 module A = Algebra.Laurent;;
 module SU3 = Color.SU3;;
-module U3 = Color.U3;;
+(* module U3 = Color.U3;; *)
 open SU3;;
 open Infix;;
 

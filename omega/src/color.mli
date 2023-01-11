@@ -85,19 +85,9 @@ module Flow : Flow
 
 (* \thocwmodulesection{Vertex Color Flows} *)
 
-(* \begin{dubious}
-     The following is (still work-in-progress) infrastructure for
-     translating UFO style color factors into color flows.
-   \end{dubious} *)
-
-(* \begin{dubious}
-     It might be beneficial, to use the color flow representation
-     here.  This will simplify the colorizer at the price of
-     some complexity in [UFO] or here.
-   \end{dubious} *)
-
 (* The datatypes [Arrow.free] and [Arrow.factor] will be used as
    building blocks for [Birdtracks.t] below. *)
+
 module type Arrow =
   sig
 
@@ -121,23 +111,42 @@ module type Arrow =
     val position : endpoint -> int
     val relocate : (int -> int) -> endpoint -> endpoint
 
-    (* An [Arrow.t] is either a genuine arrow or a ghost \ldots *)
+    (* An [Arrow.t] is either a genuine arrow or a ghost. *)
     type ('tail, 'tip, 'ghost) t =
       | Arrow of 'tail * 'tip
       | Ghost of 'ghost
-      | Epsilon of 'tip list
-      | Epsilon_bar of 'tail list
 
-    (* {}\ldots and we distuish [free] arrows that must not contain
+    (* $\epsilon_{i_1i_2\cdots i_n}$ and $\bar\epsilon_{i_1i_2\cdots i_n}$
+       are represented by lists~$\lbrack i_1; i_2; \ldots; i_n \rbrack$. *)
+    type 'tip eps = 'tip list
+    type 'tail eps_bar = 'tail list
+
+    (* We distuish [free] arrows, $\epsilon$s and $\bar\epsilon$s
+       that must not contain
        summation indices from [factor]s that may.  Indices are
-       opaque.  [('tail, 'tip, 'ghost) t] is polymorphic so that
-       we can use richer ['tail], ['tip] and ['ghost] in [factor]. *)
+       opaque.  [('tail, 'tip, 'ghost) t] has been defined polymorphic
+       above so that we can use richer ['tail], ['tip] and ['ghost] in
+       [factor] to identify summation indices.. *)
     type free = (tail, tip, ghost) t
+    type free_eps = tip eps
+    type free_eps_bar = tail eps_bar
     type factor
+    type factor_eps
+    type factor_eps_bar
+
+    (* Useful for testing compatibility when adding terms. *)
+    val tips : free -> tip list
+    val tips_eps : free_eps -> tip list
+    val tails : free -> tail list
+    val tails_eps_bar : free_eps_bar -> tail list
 
     (* For debugging, logging, etc. *)
     val free_to_string : free -> string
+    val free_eps_to_string : free_eps -> string
+    val free_eps_bar_to_string : free_eps_bar -> string
     val factor_to_string : factor -> string
+    val factor_eps_to_string : factor_eps -> string
+    val factor_eps_bar_to_string : factor_eps_bar -> string
 
     (* Change the [endpoint]s in a [free] arrow. *)
     val map : (endpoint -> endpoint) -> free -> free
@@ -151,18 +160,28 @@ module type Arrow =
        summation indices that appear on both sides.*)
     
     val to_left_factor : (endpoint -> bool) -> free -> factor
+    val to_left_factor_eps : (endpoint -> bool) -> free_eps -> factor_eps
+    val to_left_factor_eps_bar : (endpoint -> bool) -> free_eps_bar -> factor_eps_bar
     val to_right_factor : (endpoint -> bool) -> free -> factor
+    val to_right_factor_eps : (endpoint -> bool) -> free_eps -> factor_eps
+    val to_right_factor_eps_bar : (endpoint -> bool) -> free_eps_bar -> factor_eps_bar
 
     (* The incomplete inverse [of_factor] raises an exception
        if there are remaining summation indices.  [is_free] can
        be used to check first. *)
     val of_factor : factor -> free
+    val of_factor_eps : factor_eps -> free_eps
+    val of_factor_eps_bar : factor_eps_bar -> free_eps_bar
     val is_free : factor -> bool
+    val is_free_eps : factor_eps -> bool
+    val is_free_eps_bar : factor_eps_bar -> bool
 
     (* Return all the endpoints of the arrow that have a [position]
        encoded as a negative integer.  These are treated as summation
        indices in our applications. *)
     val negatives : free -> endpoint list
+    val negatives_eps : free_eps -> endpoint list
+    val negatives_eps_bar : free_eps_bar -> endpoint list
 
     (* We will need to test whether an arrow represents a ghost. *)
     val is_ghost : free -> bool
@@ -170,11 +189,30 @@ module type Arrow =
     (* An arrow looping back to itself. *)
     val is_tadpole : factor -> bool
 
-    (* An $\epsilon$ or an $\bar\epsilon$ *)
-    val is_epsilon : factor -> bool
+(* Merging an arrow with another arrow, $\epsilon$ or $\bar\epsilon$
+   can give a variety of results: *)
 
-(* If [arrow] is an~$\epsilon$ (or $\bar\epsilon$) and [arrows] contains
-   an~$\bar\epsilon$ (or $\epsilon$), use
+    type merge =
+      | Match of factor (* a tip fits the other's tail: make one arrow out of two *)
+      | Ghost_Match (* two matching ghosts *)
+      | Loop_Match (* both tips fit both tails: drop the arrows *)
+      | Mismatch (* ghost meets arrow: error *)
+      | No_Match (* nothing to be done *)
+
+    val merge_arrow_arrow : factor -> factor -> merge
+
+(* We can narrow this for $\epsilon$ and $\bar\epsilon$,
+   where [Loop_Match] and [Ghost_Match] are impossible! *)
+
+    type 'a merge_eps =
+      | Match_Eps of 'a  (* a tip fits the other's tail: make one arrow out of two *)
+      | Mismatch_Eps (* ghost meets arrow: error *)
+      | No_Match_Eps (* nothing to be done *)
+
+    val merge_arrow_eps : factor -> factor_eps -> factor_eps merge_eps
+    val merge_arrow_eps_bar : factor -> factor_eps_bar -> factor_eps_bar merge_eps
+
+(* In order to merge an~$\epsilon$ with an $\bar\epsilon$, we use
    \begin{equation}
       \forall n, N \in\mathbf{N}, 2\le n \le N:\;
       \epsilon_{i_1i_2\cdots i_n} \bar\epsilon^{j_1j_2\cdots j_n}
@@ -184,21 +222,13 @@ module type Arrow =
             \cdots
             \delta_{i_n}^{\sigma(j_n)}\,,
    \end{equation}
-   where~$N=\delta_i^i$ is the dimension, to expand the pair into two lists of
+   where~$N=\delta_i^i$ is the dimension, to replace the pair by two lists of
    list of arrows: the first corresponding to the even permutations, the
-   second to the odd ones.  In addition, return the remaining arrows. *)
-    val match_epsilon : factor -> factor list -> (factor list list * factor list list * factor list) option
+   second to the odd ones. *)
 
-    (* Merging two arrows can give a variety of results.
-       NB: $\epsilon$-$\bar\epsilon$ pairs are assumed to have been
-       already expanded by [match_epsilon]. *)
-    type merge =
-      | Match of factor  (* a tip fits the other's tail: make one arrow out of two *)
-      | Ghost_Match (* two matching ghosts *)
-      | Loop_Match (* both tips fit both tails: drop the arrows *)
-      | Mismatch (* ghost meets arrow: error *)
-      | No_Match (* nothing to be done *)
-    val merge : factor -> factor -> merge
+(* Return [None], if the rank of $\epsilon$ and $\bar\epsilon$ don't match. *)
+
+    val merge_eps_eps_bar : factor_eps -> factor_eps_bar -> (factor list list * factor list list) option
 
 (* Break up an arrow [tee a (i => j) -> [i => a; a => j]], i.\,e.~insert
    a gluon. Returns an empty list for a ghost and raises an exception
@@ -239,8 +269,8 @@ module type Arrow =
 
     end
 
-    val epsilon : int list -> free
-    val epsilon_bar : int list -> free
+    val epsilon : int list -> free_eps
+    val epsilon_bar : int list -> free_eps_bar
 
     (* [chain [1;2;3]] is a shorthand for [[1 => 2; 2 => 3]] and
        [cycle [1;2;3]] for [[1 => 2; 2 => 3; 3 => 1]].  Other lists
@@ -385,10 +415,3 @@ module type SU3 =
 
 module SU3 : SU3
 module Vertex : SU3
-
-(* \begin{dubious}
-     This must not be used, because it has not yet been updated
-     to the correctly symmetrized version!
-   \end{dubious} *)
-module U3 : SU3
-

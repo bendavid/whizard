@@ -169,7 +169,15 @@ let rec power = function
   | a :: a_list ->
      let power_a_list = power a_list in
      power_a_list @ List.map (fun a_list -> a :: a_list) power_a_list
-             
+
+let rec fold_left_opt f acc = function
+  | [] -> Some acc
+  | a :: rest ->
+     begin match f acc a with
+     | None -> None
+     | Some acc -> fold_left_opt f acc rest
+     end
+
 let fold_left2 f acc lists =
   List.fold_left (List.fold_left f) acc lists
 

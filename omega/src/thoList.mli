@@ -125,6 +125,14 @@ val filtermap : ('a -> 'b option) -> 'a list -> 'b list
    required to have been sequential in [a_list]. *)
 val power : 'a list -> 'a list list
 
+(* Like [List.fold_left], but returns immediately, if the
+   folded function returns [None]. The analogous function
+   [val fold_right_opt : ('a -> 'b -> 'b option) -> 'a list -> 'b -> 'b option]
+   has not been implemented.  It makes not much sense, because
+   the outer function evaluation can only be performed after
+   the results of all inner evaluations are available. *)
+val fold_left_opt : ('b -> 'a -> 'b option) -> 'b -> 'a list -> 'b option
+
 (* \begin{dubious}
      Invent other names to avoid confusions with [List.fold_left2]
      and [List.fold_right2].
