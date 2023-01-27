@@ -11342,6 +11342,20 @@ option above has to be added to an existing
 
 \subsection{Other tools for parton shower and hadronization}
 
+\subsection{Loop-induced processes}
+
+In order to steer loop-induced processes the usage of the OLP
+\openloops is required. Information on the interface and setting up
+this program can be found in Sec.~\ref{sec:openloops_me} and
+Sec.~\ref{sec:openloops-setup}. Furthermore the following settings should
+be observed
+\begin{itemize}
+\item Choose the model \ttt{SM\_Higgs} to allow vertices such as $gg \to H$.
+\item Use \ttt{\$method="openloops"} for the loop-squared amplitudes.
+\item Set the coupling powers \ttt{alpha\_power} and \ttt{alphas\_power}
+corresponding to those of loop-squared amplitudes of the process.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{More on Event Generation}

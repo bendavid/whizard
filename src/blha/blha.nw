@@ -999,12 +999,20 @@ This types control the creation of BLHA-interface files
     integer, intent(in) :: blha_mode
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, n_cp_loopind
 
     allocate (amp_type (size (blha_flavor)))
-    do i = 1, size (blha_flavor)
-       amp_type(i) = BLHA_AMP_TREE
-    end do
+    n_cp_loopind = 0
+    n_cp_loopind = size (blha_flavor(1)%flavors)
+    if ((ap + asp) == n_cp_loopind) then
+       do i = 1, size (blha_flavor)
+          amp_type(i) = BLHA_AMP_LOOPINDUCED
+       end do
+    else
+       do i = 1, size (blha_flavor)
+          amp_type(i) = BLHA_AMP_TREE
+       end do
+    end if
     call blha_configuration_init (blha_cfg, basename // suffix , &
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
@@ -1578,10 +1586,11 @@ corrections are activated and photons are present at LO.
     character(4) :: hel_char
     character(6) :: suffix_char
     character(len=25), parameter :: pad = ""
-    logical :: write_process, no_v
+    logical :: write_process, no_v, loop_ind
     no_v = .false. ; if (present (no_version))  no_v = no_version
     u = given_output_unit (unit); if (u < 0) return
     full = .true.; if (present (internal)) full = .not. internal
+    loop_ind = .false.
     if (full .and. cfg%dirty) call msg_bug ( &
          "BUG: attempted to write out a dirty BLHA configuration")
     if (full) then
@@ -1605,12 +1614,19 @@ corrections are activated and photons are present at LO.
        case (2); buf = "BLHA2"
     end select
     write (u, '(A25,A)') "InterfaceVersion " // pad, char (buf)
-    select case (cfg%correction_type)
-       case (BLHA_CT_QCD); buf = "QCD"
-       case (BLHA_CT_EW); buf = "EW"
-       case default; buf = cfg%correction_type_other
-    end select
-    write (u,'(A25,A)') "CorrectionType" // pad, char (buf)
+    node => cfg%processes
+    do while (associated (node))
+       loop_ind = node%amplitude_type == BLHA_AMP_LOOPINDUCED
+       node => node%next
+    end do
+    if (.not. loop_ind) then
+       select case (cfg%correction_type)
+          case (BLHA_CT_QCD); buf = "QCD"
+          case (BLHA_CT_EW); buf = "EW"
+          case default; buf = cfg%correction_type_other
+       end select
+       write (u,'(A25,A)') "CorrectionType" // pad, char (buf)
+    end if
 
     select case (cfg%mode)
     case (BLHA_MODE_OPENLOOPS)
@@ -2257,6 +2273,8 @@ Obviously, this process-core type uses the BLHA interface.
           rsize = n_part * (n_part - 1) / 2
        case (BLHA_AMP_SPIN_C)
           rsize = 2 * n_part**2
+       case (BLHA_AMP_LOOPINDUCED)
+          rsize = 1
        case default
           rsize = 0
      end select
@@ -2851,7 +2869,9 @@ Obviously, this process-core type uses the BLHA interface.
             i_next = find_next_word_index (rd_line, 13)
             if (label_count > size (amp_type)) &
                  call extend_integer_array (amp_type, list_incr)
-            if (rd_line(i_next : i_next + 4) == 'Loop') then
+            if (rd_line(i_next : i_next + 11) == 'LoopInduced') then
+               amp_type(label_count) = BLHA_AMP_LOOPINDUCED
+            else if (rd_line(i_next : i_next + 4) == 'Loop') then
                amp_type(label_count) = BLHA_AMP_LOOP
             else if (rd_line(i_next : i_next + 4) == 'Tree') then
                amp_type(label_count) = BLHA_AMP_TREE
@@ -3270,6 +3290,13 @@ Obviously, this process-core type uses the BLHA interface.
           else
              call msg_fatal ("Loop matrix element present, &
                   &but virt-indices are not allocated!")
+          end if
+       case (BLHA_AMP_LOOPINDUCED)
+          if (allocated (object%i_tree)) then
+             object%i_tree(flv_index(i_proc), i_hel) = label(i_proc)
+          else
+             call msg_fatal ("Loop matrix element present, &
+                  &but neither Born nor real indices are allocated!")
           end if
        case default
           call msg_fatal ("Undefined amplitude type")
