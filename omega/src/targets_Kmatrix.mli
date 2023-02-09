@@ -1,6 +1,6 @@
 (* targets_Kmatrix.mli --
 
-   Copyright (C) 1999-2022 by
+   Copyright (C) 1999-2023 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

@@ -1,5 +1,5 @@
 (* bigarray_library.ml --  *)
-(* Copyright (C) 2001-2022 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+(* Copyright (C) 2001-2023 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by 
    the Free Software Foundation; either version 2, or (at your option)
