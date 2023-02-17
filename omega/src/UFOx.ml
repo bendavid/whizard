@@ -204,7 +204,7 @@ module Value =
       | Product ((Integer (-1) | Real (-1.)) :: es) ->
          "-" ^ maybe_parentheses (Product es)
       | Product es -> String.concat "*" (List.map maybe_parentheses es)
-      | Quotient (e1, e2) -> to_string e1 ^ "/" ^ maybe_parentheses e2
+      | Quotient (e1, e2) -> maybe_parentheses e1 ^ "/" ^ maybe_parentheses e2
       | Power ((Integer i as e), Integer p) ->
          if p < 0 then
            maybe_parentheses (Real (float_of_int i)) ^
@@ -1517,6 +1517,40 @@ module Color = Tensor(Color_Atom')
 
 module type Test =
   sig
-    val example : unit -> unit
     val suite : OUnit.test
   end
+
+module Test : Test =
+  struct
+
+    open OUnit
+
+    let parse_unparse s =
+      Value.to_string (Value.of_expr (Expr.of_string s))
+
+    let assert_parse_unparse unparsed expr =
+      assert_equal ~printer:(fun s -> s) unparsed (parse_unparse expr)
+
+    let suite_expr =
+      "unparse/parse" >:::
+        [ "a + b" >::
+            (fun () -> assert_parse_unparse "(a+b)" "a+b");
+
+          "(a - b) / c" >::
+            (fun () -> assert_parse_unparse "(a-b)/c" "(a-b)/c");
+
+          "(a + b - c) / d" >::
+            (fun () -> assert_parse_unparse "((a+b)-c)/d" "(a+b-c)/d");
+
+          "S2HDMIV:lam1" >::
+            (fun () ->
+              assert_parse_unparse
+                "(((Mh3^2*RA3x1^2)+(Mh1^2*RA1x1^2)+(Mh2^2*RA2x1^2))-(musq*SB^2))/(CB^2*vH^2)"
+                "(Mh1**2*RA1x1**2 + Mh2**2*RA2x1**2 + Mh3**2*RA3x1**2 - musq*SB**2)/(CB**2*vH**2)") ]
+      
+    let suite =
+      "UFOx" >:::
+	[suite_expr]
+
+  end
+

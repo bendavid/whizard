@@ -197,6 +197,7 @@ let suite =
      (* [Color.U3.Test.suite;] *)
      UFO_targets.Fortran.Test.suite;
      UFO_Lorentz.Test.suite;
+     UFOx.Test.suite;
      UFO.Test.suite;
      Format_Fortran.Test.suite;
      Dirac.Chiral.test_suite;

@@ -245,6 +245,6 @@ module Color : Tensor
 
 module type Test =
   sig
-    val example : unit -> unit
     val suite : OUnit.test
   end
+module Test : Test
