@@ -2,7 +2,10 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 3.1.0+
+	Version 3.1.0.1
+
+2023-02-17
+	Bug fix UFO interface: correct parentheses in rational functions
 
 ##################################################################
 
