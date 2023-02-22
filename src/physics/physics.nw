@@ -3766,6 +3766,7 @@ formulae, $[ij]$ can be obtained by using the relation $S_{ij} =
   end subroutine spinor_product
 
 @ %def spinor_product
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[lorentz_ut.f90]]>>=
@@ -4276,6 +4277,1013 @@ end module lorentz_uti
 @ %def lorentz_5
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+This is the module file for the $M_{T2}$ calculator based on
+algorithm by Han and Cheng by Tom James (DESY) August 2013.
+<<[[kinematics_vars.f90]]>>=
+<<File header>>
+module kinematics_vars
+
+  use kinds
+  use lorentz
+  use format_defs, only: FMT_19
+<<Standard module head>>
+
+<<Kinematics vars: public>>
+
+<<Kinematics vars: parameters>>
+
+<<Kinematics vars: types>> 
+
+  interface
+<<Kinematics vars: sub interfaces>>
+  end interface
+
+end module kinematics_vars
+@  %def kinematics_vars
+@
+<<[[kinematics_vars_sub.f90]]>>=
+<<File header>>
+
+submodule (kinematics_vars) kinematics_vars_s
+
+  implicit none
+
+contains
+
+<<Kinematics vars: procedures>>
+
+end submodule kinematics_vars_s
+
+@ %def kinematics_vars_s
+@
+<<Kinematics vars: parameters>>=
+  ! Calculation parameters
+  real(kind=default), parameter, public :: relative_precision = 0.00001, &
+       absolute_precision=0.0, min_mass=0.1, step=0.1
+  real(kind=default), public :: prec
+  ! scale and precision
+  ! Define precision=relative_precision*scale where scale=max{Ea, Eb}
+  ! Don't set relative precision <0.00001
+  ! If mass a < min_mass and mass b < min_mass use massless code
+  ! Gives massless particles a very small mass
+  ! scanning step size
+
+@ %def relative_precision prec 
+@
+<<Kinematics vars: procedures>>=
+  subroutine mt2calcmassive (mt2, mn, mt2_b)
+    !!! Code implementation of the massive algorithm for calculating mt2    
+    type(mt2_t), intent(inout) :: mt2
+    real(default), intent(in) :: mn
+    real(default) :: Ea, Eb
+    real(default) :: masq, mbsq, mnsq
+    real(default), intent(out) :: mt2_b
+    real(default):: deltasq0, x00, y00, dis, p2x0, p2y0, deltasqmid, &
+         deltasqhigh, deltasqhigh1, deltasqhigh2, deltasqhigh21, &
+         deltasqhigh22, deltasqlow
+    ! Calculation coefficients for the quadratic and quartic curves
+    real(default) :: a1, b1, c1, d1, e1, f1, &
+         a2, b2, c2, d2, e2, f2
+    real(default) :: d20, d11, d21, e11, e20, e21
+    real(default) :: f10, f12, f20, f21, f22
+    integer:: nsolshigh, nsolslow, findhigh, nsolsmid
+
+    print *, 'using calculation for massive visible particles.'
+
+    !!! Allowed transverse 2-momenta for each invisible partice incloses 
+    !!! an elliptical region on the px, py plane.
+    !!! To safisfy kinematic constraints, the two elliptical regions must 
+    !!! overlap. MT2 is therefore given by the minimum initial decay mass 
+    !!! in each branch (mt2_b) which gives overlapping elipses 
+    !!! We therefore increase the initial decay mass in each branch (mt2_b) 
+    !!! until the ellipses overlap - the "balanced configuration".
+    !!! In the balanced configuration, the two quadtratic equations 
+    !!! can be combined into one quartic equation.
+    !!! We search for the point at which the two ellipses are tangent, 
+    !!! using the Sturm sequence method and bisection
+
+    !!! When the smaller ellipse is already inside the larger ellipse, this 
+    !!! is called an "unbalanced configuration", and mt2 is easy to calculate.
+
+
+    deltasq0 = mt2%ma*(mt2%ma + 2*mt2%mn)
+
+    !!! Find co-efficients at deltasq = deltasq0 for  the quadratic 
+    !!! equations that describe each  ellipse 
+
+    masq = mt2%ma**2
+    mbsq = mt2%mb**2
+    mnsq = mt2%mn**2
+    Ea = sqrt(mt2%Ea2)
+    Eb = sqrt(mt2%Eb2)
+    a1 = 1 - mt2%pax**2 / mt2%Ea2
+    b1 = - mt2%pax * mt2%pay / mt2%Ea2
+    c1 = 1 - mt2%pay**2 / mt2%Ea2
+    d1 = - (mt2%pax*(deltasq0 - masq))/(2.d0*mt2%Ea2)
+    e1 = - (mt2%pay * (deltasq0 - masq))/(2.d0*mt2%Ea2)
+    a2 = 1 - (mt2%pbx * mt2%pbx)/(mt2%Eb2)
+    b2 = - (mt2%pbx * mt2%pby) / (mt2%Eb2)
+    c2 = 1 - (mt2%pby * mt2%pby / (mt2%Eb2))
+    d2 = -mt2%pmx + ((mt2%pbx * (deltasq0 - mbsq))/(2.d0*mt2%Eb2)) + &
+         (mt2%pbx*((mt2%pbx*mt2%pmx) + (mt2%pby * mt2%pmy)))/(mt2%Eb2)
+    e2 = -mt2%pmy + (mt2%pby * (deltasq0 - mbsq))/(2.d0*mt2%Eb2) + &
+         (mt2%pby*((mt2%pbx*mt2%pmx) + (mt2%pby * mt2%pmy)))/(mt2%Eb2)
+    f2 = mt2%pmx*mt2%pmx + mt2%pmy * mt2%pmy-((deltasq0-mbsq)/(2*Eb) + &
+         (mt2%pbx*mt2%pmx + mt2%pby * mt2%pmy)/Eb)*((deltasq0-mbsq)/(2*Eb)+ &
+         ((mt2%pbx*mt2%pmx + mt2%pby * mt2%pmy)/Eb))+ mnsq
+
+    !!! find the centre of the small ellipse
+    x00 = (c1*d1 - b1*e1)/(b1*b1 - a1*c1)
+    y00 = (a1*e1 - b1*d1)/(b1*b1 - a1*c1)
+
+    !!! check if the large ellipse contains the small one - 
+    !!! "unbalanced configuration"
+    dis = a2*x00*x00 + 2.d0*b2*x00*y00 + c2*y00*y00 + &
+         2.d0*d2*x00 + 2.d0*e2*y00 + f2
+    mt2_b = 0
+    if (dis<0.01) then
+       mt2_b = sqrt(mnsq + deltasq0)
+       return
+    end if
+
+    !!! find linear and constant terms in quadratic equations for 
+    !!! delta = (deltasq-msq)/(2Esq) as quadratic terms do not change as we adjust delta
+
+    d11 = -mt2%pax
+    e11 = -mt2%pay
+    f10 = mnsq
+    f12 = -mt2%Ea2
+    d21 = (mt2%Ea2 * mt2%pbx)/(mt2%Eb2)
+    d20 = ((masq - mbsq)*mt2%pbx)/(2.d0*mt2%Eb2) - mt2%pmx + &
+         (mt2%pbx*(mt2%pbx*mt2%pmx + mt2%pby * mt2%pmy)) / mt2%Eb2
+    e21 = (mt2%Ea2 * mt2%pby) / mt2%Eb2
+    e20 = ((masq - mbsq) * mt2%pby)/(2.d0*mt2%Eb2) - mt2%pmy + &
+         (mt2%pby * (mt2%pbx*mt2%pmx + mt2%pby * mt2%pmy)) / mt2%Eb2
+    f22 = -mt2%Ea2*mt2%Ea2 / mt2%Eb2
+    f21 = (-2.d0*mt2%Ea2*((masq - mbsq)/(2.d0*Eb) + &
+         (mt2%pbx*mt2%pmx + mt2%pby * mt2%pmy)/Eb))/Eb
+    f20 = mnsq + mt2%pmx*mt2%pmx + mt2%pmy**2 &
+         - ((masq - mbsq)/(2.d0*Eb) + (mt2%pbx*mt2%pmx + &
+         mt2%pby * mt2%pmy)/Eb)*((masq - mbsq)/(2.d0*Eb) &
+         + (mt2%pbx*mt2%pmx + mt2%pby * mt2%pmy)/Eb)
+
+    !!! Estimate upper bound of mT2 if large ellipse contains centre of small ellipse
+
+    p2x0 = mt2%pmx - x00
+    p2y0 = mt2%pmy - y00
+    deltasqhigh1 = 2*Eb*sqrt(p2x0*p2x0+p2y0*p2y0+mnsq) - &
+         2 * mt2%pbx * p2x0 - 2 * mt2%pby * p2y0 + mbsq
+
+    !!! Estimate upper bound of mT2 if both ellipses enclose the origin
+
+    deltasqhigh21 = 2.d0*Eb*sqrt(mt2%pmx*mt2%pmx + mt2%pmy * mt2%pmy+mnsq) &
+         - 2.d0 * mt2%pbx * mt2%pmx - 2.d0 * mt2%pby * mt2%pmy + mbsq
+    deltasqhigh22 = 2.d0*Ea*mn + masq
+
+    if ( deltasqhigh21 < deltasqhigh22 ) then
+       deltasqhigh2 = deltasqhigh22
+    else
+       deltasqhigh2 = deltasqhigh21
+    end if
+
+    ! Upper bound on mt2 is the smallest of these two estimates    
+    if (deltasqhigh1 < deltasqhigh2) then
+       deltasqhigh = deltasqhigh1
+    else
+       deltasqhigh = deltasqhigh2
+    end if
+    deltasqlow=deltasq0
+    if (nsolutionsmassive(deltasqlow) > 0) then
+       mt2_b = sqrt(mnsq + deltasqlow)
+       return
+    end if
+    nsolslow = nsolutionsmassive (deltasqlow)   
+    nsolshigh = nsolutionsmassive (deltasqhigh)
+    if (nsolshigh==nsolslow) then
+       if (nsolshigh==4) then
+
+          findhigh = findhighfunc(deltasqhigh)
+          
+          print *, 'findhigh=', findhigh
+
+          if(findhigh==0) then
+             mt2_b = sqrt(deltasqlow + mnsq)
+             return
+          end if
+       end if
+    end if
+
+    do while ((sqrt(deltasqhigh + mnsq) - sqrt(deltasqlow + mnsq)) > prec)
+       deltasqmid = (deltasqhigh + deltasqlow)/(2.)
+       nsolsmid = nsolutionsmassive(deltasqmid)
+
+       if (nsolsmid==4) then
+          deltasqhigh=deltasqmid
+          findhigh = findhighfunc(deltasqhigh)
+          cycle
+       end if
+
+       if (nsolsmid == nsolslow) then
+          deltasqlow=deltasqmid
+       else
+          deltasqhigh = deltasqmid
+       end if
+
+    end do
+
+    mt2_b = sqrt(mnsq + deltasqhigh)
+  contains
+  <<Kinematics vars: findhighfunc>>
+  <<Kinematics vars: nsolutionsmassive>>
+  end subroutine mt2calcmassive
+
+  subroutine mt2massless (mt2, mn, mt2_b)
+    !!! Code implementation of the massless  algorithm for calculating mt2
+    type(mt2_t), intent(inout) :: mt2
+    real(default), intent(in) :: mn
+    real(default) :: Ea, Eb
+    real(default), intent(out) :: mt2_b
+    real(default) :: mnsq, Easq, Ebsq
+    real(default) :: pmissxsq, pmissysq
+    real(kind=default):: theta, s, c, pxtemp, pytemp, &
+         deltasq0, deltasqlow, deltasqhigh, deltasqlow1, deltasqlow2, &
+         deltasqhigh1, deltasqhigh2, &
+         minmass, maxmass, mass, &
+         deltamid, midmass, nsolsmid
+    real(default) :: a1, b1, c1, d1, e1, f1, &
+         a2, b2, c2, d2, e2, f2    
+    real(default) :: d20, d21, e20, e21
+    real(default) :: f20, f21, f22
+    integer :: nsolshigh, nsolslow, findhigh
+    print *, 'using calculation for massless visible particles.'
+    ! first rotate system so that pay=0
+    theta = atan(mt2%pay / mt2%pax)
+    s = sin(theta)
+    c = cos(theta)
+    mnsq = mn*mn
+    pmissxsq = mt2%pmx**2
+    pmissysq = mt2%pmy**2
+
+    Easq = mt2%pax**2 + mt2%pay**2
+    Ebsq = (mt2%pbx * mt2%pbx) + (mt2%pby * mt2%pby)
+    Ea = sqrt(Easq)
+    Eb = sqrt(Ebsq)
+
+    pxtemp = mt2%pax * c + mt2%pay * s
+    mt2%pax = pxtemp
+    mt2%pay = 0
+    pxtemp = mt2%pbx *c + mt2%pby * s
+    pytemp = -s * mt2%pbx + c * mt2%pby
+    mt2%pbx= pxtemp
+    mt2%pby= pytemp
+    pxtemp = mt2%pmx*c + mt2%pmy*s
+    pytemp = -s*mt2%pmx + c * mt2%pmy
+    mt2%pmx = pxtemp
+    mt2%pmy = pytemp
+    
+    a2  = 1 - mt2%pbx * mt2%pbx / Ebsq
+    b2  = - mt2%pbx * mt2%pby / Ebsq
+    c2  = 1 - mt2%pby * mt2%pby / Ebsq
+
+    d21 = (Easq * mt2%pbx)/Ebsq
+    d20 = - mt2%pmx +  (mt2%pbx * (mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy)) / Ebsq
+    e21 = (Easq * mt2%pby) / Ebsq
+    e20 = - mt2%pmy +  (mt2%pby * (mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy)) / Ebsq
+    f22 = -(Easq*Easq/Ebsq)
+    f21 = -2*Easq*(mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy) / Ebsq
+    f20 = mnsq + pmissxsq + pmissysq - (mt2%pbx * mt2%pmx + &
+         mt2%pby * mt2%pmy)*(mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy) / Ebsq
+    
+    deltasq0 = 0
+    deltasqlow = deltasq0 + prec
+    nsolslow = nsolutionsmassless (deltasqlow)
+
+    mt2_b = 0
+    if (nsolslow > 1) then
+       mt2_b = sqrt(deltasq0 + mnsq)
+       return
+    end if
+
+    deltasqhigh1 = (2*Eb*sqrt((mt2%pmx**2 * mt2%pmy**2) + mnsq)) &
+         - (2 * mt2%pbx *mt2%pmx) - (2 * mt2%pby * mt2%pmy)
+
+    deltasqhigh2 = 2*Ea*mn
+
+    if (deltasqhigh1 < deltasqhigh2) then
+       deltasqhigh = deltasqhigh2
+    else
+       deltasqhigh = deltasqhigh1
+    end if
+
+    nsolshigh = nsolutionsmassless(deltasqhigh)
+
+    if (nsolshigh==nsolslow) then
+       findhigh=0
+       minmass = mn
+       maxmass = sqrt(mnsq + deltasqhigh)
+       mass = minmass + step
+       do while (mass < maxmass)
+          deltasqhigh = (mass*mass) - mnsq
+          nsolshigh = nsolutionsmassless(deltasqhigh)
+          if (nsolshigh>0) then
+             findhigh=1
+             deltasqlow = (mass-step)*(mass-step) - mnsq
+          end if
+          if(findhigh==0) then
+             mt2_b = sqrt (deltasqlow + mnsq)
+             return
+          end if
+       end do
+    end if
+
+    if (nsolslow == nsolshigh) then
+       mt2_b = sqrt(mnsq + deltasqlow)
+       return
+    end if
+
+    minmass = sqrt (deltasqlow + mnsq)
+    maxmass = sqrt (deltasqhigh + mnsq)
+    do while ((maxmass - minmass) > prec)
+       midmass = (minmass+maxmass)/2
+       nsolsmid = nsolutionsmassless(deltamid)
+       if (nsolsmid == nsolslow) then
+          minmass = midmass
+       else
+          maxmass = midmass
+       end if
+    end do
+    mt2_b = minmass
+  contains
+  <<Kinematics vars: nsolutionsmassless>>
+  end subroutine mt2massless
+
+<<Kinematics vars: public>>=
+  public :: mt2_t
+@
+<<Kinematics vars: types>>=
+  type :: mt2_t
+     private
+     real(default) :: mt2 = 0._default
+     real(default) :: mn = 0._default
+     real(default) :: ma = 0._default
+     real(default) :: mb = 0._default
+     real(default) :: Ea2 = 0._default
+     real(default) :: Eb2 = 0._default
+     real(default) :: pax = 0._default
+     real(default) :: pay = 0._default
+     real(default) :: pbx = 0._default
+     real(default) :: pby = 0._default
+     real(default) :: pmx = 0._default
+     real(default) :: pmy = 0._default
+     real(default) :: scale = 0._default
+  end type mt2_t
+
+@  %def mt2_t
+@
+<<Kinematics vars: public>>=
+  public :: mt2_init
+<<Kinematics vars: sub interfaces>>=
+    module subroutine mt2_init (mt2, mn, ma, mb, Easq, Ebsq, &
+         pax, pay, pbx, pby, pmissx, pmissy, scale)
+      type(mt2_t), intent(out) :: mt2
+      real(default), intent(in) :: mn, ma, mb
+      real(default), intent(in) :: Easq, Ebsq
+      real(default), intent(in) :: pax, pay, pbx, pby
+      real(default), intent(in) :: pmissx, pmissy, scale
+    end subroutine mt2_init
+<<Kinematics vars: procedures>>=
+  module subroutine mt2_init (mt2, mn, ma, mb, Easq, Ebsq, &
+       pax, pay, pbx, pby, pmissx, pmissy, scale)
+    type(mt2_t), intent(out) :: mt2
+    real(default), intent(in) :: mn, ma, mb
+    real(default), intent(in) :: Easq, Ebsq
+    real(default), intent(in) :: pax, pay, pbx, pby
+    real(default), intent(in) :: pmissx, pmissy, scale
+    mt2%mn = mn
+    mt2%ma  = ma
+    mt2%mb  = mb
+    mt2%Ea2 = Easq
+    mt2%Eb2 = Ebsq
+    mt2%pax = pax
+    mt2%pay = pay
+    mt2%pbx = pbx
+    mt2%pby = pby
+    mt2%pmx = pmissx
+    mt2%pmy = pmissy
+    mt2%scale = scale
+  end subroutine mt2_init
+
+@ %def mt2_init
+<<Kinematics vars: nsolutionsmassless>>=
+  integer function nsolutionsmassless (dsq) 
+    !!! calculates the number of solutions of quartic function in massless case    
+    real*16 :: delta, a, b, &
+         z0, z1, z2, z3, z4, &
+         z0sq, z1sq, z2sq, z3sq, z4sq, &
+         y0, y1, y2, y3, &
+         x0, x1, x2, &
+         w0, w1, &
+         v0, &
+         t1, t2, t3, t4, t5
+    real(kind=default)::deltasqlow, tempmass, maxmass, dsq
+    integer:: findhigh, nsolshigh, nsol
+
+    delta = dsq / (2 * mt2%Ea2)
+
+    !!! d1    = d11*delta seems not to be used
+    !!! e1    = e11*delta seems not to be used
+    !!! f1    = f12*delta*delta+f10   seems not to be used
+    d2    = d21*delta+d20
+    e2    = e21*delta+e20
+    f2    = f22*delta*delta+f21*delta+f20
+
+    if (mt2%pax > 0) then
+       a = Ea/Dsq
+    else
+       a = -Ea/Dsq
+    end if
+
+    if (mt2%pax > 0) then
+       b = ((mnsq*Ea)/Dsq)-(Dsq/(4*Ea))
+    else
+       b = Dsq/(4*Ea) - ((mnsq*Ea)/Dsq)
+    end if
+
+    z4 = a*a*a2
+    z3 = 2*a*b2/Ea
+    z2 = (2*a*a2*b+c2+2*a*d2) / mt2%Ea2
+    z1 = (2*b*b2+2*e2) / (mt2%Ea2*Ea)
+    z0 = (a2*b*b+2*b*d2+f2)/(mt2%Ea2*mt2%Ea2)
+
+    z0sq = z0*z0
+    z1sq = z1*z1
+    z2sq = z2*z2
+    z3sq = z3*z3
+    z4sq = z4*z4
+
+    y3 = 4*z4
+    y2 = 3*z3
+    y1 = 2*z2
+    y0 = z1
+
+    x2 = -(z2/2 - 3*z3sq/(16*z4))
+    x1 = -(3*z1/4. -z2*z3/(8*z4))
+    x0 = -z0 + z1*z3/(16*z4)
+
+    w1 = -y1 - (y3*x0*x1/x2 - y3*x0 -y2*x1)/x2
+    w0 = -y0 - y3 *x0 *x1/(x2*x2)+ y2*x0/x2
+
+    v0 = -x0 - x2*w0*w0/(w1*w1) + x1*w0/w1
+
+    t1 = z4
+    t2 = z4
+    t3 = x2
+    t4 = w1
+    t5 = v0
+
+    !!! number of solutions depends on the number of sign changes
+
+    nsol = signchangenegative(t1, t2, t3, t4, t5) - signchangepositive(t1, t2, t3, t4, t5)
+    if (nsol<0) then
+       nsol=0
+    end if
+    nsolutionsmassless=nsol
+  end function nsolutionsmassless
+
+@ %def nsolutionsmassless
+<<Kinematics vars: nsolutionsmassive>>=
+
+  integer function nsolutionsmassive ( dsq ) 
+    !!! calculates the number of solutions of quartic function  in massive case
+    integer:: nsol, nsolsmid
+    real(kind=default):: deltasqmid, dsq, delta
+    real*16 :: z0, z1, z2, z3, z4, &
+         z0sq, z1sq, z2sq, z3sq, z4sq, &
+         y0, y1, y2, y3, &
+         x0, x1, x2, &
+         w0, w1, &
+         v0, &
+         t1, t2, t3, t4, t5
+
+    delta = (dsq-masq) / (2*mt2%Ea2)
+
+    !!! calculate quadratic co-efficients
+
+    d1 = d11*delta
+    e1 = e11*delta
+    f1 = (f12*delta*delta)+f10
+    d2 = (d21*delta)+d20
+    e2 = (e21*delta)+e20
+    f2 = (f22*delta*delta)+f21*delta+f20
+    
+    !!! Calculate quartic co-efficients, divided by Ea^n to keep dimensionless
+
+
+    z0 = (-4.d0*a2*d1*d2*f1 + 4.d0*a1*d2*d2*f1 + a2*a2*f1*f1 &
+          + 4.d0*a2*d1*d1*f2 - 4.d0*a1*d1*d2*f2 &
+          - 2.d0*a1*a2*f1*f2+a1*a1*f2*f2) / (mt2%Ea2 * mt2%Ea2)
+
+    z1 = (-8.d0*a2*d1*d2*e1 + 8.d0*a1*d2*d2*e1 + 8.d0*a2*d1*d1*e2 &
+         - 8.d0*a1*d1*d2*e2 - 4.d0*a2*b2*d1*f1 - 4.d0*a2*b1*d2*f1 + &
+         8.d0*a1*b2*d2*f1 &
+         + 4.d0*a2*a2*e1*f1 - 4.d0*a1*a2*e2*f1 + 8.d0*a2*b1*d1*f2 - &
+         4.d0*a1*b2*d1*f2 - 4.d0*a1*b1*d2*f2 - 4.d0*a1*a2*e1*f2 + &
+         4.d0*a1*a1*e2*f2) / (mt2%Ea2*Ea)
+
+    z2 = (4.d0*a2*c2*d1*d1 - 4.d0*a2*c1*d1*d2 - 4.d0*a1*c2*d1*d2 + &
+         4.d0*a1*c1*d2*d2 - 8.d0*a2*b2*d1*e1 - 8.d0*a2*b1*d2*e1 + &
+         16.d0*a1*b2*d2*e1 &
+         + 4.d0*a2*a2*e1*e1 + 16.d0*a2*b1*d1*e2 - 8.d0*a1*b2*d1*e2 - &
+         8.d0*a1*b1*d2*e2 - 8.d0*a1*a2*e1*e2 + 4.d0*a1*a1*e2*e2 - &
+         4.d0*a2*b1*b2*f1 &
+         + 4.d0*a1*b2*b2*f1 + 2.d0*a2*a2*c1*f1 - 2.d0*a1*a2*c2*f1 + &
+         4.d0*a2*b1*b1*f2 - 4.d0*a1*b1*b2*f2 - 2.d0*a1*a2*c1*f2 + &
+         2.d0*a1*a1*c2*f2) / mt2%Ea2
+
+    z3 = (-4*a2*b2*c1*d1 + 8*a2*b1*c2*d1 - 4*a1*b2*c2*d1 - 4*a2*b1*c1*d2 + &
+         8*a1*b2*c1*d2 - 4*a1*b1*c2*d2 - 8*a2*b1*b2*e1 + 8*a1*b2*b2*e1 + &
+         4*a2*a2*c1*e1 - 4*a1*a2*c2*e1 + 8*a2*b1*b1*e2 - 8*a1*b1*b2*e2 - &
+         4*a1*a2*c1*e2 + 4*a1*a1*c2*e2)/Ea
+
+    z4 = - (4.d0*a2*b1*b2*c1) + (4.d0*a1*b2*b2*c1) + (a2*a2*c1*c1) + &
+         (4.d0*a2*b1*b1*c2) - (4.d0*a1*b1*b2*c2) - (2.d0*a1*a2*c1*c2) + &
+         (a1*a1*c2*c2)
+
+    if (z4==0) then
+       z4=1e-33
+    end if
+
+    z0sq = z0*z0
+    z1sq = z1*z1
+    z2sq = z2*z2
+    z3sq = z3*z3
+    z4sq = z4*z4
+
+    y0 = z1
+    y1 = 2.d0*z2
+    y2 = 3.d0*z3
+    y3 = 4.d0*z4
+
+    x0 = - z0 + (z1*z3)/(16.d0*z4)
+    x1 = - (3.d0*z1/4.d0) + (z2*z3)/(8.d0*z4)
+    x2 = - (z2/2.d0) + (3.d0*z3sq)/(16.d0*z4)
+
+    w0 = - y0 - ((y3*x0 *x1)/(x2*x2))+ ((y2*x0)/x2)
+    w1 = - y1 - ((y3*x1*x1/x2) - y3*x0 - y2*x1)/x2
+
+    v0 = - x0 - (x2*w0*w0)/(w1*w1) + (x1*w0/w1)
+
+    !!! Sturm sequence coefficients of leading order
+
+    t1 = z4
+    t2 = z4
+    t3 = x2
+    t4 = w1
+    t5 = v0
+
+    nsol = signchangenegative (t1, t2, t3, t4, t5) - &
+           signchangepositive (t1, t2, t3, t4, t5)
+
+    !!! correction for roundoff error if it gives a negative result
+    if (nsol<0) then
+       nsol = 0
+    endif
+
+    nsolutionsmassive = nsol
+  end function nsolutionsmassive
+
+@ %def nsolutionsmassive
+<<Kinematics vars: findhighfunc>>=
+  function findhighfunc (dsq)
+    real(kind=default):: x00, y00, deltasqlow, dis, &
+         deltasqmid, deltasqhigh, dsq
+    integer:: findhighfunc, nsolsmid !!! , nsolutionsmassive
+
+    x00 = (c1*d1 - b1*e1)/(b1*b1 - a1*c1)
+    y00 = (a1*e1 - b1*d1)/(b1*b1 - a1*c1)
+    deltasqlow = (mn + mt2%ma)*(mn + mt2%ma) - mnsq
+
+    do while ((deltasqhigh - deltasqlow) > 0.001)
+
+       deltasqmid = (deltasqhigh + deltasqlow)/2
+       nsolsmid = nsolutionsmassive(deltasqmid)
+       if (nsolsmid==2) then
+          deltasqhigh = deltasqmid
+       end if
+       if ( nsolsmid==4) then
+          deltasqhigh = deltasqmid
+       end if
+       if (nsolsmid==0) then
+          d1 = -mt2%pax * (deltasqmid - masq) / (2 * mt2%Ea2)
+          e1 = -mt2%pay * (deltasqmid - masq) / (2 * mt2%Ea2)
+          d2 = -mt2%pmx + mt2%pbx * (deltasqmid - mbsq)/(2*mt2%Eb2) + &
+               mt2%pbx * (mt2%pbx *mt2%pmx + mt2%pby * mt2%pmy) / mt2%Eb2
+          e2 = - mt2%pmy + mt2%pby * (deltasqmid - mbsq)/(2*mt2%Eb2) &
+               + mt2%pby * (mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy) / mt2%Eb2
+          f2 = mt2%pmx*mt2%pmx + mt2%pmy**2 - ((deltasqmid - mbsq)/(2*Eb) &
+               + (mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy)/Eb) * &
+               ((deltasqmid - mbsq)/(2*Eb) + (mt2%pbx * mt2%pmx + &
+               mt2%pby * mt2%pmy)/Eb) + mnsq
+
+          dis = a2*x00*x00 + 2*b2*x00*y00 + c2*y00*y00 + 2*d2*x00 + &
+               2*e2*y00 + f2
+
+          !!! Check if large ellipse contains small one
+
+          if (dis < 0 ) then
+             deltasqhigh = deltasqmid
+          else
+             deltasqlow = deltasqmid
+          end if
+       end if
+    end do
+    findhighfunc=0
+
+  end function findhighfunc
+
+@  %def findhighfunc
+Print input values.
+<<Kinematics vars: public>>=
+  public :: write_mt2_input
+<<Kinematics vars: sub interfaces>>=
+    module subroutine write_mt2_input (mt2, u)
+      type(mt2_t), intent(in) :: mt2
+      integer, intent(in) :: u
+    end subroutine write_mt2_input
+<<Kinematics vars: procedures>>=
+  module subroutine write_mt2_input (mt2, u)
+    type(mt2_t), intent(in) :: mt2
+    integer, intent(in) :: u
+
+    !!! prints the input variables as a check
+    write (u, "(1x,A," // FMT_19 // ")") 'pax =', mt2%pax * mt2%scale
+    write (u, "(1x,A," // FMT_19 // ")") 'pay =', mt2%pay * mt2%scale
+    write (u, "(1x,A," // FMT_19 // ")") 'ma =', mt2%ma * mt2%scale
+
+    write (u, "(1x,A," // FMT_19 // ")") 'pbx =', mt2%pbx * mt2%scale
+    write (u, "(1x,A," // FMT_19 // ")") 'pby =', mt2%pby * mt2%scale
+    write (u, "(1x,A," // FMT_19 // ")") 'mb =', mt2%mb * mt2%scale
+
+    write (u, "(1x,A," // FMT_19 // ")") 'pmissx =', mt2%pmx * mt2%scale
+    write (u, "(1x,A," // FMT_19 // ")") 'pmissy =', mt2%pmy * mt2%scale
+    write (u, "(1x,A," // FMT_19 // ")") 'mn =', mt2%mn * mt2%scale
+
+    !!! write (u, *) 'precision = ', prec
+
+  end subroutine write_mt2_input
+
+@ %def write_mt2_input
+@
+<<Kinematics vars: public>>=
+  public :: write_mt2_output
+<<Kinematics vars: sub interfaces>>=
+    module subroutine write_mt2_output (mt2, scale, u)
+      real(default), intent(in) :: mt2, scale
+      integer, intent(in) :: u
+    end subroutine write_mt2_output
+<<Kinematics vars: procedures>>=
+  module subroutine write_mt2_output (mt2, scale, u)
+    real(default), intent(in) :: mt2, scale
+    integer, intent(in) :: u
+    !!! Prints the output (MT2)
+    ! mt2=mt2_b*scale
+    write (u, "(1x,A,ES10.4)") 'mt2=', mt2 * scale
+
+  end subroutine write_mt2_output
+
+@ %def write_mt2_output
+@
+<<Kinematics vars: procedures>>=
+  function signchangepositive (t1, t2, t3, t4, t5) result (n_sign)
+    !!! calculates the number of sign changes in the sturm sequence
+    real*16 :: t1, t2, t3, t4, t5
+    integer :: n_sign
+    integer :: n
+    n = 0
+    if (t1*t2 < 0) then
+       n = n+1
+    end if
+    if (t2*t3 < 0) then
+       n = n+1
+    end if
+    if (t3*t4 < 0) then
+       n = n+1
+    end if
+    if (t4*t5 < 0) then
+       n = n+1
+    end if
+    n_sign = n
+  end function signchangepositive
+
+@ %def signchangepositive
+<<Kinematics vars: procedures>>=
+  integer function signchangenegative (t1, t2, t3, t4, t5)
+    !!! calculates the number of times there is no sign
+    !!!  change in the sturm sequence
+    real*16 :: t1, t2, t3, t4, t5
+    integer:: n
+
+    n=0
+    if((t1*t2)>0) then
+       n=n+1
+    endif
+    if((t2*t3)>0) then
+       n=n+1
+    endif
+    if((t3*t4)>0) then
+       n=n+1
+    endif
+    if((t4*t5)>0) then
+       n=n+1
+    endif
+    signchangenegative = n
+  end function signchangenegative
+
+@ %def signchangenegative
+It looks like as if this function is not used in the code.
+<<XXX Kinematics vars: procedures>>=
+  integer function scanhigh (mn, deltasqhigh)
+    real(default), intent(in) :: mn
+    real(kind=default):: tempmass, maxmass, deltasqlow, deltasqhigh, mass
+    integer:: nsolshigh, findhigh
+    mnsq = mn*mn
+    tempmass = mn+ma
+    findhigh = 0
+    maxmass = sqrt(mnsq + deltasqhigh)
+    mass = tempmass + step
+    do while ( mass < maxmass)
+       deltasqhigh = mass*mass - mnsq
+       nsolshigh = nsolutionsmassive(deltasqhigh)
+       if (nsolshigh > 0) then
+          deltasqlow = (mass - step)*(mass - step) - mnsq
+          findhigh = 1
+          exit
+       end if
+    end do
+    scanhigh=findhigh
+
+  end function scanhigh
+
+@ %def scanhight
+All this subroutine does is to decide whether to use the algorithm  
+for massless visible particles, or the algorithm for massive 
+visible particles. 
+<<Kinematics vars: public>>=
+  public :: mt2calc
+<<Kinematics vars: sub interfaces>>=
+    module subroutine mt2calc (mt2, mn, mt2_b)
+      type(mt2_t), intent(inout) :: mt2
+      real(default), intent(in) :: mn
+      real(default), intent(out) :: mt2_b
+    end subroutine mt2calc
+<<Kinematics vars: procedures>>=
+  module subroutine mt2calc (mt2, mn, mt2_b)
+    type(mt2_t), intent(inout) :: mt2
+    real(default), intent(in) :: mn
+    real(default), intent(out) :: mt2_b
+    if (mt2%ma**2 < min_mass .and. mt2%mb**2 < min_mass) then
+       call mt2massless (mt2, mn, mt2_b)
+    else
+       call mt2calcmassive (mt2, mn, mt2_b)
+    end if
+  end subroutine mt2calc
+
+@ %def mt2calc
+@ This subroutine sets up the event for calculation by defining the
+input variables, and setting them to a scale that aids calculation. 
+The output variables have been rescaled back.
+<<Kinematics vars: public>>=
+  public :: mt2_setevent
+<<Kinematics vars: sub interfaces>>=
+    module subroutine mt2_setevent (mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
+         pmissx, pmissy, scale, u)
+      real(default), intent(out) :: ma, mb ! mass of particles a and b
+      real(default), intent(out) :: mn ! invisible particle mass scaled and unscaled  
+      real(default), intent(out) :: scale
+      real(default), intent(out) :: pax, pay, pbx, pby
+      real(default), intent(out) :: pmissx, pmissy
+      real(default), intent(out) :: Easq, Ebsq
+      integer, intent(in) :: u
+    end subroutine mt2_setevent
+<<Kinematics vars: procedures>>=
+  module subroutine mt2_setevent (mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
+       pmissx, pmissy, scale, u)
+    real(default), intent(out) :: ma, mb ! mass of particles a and b
+    real(default), intent(out) :: mn ! invisible particle mass scaled and unscaled  
+    real(default), intent(out) :: scale
+    real(default), intent(out) :: pax, pay, pbx, pby  
+    ! x and y momentum of particles a and b    
+    ! missing x and y momentum
+    real(default) :: Ea, Eb
+    type(vector4_t) :: pmissa, pa, pb
+    real(default), intent(out) :: pmissx, pmissy
+    real(default) :: masq, mbsq, mnsq, Emiss, pmissz
+    real(default), intent(out) :: Easq, Ebsq
+    real(default) :: pmissxsq, pmissysq, mn_unscaled
+    real*16 :: temp, scalesq, rt, relative_precision100
+    integer, intent(in) :: u
+
+    !!! Here the 8 input variables are entered. This should be read in from 
+    !!! the syndarin file -  let me know if I can help accomplish this
+    !!! The units of input are equal to the units of the output e.g GeV 
+    !!!    in --> GeV out, MeV in --> MeV out 
+
+    ma=100 ! total mass of visible particles in branch  a
+    mb=100 ! total mass of visible particles in branch  b
+    !!! 0810.5178
+    !!! mT2 is invariant under longitudinal boosts => set paz = pbz = 0
+    ! mass = transverse mass here!??? 
+
+    pax=40 ! total x momentum of visible partivles in branch a
+    pay=40 ! total y momentum of visible partivles in branch a
+    pbx=40 ! total x momentum of visible partivles in branch b
+    pby=40 ! total y  momentum of visible partivles in branch b
+
+    Emiss=0
+    pmissz=0
+    pmissx=20 ! Total missing x momentum
+    pmissy=20 ! Total missing y momentum
+
+    pmissa = [ Emiss, pmissx, pmissy, pmissz]
+
+    mn=0 ! starting guess for mass of invisible particle 
+    mn_unscaled = 0 ! starting guess for mass of invisible particle 
+
+    scale=1.d0 ! scale is originally defined as 1
+    masq = ma*ma
+    Easq = masq + pax*pax + pay*pay
+    Ea = sqrt(Easq)
+    pa = [Ea, pax, pay, 0._default]
+
+    mbsq = mb*mb
+    Ebsq = mbsq + pbx*pbx + pby*pby
+    Eb = sqrt(Ebsq)
+
+    pmissxsq = pmissx*pmissx
+    pmissysq = pmissy*pmissy
+
+    ! set ma>=mb to keep consistency
+
+    if (masq < mbsq) then
+
+       temp = pax
+       pax = pbx
+       pbx = temp
+
+       temp = pay
+       pay = pby
+       pby = temp
+
+       temp = Ea
+       Ea = Eb
+       Eb = temp
+
+       temp = Easq
+       Easq = Ebsq
+       Ebsq = temp
+
+       temp = masq
+       masq = mbsq
+       mbsq = temp
+
+       temp = ma
+       ma = mb
+       mb = temp
+    end if
+
+    ! normalise to the scale
+
+    if (Ea > Eb) then
+       scale = Ea/100.d0
+    else
+       scale = Eb/100.d0
+    end if
+
+    rt=(sqrt(pmissxsq+pmissysq))/100.d0
+    if (rt > scale) then
+       scale = (sqrt(pmissxsq+pmissysq))/100.d0
+    end if
+
+    !!! write (u, *) 'scale=', scale
+    scalesq = scale*scale
+
+    ma = ma/scale
+    mb = mb/scale
+    masq = masq/scalesq
+    mbsq = mbsq/scalesq
+    pax = pax/scale
+    pay = pay/scale
+    pbx = pbx/scale
+    pby = pby/scale
+    Ea = Ea/scale
+    Eb = Eb/scale
+
+    Easq = Easq/scalesq
+    Ebsq = Ebsq/scalesq
+    pmissx = pmissx/scale
+    pmissy = pmissy/scale
+    pmissxsq = pmissxsq/scalesq
+    pmissysq = pmissysq/scalesq
+    mn = mn_unscaled/scale
+    mnsq = mn*mn
+
+    ! calculating precision
+
+    relative_precision100 = relative_precision*100.d0
+    if (absolute_precision > relative_precision100) then
+       prec = absolute_precision
+    else
+       prec = 100*relative_precision
+    end if
+  end subroutine mt2_setevent
+
+@ %def mt2_setevent
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[kinematics_vars_ut.f90]]>>=
+<<File header>>
+
+module kinematics_vars_ut
+  use unit_tests
+  use kinematics_vars_uti
+
+<<Standard module head>>
+
+<<Kinematics vars: public test>>
+
+contains
+
+<<Kinematics vars: test driver>>
+
+end module kinematics_vars_ut
+@ %def kinematics_vars_ut
+@
+<<[[kinematics_vars_uti.f90]]>>=
+<<File header>>
+
+module kinematics_vars_uti
+
+<<Use kinds>>
+  use kinematics_vars
+
+<<Standard module head>>
+
+<<Kinematics vars: test declarations>>
+
+contains
+
+<<Kinematics vars: tests>>
+
+end module kinematics_vars_uti
+@ %def kinematics_vars_ut
+This has been written by Tom James as a DESY summer student in August
+2013. It is a self-contained Fortran90 program for calculating
+$M_{T2}$ using the Cheng-Han algorithm. 
+<<Kinematics vars: public test>>=
+  public :: kinematics_vars_test
+<<Kinematics vars: test driver>>=
+  subroutine kinematics_vars_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Kinematics vars: execute tests>>
+  end subroutine kinematics_vars_test
+
+@ %def kinematics_vars_test
+@
+\subsubsection{Testing kinematic variables like MT2}
+<<Kinematics vars: execute tests>>=
+  call test (kinematics_vars_1, "kinematics_vars_1", "massive mT2 calculation", &
+       u, results)
+<<Kinematics vars: test declarations>>=
+  public :: kinematics_vars_1
+<<Kinematics vars: tests>>=
+  subroutine kinematics_vars_1 (u)
+    integer, intent(in) :: u
+    real(default) :: Easq, Ebsq
+    real(default) :: ma, mb, mn
+    real(default) :: pmissx, pmissy
+    real(default) :: mt2_b, scale
+    real(default) :: pax, pay, pbx, pby
+    type(mt2_t) :: mt2
+
+    write (u, "(A)")  "* Test output: mt2_1"
+    write (u, "(A)")  "*   Purpose: calculate MT2 for the massive case"
+    write (u, "(A)")
+    
+    call mt2_setevent (mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
+         pmissx, pmissy, scale, u)
+    call mt2_init (mt2, mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
+         pmissx, pmissy, scale)
+    call write_mt2_input (mt2, u)
+    call mt2calc (mt2, mn, mt2_b)
+    call write_mt2_output (mt2_b, scale, u)
+  end subroutine kinematics_vars_1
+
+@ %def kinematics_vars_1
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Collections of Lorentz Vectors}
 The [[phs_point]] type is a container for an array of Lorentz vectors.  This
 allows us to transfer Lorentz-vector arrays more freely, and to collect vector

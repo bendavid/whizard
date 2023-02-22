@@ -1234,6 +1234,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call lorentz_test (u, results)
 @
+\subsection{Kinematics variables}
+<<Main: use tests>>=
+  use kinematics_vars_ut, only: kinematics_vars_test
+<<Main: test cases>>=
+  case ("kinematics_vars")
+     call kinematics_vars_test (u, results)
+<<Main: all tests>>=
+  call kinematics_vars_test (u, results)
+@ 
 \subsubsection{PHS points}
 <<Main: use tests>>=
   use phs_points_ut, only: phs_points_test

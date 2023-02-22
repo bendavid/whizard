@@ -59,6 +59,7 @@ UNIT_TESTS = \
     interactions.run \
     xml.run \
     lorentz.run \
+    kinematics_vars.run \
     phs_points.run \
     sm_qcd.run \
     sm_qed.run \

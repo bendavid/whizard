@@ -4,6 +4,9 @@ Use svn log to see detailed changes.
 
 	Version 3.1.0.1
 
+2023-02-22
+	Infrastructure for calculation of kinematic MT2 variable
+
 2023-02-17
 	Bug fix UFO interface: correct parentheses in rational functions
 

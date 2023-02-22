@@ -40,6 +40,7 @@ PHYSICS_MODULES = \
   physics_defs.f90 \
   c_particles.f90 \
   lorentz.f90 \
+  kinematics_vars.f90 \
   phs_points.f90 \
   sm_physics.f90 \
   sm_qcd.f90 \
@@ -50,6 +51,7 @@ PHYSICS_SUBMODULES = \
   physics_defs_sub.f90 \
   c_particles_sub.f90 \
   lorentz_sub.f90 \
+  kinematics_vars_sub.f90 \
   phs_points_sub.f90 \
   sm_physics_sub.f90 \
   sm_qcd_sub.f90 \
@@ -61,6 +63,7 @@ libphysics_ut_la_SOURCES = \
   sm_qcd_uti.f90 sm_qcd_ut.f90 \
   sm_qed_uti.f90 sm_qed_ut.f90 \
   lorentz_uti.f90 lorentz_ut.f90 \
+  kinematics_vars_uti.f90 kinematics_vars_ut.f90 \
   phs_points_uti.f90 phs_points_ut.f90
 
 ## Omitting this would exclude it from the distribution
@@ -145,6 +148,7 @@ AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinator
 physics_defs_sub.lo: physics_defs.lo
 c_particles_sub.lo: c_particles.lo
 lorentz_sub.lo: lorentz.lo
+kinematics_vars_sub.lo: kinematics_vars.lo
 phs_points_sub.lo: phs_points.lo
 sm_physics_sub.lo: sm_physics.lo
 sm_qcd_sub.lo: sm_qcd.lo
