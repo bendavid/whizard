@@ -1331,9 +1331,9 @@ i*)
       and cyclic, factor = factor_cyclic fusion in
       let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
       let args = P.list (P.inverse factor) wfs_ps in
-      let args_string =
-        String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) args) in
-      printf "%s(%s,%s)" (fusion_name v cyclic []) g args_string
+      printf "@[<2>%s(@,%s" (fusion_name v cyclic []) g;
+      List.iter (fun (wf, p) -> printf ",@,%s,@,%s" wf p) args;
+      printf ")@]" 
 
     (* We need to look at the permuted fermion lines in order to
        decide wether to apply charge conjugations.  *)
@@ -1443,12 +1443,13 @@ i*)
       and cyclic, factor = factor_cyclic fusion in
       let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
       let args = P.list (P.inverse factor) wfs_ps in
-      let args_string =
-        String.concat "," (List.map (fun (wf, p) -> wf ^ "," ^ p) args) in
       let unit = ThoList.range 1 (List.length fusion) in
       let ccs =
         charge_conjugations (permute_fermion_lines2 cyclic factor unit fl) in
-      printf "%s(%s,%s)" (fusion_name v cyclic ccs) g args_string
+      printf "@[<2>%s(%s" (fusion_name v cyclic ccs) g;
+      List.iter (fun (wf, p) -> printf ",@,%s,@,%s" wf p) args;
+      printf ")@]" 
+
 
     let fuse c v s fl g wfs ps fusion =
       if List.exists is_majorana s then
