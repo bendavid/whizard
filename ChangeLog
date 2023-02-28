@@ -4,6 +4,12 @@ Use svn log to see detailed changes.
 
 	Version 3.1.0.1
 
+2023-03-01
+	Bug fix: numerical mapping stability for peaked PDFs
+
+2023-02-28
+	Bug fix UFO interface: avoid too long ME code lines
+
 2023-02-22
 	Infrastructure for calculation of kinematic MT2 variable
 

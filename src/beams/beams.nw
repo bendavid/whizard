@@ -4825,11 +4825,16 @@ format for the Jacobians.
     character(*), intent(in) :: fmt_p
     character(*), intent(in), optional :: fmt_f
     real(default), dimension(size(p_in)) :: p, pb, r, rb
+    real(default), dimension(size(p_in)) :: p_orig, pb_orig, r_orig, rb_orig
     real(default) :: f, tolerance
     tolerance = 1.5E-17_default
     p = p_in
     pb= pb_in
     call mapping%compute (r, rb, f, p, pb)
+    p_orig = p
+    pb_orig = pb
+    r_orig = r
+    rb_orig = rb
     call pacify (p, tolerance)
     call pacify (pb, tolerance)
     call pacify (r, tolerance)
@@ -4844,7 +4849,11 @@ format for the Jacobians.
        write (u, "(3x,A,9(1x," // fmt_p // "))")  "f =", f
     end if
     write (u, *)
-    call mapping%inverse (r, rb, f, p, pb)
+    call mapping%inverse (r_orig, rb_orig, f, p_orig, pb_orig)
+    p = p_orig
+    pb = pb_orig
+    r = r_orig
+    rb = rb_orig
     call pacify (p, tolerance)
     call pacify (pb, tolerance)
     call pacify (r, tolerance)
@@ -7043,6 +7052,9 @@ kept.
 @ For the inverse calculation, we evaluate $x=r_1r_2$ in a stable way.
 Since it is just a polynomial, the expansion near $x=1$ is
 analytically exact, and we don't need to choose based on precision.
+
+Fixed WK 2023-02-21: case selection ([[a0]] check) was flipped.  Note
+that the first case applies to small [[rb]], i.e., to [[x]] near 1.
 <<SF mappings: procedures>>=
   subroutine inverse_prec_x (r, rb, x, xb)
     real(default), dimension(2), intent(in) :: r, rb
@@ -7050,7 +7062,7 @@ analytically exact, and we don't need to choose based on precision.
     real(default) :: a0, a1
     a0 = rb(1) + rb(2)
     a1 = rb(1) * rb(2)
-    if (a0 > 0.5_default) then
+    if (a0 < 0.5_default) then
        xb = a0 - a1
        x = 1 - xb
     else
@@ -7069,6 +7081,11 @@ logarithm, so we are safe near $r_i=1$.  A series expansion is
 required if $r_1\ll r_2$, since then $y$ becomes small.  (We assume
 $r_1<r_2$ here; for the opposite case, the arguments can be
 exchanged.)
+
+Fixed WK 2023-02-21: removed special casing for either log near zero
+within the first branch.  ([[y]] or [[yb]] was set to zero.)
+In some application (ISR peak mapping with resonance nearby) that
+apparent safeguard turned out to be fatal.
 <<SF mappings: procedures>>=
   subroutine inverse_prec_y (r, rb, y, yb)
     real(default), dimension(2), intent(in) :: r, rb
@@ -7077,27 +7094,19 @@ exchanged.)
     log1 = log_prec (r(1), rb(1))
     log2 = log_prec (r(2), rb(2))
     if (abs (log2**3) < epsilon (one)) then
-       if (abs(log1) < epsilon (one)) then
-          y = zero
+       y = one / (one + log2 / log1)
+       yb = one / (one + log1 / log2)
+    else
+       a1 = - rb(1) / log2
+       a2 = - rb(1) ** 2 * (one / log2**2 + one / (2 * log2))
+       a3 = - rb(1) ** 3 * (one / log2**3 + one / log2**2 + one/(3 * log2))
+       if (abs (a3) < epsilon (a3)) then
+          y  = a1 + a2 + a3
+          yb = one - y
        else
-          y = one / (one + log2 / log1)
-       end if
-       if (abs(log2) < epsilon (one)) then
-          yb = zero
-       else
+          y  = one / (one + log2 / log1)
           yb = one / (one + log1 / log2)
        end if
-       return
-    end if
-    a1 = - rb(1) / log2
-    a2 = - rb(1) ** 2 * (one / log2**2 + one / (2 * log2))
-    a3 = - rb(1) ** 3 * (one / log2**3 + one / log2**2 + one/(3 * log2))
-    if (abs (a3) < epsilon (a3)) then
-       y  = a1 + a2 + a3
-       yb = one - y
-    else
-       y  = one / (one + log2 / log1)
-       yb = one / (one + log1 / log2)
     end if
   end subroutine inverse_prec_y
 

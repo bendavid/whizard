@@ -14241,6 +14241,7 @@ prepare in addition a copy without the resonance.
     type(cascade_t), intent(in), target :: cascade1, cascade2
     type(flavor_t), intent(in) :: flv
     type(cascade_t), pointer :: cascade3, cascade4
+    real(default) :: width
     logical :: keep
     keep = .false.
     allocate (cascade3)
@@ -14251,13 +14252,14 @@ prepare in addition a copy without the resonance.
     cascade3%is_vector = flv%get_spin_type () == VECTOR
     cascade3%m_min = cascade1%m_min + cascade2%m_min
     cascade3%m_rea = flv%get_mass ()
+    width = flv%get_width ()
     if (cascade3%m_rea > cascade_set%m_threshold_s) then
        cascade3%m_eff = cascade3%m_rea
     end if
     ! Potentially resonant cases [sqrts = m_rea for on-shell decay]
-    if (cascade3%m_rea > cascade3%m_min &
-         .and. cascade3%m_rea <= cascade_set%sqrts) then
-       if (flv%get_width () /= 0) then
+    if (cascade3%m_rea > cascade3%m_min .and. &
+         cascade3%m_rea <= cascade_set%sqrts) then
+       if (width /= 0) then
           if (cascade1%on_shell .or. cascade2%on_shell) then
              keep = .true.
              cascade3%mapping = S_CHANNEL
