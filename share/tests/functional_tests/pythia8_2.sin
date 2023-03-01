@@ -55,5 +55,6 @@ unstable H (pythia8_2_p3)
 $sample = "pythia8_2c"
 simulate (pythia8_2_p1)
 
-$sample = "pythia8_2d"
-simulate (pythia8_2_p1) {?hadronization_active = true}
+### Deactivated for the moment due to the pointer issue with NAG compiler
+# $sample = "pythia8_2d"
+# simulate (pythia8_2_p1) {?hadronization_active = true}
