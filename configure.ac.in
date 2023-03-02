@@ -772,14 +772,14 @@ AC_CONFIG_FILES([src/lhapdf5/Makefile])
 AC_CONFIG_FILES([src/lhapdf/Makefile])
 
 ###---------------------------------------------------------------------
-### Subdirectory src/pdf_builtin: Builtin PDFs
-
-AC_CONFIG_FILES([src/pdf_builtin/Makefile])
-
-###---------------------------------------------------------------------
 ### Subdirectory src/pdf_builtin: Electron PDFs
 
 AC_CONFIG_FILES([src/qed_pdf/Makefile])
+
+###---------------------------------------------------------------------
+### Subdirectory src/pdf_builtin: Builtin PDFs
+
+AC_CONFIG_FILES([src/pdf_builtin/Makefile])
 
 ###---------------------------------------------------------------------
 ### Subdirectory src/tauola
