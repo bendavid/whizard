@@ -183,64 +183,140 @@ module Value =
       | Power of t * t
       | Application of builtin * t list
 
+    (* At first sight, unparsing appears to be simpler than parsing.
+       Nevertheless, it can become tricky and error prone if one wants
+       to produce readable output that is not cluttered by too many
+       parentheses. *)
+
+    let signed_string_of_float x =
+      (if x < 0.0 then "-" else "+") ^ string_of_float (abs_float x)
+
+    (* It might seem to be a hack to base the decision of whether a
+       sign or parentheses are required on the textual representation
+       of a term.  However we control the textual representation, it's
+       efficient and we can avoid duplicating quite a bit of code
+       testing for terms that might produce minus signs. *)
+
+    let starts_with_a_sign s =
+      String.length s > 0 && let c = s.[0] in c = '-' || c = '+'
+
+    let starts_with_a_plus s =
+      String.length s > 0 && s.[0] = '+'
+
+    let starts_with_a_minus s =
+      String.length s > 0 && s.[0] = '-'
+
+    let prepend_binary_plus s =
+      if starts_with_a_sign s then
+        s
+      else
+        "+" ^ s
+
+    (* The safe version that might produce terms like $-(-a)$. *)
+
+    let prepend_binary_minus s =
+      if starts_with_a_sign s then
+        "-(" ^ s ^ ")"
+      else
+        "-" ^ s
+
+    (* The version that produces fewer parentheses, but must
+       assume that a leading minus sign always applies to the
+       \emph{whole} term! *)
+
+    let prepend_binary_minus s =
+      if starts_with_a_plus s then
+        "-" ^ String.sub s 1 (String.length s - 1)
+      else if starts_with_a_minus s then
+        "+" ^ String.sub s 1 (String.length s - 1)
+      else
+        "-" ^ s
+
+    (* Collect the numerical factors in a [Product] in order to
+       reduce the number of parentheses required.
+       \begin{dubious}
+         We could include [Rational], but is it worth it?
+       \end{dubious} *)
+
+    let collect_factors elist =
+      let rec collect_factors' factor elist_rev elist =
+        match factor, elist with
+        | (Integer 1| Real 1.), [] -> List.rev elist_rev
+        | _, [] -> factor :: List.rev elist_rev
+        | Integer i1, Integer i2 :: elist' ->
+           collect_factors' (Integer (i1 * i2)) elist_rev elist'
+        | Integer i, Real x :: elist' | Real x, Integer i :: elist' ->
+           collect_factors' (Real (float i *. x)) elist_rev elist'
+        | Real x1, Real x2 :: elist' ->
+           collect_factors' (Real (x1 *. x2)) elist_rev elist'
+        | _, e :: elist' -> collect_factors' factor (e :: elist_rev) elist' in
+      collect_factors' (Integer 1) [] elist
+
     let rec to_string = function
       | Integer i -> string_of_int i
       | Rational q -> Q.to_string q
       | Real x -> string_of_float x
       | Complex (0.0, 1.0) -> "I"
-      | Complex (0.0, -1.0) -> "-I"
-      | Complex (0.0, i) -> string_of_float i ^ "*I"
-      | Complex (r, 1.0) -> string_of_float r ^ "+I"
-      | Complex (r, -1.0) -> string_of_float r ^ "-I"
-      | Complex (r, i) ->
-         string_of_float r ^ (if i < 0.0 then "-" else "+") ^
-           string_of_float (abs_float i) ^ "*I"
+      | Complex (0.0, i) -> group_product (Product [Real i; Complex (0.0, 1.0)])
+      | Complex (r, 0.0) -> to_string (Real r)
+      | Complex (r, i) -> group_sum (Sum [Real r; Product [Real i; Complex (0.0, 1.0)]])
       | Variable s -> s
       | Sum [] -> "0"
       | Sum [e] -> to_string e
-      | Sum es -> "(" ^ String.concat "+" (List.map maybe_parentheses es) ^ ")"
-      | Difference (e1, e2) -> to_string e1 ^ "-" ^ maybe_parentheses e2
+      | Sum (e::es) -> to_string e ^ String.concat "" (List.map with_binary_plus es)
+      | Difference (e1, e2) -> to_string e1 ^ prepend_binary_minus (group_sum e2)
       | Product [] -> "1"
-      | Product ((Integer (-1) | Real (-1.)) :: es) ->
-         "-" ^ maybe_parentheses (Product es)
-      | Product es -> String.concat "*" (List.map maybe_parentheses es)
-      | Quotient (e1, e2) -> maybe_parentheses e1 ^ "/" ^ maybe_parentheses e2
+      | Product es ->
+         begin match collect_factors es with
+         | (Integer (-1) | Real (-1.)) :: es -> "-" ^ to_string (Product es)
+         | es -> String.concat "*" (List.map group_sum es)
+         end
+      | Quotient (e1, e2) -> group_sum e1 ^ "/" ^ group_denominator e2
       | Power ((Integer i as e), Integer p) ->
          if p < 0 then
-           maybe_parentheses (Real (float_of_int i)) ^
-             "^(" ^ string_of_int p ^ ")"
+           group_product (Real (float_of_int i)) ^ "^(" ^ string_of_int p ^ ")"
          else if p = 0 then
            "1"
          else if p <= 4 then
-           maybe_parentheses e ^ "^" ^ string_of_int p
+           group_product e ^ "^" ^ string_of_int p
          else
-           maybe_parentheses (Real (float_of_int i)) ^
-             "^" ^ string_of_int p
-      | Power (e1, e2) ->
-         maybe_parentheses e1 ^ "^" ^ maybe_parentheses e2
-      | Application (f, [Integer i]) ->
-         to_string (Application (f, [Real (float i)]))
+           group_product (Real (float_of_int i)) ^ "^" ^ string_of_int p
+      | Power (e1, e2) -> group_product e1 ^ "^" ^ group_product e2
+      | Application (f, [Integer i]) -> to_string (Application (f, [Real (float i)]))
       | Application (f, es) ->
-	 builtin_to_string f ^
-	   "(" ^ String.concat "," (List.map to_string es) ^ ")"
+	 builtin_to_string f ^ "(" ^ String.concat "," (List.map to_string es) ^ ")"
 
-    and maybe_parentheses = function
-      | Integer i as e ->
-         if i < 0 then
-           "(" ^ to_string e ^ ")"
-         else
-           to_string e     
-      | Real x as e ->
-         if x < 0.0 then
-           "(" ^ to_string e ^ ")"
-         else
-           to_string e
-      | Complex (x, 0.0) -> to_string (Real x)
-      | Complex (0.0, 1.0) -> "I"
-      | Variable _ | Power (_, _) | Application (_, _) as e -> to_string e
-      | Sum [e] -> to_string e
-      | Product [e] -> maybe_parentheses e
-      | e -> "(" ^ to_string e ^ ")"
+    (* Expressions that appear as arguments of [Power]s must be
+       enclosed in parentheses, unless they are singletons.  In
+       a denominator, we don't have to put function applications
+       in parentheses.
+       \begin{dubious}
+         Check this with \texttt{Whizard}'s parser, since this is the
+         main (only?) consumer of our output.
+       \end{dubious} *)
+
+    and group_product = function
+      | Application (_, _) as e -> "(" ^ to_string e ^ ")"
+      | e -> group_denominator e
+
+    and group_denominator = function
+      | Sum [e] | Product [e] -> group_product e
+      | Sum ( _ :: _) | Difference (_, _)
+      | Product ( _ :: _) | Quotient (_, _) as e -> "(" ^ to_string e ^ ")"
+      | e -> to_string e
+
+    (* [Sum]s that appear in [Product]s must be
+       enclosed in parentheses, unless they are singletons. *)
+
+    and group_sum = function
+      | Sum [e] | Product [e] -> group_sum e
+      | Sum ( _ :: _) | Difference (_, _) as e -> "(" ^ to_string e ^ ")"
+      | e -> to_string e
+
+    (* Add a ['+'] at the front if a term iff if has no sign. *)
+
+    and with_binary_plus e =
+      prepend_binary_plus (to_string e)
 
     let rec to_coupling atom = function
       | Integer i -> Coupling.Integer i
@@ -305,6 +381,16 @@ module Value =
            ("UFOx.Value.to_coupling: function `"
             ^ builtin_to_string f ^ "' not supported yet!")
 
+    (* \begin{dubious}
+         The constant propagation here is incomplete.
+         [S.Quotient] and [S.Power] are not yet handled
+         and in [S.Sum] and [S.Product] only adjacent constants
+         are combined.
+       \end{dubious}
+       \begin{dubious}
+         We could include [Rational], but is it worth it?
+       \end{dubious} *)
+
     let compress terms = terms
 
     let rec of_expr e =
@@ -320,27 +406,37 @@ module Value =
       | S.Variable name -> Variable name
       | S.Sum (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with
+         | Integer i1, Integer i2 -> Integer (i1 + i2)
+         | Integer i, Real x | Real x, Integer i -> Real (float_of_int i +. x)
+         | Real x1, Real x2 -> Real (x1 +. x2)
 	 | (Integer 0 | Real 0.), e -> e
 	 | e, (Integer 0 | Real 0.) -> e
 	 | Sum e1, Sum e2 -> Sum (e1 @ e2)
 	 | e1, Sum e2 -> Sum (e1 :: e2)
-	 | Sum e1, e2 -> Sum (e2 :: e1)
+	 | Sum e1, e2 -> Sum (e1 @ [e2])
 	 | e1, e2 -> Sum [e1; e2]
 	 end
       | S.Difference (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with
+         | Integer i1, Integer i2 -> Integer (i1 - i2)
+         | Integer i, Real x -> Real (float_of_int i -. x)
+         | Real x, Integer i -> Real (x -. float_of_int i)
+         | Real x1, Real x2 -> Real (x1 -. x2)
 	 | e1, (Integer 0 | Real 0.) -> e1
 	 | e1, e2 -> Difference (e1, e2)
          end
       | S.Product (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with
+         | Integer i1, Integer i2 -> Integer (i1 * i2)
+         | Integer i, Real x | Real x, Integer i -> Real (float_of_int i *. x)
+         | Real x1, Real x2 -> Real (x1 *. x2)
          | (Integer 0 | Real 0.), _ -> Integer 0
          | _, (Integer 0 | Real 0.) -> Integer 0
          | (Integer 1 | Real 1.), e -> e
          | e, (Integer 1 | Real 1.) -> e
 	 | Product e1, Product e2 -> Product (e1 @ e2)
 	 | e1, Product e2 -> Product (e1 :: e2)
-	 | Product e1, e2 -> Product (e2 :: e1)
+	 | Product e1, e2 -> Product (e1 @ [e2])
 	 | e1, e2 -> Product [e1; e2]
 	 end
       | S.Quotient (e1, e2) ->
@@ -348,6 +444,10 @@ module Value =
          | e1, (Integer 0 | Real 0.) ->
             invalid_arg "UFOx.Value: divide by 0"
          | e1, (Integer 1 | Real 1.) -> e1
+         | Integer i1, Integer i2 -> Rational (Q.make i1 i2)
+         | Real x, Integer i -> Real (x /. float i)
+         | Integer i, Real x -> Real (float i /. x)
+         | Real x1, Real x2 -> Real (x1 /. x2)
          | e1, e2 -> Quotient (e1, e2)
          end
       | S.Power (e, p) ->
@@ -1528,29 +1628,104 @@ module Test : Test =
     let parse_unparse s =
       Value.to_string (Value.of_expr (Expr.of_string s))
 
-    let assert_parse_unparse unparsed expr =
+    let apup unparsed expr =
       assert_equal ~printer:(fun s -> s) unparsed (parse_unparse expr)
+
+    let apup_id expr =
+      apup expr expr
+
+    let suite_arithmetic =
+      "arithmetic" >:::
+        [ "1 + 2" >:: (fun () -> apup "3" "1+2");
+          "1 - 2" >:: (fun () -> apup "-1" "1-2");
+          "3 * 2" >:: (fun () -> apup "6" "3*2");
+          "3 * (-2)" >:: (fun () -> apup "-6" "3*(-2)");
+          "3 / 2" >:: (fun () -> apup "(3/2)" "3/2");
+          "4 / 12" >:: (fun () -> apup "(1/3)" "4/12");
+          "4 / (-6)" >:: (fun () -> apup "(-2/3)" "4/(-6)");
+          "3 * (6 / 12)" >:: (fun () -> apup "3*(1/2)" "3*(6/12)");
+          "(3 * 6) / 12)" >:: (fun () -> apup "(3/2)" "(3*6)/12") ]
+
+    let suite_complex =
+      "complex" >:::
+        [ "1+I" >:: (fun () -> apup "1+I" "1+complex(0,1)");
+          "1-I" >:: (fun () -> apup "1-I" "1-complex(0,1)");
+          "1-I'" >:: (fun () -> apup "1+(-I)" "1+complex(0,-1)");
+          "1+I'" >:: (fun () -> apup "1-(-I)" "1-complex(0,-1)");
+          "1+1.+I" >:: (fun () -> apup "1+(1.+I)" "1+complex(1,1)");
+          "1+1.-I" >:: (fun () -> apup "1+(1.-I)" "1+complex(1,-1)");
+          "1-1.-I" >:: (fun () -> apup "1-(1.+I)" "1-complex(1,1)");
+          "1-1.+I" >:: (fun () -> apup "1-(1.-I)" "1-complex(1,-1)");
+          "2-I" >:: (fun () -> apup "1-(1.+I)" "1-complex(1,1)");
+          "-I+1" >:: (fun () -> apup "-I+1" "-complex(0,1)+1");
+          "1.-I+1" >:: (fun () -> apup "(1.-I)+1" "complex(1,-1)+1");
+          "1/I" >:: (fun () -> apup "1/I" "1/complex(0,1)");
+          "1/1" >:: (fun () -> apup "1" "1/complex(1,0)");
+          "1/(-1)" >:: (fun () -> apup "-1" "1/complex(-1,0)");
+          "1/(-I)" >:: (fun () -> apup "1/(-I)" "1/complex(0,-1)");
+          "1/(2*I)" >:: (fun () -> apup "1/(2.*I)" "1/complex(0,2)");
+          "1/(1+I)" >:: (fun () -> apup "1/(1.+I)" "1/complex(1,1)");
+          "1/(1-I)" >:: (fun () -> apup "1/(1.-I)" "1/complex(1,-1)");
+          "I/2" >:: (fun () -> apup "I/2" "complex(0,1)/2");
+          "1/2" >:: (fun () -> apup "(1/2)" "complex(1,0)/2");
+          "-1/2" >:: (fun () -> apup "(-1/2)" "complex(-1,0)/2");
+          "-I/2" >:: (fun () -> apup "(-I)/2" "complex(0,-1)/2");
+          "(2 * I) / 2" >:: (fun () -> apup "(2.*I)/2" "complex(0,2)/2");
+          "(1 + I) / 2" >:: (fun () -> apup "(1.+I)/2" "complex(1,1)/2");
+          "(1 - I) / 2" >:: (fun () -> apup "(1.-I)/2" "complex(1,-1)/2") ]
+
+    let suite_product =
+      "product" >:::
+        [ "(-a) * (-b)" >:: (fun () -> apup "a*b" "(-a)*(-b)");
+          "a * (-2*b)" >:: (fun () -> apup "-2*a*b" "a*(-2*b)");
+          "a * (-2/3*b)" >:: (fun () -> apup "a*(-2/3)*b" "a*(-2/3*b)");
+          "(-2*a) * (-2*b)" >:: (fun () -> apup "4*a*b" "(-2*a)*(-2*b)") ]
+
+    let suite_apply =
+      "apply" >:::
+        [ "sin(x) * cos(x)**2" >:: (fun () -> apup "sin(x)*(cos(x))^2" "cmath.sin(x)*cmath.cos(x)**2");
+          "sin(x) / cos(x)**2" >:: (fun () -> apup "sin(x)/(cos(x))^2" "cmath.sin(x)/cmath.cos(x)**2");
+          "(sin(x) / cos(x))**2" >:: (fun () -> apup "(sin(x)/cos(x))^2" "(cmath.sin(x)/cmath.cos(x))**2") ]
 
     let suite_expr =
       "unparse/parse" >:::
-        [ "a + b" >::
-            (fun () -> assert_parse_unparse "(a+b)" "a+b");
+        [ "a + b" >:: (fun () -> apup_id "a+b");
+          "a - b" >:: (fun () -> apup_id "a-b");
+          "a + b - c" >:: (fun () -> apup_id "a+b-c");
+          "a - b - c" >:: (fun () -> apup_id "a-b-c");
+          "-a + b - c" >:: (fun () -> apup_id "-a+b-c");
+          "-a - b - c" >:: (fun () -> apup_id "-a-b-c");
+          "(a - b) / c" >:: (fun () -> apup_id "(a-b)/c");
+          "(a - b) / (c + d)" >:: (fun () -> apup_id "(a-b)/(c+d)");
+          "(a + b - c) / d" >:: (fun () -> apup_id "(a+b-c)/d");
+          "a^b / c" >:: (fun () -> apup "a^b/c" "a**b/c");
+          "(a * b)^c / d" >:: (fun () -> apup "(a*b)^c/d" "(a*b)**c/d");
+          "(a * b)^(c/d)" >:: (fun () -> apup "(a*b)^(c/d)" "(a*b)**(c/d)");
+          "(a / b)^c / d" >:: (fun () -> apup "(a/b)^c/d" "(a/b)**c/d");
+          "(a + b)^c / d" >:: (fun () -> apup "(a+b)^c/d" "(a+b)**c/d");
+          "(a - b)^c / d" >:: (fun () -> apup "(a-b)^c/d" "(a-b)**c/d");
+          "-a^2" >:: (fun () -> apup "-a^2" "-a**2");
+          "(-a)^2" >:: (fun () -> apup "(-a)^2" "(-a)**2");
+          "a-b^2" >:: (fun () -> apup "a-b^2" "a-b**2");
+          "-a^2 + b + c" >:: (fun () -> apup "-a^2+b+c" "-a**2+b+c");
+          "a - b^2 + c" >:: (fun () -> apup "a-b^2+c" "a-b**2+c") ]
 
-          "(a - b) / c" >::
-            (fun () -> assert_parse_unparse "(a-b)/c" "(a-b)/c");
-
-          "(a + b - c) / d" >::
-            (fun () -> assert_parse_unparse "((a+b)-c)/d" "(a+b-c)/d");
-
-          "S2HDMIV:lam1" >::
+    let suite_bugreports =
+      "bug reports" >:::
+        [ "S2HDMIV:lam1" >::
             (fun () ->
-              assert_parse_unparse
-                "(((Mh3^2*RA3x1^2)+(Mh1^2*RA1x1^2)+(Mh2^2*RA2x1^2))-(musq*SB^2))/(CB^2*vH^2)"
+              apup
+                "(Mh1^2*RA1x1^2+Mh2^2*RA2x1^2+Mh3^2*RA3x1^2-musq*SB^2)/(CB^2*vH^2)"
                 "(Mh1**2*RA1x1**2 + Mh2**2*RA2x1**2 + Mh3**2*RA3x1**2 - musq*SB**2)/(CB**2*vH**2)") ]
       
     let suite =
       "UFOx" >:::
-	[suite_expr]
+	[suite_arithmetic;
+         suite_complex;
+         suite_product;
+         suite_apply;
+         suite_expr;
+         suite_bugreports]
 
   end
 

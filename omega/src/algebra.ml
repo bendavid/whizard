@@ -91,6 +91,8 @@ let rec gcd i1 i2 =
 
 let lcm i1 i2 = (i1 / gcd i1 i2) * i2
 
+let abs_int = abs
+
 module Small_Rational : Rational =
   struct
     type t = int * int
@@ -127,8 +129,8 @@ module Small_Rational : Rational =
         (n, d)
     let to_float (n, d) = float n /. float d
     let to_string (n, d) =
-      if d = 1 then
-        Printf.sprintf "%d" n
+      if abs_int d = 1 then
+        Printf.sprintf "%d" (d * n)
       else
         let n, d = to_ratio (n, d) in
         Printf.sprintf "(%d/%d)" n d

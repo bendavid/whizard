@@ -56,8 +56,23 @@ let add e1 e2 =
 let subtract e1 e2 =
   Difference (e1, e2)
     
+(* This smart constructor is required since we parse negative
+   numbers as unary minus applied to a positive number.
+   [UFOx.Lorentz_Atom'.of_expr] and [UFOx.Color_Atom'.of_expr]
+   expect negative numbers as summation
+   indices and not expressions.  Strictly speaking,
+   we only need the case [e1 = Integer (-1)] for this, but the
+   rest is natural.
+
+   There used to be a special rule in the grammar, but this
+   cause reduce/reduce conflicts, that harmless, but annoying. *)
+
 let multiply e1 e2 =
-  Product (e1, e2)
+  match e1, e2 with
+  | Integer i1, Integer i2 -> Integer (i1 * i2)
+  | Integer i, Float x | Float x, Integer i -> Float (float_of_int i *. x)
+  | Float x1, Float x2 -> Float (x1 *. x2)
+  | e1, e2 -> Product (e1, e2)
     
 let divide e1 e2 =
   Quotient (e1, e2)

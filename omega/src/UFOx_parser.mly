@@ -43,14 +43,14 @@ let invalid_parameter_attr () =
 %token < float > FLOAT
 %token < string > ID QUOTED
 %token PLUS MINUS TIMES POWER DIV
-%token LPAREN RPAREN COMMA DOT
+%token LPAREN RPAREN COMMA
 
 %token END
 
 %left PLUS MINUS
 %left TIMES DIV
-%left POWER
 %nonassoc UNARY
+%left POWER
 
 %start input
 %type < UFOx_syntax.expr > input
@@ -62,8 +62,6 @@ input:
 ;
 
 expr:
- | MINUS INT %prec UNARY  { X.integer (- $2) }
- | MINUS FLOAT %prec UNARY{ X.float (-. $2) }
  | INT             	  { X.integer $1 }
  | FLOAT           	  { X.float $1 }
  | ID              	  { X.variable $1 }
