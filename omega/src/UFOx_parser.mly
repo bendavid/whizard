@@ -50,7 +50,7 @@ let invalid_parameter_attr () =
 %left PLUS MINUS
 %left TIMES DIV
 %nonassoc UNARY
-%left POWER
+%right POWER
 
 %start input
 %type < UFOx_syntax.expr > input

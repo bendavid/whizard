@@ -272,6 +272,12 @@ module Value =
          | es -> String.concat "*" (List.map group_sum es)
          end
       | Quotient (e1, e2) -> group_sum e1 ^ "/" ^ group_denominator e2
+      | Power ((Power (_, _) as e1, (Power (_, _) as e2))) ->
+         "(" ^ group_product e1 ^ ")^(" ^ to_string e2 ^ ")"
+      | Power ((Power (_, _) as e1, e2)) ->
+         "(" ^ group_product e1 ^ ")^" ^ to_string e2
+      | Power (e1, (Power (_, _) as e2)) ->
+         group_product e1 ^ "^(" ^ to_string e2 ^ ")"
       | Power ((Integer i as e), Integer p) ->
          if p < 0 then
            group_product (Real (float_of_int i)) ^ "^(" ^ string_of_int p ^ ")"
@@ -1681,6 +1687,13 @@ module Test : Test =
           "a * (-2/3*b)" >:: (fun () -> apup "a*(-2/3)*b" "a*(-2/3*b)");
           "(-2*a) * (-2*b)" >:: (fun () -> apup "4*a*b" "(-2*a)*(-2*b)") ]
 
+    let suite_power =
+      "power" >:::
+        [ "a^b^c^d" >:: (fun () -> apup "a^(b^(c^d))" "a**b**c**d");
+          "(a^b)^c^d" >:: (fun () -> apup "(a^b)^(c^d)" "(a**b)**c**d");
+          "(a^b)^(c^d)" >:: (fun () -> apup "(a^b)^(c^d)" "(a**b)**(c**d)");
+          "((a^b)^c)^d" >:: (fun () -> apup "((a^b)^c)^d" "((a**b)**c)**d") ]
+
     let suite_apply =
       "apply" >:::
         [ "sin(x) * cos(x)**2" >:: (fun () -> apup "sin(x)*(cos(x))^2" "cmath.sin(x)*cmath.cos(x)**2");
@@ -1723,6 +1736,7 @@ module Test : Test =
 	[suite_arithmetic;
          suite_complex;
          suite_product;
+         suite_power;
          suite_apply;
          suite_expr;
          suite_bugreports]
