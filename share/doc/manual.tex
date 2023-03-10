@@ -9438,9 +9438,9 @@ Further options that steer the efficiency of this grid are
 
 For both the pure NLO computations as well as the \powheg\ event
 generation, \whizard\ supports the partitioning of the real into finite
-and singular contributions with the flag
+and singular contributions with the string variable
 \begin{code}
-  ?nlo_use_real_partition = true
+  $real_partition_mode = "on"
 \end{code}
 The finite contributions, which by definition should not contain soft or
 collinear emissions, will then integrate like an ordinary LO integration

@@ -1,7 +1,7 @@
 % custom.hva -- tuning HEVEA for WHIZARD documentation
 % Wolfgang's version, continued by JRR
 % Specials
-\newcommand{\thisversion}{3.1.1}
+\newcommand{\thisversion}{3.1.1.1}
 \newenvironment{interaction}{\small\verbatim}{\endverbatim\endsmall}
 \newenvironment{syntax}{\begin{quote}\begin{flushleft}\tt}{\end{flushleft}\end{quote}}
 \newcommand{\var}[1]{$\langle$\textit{#1}$\rangle$}   
