@@ -1,8 +1,19 @@
 ChangeLog -- Summary of changes to the WHIZARD package
 
-Use svn log to see detailed changes.
+Use git log/svn log to see detailed changes.
 
-	Version 3.1.1.1
+	Version 3.1.2
+
+##################################################################
+
+2023-03-21
+	RELEASE: version 3.1.2
+
+2023-03-21
+	Bug fix in cyclic build dependence of WHIZARD core
+
+2023-03-11
+	Resolve minor inconsistency in manual for NLO real partition
 
 ##################################################################
 

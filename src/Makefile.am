@@ -33,9 +33,9 @@ SUBDIRS = \
   hepmc lcio lhapdf lhapdf5 looptools xdr \
   expr_base utilities \
   system \
-  combinatorics testing muli \
+  combinatorics testing \
   parsing physics \
-  qed_pdf pdf_builtin hoppet\
+  qed_pdf pdf_builtin hoppet muli \
   fastjet types qft threshold \
   models particles matrix_elements variables \
   events prebuilt rng \

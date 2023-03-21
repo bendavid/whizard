@@ -15,6 +15,9 @@ General:
 
 Known (recent) bugs:
 
+* WHIZARD 3.1.1 contains a (harmless) cyclic build dependence that triggers
+  a partial rebuild of the WHIZARD core. This has been resolved in v3.1.2.
+
 * WHIZARD 3.0.0 and earlier might not compile together with HepMC3/ROOT
   when using a genuine C++17 standard compiler like gcc/g++ 11 and newer.
   This came from backwards compatibility with gcc/g++ 5 as a default
