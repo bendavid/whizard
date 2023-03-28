@@ -2050,7 +2050,9 @@ C address of a character array with length 32.
          &target, save :: md5sum"
     write (unit, "(A)")  "  select case (i)"
     write (unit, "(A)")  "  case (0)"
-    write (unit, "(A)")  "     call copy (" // char (prefix) // "md5sum ())"
+    !!! Workaround for Intel oneAPI 2022/23 regression
+    !    write (unit, "(A)")  "     call copy (" // char (prefix) // "md5sum ())"
+    write (unit, "(A)")  "     call copy ((" // char (prefix) // "md5sum ()))"
     write (unit, "(A)")  "     cptr = c_loc (md5sum)"
     do i = 1, driver%n_processes
        write (unit, "(A,I0,A)")  "  case (", i, ")"
@@ -2108,8 +2110,11 @@ return the C address of the target array.
     class(prc_writer_f_module_t), intent(in) :: writer
     integer, intent(in) :: unit
     type(string_t), intent(in) :: id
-    write (unit, "(5x,9A)")  "call copy (", &
-         char (writer%get_c_procname (id, var_str ("md5sum"))), " ())"
+    !!! Workaround for Intel oneAPI 2022/23 regression
+    ! write (unit, "(5x,9A)")  "call copy (", &
+    !      char (writer%get_c_procname (id, var_str ("md5sum"))), " ())"
+    write (unit, "(5x,9A)")  "call copy ((", &
+         char (writer%get_c_procname (id, var_str ("md5sum"))), " ()))"
     write (unit, "(5x,9A)")  "cptr = c_loc (md5sum)"
   end subroutine prc_writer_f_module_write_md5sum_call
 

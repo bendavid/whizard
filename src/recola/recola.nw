@@ -2115,6 +2115,14 @@ submodule (prc_recola) prc_recola_s
   use system_defs, only: TAB
   use io_units
   use recola_wrapper !NODEP!
+  !!! Intel oneAPI 2022/23 regression workaround
+  use os_interface, only: os_data_t
+  use variables, only: var_list_t
+  use sm_qcd, only: qcd_t
+  use model_data, only: model_data_t
+  use prc_core, only: prc_core_state_t
+  use prc_core_def, only: prc_core_driver_t, prc_core_def_t
+  use process_libraries, only: process_library_t
 
   implicit none
 

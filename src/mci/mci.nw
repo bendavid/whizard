@@ -5297,6 +5297,8 @@ end module mci_none
 submodule (mci_none) mci_none_s
 
   use diagnostics, only: msg_message, msg_fatal
+  !!! Intel oneAPI 2022/23 regression workaround
+  use phs_base, only: phs_channel_t
 
   implicit none
 

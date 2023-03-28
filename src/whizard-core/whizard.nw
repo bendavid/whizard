@@ -497,6 +497,9 @@ submodule (rt_data) rt_data_s
   use format_defs, only: FMT_19, FMT_12
   use system_dependencies
   use diagnostics
+  !!! Intel oneAPI 2022/23 regression workaround
+  use variables, only: var_list_t
+  use prc_core, only: helicity_selection_t
 
   implicit none
 
@@ -4607,6 +4610,8 @@ submodule (process_configurations) process_configurations_s
   use prc_core_def
   use dispatch_me_methods, only: dispatch_core_def
   use prc_external, only: prc_external_def_t
+  !!! Intel oneAPI 2022/23 regression workaround
+  use variables, only: var_list_t
 
   implicit none
 
@@ -5301,6 +5306,8 @@ submodule (compilations) compilations_s
   use system_defs, only: TAB
   use system_dependencies, only: OS_IS_DARWIN
   use diagnostics
+  !!! Intel oneAPI 2022/23 regression workaround
+  use variables, only: var_list_t
 
   implicit none
 
@@ -8380,6 +8387,8 @@ submodule (event_streams) event_streams_s
 
   use io_units
   use diagnostics
+  !!! Intel oneAPI 2022/23 regression workaround
+  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -11535,6 +11544,10 @@ submodule (simulations) simulations_s
   use dispatch_transforms, only: dispatch_evt_nlo
 
   use integrations
+  !!! Intel oneAPI 2022/23 regression workaround
+  use process_libraries, only: process_library_t
+  use process_libraries, only: process_component_def_t
+  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -18906,6 +18919,8 @@ submodule (commands) commands_s
   use event_streams
   use radiation_generator
   use simulations
+  !!! Intel oneAPI 2022/23 regression workaround
+  use variables, only: var_list_t
 
   implicit none
 
