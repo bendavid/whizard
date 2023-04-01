@@ -349,7 +349,7 @@ if test "$EPSPDF" = "no" -a "$EPSTOPDF" = "no"; then
    AC_MSG_NOTICE([WARNING:  this applies only to the svn developer version!])
    AC_MSG_NOTICE([*********************************************************])
 fi
-AC_PROG_SUPP_PDF()
+AC_PROG_CONTEXT()
 AC_PROG_GZIP()
 AC_PATH_PROG(ACROREAD,acroread,false)
 AC_PATH_PROG(GHOSTVIEW,gv ghostview,false)

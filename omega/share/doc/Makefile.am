@@ -69,7 +69,7 @@ endif
 
 ### Files needed to be installed with the O'Mega distribution
 modelsdir = $(pkgdatadir)/doc
-if SUPP_PDF_AVAILABLE
+if CONTEXT_AVAILABLE
 dist_doc_DATA = $(PDFS)
 else
 dist_doc_DATA = 
@@ -88,7 +88,7 @@ SUFFIXES = .mly .mll .ml .implementation .mli .interface .nw .tex .pdf
 MPOST_LATEX = TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST)
 
 if DISTRIBUTION
-if SUPP_PDF_AVAILABLE
+if CONTEXT_AVAILABLE
 if PDFLATEX_AVAILABLE
 .tex.pdf:
 	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
@@ -116,11 +116,11 @@ endif MPOST_AVAILABLE
 	   fi; \
 	fi
 endif PDFLATEX_AVAILABLE
-endif SUPP_PDF_AVAILABLE
+endif CONTEXT_AVAILABLE
 endif DISTRIBUTION
 
 if DISTRIBUTION
-if SUPP_PDF_AVAILABLE
+if CONTEXT_AVAILABLE
 if PDFLATEX_AVAILABLE
 
 omega-paper-1.pdf: modules.pdf \
@@ -141,7 +141,7 @@ omega-paper-2.pdf: \
     mom_choice.pdf mom_flow.pdf
 
 endif PDFLATEX_AVAILABLE
-endif SUPP_PDF_AVAILABLE
+endif CONTEXT_AVAILABLE
 endif DISTRIBUTION
 
 OMEGA_CORE_INTERFACES = $(OMEGA_CORE_MLI:.mli=.interface)

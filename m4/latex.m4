@@ -154,25 +154,15 @@ fi
 fi
 ])
 
-dnl Checking for supp-pdf.tex (auxiliary for PDF output)
+dnl Checking for conTeXt (auxiliary for PDF output)
 
-AC_DEFUN([AC_PROG_SUPP_PDF], [dnl
-AC_REQUIRE([AC_PROG_TEX])
-AC_CACHE_CHECK([for supp-pdf.tex],
-[wo_cv_supp_pdf_exists],
-[dnl
-wo_cv_supp_pdf_exists="no"
-if test "$PLAINTEX" != "no"; then
-  wo_cmd='echo \\input supp-pdf.tex \\end > conftest.tex'
-  eval "$wo_cmd"
-  wo_cmd='$PLAINTEX conftest.tex >&5'
-  (eval "$wo_cmd") 2>&5 && wo_cv_supp_pdf_exists="yes" 
-fi])
-AM_CONDITIONAL([SUPP_PDF_AVAILABLE], [test "$wo_cv_supp_pdf_exists" != "no"])
+AC_DEFUN([AC_PROG_CONTEXT], [dnl
+AC_CHECK_PROGS(CONTEXT,[context],no)
+AM_CONDITIONAL([CONTEXT_AVAILABLE], [test "$CONTEXT" != "no"])
 if test "$enable_distribution" = "yes"; then
-if test "$wo_cv_supp_pdf_exists" = "no"; then
+if test "$CONTEXT" = "no"; then
 AC_MSG_NOTICE([error: ********************************************************])
-AC_MSG_NOTICE([error: No LaTeX supp-pdf.tex available, please install conTeXt.])
+AC_MSG_NOTICE([error: No LaTeX conTeXt available, please install conTeXt.])
 AC_MSG_ERROR([********************************************************])
 fi
 fi
