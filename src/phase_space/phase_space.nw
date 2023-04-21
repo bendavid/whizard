@@ -25543,33 +25543,6 @@ tiny value differing from that.
   end function get_boost_for_threshold_projection
 
 @ %def get_boost_for_threshold_projection
-@ This routine recomputes the value of $\phi$ used to generate the real phase space.
-<<PHS fks: procedures>>=
-  function get_generation_phi (p_born, p_real, emitter, i_gluon) result (phi)
-    real(default) :: phi
-    type(vector4_t), intent(in), dimension(:) :: p_born, p_real
-    integer, intent(in) :: emitter, i_gluon
-    type(vector4_t) :: p1, p2, pp
-    type(lorentz_transformation_t) :: rot_to_gluon, rot_to_z
-    type(vector3_t) :: dir, z
-    real(default) :: cpsi
-    pp = p_real(emitter) + p_real(i_gluon)
-    cpsi = (space_part_norm (pp)**2 - space_part_norm (p_real(emitter))**2 &
-           + space_part_norm (p_real(i_gluon))**2) / &
-           (two * space_part_norm (pp) * space_part_norm (p_real(i_gluon)))
-    dir = create_orthogonal (space_part (p_born(emitter)))
-    rot_to_gluon = rotation (cpsi, sqrt (one - cpsi**2), dir)
-    pp = rot_to_gluon * p_born(emitter)
-    z%p = [0._default, 0._default, 1._default]
-    rot_to_z = rotation_to_2nd &
-         (space_part (p_born(emitter)) / space_part_norm (p_born(emitter)), z)
-    p1 = rot_to_z * pp / space_part_norm (pp)
-    p2 = rot_to_z * p_real(i_gluon)
-    phi = azimuthal_distance (p1, p2)
-    if (phi < zero) phi = twopi - abs(phi)
-  end function get_generation_phi
-
-@ %def get_generation_phi
 @
 <<PHS fks: real kinematics: TBP>>=
   procedure :: apply_threshold_projection_real => &
@@ -28789,10 +28762,6 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
     real(default), intent(inout), dimension(:) :: jac_rand
     real(default), intent(out), dimension(:) :: y
     logical, intent(in), optional :: threshold
-    real(default) :: beta, one_p_beta, one_m_beta
-    type(lorentz_transformation_t) :: boost_to_resonance
-    real(default) :: q0
-    type(vector4_t) :: p_res, p_em
     integer :: i, i_phs, emitter
     logical :: thr
     logical :: construct_massive_fsr
