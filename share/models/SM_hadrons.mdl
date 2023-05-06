@@ -137,103 +137,103 @@ particle HIGGS 25
 
 # Diquarks
 particle DD1 1103
-  spin 1
+  spin 1  charge -2/3  # color -3
   name dd1
   tex_name "(dd)_1"
 particle UD0 2101
-  spin 0
+  spin 0  charge 1/3  # color -3
   name ud0
   tex_name "(ud)_0"
 particle UD1 2103
-  spin 1
+  spin 1  charge 1/3  # color -3
   name ud1
   tex_name "(ud)_1"
 particle UU1 2203
-  spin 1
+  spin 1  charge 4/3  # color -3
   name uu1
   tex_name "(uu)_1"
 particle SD0 3101
-  spin 0
+  spin 0  charge -2/3  # color -3
   name sd0
   tex_name "(sd)_0"
 particle SD1 3103
-  spin 1
+  spin 1  charge -2/3  # color -3
   name sd1
   tex_name "(sd)_1"
 particle SU0 3201
-  spin 0
+  spin 0  charge 1/3  # color -3
   name su0
   tex_name "(su)_0"
 particle SU1 3203
-  spin 1
+  spin 1  charge 1/3  # color -3
   name su1
   tex_name "(su)_1"
 particle SS1 3303
-  spin 1
+  spin 1  charge -2/3  # color -3
   name ss1
   tex_name "(ss)_1"
 particle CD0 4101
-  spin 1
+  spin 0  charge 1/3  # color -3
   name cd0
   tex_name "(cd)_0"
 particle CD1 4103
-  spin 1
+  spin 1  charge 1/3  # color -3
   name cd1
   tex_name "(cd)_1"
 particle CU0 4201
-  spin 1
+  spin 0  charge 4/3  # color -3
   name cu0
   tex_name "(cu)_0"
 particle CU1 4203
-  spin 1
+  spin 1  charge 4/3  # color -3
   name cu1
   tex_name "(cu)_1"
 particle CS0 4301
-  spin 1
+  spin 0  charge 1/3  # color -3
   name cs0
   tex_name "(cs)_0"
 particle CS1 4303
-  spin 1
+  spin 1  charge 1/3  # color -3
   name cs1
   tex_name "(cs)_1"
 particle CC1 4403
-  spin 1
+  spin 1  charge 4/3  # color -3
   name cc1
   tex_name "(cc)_1"
 particle BD0 5101
-  spin 1
+  spin 0  charge -2/3  # color -3
   name bd0
   tex_name "(bd)_0"
 particle BD1 5203
-  spin 1
+  spin 1  charge -2/3  # color -3
   name bd1
   tex_name "(bd)_1"
 particle BU0 5201
-  spin 1
+  spin 0  charge 1/3  # color -3
   name bu0
   tex_name "(bu)_0"
 particle BU1 5203
-  spin 1
+  spin 1  charge 1/3  # color -3
   name bu1
   tex_name "(bu)_1"
 particle BS0 5301
-  spin 1
+  spin 0  charge -2/3  # color -3
   name bs0
   tex_name "(bs)_0"
 particle BS1 5303
-  spin 1
+  spin 1  charge -2/3  # color -3
   name bs1
   tex_name "(bs)_1"
 particle BC0 5401
-  spin 1
+  spin 0  charge 1/3  # color -3
   name bc0
   tex_name "(bc)_0"
 particle BC1 5403
-  spin 1
+  spin 1  charge 1/3  # color -3
   name bc1
   tex_name "(bc)_1"
 particle BB1 5503
-  spin 1
+  spin 1  charge -2/3  # color -3
   name bb1
   tex_name "(bb)_1"
 
@@ -243,6 +243,8 @@ particle BB1 5503
 particle PI0 111
   spin 0
   name pi0
+  # mass 0.13498
+  # tau0 2.55313e-05
   tex_name "\pi^0"
 particle A00 10111 like PI0
   name a00
@@ -251,6 +253,8 @@ particle A20 115
   spin 2
   name a20
   tex_name "a_2^0"
+  # mass 1.31830
+  # width 0.10700
 particle RHO316900 117
   spin 3
   name rho316900
@@ -271,6 +275,8 @@ particle PIP 211
   anti pim "pi-"
   tex_name "\pi^+"
   tex_anti "\pi^-"
+  # mass 0.13957
+  # tau0 7.80450e03
 particle A0P 10211 like PIP
   name a0p "a0+"
   anti a0m "a0-"
@@ -288,12 +294,16 @@ particle RHO0 113
   spin 1
   name rho0
   tex_name "\rho^0"
+  # mass 0.77549
+  # width 0.14910
 particle RHOP 213
   spin 1  charge 1
   name rhop "rho+"
   anti rhom "rho-"
   tex_name "\rho^+"
   tex_anti "\rho^-"
+  # mass 0.77549
+  # width 0.10700
 particle B10 10113 like RHO0
   name b10
   tex_name "b_1^0"
@@ -359,6 +369,8 @@ particle A2P 215
   anti a2m "a2-"
   tex_name "a_2^+"
   tex_anti "a_2^-"
+  # mass 1.31830
+  # width 0.10700
 particle RHO31690P 217
   spin 3
   name rho31690p "rho31690+"
@@ -448,6 +460,8 @@ particle ETA 221
   spin 0
   name eta
   tex_name "\eta"
+  # mass 0.54785
+  # tau0 1.51e-07
 particle F0500 9000221 like ETA
   name f0500
   tex_name "f_0(500)"
@@ -491,13 +505,15 @@ particle OMEGA 223
   spin 1
   name omega omega782
   tex_name "\omega(782)"
+  # mass 0.78265
+  # width 0.00849
 particle H10 10223 like OMEGA
   name h10 h1170
   tex_name "h_1(1170)"
 particle F10 20223 like OMEGA
   name f10 f11285
   tex_name "f_1(1285)"
-particle OMEGA1420 1000223 like OMEGA
+particle OMEGA1420 100223 like OMEGA
   name omega1420
   tex_name "\omega(1420)"
 particle F11510 9000223 like OMEGA
@@ -513,6 +529,8 @@ particle F2 225
   spin 2
   name f2 F2 f21270 F21270
   tex_name "f_2(1270)"
+  # mass 1.27510
+  # width 0.18510
 particle F21430 9000225 like F2
   name f21430 F21430
   tex_name "f_2(1430)"
@@ -626,6 +644,8 @@ particle KL0 130
   spin 0
   name kL0 "K_L0"
   tex_name "K_L^0"
+  # mass 0.49761
+  # tau0 1.53300e04
 particle KS0 310
   spin 0
   name kS0 "K_S0"
@@ -947,18 +967,20 @@ particle B2STAR0 515
   tex_name "B_2^{*0}"
   tex_anti "\bar{B}_2^{*0}"
 particle BP 521
-  spin 0
+  spin 0  charge 1
   name bP "B+"
   anti bbarM "Bbar-"
   tex_name "B^{+}"
   tex_anti "\bar{B}^{-}"
+  # mass 5.27925
+  # tau0 4.91100e-01
 particle B0starP 10521 like BP
   name b0starP "B0*+"
   anti bbarstarm "Bbar*-"
   tex_name "B_0^{*+}"
   tex_anti "\bar{B}_0^{*-}"
 particle BSTARP 523
-  spin 1
+  spin 1  charge 1
   name bstarP "B*+"
   anti bstarbarM "B*bar-"
   tex_name "B^{*+}"
@@ -974,7 +996,7 @@ particle B1HP 20523 like BSTARP
   tex_name "B_1(H)^+"
   tex_anti "\bar{B}_1(H)^-"
 particle B2STARP 525
-  spin 2
+  spin 2  charge 1
   name b2starP "B2*+"
   anti b2starbarM "B2*bar-"
   tex_name "B_2^{*+}"
@@ -1014,25 +1036,25 @@ particle BSTARS0 535
   tex_name "B_{s2}^{*0}"
   tex_anti "\bar{B}_{s2}^{*0}"
 particle BCP 541
-  spin 0
+  spin 0  charge 1
   name bcP "Bc+"
   anti bcM "Bc-"
   tex_name "B^{+}_c"
   tex_anti "\bar{B}^{-}_c"
 particle BSTARCP 10541
-  spin 0
+  spin 0  charge 1
   name bstarcP "B*c+"
   anti bstarcM "B*c-"
   tex_name "B^{*+}_{c0}"
   tex_anti "\bar{B}^{*-}_{c0}"
 particle BCSTARP 543
-  spin 1
+  spin 1  charge 1
   name bstarcP "B*c+"
   anti bstarcbarM "B*cbar-"
   tex_name "B^{*+}_c"
   tex_anti "\bar{B}^{*-}_c"
 particle BC1LP 10543
-  spin 1
+  spin 1  charge 1
   name bc1lP "BC1L+"
   anti bc1lM "BC1L-"
   tex_name "B_{c1}(L)^+"
@@ -1043,7 +1065,7 @@ particle BC1HP 20543 like BC1LP
   tex_name "B_{c1}(H)^+"
   tex_anti "\bar{B}_{c1}(H)^-"
 particle BC2STARP 545
-  spin 2
+  spin 2  charge 1
   name b2starcP "B2*c+"
   anti b2starcbarM "B2*cbar-"
   tex_name "B^{*+}_{c2}"
@@ -1205,29 +1227,253 @@ particle NEUTRON 2112
   tex_name "n"
   tex_anti "\bar{n}"
 particle DELTAM 1114
-  spin 1/2  charge -1
+  spin 3/2  charge -1
   name "Delta-" Deltam
   anti "Deltabar+" Deltabarp
   tex_name "\Delta^-"
   tex_anti "\bar{\Delta}^+"
 particle DELTA0 2114
-  spin 1/2  charge 0
+  spin 3/2  charge 0
   name "Delta0"
   anti "Deltabar0"
   tex_name "\Delta^0"
   tex_anti "\bar{\Delta}^0"
 particle DELTAP 2214
-  spin 1/2  charge 1
+  spin 3/2  charge 1
   name "Delta+" "Deltap"
   anti "Deltabar-" "Deltabarm"
   tex_name "\Delta^+"
   tex_anti "\bar{\Delta}^-"
 particle DELTAPP 2224
-  spin 1/2  charge 2
+  spin 3/2  charge 2
   name "Delta++" Deltapp
   anti "Deltabar--" Deltabarmm
   tex_name "\Delta^{++}"
   tex_anti "\bar{\Delta}^{--}"
+particle N15350 1002112 like NEUTRON
+  name n1535
+  anti n1535bar nbar1535
+  tex_name "n(1535)"
+  tex_anti "\bar{n}(1535)"
+particle N15200 1002114 like DELTA0
+  name n1520
+  anti n1520bar nbar1520
+  tex_name "n(1520)"
+  tex_anti "\bar{n}(1520)"
+particle N16750 1002116
+  spin 5/2
+  name n1675
+  anti n1675bar nbar1675
+  tex_name "n(1675)"
+  tex_anti "\bar{n}(1675)"
+particle PROTON1535 1022212 like PROTON
+  name p1535 "p1535+"
+  anti pbar1535 "p1535-"
+  tex_name "p(1535)"
+  tex_anti "\bar{p}(1535)"
+particle PROTON1520 1022214
+  spin 3/2  charge 1
+  name p1520 "p1520+"
+  anti pbar1520 "p1520-"
+  tex_name "p(1520)"
+  tex_anti "\bar{p}(1520)"
+particle PROTON1675 1022216
+  spin 5/2  charge 1
+  name p1675 "p1675+"
+  anti pbar1675 "p1675-"
+  tex_name "p(1675)"
+  tex_anti "\bar{p}(1675)"
+particle DELTA1620M 111112
+  spin 1/2  charge -1
+  name delta1620m
+  anti delta1620barp
+particle DELTA16200 112112
+  spin 1/2
+  name delta16200
+  anti delta1620bar0
+particle N17000 112114
+  spin 3/2
+  name n17000
+  anti n1700bar0
+particle DELTA1620P 112212
+  spin 1/2  charge 1
+  name delta1620p
+  anti delta1620barm
+particle P1700 112214
+  spin 3/2  charge 1
+  name p1700p
+  anti p1700m
+particle DELTA1620PP 112222
+  spin 1/2  charge 2
+  name "Delta1620++" Delta1620pp
+  anti "Deltabar1620--" Deltabar1620mm
+  tex_name "\Delta^{++}(1620)"
+  tex_anti "\bar{\Delta}^{--}(1620)"
+particle SIGMA1750M 113112
+  spin 1/2 charge -1
+  name sigma1750m
+  anti sigma1750barp
+  tex_name "\Sigma^-(1750)"
+  tex_anti "\bar{\Sigma}^+(1750)"
+particle SIGMA1940M 113114
+  spin 3/2 charge -1
+  name sigma1940m
+  anti sigmabar1940p
+  tex_name "\Sigma^-(1940)"
+  tex_anti "\bar{\Sigma}^+(1940)"
+particle SIGMA1750 113212
+  spin 1/2
+  name sigma17500
+  anti sigma1750bar0
+particle SIGMA19400 113214
+  spin 3/2
+  name sigma1940m
+  anti sigmabar1940p
+particle SIGMA1750P 113222
+  spin 1/2  charge 1
+  name sigma1750p
+  anti sigma1750barm
+particle SIGMA1940P 113224
+  spin 3/2  charge 1
+  name sigma1940m
+  anti sigmabar1940p
+particle DELTA1700M 121114
+  spin 3/2  charge -1
+  name delta1700m
+  anti delta1700barp
+particle N16500 122112
+  spin 1/2
+  name n16500
+  anti n1650bar0
+particle DELTA17000 122114
+  spin 3/2
+  name delta17000
+  anti delta1700bar0
+particle P1650P 122212
+  spin 1/2  charge 1
+  name p1650p
+  anti p1650barm
+particle DELTA1700P 122214
+  spin 3/2  charge 1
+  name delta1700p
+  anti delta1700barm
+particle DELTA1700PP 122224
+  spin 3/2  charge 2
+  name delta1700pp
+  anti delta1700barmm
+particle LAMBDA18000 123122
+  spin 1/2
+  name lambda18000
+  anti lambda1800bar0
+particle DELTA1600M 201114
+  spin 3/2  charge -1
+  name delta1600m
+  anti delta1600barp
+particle DELTA1950M 201118
+  spin 7/2  charge -1
+  name delta1950m
+  anti delta1950barp
+particle N14400 202112
+  spin 1/2
+  name n14400
+  anti n1440bar0
+particle DELTA16000 202114
+  spin 3/2
+  name delta16000
+  anti delta1600bar0
+particle N16800 202116
+  spin 5/2
+  name n16800
+  anti n1680bar0
+particle DELTA19500 202118
+  spin 7/2
+  name delta19500
+  anti delta1950bar0
+particle P1440P 202212
+  spin 1/2 charge 1
+  name p1440p
+  anti p1440barm
+particle DELTA1600P 202214
+  spin 1/2 charge 1
+  name delta1600p
+  anti delta1600barm
+particle P1680P 202216
+  spin 5/2 charge 1
+  name p16890p
+  anti p1680barm
+particle DELTA1950P 202218
+  spin 7/2 charge 1
+  name delta1950p
+  anti delta1950barm
+particle DELTA1600PP 202224
+  spin 3/2  charge 2
+  name delta1600pp
+  anti delta1600barmm
+particle DELTA1950PP 202228
+  spin 7/2  charge 2
+  name delta1950pp
+  anti delta1950barmm
+particle DELTA1905M 211116
+  spin 5/2  charge -1
+  name delta1905m
+  anti delta1905barp
+particle N17100 212112
+  spin 1/2
+  name n17100
+  anti n1710bar0
+particle N17200 212114
+  spin 3/2
+  name n17200
+  anti n1720bar0
+particle DELTA19050 212116
+  spin 5/2
+  name delta19050
+  anti delta1905bar0
+particle P1710P 212212
+  spin 1/2  charge 1
+  name p1710p
+  anti p1710barm
+particle P1720P 212214
+  spin 3/2  charge 1
+  name p1720p
+  anti p1720barm
+particle DELTA1905P 212216
+  spin 5/2  charge 1
+  name delta1905p
+  anti delta1905barm
+particle DELTA1910M 221112
+  spin 1/2  charge -1
+  name delta1910m
+  anti delta1910barp
+particle DELTA1920M 221114
+  spin 3/2  charge -1
+  name delta1920m
+  anti delta1920barp
+particle DELTA19100 222112
+  spin 1/2
+  name delta19100
+  anti delta1910bar0
+particle DELTA19200 222114
+  spin 3/2
+  name delta19200
+  anti delta1920bar0
+particle DELTA1910P 222212
+  spin 1/2  charge 1
+  name delta1910p
+  anti delta1910barm
+particle DELTA1920P 222214
+  spin 1/2  charge 1
+  name delta1910p
+  anti delta1910barm
+particle DELTA1910PP 222222
+  spin 1/2  charge 2
+  name delta1910pp
+  anti delta1910barmm
+particle DELTA1920PP 222224
+  spin 3/2  charge 2
+  name delta1920pp
+  anti delta1920barmm
+
 
 # Strange Baryons
 particle LAMBDA0 3122
@@ -1291,7 +1537,7 @@ particle XI0 3322
   tex_name "\Xi^{0}"
   tex_anti "\bar{\Xi}^{0}"
 particle XISTAR0 3324
-  spin 1/2
+  spin 3/2
   name xistar0
   anti xistarbar0
   tex_name "\Xi^{*0}"
@@ -1302,6 +1548,131 @@ particle OMEGAM 3334
   anti "omega+" omegap
   tex_name "\Omega^-"
   tex_anti "\bar{\Omega}^+"
+particle LAMBDA14050 102132 like LAMBDA0
+  name lambda1405 lambda14050
+  anti lambdabar1405 lambdabar14050
+  tex_name "\Lambda(1405)"
+  tex_anti "\bar{\Lambda}(1405)"
+particle LAMBDA15200 102134
+  spin 3/2
+  name lambda1520 lambda15200
+  anti lambdabar1520 lambdabar15200
+  tex_name "\Lambda(1520)"
+  tex_anti "\bar{\Lambda}(1520)"
+particle SIGMA1670M 103114
+  spin 3/2  charge -1
+  name sigma1670m
+  anti sigmabar1670p
+  tex_name "\Sigma^{*-}(1670)"
+  tex_anti "\bar{\Sigma}^{*+}(1670)"
+particle SIGMA1775M 103116
+  spin 5/2  charge -1
+  name sigma1775m
+  anti sigmabar1775p
+  tex_name "\Sigma^{*-}(1775)"
+  tex_anti "\bar{\Sigma}^{*+}(1775)"
+particle LAMBDA16700 103122
+  spin 1/2 charge 0
+  name "Lambda(1670)0"
+  anti "Lambda(1670)bar0"
+particle LAMBDA16900 103124
+  spin 3/2 charge 0
+  name "Lambda(1690)0"
+  anti "Lambda(1690)bar0"
+particle LAMBDA18300 103126
+  spin 5/2 charge 0
+  name "Lambda(1830)0"
+  anti "Lambda(1830)bar0"
+particle SIGMA16700 103214
+  spin 3/2  charge 0
+  name sigma16700
+  tex_name "\Sigma^{*0}(1670)"
+particle SIGMA17750 103216
+  spin 5/2  charge 0
+  name sigma17750
+  tex_name "\Sigma^{*0}(1775)"
+particle SIGMA16700P 103224
+  spin 3/2  charge 1
+  name sigma1670P
+  anti sigma1670M
+particle SIGMA17750P 103226
+  spin 5/2  charge 1
+  name sigma1775P
+  anti sigma1775M
+particle XI1820M 103314
+  spin 3/2  charge -1
+  name xi1820m
+  anti xi1820p
+  tex_name "\Xi^{-}(1820)"
+particle XI18200 103324
+  spin 3/2
+  name xi18200
+  tex_name "\Xi^{0}(1820)"
+particle SIGMA1660M 203112
+  spin 1/2 charge -1
+  name sigma1660m
+  anti sigma1660barp
+particle SIGMA1915M 203116
+  spin 5/2 charge -1
+  name sigma1915m
+  anti sigma1915barp
+particle SIGMA2030M 203118
+  spin 7/2 charge -1
+  name sigma2030m
+  anti sigma2030barp
+particle LAMBDA16000 203122
+  spin 1/2 charge 0
+  name lambda16000
+  anti lambda1600bar0
+particle LAMBDA182000 203126
+  spin 5/2 charge 0
+  name lambda18200
+  anti lambda1820bar0
+particle SIGMA16600 203212
+  spin 1/2 charge 0
+  name sigma16600
+  anti sigma1660bar0
+particle SIGMA19150 203216
+  spin 5/2 charge 0
+  name sigma19150
+  anti sigma1915bar0
+particle SIGMA20300 203218
+  spin 7/2 charge 0
+  name sigma20300
+  anti sigma2030bar0
+particle SIGMA1660P 203222
+  spin 1/2 charge 1
+  name sigma1660p
+  anti sigma1660barm
+particle SIGMA1915P 203226
+  spin 5/2 charge 1
+  name sigma1915p
+  anti sigma1915barm
+particle SIGMA2030P 203228
+  spin 7/2 charge 1
+  name sigma2030p
+  anti sigma2030barm
+particle XI2030M 203316
+  spin 5/2 charge -1
+  name xi2030m
+  anti xi2030barp
+particle XI20300 203326
+  spin 5/2
+  name xi20300
+  anti xi2030bar0
+particle LAMBDA18100 213122
+  spin 1/2
+  name lambda18100
+  anti lambda1810bar0
+particle LAMBDA18900 213124
+  spin 3/2
+  name lambda18900
+  anti lambda1890bar0
+particle LAMBDA21000 302138
+  spin 7/2
+  name lambda21000
+  anti lambda2100bar0
+
 
 # Charm Baryons
 particle LAMBDACP 4122
@@ -1443,7 +1814,7 @@ particle OMEGASTARCCP 4434
   tex_name "\Omega_{cc}^{*+}"
   tex_anti "\bar{\Omega}_{cc}^{*-}"
 particle OMEGACCCPP 4444
-  spin 1/2 charge 2
+  spin 3/2 charge 2
   name omegacccpp "omegaccc++"
   anti omegacccmm "omegaccc--"
   tex_name "\Omega_{ccc}^{++}"
@@ -1505,7 +1876,7 @@ particle XIB0 5232
   tex_name "\Xi_b^{0}"
   tex_anti "\bar{\Xi_b}^{0}"
 particle XIPRIMEBM 5312
-  spin 3/2 charge -1
+  spin 1/2 charge -1
   name xiprimebm "xiprimeb-"
   anti xiprimebbarp "xiprimebbar+"
   tex_name "\Xi'_b^{-}"
@@ -1553,13 +1924,13 @@ particle XIBCP 5242
   tex_name "\Xi_{bc}^+"
   tex_anti "\bar{\Xi}_{bc}^-"
 particle XIBCPRIME0 5412
-  spin 3/2 charge 0
+  spin 1/2 charge 0
   name xibcprime0 xibcprime
   anti xibcprimebar0 xibcprimebar
   tex_name "\Xi_{bc}^{'0}"
   tex_anti "\bar{\Xi}_{bc}^{'0}"
 particle XIBCPRIMEP 5422
-  spin 3/2 charge 1
+  spin 1/2 charge 1
   name xibcprimep "xibcprime+"
   anti xibcprimem "xibcprime-"
   tex_name "\Xi_{bc}^{'+}"
@@ -1583,7 +1954,7 @@ particle OMEGABC0 5342
   tex_name "\Omega_{bc}^0"
   tex_anti "\bar{\Omega}_{bc}^0"
 particle OMEGABCPRIME0 5432
-  spin 3/2 charge 0
+  spin 1/2 charge 0
   name omegabcprime0 omegabcprime
   anti omegabcprimebar0 omegabcprimebar
   tex_name "\Omega_{bc}^{'0}"
@@ -1637,7 +2008,7 @@ particle OMEGABBM 5532
    tex_name "\Omega_{bb}^-"
    tex_anti "\bar{\Omega}_{bb}^+"
 particle OMEGABB0 5534
-   spin 1/2 charge 0
+   spin 3/2 charge -1
    name omegabb0
    anti omegabbbar0
    tex_name "\Omega_{bb}^0"
@@ -1649,13 +2020,13 @@ particle OMEGABBC0 5542
    tex_name "\Omega_{bbc}^0"
    tex_anti "\bar{\Omega}_{bbc}^0"
 particle OMEGABBCSTAR0 5544
-   spin 1/2 charge 0
+   spin 3/2 charge 0
    name omegabbcstar0 "omegabbc*0"
    anti omegabbcstarbar0 "omegabbc*bar0"
    tex_name "\Omega_{bbc}^{*0}"
    tex_anti "\bar{\Omega}_{bbc}^{*0}"
 particle OMEGABBBM 5554
-   spin 1/2 charge -1
+   spin 3/2 charge -1
    name omegabbbm "omegabbb-"
    anti omegabbbp "omegabbb+"
    tex_name "\Omega_{bbb}^-"
@@ -1801,41 +2172,47 @@ particle DM4 59
   anti "DMbar?4"
 
 particle DM5 60
-spin 0 charge 0
-name "DM?5"
-anti "DMbar?5"
+  spin 0 charge 0
+  name "DM?5"
+  anti "DMbar?5"
 
 particle SPECFLAV 81
-charge 0
-name "specflav"
+  charge 0
+  name "specflav"
 
 particle RNDMFLAVQ 82
-charge 0
-name "rndmflavq"
-anti "rndmflavqbar"
+  charge 0
+  name "rndmflavq"
+  anti "rndmflavqbar"
 
 particle RNDMFLAVG 83
-charge 0
-name "rndmflavg"
-anti "rndmflavgbar"
+  charge 0
+  name "rndmflavg"
+  anti "rndmflavgbar"
 
 particle REGGEON 110
-charge 0
-name "Reggeon"
+  charge 0
+  name "Reggeon"
 
 particle POMERON 990
-charge 0
-name "Pomeron"
+  charge 0
+  name "Pomeron"
 
 particle LAMBDA15200 3124
-spin 3/2 charge 0
-name "Lambda(1520)0"
-anti "Lambda(1520)bar0"
+  spin 3/2 charge 0
+  name "Lambda(1520)0"
+  anti "Lambda(1520)bar0"
+particle LAMBDA15200 3124
+  spin 3/2 charge 0
+  name "Lambda(1520)0"
+  anti "Lambda(1520)bar0"
 
 particle BD_1 5103
   spin 1 charge 0 color 3
   name "bd_1"
   anti "bd_1bar"
+
+### Older entry, for backwards compatibility with Pythia8 versions
 
 particle LAMBDA14050 13122
   spin 1/2 charge 0
@@ -2610,6 +2987,9 @@ particle H_RPLUSPLUS 9900042
 particle RHO_DIFF0 9900110
   charge 0
   name "rho_diff0"
+particle K_DIFF0 9900130
+  charge 0
+  name "k_diff0"
 
 particle PI_DIFFRPLUS 9900210
   charge 1
@@ -2620,13 +3000,203 @@ particle OMEGA_DI 9900220
   charge 0
   name "omega_di"
 
+particle K_DIFF01 9900310
+  charge 0
+  name "k_diff01"
+particle K_DIFFP 9900320
+  charge 1
+  name "k_diffp"
+  anti "k_diffm"
+particle PHI_DIFF 9900330
+  charge 0
+  name "phi_diff"
 particle PHI_DIFF 9900330
   charge 0
   name "phi_diff"
 
+particle D_DIP 9900410
+  charge 1
+  name "d_difp"
+  anti "d_difm"
+particle D_DI0 9900420
+  charge 0
+  name "d_di0"
+particle D_SDIP 9900430
+  charge 1
+  name "d_sdifp"
+  anti "d_sdifm"
 particle JPSI_DI 9900440
   charge 0
   name "J/psi_di"
+
+particle B_DI0 9900510
+  charge 0
+  name "b_dif0"
+particle B_DIP 9900520
+  charge 1
+  name "b_difp"
+  anti "b_difm"
+particle B_SDI0 9900530
+  charge 0
+  name "b_sdif0"
+particle B_CDIP 9900530
+  charge 1
+  name "b_cdifp"
+  anti "b_cdifm"
+particle UPSILON_DI0 9900550
+  charge 0
+  name "upsilon_dif0"
+
+particle DELTA_DIFM 9901110
+  spin 0 charge -1
+  name "Delta_dif-"
+  anti "Delta_difbar+"
+
+particle N_DIF0 9902110
+  spin 0
+  name "n_dif0"
+  anti "n_difbar0"
+
+particle LAMBDASTAR_DIF0 9902130
+  spin 0
+  name "Lambda*_dif0"
+  anti "Lambda*_difbar0"
+
+particle P_DIFP 9902210
+  spin 0 charge 1
+  name "p_dif+"
+  anti "p_difbar-"
+
+particle DELTA_DIFPP 9902220
+  spin 0  charge 2
+  name "Delta_dif++"
+  anti "Delta_difbar--"
+
+particle SIGMA_DIFM 9903110
+  spin 0
+  charge -1
+  name "Sigma_dif-"
+  anti "Sigma_difbar+" 
+
+particle LAMBDA_DIF0 9903120
+  spin 0  
+  name "Lambda_dif0"
+  anti "Lambda_difbar0"
+
+particle SIGMA_DIF0 9903210
+  spin 0  
+  name "Sigma_dif0"
+  anti "Sigma_difbar0"
+
+particle SIGMA_DIFP 9903220
+  spin 0  charge 1
+  name "Sigma_dif+"
+  anti "Sigma_difbar-"
+
+particle XI_DIFM 9903310
+  spin 0  charge -1
+  name "Xi_dif-"
+  anti "Xi_difbar+"
+
+particle XI_DIF0 9903320
+  spin 0 
+  name "Xi_dif0"
+  anti "Xi_difbar0"
+
+particle OMEGA_DIFM 9903330
+  spin 0  charge -1
+  name "Omega_dif-"
+  anti "Omega_difbar+"
+
+particle SIGMA_CDIF0 9904110
+  spin 0  
+  name "Sigma_cdif0"
+  anti "Sigma_cdifbar0"
+
+particle LAMBDA_CDIFP 9904120
+  spin 0  charge 1
+  name "Lambda_cdif+"
+  anti "Lambda_cdifbar-"
+
+particle XI_CDIF0 9904130
+  spin 0  
+  name "Xi_cdif0"
+  anti "Xi_cdifbar0"
+
+particle SIGMA_CDIFP 9904210
+  spin 0  charge 1
+  name "Sigma_cdif+"
+  anti "Sigma_cdifbar-"
+
+particle SIGMA_CDIFPP 9904220
+  spin 0  charge 2
+  name "Sigma_cdif++"
+  anti "Sigma_cdifbar--"
+
+particle XI_CDIFP 9904230
+  spin 0  charge 1
+  name "Xi_cdif+"
+  anti "Xi_cdifbar-"
+
+particle XIP_CDIF0 9904310
+  spin 0  
+  name "Xi'_cdif0"
+  anti "Xi'_cdifbar0"
+
+particle XIP_CDIFP 9904320
+  spin 0  charge 1
+  name "Xi'_cdif+"
+  anti "Xi'_cdifbar-"
+
+particle OMEGA_CDIF0 9904330
+  spin 0  
+  name "Omega_cdif0"
+  anti "Omega_cdifbar0"
+
+particle SIGMA_BDIFM 9905110
+  spin 0  charge -1
+  name "Sigma_bdif-"
+  anti "Sigma_bdifbar+"
+
+particle LAMBDA_BDIF0 9905120
+  spin 0  
+  name "Lambda_bdif0"
+  anti "Lambda_bdifbar0"
+
+particle SIGMA_BDIF0 9905210
+  spin 0  
+  name "Sigma_bdif0"
+  anti "Sigma_bdifbar0"
+
+particle SIGMA_BDIFP 9905220
+  spin 0  charge 1
+  name "Sigma_bdif+"
+  anti "Sigma_bdifbar-"
+
+particle XI_BDIFM 9905130
+  spin 0  charge -1
+  name "Xi_bdif-"
+  anti "Xi_bdifbar+"
+
+particle XI_BDIF0 9905230
+  spin 0  
+  name "Xi_bdif0"
+  anti "Xi_bdifbar0"
+
+particle XIP_BDIFM 9905310
+  spin 0  charge -1
+  name "Xi'_bdif-"
+  anti "Xi'_bdifbar+"
+
+particle XIP_BDIF0 9905320
+  spin 0  
+  name "Xi'_bdif0"
+  anti "Xi'_bdifbar0"
+
+particle OMEGA_BDIFM 9905330
+  spin 0  charge -1
+  name "Omega_bdif-"
+  anti "Omega_bdifbar+"
 
 particle N_DIFFR0 9902110
   charge 0
@@ -2726,6 +3296,11 @@ particle UPSILON3S3PJ8 9952203
   spin 1 charge 0 color 8
   name "Upsilon(3S)[3PJ(8)]"
 
+particle H2 1000010020
+  spin 0 charge 1
+  name "2H"
+  anti "2Hbar"
+
 particle HE4 1000020040
   spin 0 charge 2
   name "4He"
@@ -2736,20 +3311,55 @@ particle LI6 1000030060
   name "6Li"
   anti "6Libar"
 
+particle BE9 1000040090
+  spin 1/2 charge 4
+  name "9Be"
+  anti "9Bebar"
+
 particle C12 1000060120
   spin 0 charge 6
   name "12C"
   anti "12Cbar"
+
+particle N14 1000070140
+  spin 0 charge 7
+  name "14N"
+  anti "14Nbar"
 
 particle O16 1000080160
   spin 0 charge 8
   name "16O"
   anti "16Obar"
 
+particle AL27 1000130270
+  spin 1/2  charge 13
+  name "27Al"
+  anti "27Albar"
+
+particle AR40 1000180400
+  spin 0  charge 18
+  name "40Ar"
+  anti "40Arbar"
+
+particle FE54 1000260560
+  spin 0  charge 26
+  name "54Fe"
+  anti "54Febar"
+
 particle CU63 1000290630
   spin 1/2 charge 29
   name "63Cu"
   anti "63Cubar"
+
+particle KR84 1000360840
+  spin 1/2 charge 36
+  name "84Kr"
+  anti "84Krbar"
+
+particle AG107 1000471070
+  spin 1/2 charge 47
+  name "107Ag"
+  anti "107Agbar"
 
 particle XE129 1000541290
   spin 1/2 charge 54
