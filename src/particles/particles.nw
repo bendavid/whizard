@@ -1686,6 +1686,7 @@ module bloch_vectors_uti
 
 <<Use kinds>>
   use physics_defs, only: UNKNOWN, SCALAR, SPINOR, VECTOR, VECTORSPINOR, TENSOR
+  use numeric_utils, only: vanishes
   use su_algebra, only: algebra_dimension, fundamental_dimension, helicity_value
 
   use bloch_vectors
@@ -1985,7 +1986,7 @@ check the normalization, and transform back to the density matrix.
       integer :: i, j
       do i = 1, d
          do j = 1, d
-            write (u, 1, advance="no")  r(i,j)
+            write (u, 1, advance="no")  pacify_complex (r(i,j))
          end do
          write (u, *)
       end do
@@ -2134,7 +2135,7 @@ module.
       integer :: i, j
       do i = 1, d
          do j = 1, d
-            write (u, 1, advance="no")  r(i,j)
+            write (u, 1, advance="no")  pacify_complex (r(i,j))
          end do
          write (u, *)
       end do
@@ -2326,7 +2327,7 @@ three-component Bloch vector that applies to the highest-weight part only.
       integer :: i, j
       do i = 1, size (r, 1)
          do j = 1, size (r, 2)
-            write (u, 1, advance="no")  r(i,j)
+            write (u, 1, advance="no")  pacify_complex (r(i,j))
          end do
          write (u, *)
       end do
@@ -2336,6 +2337,23 @@ three-component Bloch vector that applies to the highest-weight part only.
   end subroutine bloch_vectors_7
 
 @ %def bloch_vectors_7
+@
+<<Bloch vectors: tests>>=
+  elemental function pacify_complex (c_in) result (c_pac)
+    complex(default), intent(in) :: c_in
+    complex(default) :: c_pac
+    c_pac = c_in
+    if (vanishes (real (c_pac))) then
+       c_pac = &
+            cmplx (0._default, aimag(c_pac), kind=default)
+    end if
+    if (vanishes (aimag(c_pac))) then
+       c_pac = &
+            cmplx (real(c_pac), 0._default, kind=default)
+    end if
+  end function pacify_complex
+
+@ %def pacify_complex
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
