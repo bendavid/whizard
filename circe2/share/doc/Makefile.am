@@ -44,8 +44,8 @@ endif
 LATEX_STYLES = \
     emp.sty noweb.sty thohacks.sty thopp.sty ocamlweb.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/circe2/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/circe2/share/doc"
+TEX_FLAGS = "$(top_srcdir)/circe2/share/doc:$$TEXINPUTS"
+MP_FLAGS  = "$(top_srcdir)/circe2/share/doc:$$MPINPUTS"
 
 CIRCE2_HISTOS = \
   x.20.histo x.20m.histo x.20q.histo x.20qm.histo x.input.histo \

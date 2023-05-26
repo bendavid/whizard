@@ -58,8 +58,8 @@ LATEX_STYLES = \
     noweb.sty ocamlweb.sty ytableau.sty \
     feynmp.sty feynmp.mp emp.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/omega/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/omega/share/doc"
+TEX_FLAGS = "$(top_srcdir)/omega/share/doc:$$TEXINPUTS"
+MP_FLAGS  = "$(top_srcdir)/omega/share/doc:$$MPINPUTS"
 
 if DISTRIBUTION
 PDFS = omega.pdf omega-paper-1.pdf omega-paper-2.pdf 

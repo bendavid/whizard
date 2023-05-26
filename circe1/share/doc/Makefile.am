@@ -46,8 +46,8 @@ PICTURES_PDF = \
 LATEX_STYLES = \
     noweb.sty thohacks.sty thopp.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/circe1/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/circe1/share/doc"
+TEX_FLAGS = "$(top_srcdir)/circe1/share/doc:$$TEXINPUTS"
+MP_FLAGS  = "$(top_srcdir)/circe1/share/doc:$$MPINPUTS"
 
 MP4_FILES = \
     circemacs.mp4 dist.mp4 fit.mp4 graphx.mp

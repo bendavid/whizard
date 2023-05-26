@@ -1446,10 +1446,10 @@ name, and parts that depend on the specific processes and their types.
     write (unit, "(A)")  "MPOST = " // char (os_data%mpost)
     write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
     write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)
-    write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
-         char(os_data%whizard_texpath) // '"'
-    write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
-         char(os_data%whizard_texpath) // '"'
+    write (unit, "(A)")  'TEX_FLAGS = "' // char(os_data%whizard_texpath) &
+         // ':$$TEXINPUTS"'
+    write (unit, "(A)")  'MP_FLAGS  = "' // char(os_data%whizard_texpath) &
+         // ':$$MPINPUTS"'
     write (unit, "(A)")  ""
     write (unit, "(A)")  "# Libtool"
     write (unit, "(A)")  "LIBTOOL = " // char (os_data%whizard_libtool)

@@ -9039,10 +9039,10 @@ has wrong type, the iterator will be invalid.
     write (unit, "(A)")  "GML = " // char (os_data%gml)
     write (unit, "(A)")  "DVIPS = " // char (os_data%dvips)
     write (unit, "(A)")  "PS2PDF = " // char (os_data%ps2pdf)
-    write (unit, "(A)")  'TEX_FLAGS = "$$TEXINPUTS:' // &
-         char(os_data%whizard_texpath) // '"'
-    write (unit, "(A)")  'MP_FLAGS  = "$$MPINPUTS:' // &
-         char(os_data%whizard_texpath) // '"'
+    write (unit, "(A)")  'TEX_FLAGS = "' // char(os_data%whizard_texpath) &
+         // ':$$TEXINPUTS"'
+    write (unit, "(A)")  'MP_FLAGS  = "' // char(os_data%whizard_texpath) &
+         // ':$$MPINPUTS"'
     write (unit, "(A)")  ""
     write (unit, "(5A)")  "TEX_SOURCES = ", char (filename), ".tex"
     if (os_data%event_analysis_pdf) then

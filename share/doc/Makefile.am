@@ -69,7 +69,7 @@ GML=../../src/gamelan/whizard-gml --math=scaled -halt-on-error --gmldir ../../sr
 LATEX_STYLES = \
     noweb.sty thophys.sty gamelan.sty hevea.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
+TEX_FLAGS = "$(top_srcdir)/share/doc:$$TEXINPUTS"
 
 EXTRA_DIST = $(LATEX_STYLES)
 

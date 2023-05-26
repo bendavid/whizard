@@ -45,8 +45,8 @@ LATEX_STYLES = \
     feynmp.sty feynmp.mp \
     noweb.sty emp.sty flex.cls thohacks.sty thophys.sty
 
-TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/vamp/share/doc"
-MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/vamp/share/doc"
+TEX_FLAGS = "$(top_srcdir)/vamp/share/doc:$$TEXINPUTS"
+MP_FLAGS  = "$(top_srcdir)/vamp/share/doc:$$MPINPUTS"
 
 EXTRA_DIST = \
   tex-comments.sh \

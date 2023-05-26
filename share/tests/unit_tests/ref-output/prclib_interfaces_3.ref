@@ -50,8 +50,8 @@ LATEX = latex -halt-on-error
 MPOST = mpost --math=scaled -halt-on-error
 DVIPS = dvips
 PS2PDF = ps2pdf14
-TEX_FLAGS = "$$TEXINPUTS:"
-MP_FLAGS  = "$$MPINPUTS:"
+TEX_FLAGS = ":$$TEXINPUTS"
+MP_FLAGS  = ":$$MPINPUTS"
 
 # Libtool
 LIBTOOL = my-libtool
