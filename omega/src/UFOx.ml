@@ -94,6 +94,12 @@ module Expr =
           SMap.empty alist_names in
       map (rename1 name_map) value
 
+    let map_name1 f name =
+      Some (Variable (f name))
+
+    let map_names f value =
+      map (fun name -> Some (Variable (f name))) value
+
     let half name =
       Quotient (Variable name, Integer 2)
 

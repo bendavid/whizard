@@ -29,6 +29,7 @@ module Expr :
     val of_strings : string list -> t
     val substitute : string -> t -> t -> t
     val rename : (string * string) list -> t -> t
+    val map_names : (string -> string) -> t -> t
     val half : string -> t
     val variables : t -> Sets.String_Caseless.t
     val functions : t -> Sets.String_Caseless.t

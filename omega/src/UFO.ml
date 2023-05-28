@@ -461,6 +461,7 @@ module type Particle =
     val of_file : S.t -> t SMap.t
     val to_string : string -> t -> string
     val conjugate : t -> t
+    val map_mass_and_width : (string -> string) -> t -> t
     val force_spinor : t -> t
     val force_conjspinor : t -> t
     val force_majorana : t -> t
@@ -546,6 +547,9 @@ module Particle : Particle =
 	  propagating = p.propagating;
 	  line = p.line;
           is_anti = not p.is_anti }
+
+    let map_mass_and_width f p =
+      { p with mass = f p.mass; width = f p.width }
 
     let of_file1 map d =
       let symbol = d.S.name in
@@ -1024,6 +1028,8 @@ module type Parameter =
 
     val missing : string -> t
 
+    val map_names : (string -> string) -> t -> t
+
   end
 
 module Parameter : Parameter =
@@ -1112,6 +1118,19 @@ module Parameter : Parameter =
 	lhablock = None;
 	lhacode = None;
         sequence = 0 }
+
+    (* If the [Name] has a prefix, apply [f] only to the last component. *)
+    let map_value f = function
+      | (Integer _ | Fraction (_, _) | Float _ as v) -> v
+      | Name n ->
+         begin match List.rev n with
+         | [] -> Name []
+         | stem :: prefix -> Name (List.rev (f stem :: prefix))
+         end
+      | Expr e -> Expr (UFOx.Expr.map_names f e)
+
+    let map_names f p =
+      { p with name = f p.name; value = map_value f p.value }
 
   end
 
@@ -1888,6 +1907,12 @@ let of_file u =
     model.vertices;
   model
 
+let map_parameter_names f m =
+  { m with
+    particles = SMap.map (Particle.map_mass_and_width f) m.particles;
+    particle_array = Array.map (Particle.map_mass_and_width f) m.particle_array;
+    parameters = SMap.map (Parameter.map_names f) m.parameters }
+
 let parse_directory dir =
   of_file (Files.parse_directory dir)
 
@@ -2371,35 +2396,24 @@ i*)
         (dependencies_to_strings coupling_dependencies);
 i*)
 
-    let translate_name map name =
-      try SMap.find name map with Not_found -> name
-
-    let translate_input map p =
-      (translate_name map p.Parameter.name, value_to_float p.Parameter.value)
+    let translate_input p =
+      (p.Parameter.name, value_to_float p.Parameter.value)
 
     let alpha_s_half e =
       UFOx.Expr.substitute "aS" (UFOx.Expr.half "aS") e
 
-    let alpha_s_half_etc map e =
-      UFOx.Expr.rename (map_to_alist map) (alpha_s_half e)
-
-    let translate_derived map p =
+    let translate_derived p =
       let make_atom s = s in
-      let c = make_atom (translate_name map p.Parameter.name)
-      and v =
-        value_to_coupling (alpha_s_half_etc map) make_atom p.Parameter.value in
+      let c = make_atom p.Parameter.name
+      and v = value_to_coupling alpha_s_half make_atom p.Parameter.value in
       match p.Parameter.ptype with
       | Parameter.Real -> (Coupling.Real c, v)
       | Parameter.Complex -> (Coupling.Complex c, v)
 
-    let translate_coupling_constant map c =
+    let translate_coupling_constant c =
       let make_atom s = s in
       (Coupling.Complex c.UFO_Coupling.name,
-       Coupling.Quot
-         (value_to_coupling
-            (alpha_s_half_etc map) make_atom
-            (Expr c.UFO_Coupling.value),
-          Coupling.I))
+       Coupling.Quot (value_to_coupling alpha_s_half make_atom (Expr c.UFO_Coupling.value), Coupling.I))
 
     module Lowercase_Parameters =
       struct
@@ -2458,25 +2472,25 @@ i*)
     let omegalib_names =
       ["u"; "ubar"; "v"; "vbar"; "eps"]
 
-    let translate_parameters model =
+    let replacement_map model =
       let lc_set, ambiguities = ambiguous_parameters model in
-      let replacements =
+      let replacement_list =
         disambiguate lc_set (ThoList.flatmap snd ambiguities) in
       SMap.iter
         (Printf.eprintf
-           "warning: case sensitive parameter names: renaming '%s' -> '%s'\n")
-        replacements;
-      let replacements =
-        List.fold_left
-          (fun acc name -> SMap.add name ("UFO_" ^ name) acc)
-          replacements omegalib_names in
+           "UFO warning: case sensitive parameter names: renaming '%s' -> '%s'\n")
+        replacement_list;
+      List.fold_left
+        (fun acc name -> SMap.add name ("UFO_" ^ name) acc)
+        replacement_list omegalib_names
+
+    let translated_parameters model =
       let input_parameters, derived_parameters = classify_parameters model
       and couplings = values model.couplings in
-      { Coupling.input =
-          List.map (translate_input replacements) input_parameters;
+      { Coupling.input = List.map translate_input input_parameters;
         Coupling.derived =
-          List.map (translate_derived replacements) derived_parameters @
-            List.map (translate_coupling_constant replacements) couplings;
+          List.map translate_derived derived_parameters @
+            List.map translate_coupling_constant couplings;
         Coupling.derived_arrays = [] }
 
     (* UFO requires us to look up the mass parameter to
@@ -2506,10 +2520,23 @@ i*)
 
     let dump_raw = ref false
 
+    (* Using [translated_parameters] only to extract the parameters, without
+       affecting the corresponding changes in the model tables couldn't work!
+       (Cf.~\url{https://answers.launchpad.net/whizard/+question/706815}
+       and~\url{https://gitlab.tp.nt.uni-siegen.de/whizard/development/-/issues/450}) *)
+
+    let map_names map name =
+      match SMap.find_opt name map with
+      | None -> name
+      | Some name -> name
+
     let init dir =
       let model = filter_unphysical (parse_directory dir) in
       if !dump_raw then
 	dump model;
+      let replacements = replacement_map model in
+      let model = map_parameter_names (map_names replacements) model in
+      let parameters = translated_parameters model in
       let tables = Lookup.of_model model in
       let vertices () = translate_vertices model tables in
       let particle f = tables.Lookup.particle f in
@@ -2521,7 +2548,6 @@ i*)
         | Some s -> Coupling.Prop_UFO s in
       let gauge_symbol () = "?GAUGE?" in
       let constant_symbol s = s in
-      let parameters = translate_parameters model in
       M.setup
         ~color:(fun f -> UFOx.Color.omega (particle f).Particle.color)
         ~nc:(fun () -> model.nc)
