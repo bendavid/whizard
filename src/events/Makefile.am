@@ -167,8 +167,8 @@ Makefile.depend: $(libevents_la_SOURCES) $(libevents_ut_la_SOURCES)
 DISTCLEANFILES += Makefile.depend
 
 libevents_la_LIBADD = \
-   ../../mcfio/libwo_mcfio.la \
-   ../../stdhep/libwo_stdhep.la
+   ../../contrib/mcfio/libwo_mcfio.la \
+   ../../contrib/stdhep/libwo_stdhep.la
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FCMOD):

@@ -147,7 +147,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../fastjet -I../lhapdf -I ../pdf_builtin -I../tauola -I../../pythia6 -I../pythia8
+AM_FCFLAGS = $(include_modules) -I../../vamp/src -I../fastjet -I../lhapdf -I ../pdf_builtin -I../tauola -I../../contrib/pythia6 -I../pythia8
 AM_FFLAGS =
 
 ########################################################################

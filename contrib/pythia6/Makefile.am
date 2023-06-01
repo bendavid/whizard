@@ -28,81 +28,55 @@
 ########################################################################
 
 ## The files in this directory end up in an auxiliary libtool library.
+AM_FFLAGS =
+AM_FCFLAGS =
 
-noinst_LTLIBRARIES = libwo_stdhep.la
+if PYTHIA6_AVAILABLE
 
-libwo_stdhep_la_SOURCES = \
-   mcf_hepev4_xdr.c \
-   mcf_hepup_xdr.c \
-   mcf_stdcm1_xdr.c \
-   mcf_Stdhep_xdr.c \
-   stdhep_mcfio.c \
-   stdhep_internal_utils.c \
-   stdtcopy.f \
-   stdversn.f \
-   stdxend.f \
-   stdxrd.f \
-   stdxrinit.f \
-   stdxropen.f \
-   stdxwcm1.f \
-   stdxwevt.f \
-   stdxwevtlh.f \
-   stdxwevtup.f \
-   stdxwinit.f \
-   stdxwopen.f \
-   stdxwrt.f \
-   stdzero.f \
-   hepev4.h \
-   hepeup.h \
-   heprup.h \
-   stdcm1.h \
-   stdcnt.h \
-   stdhd.h \
-   stdhep.h \
-   stdhep_mcfio.h \
-   stdlun.h \
-   stdtmp.h \
-   stdver.h \
-   hepev4.inc \
-   hepeup.inc \
-   heprup.inc \
-   mcfio.inc \
-   stdcm1.inc \
-   stdcnt.inc \
-   stdhd.inc \
-   stdhep.inc \
-   stdlun.inc \
-   stdtmp.inc \
-   stdver.inc
+if FC_IS_NAG
+AM_FFLAGS += -dcfuns -w
+AM_FCFLAGS += -dcfuns -w
+endif
 
-## The include files are not automatically found (by certain Fortran compilers)
-## RPC flags need to be included if SunRPC is absent
-AM_FCFLAGS = -I$(top_srcdir)/stdhep
-AM_FFLAGS = -I$(top_srcdir)/stdhep
-AM_CFLAGS = $(RPC_CFLAGS) -I$(top_srcdir)/mcfio 
+if PYTHIA6_IS_EH
+AM_FFLAGS += -DPYTHIA6_EH
+endif
 
+noinst_LTLIBRARIES = libpythia6_wo.la
+
+if LHAPDF5_AVAILABLE
+libpythia6_wo_la_SOURCES = pythia.F
+else
+if LHAPDF6_AVAILABLE
+libpythia6_wo_la_SOURCES = pythia.F
+else
+libpythia6_wo_la_SOURCES = pythia.F pythia_pdf.f
+endif
+endif	
+
+else 
+
+noinst_LTLIBRARIES = libpythia6_wo_dummy.la
+libpythia6_wo_dummy_la_SOURCES = pythia6_dummy.f90
+
+endif
 ########################################################################
 ## Default Fortran compiler options
 
 ## Profiling
 if FC_USE_PROFILING
+AM_FFLAGS += $(FCFLAGS_PROFILING)
 AM_FCFLAGS += $(FCFLAGS_PROFILING)
 endif
 
 ## OpenMP
 if FC_USE_OPENMP
+AM_FFLAGS += $(FCFLAGS_OPENMP)
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 ########################################################################
 ## Non-standard cleanup tasks
-
-## Remove F90 module files
-clean-local:
-	-rm -f *.$(FC_MODULE_EXT)
-if FC_SUBMODULES
-	-rm -f *.smod
-endif
 
 ## Remove backup files
 maintainer-clean-local:

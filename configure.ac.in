@@ -741,20 +741,25 @@ AC_CONFIG_FILES([src/hepmc/Makefile])
 AC_CONFIG_FILES([src/lcio/Makefile])
 
 ###---------------------------------------------------------------------
+### Subdirectory contrib: external code shipped with WHIZARD
+
+AC_CONFIG_FILES([contrib/Makefile])
+
+###---------------------------------------------------------------------
 ### Subdirectory pythia6: WHIZARD's internal PYTHIA6 version
 
-AC_CONFIG_FILES([pythia6/Makefile])
+AC_CONFIG_FILES([contrib/pythia6/Makefile])
 
 ###---------------------------------------------------------------------
 ### Subdirectory tauola: WHIZARD's internal TAUOLA version
 
-AC_CONFIG_FILES([tauola/Makefile])
+AC_CONFIG_FILES([contrib/tauola/Makefile])
 
 ###---------------------------------------------------------------------
 ### Subdirectory stdhep: WHIZARD's internal StdHep version
 
-AC_CONFIG_FILES([mcfio/Makefile])
-AC_CONFIG_FILES([stdhep/Makefile])
+AC_CONFIG_FILES([contrib/mcfio/Makefile])
+AC_CONFIG_FILES([contrib/stdhep/Makefile])
 
 ###---------------------------------------------------------------------
 ### Subdirectory src/muli: multiple interactions

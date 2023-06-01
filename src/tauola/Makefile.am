@@ -110,9 +110,9 @@ SUFFIXES = .lo .$(FCMOD)
 #	touch $@
 
 if PYTHIA6_AVAILABLE
-libtauola_interface_la_LIBADD = ../../pythia6/libpythia6_wo.la ../../tauola/libtauola_wo.la
+libtauola_interface_la_LIBADD = ../../contrib/pythia6/libpythia6_wo.la ../../contrib/tauola/libtauola_wo.la
 else
-libtauola_interface_la_LIBADD = ../../pythia6/libpythia6_wo_dummy.la ../../tauola/libtauola_wo_dummy.la
+libtauola_interface_la_LIBADD = ../../contrib/pythia6/libpythia6_wo_dummy.la ../../contrib/tauola/libtauola_wo_dummy.la
 endif
 
 AM_FCFLAGS =

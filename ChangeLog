@@ -4,6 +4,9 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.2.1
 
+2023-06-01
+	Common folder 'contrib' for external codes shipped with WHIZARD
+
 2023-05-28
 	Bug fix UFO interface:workaround for case-sensitive parameters
 
