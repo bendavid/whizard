@@ -1934,21 +1934,11 @@ a \cdot s mod m = ((a1 \cdot s \mod{m}) * 2^{17} + a2 \cdot s) \mod{m}.
     if (v >= two53 .or. v <= -two53) then
        a1 = int (a / two17)
        a2 = a - a1 * two17
-       !!! gcc/gfortran 14 regression workaround
-       ! v = mod (a1 * b, m)
-       v = real_mod (a1 * b, m)
+       v = mod (a1 * b, m)
        v = v * two17 + a2 * b + c
     end if
-    !!! gcc/gfortran 14 regression workaround
-    ! v = mod (v, m)
-    v = real_mod (v, m)
+    v = mod (v, m)
     if (v < 0.0_default) v = v + m
-  contains
-    function real_mod (x1, x2) result (res)
-      real(default), intent(in) :: x1, x2
-      real(default) :: res
-      res = x1 - int(x1/x2) * x2
-    end function real_mod
   end function mult_mod
 
 @ %def mult_mod
