@@ -26728,7 +26728,7 @@ the default finalizer.
     end if
   contains
     subroutine error_undecided ()
-      call msg_error ("Undefined result of cmditional expression: " &
+      call msg_error ("Undefined result of conditional expression: " &
            // "neither branch will be executed")
     end subroutine error_undecided
   end subroutine cmd_if_execute
