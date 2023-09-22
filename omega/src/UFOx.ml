@@ -108,6 +108,48 @@ module Expr =
 
   end
 
+(* It might seem to be a hack to base the decision of whether a
+   sign or parentheses are required on the textual representation
+   of a term.  However we control the textual representation, it's
+   efficient and we can avoid duplicating quite a bit of code
+   testing for terms that might produce minus signs. *)
+
+let starts_with_a_sign s =
+  String.length s > 0 && let c = s.[0] in c = '-' || c = '+'
+
+let starts_with_a_plus s =
+  String.length s > 0 && s.[0] = '+'
+
+let starts_with_a_minus s =
+  String.length s > 0 && s.[0] = '-'
+
+let prepend_binary_plus s =
+  if starts_with_a_sign s then
+    s
+  else
+    "+" ^ s
+
+(* The safe version that might produce terms like $-(-a)$. *)
+
+let prepend_binary_minus s =
+  if starts_with_a_sign s then
+    "-(" ^ s ^ ")"
+  else
+    "-" ^ s
+
+(* The version that produces fewer parentheses, but must
+   assume that a leading minus sign always applies to the
+   \emph{whole} term! *)
+
+let prepend_binary_minus s =
+  if starts_with_a_plus s then
+    "-" ^ String.sub s 1 (String.length s - 1)
+  else if starts_with_a_minus s then
+    "+" ^ String.sub s 1 (String.length s - 1)
+  else
+    "-" ^ s
+
+
 module Value =
   struct
 
@@ -197,47 +239,6 @@ module Value =
     let signed_string_of_float x =
       (if x < 0.0 then "-" else "+") ^ string_of_float (abs_float x)
 
-    (* It might seem to be a hack to base the decision of whether a
-       sign or parentheses are required on the textual representation
-       of a term.  However we control the textual representation, it's
-       efficient and we can avoid duplicating quite a bit of code
-       testing for terms that might produce minus signs. *)
-
-    let starts_with_a_sign s =
-      String.length s > 0 && let c = s.[0] in c = '-' || c = '+'
-
-    let starts_with_a_plus s =
-      String.length s > 0 && s.[0] = '+'
-
-    let starts_with_a_minus s =
-      String.length s > 0 && s.[0] = '-'
-
-    let prepend_binary_plus s =
-      if starts_with_a_sign s then
-        s
-      else
-        "+" ^ s
-
-    (* The safe version that might produce terms like $-(-a)$. *)
-
-    let prepend_binary_minus s =
-      if starts_with_a_sign s then
-        "-(" ^ s ^ ")"
-      else
-        "-" ^ s
-
-    (* The version that produces fewer parentheses, but must
-       assume that a leading minus sign always applies to the
-       \emph{whole} term! *)
-
-    let prepend_binary_minus s =
-      if starts_with_a_plus s then
-        "-" ^ String.sub s 1 (String.length s - 1)
-      else if starts_with_a_minus s then
-        "+" ^ String.sub s 1 (String.length s - 1)
-      else
-        "-" ^ s
-
     (* Collect the numerical factors in a [Product] in order to
        reduce the number of parentheses required.
        \begin{dubious}
@@ -277,7 +278,7 @@ module Value =
          | (Integer (-1) | Real (-1.)) :: es -> "-" ^ to_string (Product es)
          | es -> String.concat "*" (List.map group_sum es)
          end
-      | Quotient (e1, e2) -> group_sum e1 ^ "/" ^ group_denominator e2
+      | Quotient (e1, e2) -> group_numerator e1 ^ "/" ^ group_denominator e2
       | Power ((Power (_, _) as e1, (Power (_, _) as e2))) ->
          "(" ^ group_product e1 ^ ")^(" ^ to_string e2 ^ ")"
       | Power ((Power (_, _) as e1, e2)) ->
@@ -311,6 +312,17 @@ module Value =
       | Application (_, _) as e -> "(" ^ to_string e ^ ")"
       | e -> group_denominator e
 
+    (* In numerators, we must be careful not to leave an unprotected minus sign,
+       since they can appear inside products. *)
+
+    and group_numerator = function
+      | Product (_ :: _ as es) ->
+         begin match collect_factors es with
+         | (Integer (-1) | Real (-1.)) :: es -> "(-" ^ to_string (Product es) ^ ")"
+         | es -> String.concat "*" (List.map group_sum es)
+         end
+      | e -> group_denominator e
+
     and group_denominator = function
       | Sum [e] | Product [e] -> group_product e
       | Sum ( _ :: _) | Difference (_, _)
@@ -325,7 +337,7 @@ module Value =
       | Sum ( _ :: _) | Difference (_, _) as e -> "(" ^ to_string e ^ ")"
       | e -> to_string e
 
-    (* Add a ['+'] at the front if a term iff if has no sign. *)
+    (* Add a ['+'] at the front of a term iff if has no sign. *)
 
     and with_binary_plus e =
       prepend_binary_plus (to_string e)
@@ -710,8 +722,11 @@ module Tensor (A : Atom) : Tensor
              "*" ((if QC.is_unit c then [] else [QC.to_string c]) @
 		    List.map A.to_string tensors)
 
-    let linear_to_string terms =
-      String.concat "" (List.map term_to_string terms)
+    let linear_to_string = function
+      | [] -> ""
+      | term :: terms ->
+         term_to_string term ^
+           String.concat "" (List.map (fun t -> prepend_binary_plus (term_to_string t)) terms)
 
     let to_string = function
       | Linear terms -> linear_to_string terms
@@ -1735,7 +1750,11 @@ module Test : Test =
             (fun () ->
               apup
                 "(Mh1^2*RA1x1^2+Mh2^2*RA2x1^2+Mh3^2*RA3x1^2-musq*SB^2)/(CB^2*vH^2)"
-                "(Mh1**2*RA1x1**2 + Mh2**2*RA2x1**2 + Mh3**2*RA3x1**2 - musq*SB**2)/(CB**2*vH**2)") ]
+                "(Mh1**2*RA1x1**2 + Mh2**2*RA2x1**2 + Mh3**2*RA3x1**2 - musq*SB**2)/(CB**2*vH**2)");
+          "loop_sm:AxialZUp" >::
+            (fun () -> apup "(3/2)*(-ee*sw)/(6*cw)-(1/2)*cw*ee/(2*sw)" "(3.0/2.0)*(-(ee*sw)/(6.*cw))-(1.0/2.0)*((cw*ee)/(2.*sw))");
+          "loop_sm:AxialZUp'" >:: (fun () -> apup "(3/2)*(-ee*sw)/(6*cw)" "(3.0/2.0)*(-(ee*sw)/(6.*cw))");
+          "loop_sm:AxialZUp''" >:: (fun () -> apup "(3/2)*(-ee)/2" "(3.0/2.0)*(-ee/2)") ]
       
     let suite =
       "UFOx" >:::
