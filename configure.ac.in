@@ -378,17 +378,11 @@ AC_PROG_F77([$FC])
 ### Determine compiler vendor and version
 WO_FC_GET_VENDOR_AND_VERSION()
 
-### Veto against old gfortran 4 versions
-WO_FC_VETO_GFORTRAN_4()
+### Veto against old gfortran < 9.x versions
+WO_FC_VETO_GFORTRAN_LT_9()
 
-### Veto against buggy gfortran 6.5.0 version
-WO_FC_VETO_GFORTRAN_65()
-
-### Veto against ifort 15/16/17/18
-WO_FC_VETO_IFORT_15_18()
-
-### Veto against ifort 19.0.0/1/2
-WO_FC_VETO_IFORT_190012()
+### Veto against old ifort < 21.x versions
+WO_FC_VETO_IFORT_LT_21()
 
 ### Veto against ifort 21.0/1/2
 WO_FC_VETO_IFORT_21012()
@@ -486,7 +480,7 @@ WO_CONFIGURE_SECTION([Objective Caml checks])
 ### Check for ocamlc and its relatives
 AC_PROG_OCAML()
 if test "$enable_ocaml" != "no"; then
-   AC_OCAML_VERSION_CHECK(405000)
+   AC_OCAML_VERSION_CHECK(408000)
    AC_PROG_OCAMLLEX()
    AC_PROG_OCAMLYACC()
    AC_PROG_OCAMLCP()

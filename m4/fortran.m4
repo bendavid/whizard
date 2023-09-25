@@ -20,6 +20,7 @@ wo_fc_grep_GFORTRAN=`$GREP -i 'GNU Fortran' conftest.log | head -1`
 wo_fc_grep_G95=`$GREP -i 'g95' conftest.log | $GREP -i 'gcc' | head -1`
 wo_fc_grep_NAG=`$GREP 'NAG' conftest.log | head -1`
 wo_fc_grep_Intel=`$GREP 'IFORT' conftest.log | head -1`
+wo_fc_grep_Ifx=`$GREP 'IFX' conftest.log | head -1`
 wo_fc_grep_Sun=`$GREP 'Sun' conftest.log | head -1`
 wo_fc_grep_Lahey=`$GREP 'Lahey' conftest.log | head -1`
 wo_fc_grep_PGF90=`$GREP 'pgf90' conftest.log | head -1`
@@ -38,6 +39,8 @@ elif test -n "$wo_fc_grep_NAG"; then
   wo_cv_fc_id_string=$wo_fc_grep_NAG
 elif test -n "$wo_fc_grep_Intel"; then
   wo_cv_fc_id_string=$wo_fc_grep_Intel
+elif test -n "$wo_fc_grep_Ifx"; then
+  wo_cv_fc_id_string=$wo_fc_grep_Ifx
 elif test -n "$wo_fc_grep_Sun"; then
   wo_cv_fc_id_string=$wo_fc_grep_Sun
 elif test -n "$wo_fc_grep_Lahey"; then
@@ -74,6 +77,8 @@ elif test -n "$wo_fc_grep_NAG"; then
   wo_cv_fc_vendor="NAG"
 elif test -n "$wo_fc_grep_Intel"; then
   wo_cv_fc_vendor="Intel"
+elif test -n "$wo_fc_grep_Ifx"; then
+  wo_cv_fc_vendor="ifx"
 elif test -n "$wo_fc_grep_Sun"; then
   wo_cv_fc_vendor="Sun"
 elif test -n "$wo_fc_grep_Lahey"; then
@@ -121,6 +126,9 @@ NAG)
 Intel)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*\([0-9]\{2\}\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
   ;;
+ifx)
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*\([0-9]\{2\}\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
+  ;;
 Sun)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Fortran 95 \([0-9][0-9]*\.[0-9][0-9]*\) .*/\1/'`]
   ;;
@@ -141,38 +149,37 @@ esac
 FC_VERSION="$wo_cv_fc_version"
 AC_SUBST([FC_VERSION])
 
-### Veto old versions of gfortran 4.5/4.6/4.7/4.8/4.9
-if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.6.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.7.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.0"  || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.1"  || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.4" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.8.5" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.3" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.9.4"; then
-FC_IS_GFORTRAN_4="yes"
+AC_CACHE_CHECK([the major version],
+[wo_cv_fc_major_version],
+[wo_cv_fc_major_version=[`echo $wo_cv_fc_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
+])
+FC_MAJOR_VERSION="$wo_cv_fc_major_version"
+AC_SUBST([FC_MAJOR_VERSION])
+
+### Veto old versions of gfortran < 7.x
+if test "$wo_cv_fc_vendor" = "gfortran"; then
+  if test "$wo_cv_fc_major_version" = "4" -o "$wo_cv_fc_major_version" = "5" -o "$wo_cv_fc_major_version" = "6"; then
+    FC_IS_GFORTRAN_LT_9="yes"
   else
-FC_IS_GFORTRAN_4="no"
+    FC_IS_GFORTRAN_LT_9="no"
+  fi
+else
+  FC_IS_GFORTRAN_LT_9="no"
 fi
-### Veto buggy version of gfortran 6.5
-if test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "6.5.0"; then
-FC_IS_GFORTRAN_65="yes"
-  else
-FC_IS_GFORTRAN_65="no"
-fi
-AC_SUBST([FC_IS_GFORTRAN_4])
-AC_SUBST([FC_IS_GFORTRAN_65])
+AC_SUBST([FC_IS_GFORTRAN_LT_9])
 AC_SUBST([FC_IS_NAG])
 
-### Veto old ifort versions 15.0.0/1/2/3/4/5/6/7 and 16.0.0/1/2/3/4 and 17.0.0/1/2/3/4/5/6/7/8
-if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.5" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.6" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.7" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.5" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.6" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.7" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.7" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.8" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.4" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "18.0.5"; then
-FC_IS_IFORT15161718="yes"
+### Veto old versions of ifort < 21.x
+if test "$wo_cv_fc_vendor" = "Intel"; then
+  if test "$wo_cv_fc_major_version" = "14" -o "$wo_cv_fc_major_version" = "15" -o "$wo_cv_fc_major_version" = "16" -o "$wo_cv_fc_major_version" = "17" -o "$wo_cv_fc_major_version" = "18" -o "$wo_cv_fc_major_version" = "19" -o "$wo_cv_fc_major_version" = "20"; then
+    FC_IS_IFORT_LT_21="yes"
   else
-FC_IS_IFORT15161718="no"
+    FC_IS_IFORT_LT_21="no"
+  fi
+else
+  FC_IS_IFORT_LT_21="no"
 fi
-AC_SUBST([FC_IS_IFORT15161718])
-
-
-### Catch buggy ifort version 19.0.0/1/2
-if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "19.0.2"; then
-FC_IS_IFORT190012="yes"
-  else
-FC_IS_IFORT190012="no"
-fi
-AC_SUBST([FC_IS_IFORT190012])
+AC_SUBST([FC_IS_IFORT_LT_21])
 
 ### Catch buggy ifort version 21.1/1/2
 if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "21.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "21.1.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "21.2.0"; then
@@ -182,49 +189,24 @@ FC_IS_IFORT21012="no"
 fi
 AC_SUBST([FC_IS_IFORT21012])
 
-AC_CACHE_CHECK([the major version],
-[wo_cv_fc_major_version],
-[wo_cv_fc_major_version=[`echo $wo_cv_fc_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
-])
-FC_MAJOR_VERSION="$wo_cv_fc_major_version"
-AC_SUBST([FC_MAJOR_VERSION])
-
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
 
-AC_DEFUN([WO_FC_VETO_GFORTRAN_4],
+AC_DEFUN([WO_FC_VETO_GFORTRAN_LT_9],
 [dnl
-if test "$FC_IS_GFORTRAN_4" = "yes"; then
-AC_MSG_NOTICE([error: ****************************************])
-AC_MSG_NOTICE([error: gfortran 4.X is too old, please upgrade.])
-AC_MSG_ERROR([****************************************])
+if test "$FC_IS_GFORTRAN_LT_9" = "yes"; then
+AC_MSG_NOTICE([error: ******************************************])
+AC_MSG_NOTICE([error: gfortran < 9.x is too old, please upgrade.])
+AC_MSG_ERROR([******************************************])
 fi 
 ])
 
-AC_DEFUN([WO_FC_VETO_GFORTRAN_65],
+AC_DEFUN([WO_FC_VETO_IFORT_LT_21],
 [dnl
-if test "$FC_IS_GFORTRAN_65" = "yes"; then
-AC_MSG_NOTICE([error: ******************************************************])
-AC_MSG_NOTICE([error: gfortran 6.5 is buggy, please use a different version.])
-AC_MSG_ERROR([******************************************************])
-fi 
-])
-
-AC_DEFUN([WO_FC_VETO_IFORT_15_18],
-[dnl
-if test "$FC_IS_IFORT15161718" = "yes"; then
-AC_MSG_NOTICE([error: ***************************************************************])
-AC_MSG_NOTICE([error: ifort version < 19 suffers from severe compiler bugs, disabled.])
-AC_MSG_ERROR([***************************************************************])
-fi 
-])
-
-AC_DEFUN([WO_FC_VETO_IFORT_190012],
-[dnl
-if test "$FC_IS_IFORT190012" = "yes"; then
-AC_MSG_NOTICE([error: *************************************************************])
-AC_MSG_NOTICE([error: ifort v19.0.0/1/2 suffer from severe compiler bugs, disabled.])
-AC_MSG_ERROR([*************************************************************])
+if test "$FC_IS_IFORT_LT_21" = "yes"; then
+AC_MSG_NOTICE([error: *********************************************])
+AC_MSG_NOTICE([error: ifort version < 21.x too old, please upgrade.])
+AC_MSG_ERROR([*********************************************])
 fi 
 ])
 
@@ -740,7 +722,7 @@ NAG)
   wo_cv_fcflags_openmp="-openmp"
   wo_cv_fc_openmp_header="use, intrinsic :: omp_lib"
   ;;
-Intel)
+Intel|ifx)
   wo_cv_fc_openmp="yes"
   wo_cv_fcflags_openmp="-qopenmp"
   wo_cv_fc_openmp_header="use :: omp_lib !NODEP!"

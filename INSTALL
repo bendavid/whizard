@@ -24,7 +24,7 @@ where X.X is the current version (and sub-version) number.
 Prerequisites are:
 
  - Make
- - Objective Caml compiler (version 4.05.0 or higher)
+ - Objective Caml compiler (version 4.08.0 or higher)
  - Fortran 2008/2018 compiler
  - C/C++ (for PYTHIA8/FastJet/HepMC/LHAPDF/LCIO interfaces)
 
@@ -110,7 +110,7 @@ packages regarding the correct treatment of linking shared libraries.
 We patched this for WHIZARD 3.0.0. This also applies to the 
 gcc/g++/gfortran compiler suite on macOS Big Sur (or later),
 as this issue was fixed only for 11.0 of the compiler suite and
-backported to 8.5, 9.4 and 10.3 of gcc.
+backported to 9.4 and 10.3 of gcc.
 
 WHIZARD has been tested and partially developed under MAC OSX 
 The single pass linker of OSX forces to
