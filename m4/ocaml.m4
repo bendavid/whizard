@@ -320,35 +320,10 @@ AC_MSG_CHECKING([for OCaml version $1])
 if test $OCAMLINTEGERVERSION -ge "$1"; then
    AC_MSG_RESULT([ok])
 else
-   AC_MSG_RESULT([<= 4.07.1])
+   AC_MSG_RESULT([< 4.08.0])
    AC_MSG_NOTICE([error: *************************************])
    AC_MSG_NOTICE([error: found version $OCAMLVERSION, too old!])
    AC_MSG_ERROR([*************************************])
 fi])
 
-dnl
-dnl --------------------------------------------------------------------
-dnl
-AC_DEFUN([AC_OCAML_BIGARRAY_MODULE],
-[AC_REQUIRE([AC_PROG_OCAML])
-AC_MSG_CHECKING([for OCaml bigarray implementation])
-if test $OCAMLINTEGERVERSION -ge 408000; then
-   OCAML_BIGARRAY_COMPAT=bigarray_module
-   OCAML_BIGARRAY_CMA=
-   OCAML_BIGARRAY_CMXA=
-   AC_MSG_RESULT([module])
-elif test $OCAMLINTEGERVERSION -ge 406000; then
-   OCAML_BIGARRAY_COMPAT=bigarray_module
-   OCAML_BIGARRAY_CMA=bigarray.cma
-   OCAML_BIGARRAY_CMXA=bigarray.cmxa
-   AC_MSG_RESULT([transitioning])
-else
-   OCAML_BIGARRAY_COMPAT=bigarray_library
-   OCAML_BIGARRAY_CMA=bigarray.cma
-   OCAML_BIGARRAY_CMXA=bigarray.cmxa
-   AC_MSG_RESULT([library])
-fi
-AC_SUBST([OCAML_BIGARRAY_COMPAT])
-AC_SUBST([OCAML_BIGARRAY_CMA])
-AC_SUBST([OCAML_BIGARRAY_CMXA])])
 

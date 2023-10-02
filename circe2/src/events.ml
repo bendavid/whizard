@@ -23,7 +23,8 @@
 open Bigarray
 open Printf
 
-let map_array2 = Bigarray_compat.map_array2
+let map_array2 fd kind layout shared dim1 dim2 =
+  array2_of_genarray (Unix.map_file fd kind layout shared [|dim1; dim2|])
 
 type t = (float, float64_elt, fortran_layout) Array2.t
 
@@ -192,11 +193,3 @@ let rescale scale1 scale2 data =
     Array2.set data 1 i2 (Array2.get data 1 i2 /. scale1);
     Array2.set data 2 i2 (Array2.get data 2 i2 /. scale2)
   done
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -27,17 +27,9 @@
 #
 ########################################################################
 
-# backwards compatibility
-OCAML_BIGARRAY_COMPAT=@OCAML_BIGARRAY_COMPAT@
-OCAML_BIGARRAY_CMA=@OCAML_BIGARRAY_CMA@
-OCAML_BIGARRAY_CMXA=@OCAML_BIGARRAY_CMXA@
-
-########################################################################
-
 lib_LTLIBRARIES =
 SOURCE_FILES =
 MODULE_FILES =
-EXTRA_SOURCE_FILES = bigarray_library.ml bigarray_module.ml bigarray_compat.mli
 NOWEB_FILES = prelude.nw postlude.nw
 
 ########################################################################
@@ -55,7 +47,6 @@ NOWEB_FILES += circe2.nw
 # otherwise provided by VAMP and/or WHIZARD
 ########################################################################
 
-EXTRA_SOURCE_FILES +=
 MODULE_FILES += kinds.$(FCMOD)
 
 lib_LTLIBRARIES += libtaorng.la
@@ -180,15 +171,8 @@ endif NOWEB_AVAILABLE
 
 if OCAML_AVAILABLE
 
-bigarray_compat.ml: $(OCAML_BIGARRAY_COMPAT).ml
-	cp -f $< $@
-
-events.cmx: bigarray_compat.cmi bigarray_compat.cmx
-events.cmo: bigarray_compat.cmi bigarray_compat.cmo
-
 circe2.top: $(CIRCE2_CMO)
-	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ \
-		unix.cma $(OCAML_BIGARRAY_CMA) $(CIRCE2_CMO)
+	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ unix.cma $(CIRCE2_CMO)
 
 lexer.mli: lexer.ml parser.cmi
 	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
@@ -249,15 +233,10 @@ Makefile.depend_ocaml: $(CIRCE2_SRC) $(CIRCE2TOOL_SRC)
 	echo parser.cmx: parser.cmi syntax.cmi syntax.cmx >>$@
 	echo events_lexer.cmo: events_lexer.cmi >>$@
 	echo events_lexer.cmx: events_lexer.cmi >>$@
-	echo bigarray_compat.cmi: bigarray_compat.mli >>$@
-	echo bigarray_compat.cmo: bigarray_compat.cmi >>$@
-	echo bigarray_compat.cmx: bigarray_compat.cmi >>$@
 
 DISTCLEANFILES += Makefile.depend_ocaml
 
 DISTCLEANFILES += $(CIRCE2_DERIVED)
-
-DISTCLEANFILES += bigarray_compat.ml
 
 endif OCAML_AVAILABLE
 
