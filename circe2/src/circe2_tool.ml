@@ -386,58 +386,71 @@ let _ =
   and center = ref 0.0
   and resolution = ref 0.01 in
   Arg.parse
-    [("-c", Arg.String (fun s -> action := Commands s), "commands");
-     ("-f", Arg.String (fun f -> action := Command_file f), "command file");
-     ("-ia", Arg.String (fun n -> input := ASCII_inf n),
-      "ASCII input file");
-     ("-ib", Arg.String (fun n -> input := Binary_inf n),
-      "Binary input file");
-     ("-oa", Arg.String (fun n -> output := ASCII_outf n),
-      "ASCII output file");
-     ("-ob", Arg.String (fun n -> output := Binary_outf n),
-      "Binary output file");
-     ("-cat", Arg.Unit (fun () ->
-       input := ASCII_ic stdin; output := ASCII_oc stdout;
-       action := Cat), "copy stdin to stdout");
-     ("-log10", Arg.Unit (fun () ->
-       input := ASCII_ic stdin; output := ASCII_oc stdout;
-       action := Log10), "");
-     ("-exp10", Arg.Unit (fun () ->
-       input := ASCII_ic stdin; output := ASCII_oc stdout;
-       action := Exp10), "");
-     ("-ha", Arg.String (fun s -> action := Histo (ASCII, s)),
-      "ASCII histogramming tests");
-     ("-hb", Arg.String (fun s -> action := Histo (Binary, s)),
-      "binary histogramming tests");
-     ("-ma", Arg.String (fun s -> action := Moments (ASCII, s)),
-      "ASCII moments  tests");
-     ("-mb", Arg.String (fun s -> action := Moments (Binary, s)),
-      "binary moments tests");
-     ("-pa", Arg.String (fun s -> action := Power (ASCII, s)), "");
-     ("-pb", Arg.String (fun s -> action := Power (Binary, s)), "");
-     ("-C", Arg.Float (fun c -> center := c), "");
-     ("-R", Arg.Float (fun r -> resolution := r), "");
-     ("-Pa", Arg.String (fun s -> action := Regression (ASCII, s)), "");
-     ("-Pb", Arg.String (fun s -> action := Regression (Binary, s)), "");
-     ("-p", Arg.String (fun s -> suffix := s), "histogram name suffix");
-     ("-h", Arg.Unit (fun () ->
-       histogram_to_file := Histogram.as_bins_to_file), "");
-     ("-b", Arg.Int (fun n -> nbins := n), "#bins");
-     ("-s", Arg.Set shrink, "shrinkwrap interval");
-     ("-S", Arg.Clear shrink, "don't shrinkwrap interval [default]");
-     ("-t", Arg.Set triangle,
-      "project symmetrical distribution onto triangle");
-     ("-v", Arg.Set verbose, "verbose");
-     ("-test", Arg.Unit (fun () -> action := Unit_Tests),
-      "run unit test suite");
-     ("-test1", Arg.String (fun s ->
-       action := Test (s, fun x y -> 1.0)), "testing");
-     ("-test2", Arg.String (fun s ->
-       action := Test (s, fun x y -> x *. y)), "testing");
-     ("-test3", Arg.String (fun s ->
-       action := Test (s, fun x y -> 1.0 /. x +. 1.0 /. y)), "testing");
-     ("-testm", Arg.Int (fun seed -> action := Test_Diffmaps seed),
-      "testing maps") ]
+    (Arg.align
+       [("-c", Arg.String (fun s -> action := Commands s),
+         "string commands to execute");
+        ("-f", Arg.String (fun f -> action := Command_file f),
+         "name command file to read");
+        ("-ia", Arg.String (fun n -> input := ASCII_inf n),
+         "name ASCII input file");
+        ("-ib", Arg.String (fun n -> input := Binary_inf n),
+         "name Binary input file");
+        ("-oa", Arg.String (fun n -> output := ASCII_outf n),
+         "name ASCII output file");
+        ("-ob", Arg.String (fun n -> output := Binary_outf n),
+         "name Binary output file");
+        ("-cat", Arg.Unit (fun () ->
+                     input := ASCII_ic stdin; output := ASCII_oc stdout;
+                     action := Cat),
+         " copy stdin to stdout");
+        ("-log10", Arg.Unit (fun () ->
+                       input := ASCII_ic stdin; output := ASCII_oc stdout;
+                       action := Log10),
+         " apply log10 to all histogram projections");
+        ("-exp10", Arg.Unit (fun () ->
+                       input := ASCII_ic stdin; output := ASCII_oc stdout;
+                       action := Exp10),
+         " apply 10** to all histogram projections");
+        ("-ha", Arg.String (fun s -> action := Histo (ASCII, s)),
+         "name histogramming tests of ASCII file");
+        ("-hb", Arg.String (fun s -> action := Histo (Binary, s)),
+         "name histogramming tests of binary file");
+        ("-ma", Arg.String (fun s -> action := Moments (ASCII, s)),
+         "name moments tests of ASCII file");
+        ("-mb", Arg.String (fun s -> action := Moments (Binary, s)),
+         "name moments tests of binary file");
+        ("-pa", Arg.String (fun s -> action := Power (ASCII, s)),
+         "name apply powers to ASCII file");
+        ("-pb", Arg.String (fun s -> action := Power (Binary, s)),
+         "name apply powers to binary file");
+        ("-C", Arg.Float (fun c -> center := c),
+         Printf.sprintf "center parameter of power map (default=%f)" !center);
+        ("-R", Arg.Float (fun r -> resolution := r),
+         Printf.sprintf "resolution parameter of power map (default=%f)" !resolution);
+        ("-Pa", Arg.String (fun s -> action := Regression (ASCII, s)),
+         "name apply simple regression to ASCII file");
+        ("-Pb", Arg.String (fun s -> action := Regression (Binary, s)),
+         "name apply simple regression to binary file");
+        ("-p", Arg.String (fun s -> suffix := s),
+         "suffix histogram file name suffix");
+        ("-h", Arg.Unit (fun () -> histogram_to_file := Histogram.as_bins_to_file),
+         " write endpoints of histogram bins instead of midpoints");
+        ("-b", Arg.Int (fun n -> nbins := n), "# number of bins");
+        ("-s", Arg.Set shrink, " shrinkwrap interval");
+        ("-S", Arg.Clear shrink, " don't shrinkwrap interval [default]");
+        ("-t", Arg.Set triangle,
+         " project symmetrical distribution onto triangle");
+        ("-v", Arg.Set verbose, " verbose");
+        ("-test", Arg.Unit (fun () -> action := Unit_Tests),
+         " run unit test suite");
+        ("-test1", Arg.String (fun s -> action := Test (s, fun x y -> 1.0)),
+         " testing");
+        ("-test2", Arg.String (fun s -> action := Test (s, fun x y -> x *. y)),
+         " testing");
+        ("-test3", Arg.String (fun s -> action := Test (s, fun x y -> 1.0 /. x +. 1.0 /. y)),
+         " testing");
+        ("-testm", Arg.Int (fun seed -> action := Test_Diffmaps seed),
+         " testing maps") ])
     (fun names -> prerr_endline usage; exit 2)
     usage;
   begin try
@@ -474,6 +487,7 @@ let _ =
           OUnit.(>:::) "All"
             [ThoArray.suite;
              ThoMatrix.suite;
+             Division.Test.suite;
              Filter.suite] in
         if passed (OUnit.run_test_tt ~verbose:!verbose suite) then
           exit 0
@@ -486,11 +500,3 @@ let _ =
       exit 1
   end;
   exit 0
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

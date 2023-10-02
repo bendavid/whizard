@@ -18,6 +18,7 @@ module type T =
   sig
     include Diffmap.T
     val id : ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
+    val null : ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
   end
 
 module type Real = T with type domain = float and type codomain = float
@@ -35,13 +36,3 @@ module type Default =
   end
 
 module Default : Default
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
-

@@ -997,7 +997,7 @@ program circe2_generate_program
   integer :: status, nevents, seed
   real(kind=default) :: roots
   real(kind=default), dimension(2) :: x
-  integer :: i, ierror
+  integer :: p1, p2, i, ierror
   <<Process command line arguments for [[circe2_generate_program]]>>
   call circe2_load (c2s, trim(filename), trim(design), roots, ierror)
   if (ierror /= 0) then
@@ -1007,8 +1007,8 @@ program circe2_generate_program
      stop
   end if
   do i = 1, nevents
-     call circe2_generate (c2s, rng, x, [11, -11], [0, 0])
-     write (*, '(F12.10,1X,F12.10)') x
+     call circe2_generate (c2s, rng, x, [p1, p2], [0, 0])
+     write (*, '(F12.10,1X,F12.10,1X,F3.1)') x, 1.0_default
   end do
   contains
      <<Module procedures for [[circe2_generate_program]]>>
@@ -1022,7 +1022,7 @@ if (status /= 0) filename = ""
 call get_command_argument (2, value = design, status = status)
 if (status /= 0) design = ""
 if (filename == "" .or. design == "") then
-   print *, "usage: circe2_generate filename design [roots] [#events] [seed]"
+   print *, "usage: circe2_generate filename design [roots] [p1] [p2] [#events] [seed]"
    stop
 end if
 @
@@ -1038,6 +1038,24 @@ end if
 <<Process command line arguments for [[circe2_generate_program]]>>=
 call get_command_argument (4, value = buffer, status = status)
 if (status == 0) then
+   read (buffer, *, iostat = status) p1
+   if (status /= 0) nevents = 1000
+else
+   p1 = 11
+end if
+@
+<<Process command line arguments for [[circe2_generate_program]]>>=
+call get_command_argument (5, value = buffer, status = status)
+if (status == 0) then
+   read (buffer, *, iostat = status) p2
+   if (status /= 0) nevents = 1000
+else
+   p2 = -11
+end if
+@
+<<Process command line arguments for [[circe2_generate_program]]>>=
+call get_command_argument (6, value = buffer, status = status)
+if (status == 0) then
    read (buffer, *, iostat = status) nevents
    if (status /= 0) nevents = 1000
 else
@@ -1045,7 +1063,7 @@ else
 end if
 @
 <<Process command line arguments for [[circe2_generate_program]]>>=
-call get_command_argument (5, value = buffer, status = status)
+call get_command_argument (7, value = buffer, status = status)
 if (status == 0) then
    read (buffer, *, iostat = status) seed
    if (status == 0) then

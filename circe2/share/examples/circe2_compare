@@ -1,0 +1,130 @@
+#! /bin/sh
+########################################################################
+
+########################################################################
+# process command line
+########################################################################
+
+usage () {
+  echo "usage: $0 gp_output circe2_input design cms_energy [num_events] [num_bins]" 1>&2
+  exit 2
+}
+
+if [ "$#" -lt 4 -o "$#" -gt 6 ]; then
+  usage
+else
+  gp_output="$1"
+  circe2_input="$2"
+  design="$3"
+  cms_energy="$4"
+fi
+
+if [ -n "$5" ]; then
+  n_events="$5"
+else
+  n_events=10000000
+fi
+  
+if [ -n "$6" ]; then
+  n_bins="$6"
+else
+  n_bins=1000
+fi
+
+########################################################################
+# sanity checks
+########################################################################
+
+if [ ! -d "$gp_output" ]; then
+  echo "guinea pig output directory $gp_output missing" 1>&2
+  exit 2
+fi
+
+if [ ! -r "$circe2_input" ]; then
+  echo "circe2 input file $circe2_input missing" 1>&2
+  exit 2
+fi
+
+########################################################################
+# check that the tools are in the PATH
+########################################################################
+
+if circe2_tool >/dev/null 2>&1; then
+  circe2_tool=circe2_tool
+elif circe2_tool.opt >/dev/null 2>&1; then
+  circe2_tool=circe2_tool.opt
+elif circe2_tool.bin >/dev/null 2>&1; then
+  circe2_tool=circe2_tool.bin
+else
+  echo "neither of circe2_tool circe2_tool.opt circe2_tool.bin in PATH" 1>&2
+  exit 2
+fi
+
+if circe2_generate >/dev/null 2>&1; then
+  circe2_generate=circe2_generate
+else
+  echo "circe2_generate not in PATH" 1>&2
+  exit 2
+fi
+
+if gnuplot --version >/dev/null 2>&1; then
+  gnuplot=gnuplot
+else
+  echo "gnuplot not found: install it or plot the *.gp and *.circe2 histograms yourself!"
+  gnuplot=true
+fi
+
+########################################################################
+# produce plots
+########################################################################
+
+gnuplot_compare () {
+  gp_tag="$1"
+  histogram="$2"
+  name="$histogram.$gp_tag"
+  $gnuplot -e "\
+    set term pdf; \
+    set output \"$name.pdf\"; \
+    set title \"Comparing Circe2 parametrizations to Guinea-Pig output\"; \
+    set xlabel \"$2\"; \
+    set ylabel \"N\"; \
+    set logscale y; \
+    plot \"$name.gp\" with lines title \"Guinea-Pig\", \
+         \"$name.circe2\" with lines title \"Circe2\";"
+}
+
+########################################################################
+# prepare histograms
+########################################################################
+
+histograms () {
+  circe2_output="$1"
+  gp_tag="$2"
+  p1="$3"
+  p2="$4"
+  awk -v CMS="$cms_energy" '$1 != "" {print 2*$1/CMS, 2*$2/CMS, 1}' $gp_output/lumi.$gp_tag.out > $gp_tag.events.gp
+  $circe2_tool -b $n_bins -p .$gp_tag.gp -h -ha $gp_tag.events.gp
+  $circe2_generate $circe2_output $design $cms_energy $p1 $p2 $n_events | sed '1,2d' > $gp_tag.events.circe2
+  $circe2_tool -b $n_bins -p .$gp_tag.circe2 -h -ha $gp_tag.events.circe2
+  gnuplot_compare $gp_tag xy
+  gnuplot_compare $gp_tag x
+  gnuplot_compare $gp_tag y
+  gnuplot_compare $gp_tag x-y
+}
+
+########################################################################
+# run circe2 and visually compare inout and output
+########################################################################
+
+$circe2_tool -f "$circe2_input" >circe2.log 2>&1
+circe2_output="`sed -n '/^writing/ { s/writing: //; s/ \.\.\. done\.$//; p }' circe2.log`"
+
+histograms "$circe2_output" ee 11 -11 >ee.log 2>&1 &
+histograms "$circe2_output" eg 11  22 >eg.log 2>&1 &
+histograms "$circe2_output" ge 22 -11 >ge.log 2>&1 &
+histograms "$circe2_output" gg 22  22 >gg.log 2>&1 &
+
+echo -n "waiting for jobs ..."
+wait
+echo " done."
+

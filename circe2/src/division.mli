@@ -44,6 +44,10 @@ module type T =
        \end{dubious} *)
     val caj : t -> float -> float
 
+    (* Check if there is a [Diffmaps.Null] for~$x$. *)
+    val is_null : t -> float -> bool
+    val null_bins : t -> int list
+
     val n_bins : t -> int
     val bins : t -> float array
     val to_channel : out_channel -> t -> unit
@@ -82,7 +86,7 @@ module type Poly =
 
     include T
 
-    (* [create n x_min x_max intervals] creates a polydivision of the
+    (* [create intervals n x_min x_max] creates a polydivision of the
        interval from [x_min] to [x_max] described by the list of [intervals],
        filling the gaps among intervals and between the intervals and the
        outer borders with an unmapped divisions with [n] bins each.  *)
@@ -95,12 +99,5 @@ module Make_Poly (M : Diffmaps.Real) : Poly with module M = M
 
 module Poly : Poly
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
-
+module Test : sig val suite : OUnit.test end
+ 

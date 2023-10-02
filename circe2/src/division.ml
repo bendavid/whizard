@@ -64,6 +64,8 @@ module type T =
     val rebin : ?power:float -> ?fixed_min:bool -> ?fixed_max:bool -> t -> t
 
     val caj : t -> float -> float
+    val is_null : t -> float -> bool
+    val null_bins : t -> int list
 
     val n_bins : t -> int
     val bins : t -> float array
@@ -128,6 +130,7 @@ module Mono (* [: T] *) =
 (*i let report_denormal x f b what = () i*)
 
     let caj d x = 1.0
+    let is_null d x = false
 
     let record d x f =
       if x < d.x_min then
@@ -302,6 +305,8 @@ i*)
         w2 = Array.make n 0.0;
         bias = d.bias }
 
+    let null_bins d = []
+
     let to_channel oc d =
       Array.iter (fun x ->
         fprintf oc " %s 0 1 0 0 1 1\n" (Float.Double.to_string x)) d.x
@@ -456,15 +461,23 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
       let x = M.ihp m y in
       M.caj m y *. Mono.caj d x
 
+    let is_null pd y =
+      let i = find_raw pd.x y in
+      let m = pd.maps.(i) in
+      M.is_null m
+
     let record pd y f =
       let i = find_raw pd.x y in
       let m = pd.maps.(i) in
-      let x = M.ihp m y in
-      let w = M.jac m x *. f in
-      Mono.record pd.d.(i) x w;
-      pd.n.(i) <- succ pd.n.(i);
-      pd.w.(i) <- pd.w.(i) +. w;
-      pd.w2.(i) <- pd.w2.(i) +. w *. w
+      if M.is_null m then
+        ()
+      else
+        let x = M.ihp m y in
+        let w = M.jac m x *. f in
+        Mono.record pd.d.(i) x w;
+        pd.n.(i) <- succ pd.n.(i);
+        pd.w.(i) <- pd.w.(i) +. w;
+        pd.w2.(i) <- pd.w2.(i) +. w *. w
 
     (* Rebin the divisions, enforcing fixed boundaries for the inner
        intervals. *)
@@ -488,6 +501,28 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
         w = Array.make ndiv 0.0;
         w2 = Array.make ndiv 0.0 }
 
+    let range n1 n2 =
+      let rec range' n =
+        if n > n2 then
+          []
+        else
+          n :: range' (succ n) in
+      range' n1
+
+    let null_bins pd =
+      let num_intervals = Array.length pd.d in
+      let rec null_bins' (acc, i) n =
+        if n >= num_intervals then
+          List.rev acc
+        else
+          let d = pd.d.(n)  in
+          let i' = i + Mono.n_bins d in
+          if M.is_null pd.maps.(n) then
+            null_bins' (List.rev_append (range i (pred i')) acc, i') (succ n)
+          else
+            null_bins' (acc, i') (succ n) in
+      null_bins' ([], 0) 0
+
     let to_channel oc pd =
       for i = 0 to Array.length pd.d - 1 do
         let map = M.encode pd.maps.(i)
@@ -502,10 +537,44 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
 
 module Poly = Make_Poly (Diffmaps.Default)
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+module Test =
+  struct
+
+    open OUnit
+
+    let int_list_to_string l =
+      "[" ^ String.concat "; " (List.map string_of_int l) ^ "]"
+
+    let assert_int_list = assert_equal ~printer:int_list_to_string
+
+    module D = Poly
+    module M = D.M
+
+    let null_maps maps =
+      D.null_bins (D.create maps 100 0. 1.)
+
+    let null_map_suite =
+      "null map" >:::
+        [ "0" >:: (fun () ->
+            assert_int_list [0] (null_maps [(1, M.null 0. 0.1)]));
+
+          "[0;1;2]" >:: (fun () ->
+            assert_int_list [0;1;2] (null_maps [(3, M.null 0. 0.1)]));
+
+          "[100]" >:: (fun () ->
+            assert_int_list [100] (null_maps [(1, M.null 0.1 0.2)]));
+
+          "[100;201]" >:: (fun () ->
+            assert_int_list [100;201] (null_maps [(1, M.null 0.1 0.2);
+                                                  (1, M.null 0.3 0.4)]));
+
+          "[100;101;202;203;204]" >:: (fun () ->
+            assert_int_list [100;101;202;203;204] (null_maps [(2, M.null 0.1 0.2);
+                                                              (3, M.null 0.3 0.4)])) ]
+
+    let suite =
+      let open OUnit in
+      "Division" >:::
+        [null_map_suite]
+
+  end

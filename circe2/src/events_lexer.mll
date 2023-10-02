@@ -34,10 +34,10 @@ let white = [ ' ' '\t' '\r' ]
 rule token = parse
     white        { token lexbuf }     (* skip blanks *)
   | ['+''-']? digit+
-    ( '.' digit* ( exp_e digit+ )? | exp_e digit+ )
+    ( '.' digit* ( exp_e '-'? digit+ )? | exp_e '-'? digit+ )
                  { Some (float_of_string (Lexing.lexeme lexbuf)) }
   | ['+''-']? digit+
-    ( '.' digit* ( exp_d digit+ )? | exp_d digit+ )
+    ( '.' digit* ( exp_d '-'? digit+ )? | exp_d '-'? digit+ )
                  { Some (float_of_string (normalize_ascii_floats (Lexing.lexeme lexbuf))) }
   | ['+''-']? digit+
                  { Some (float_of_string (Lexing.lexeme lexbuf)) }

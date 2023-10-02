@@ -174,7 +174,35 @@ module Make (D : Division.T) =
         end in
       { grid with w }
 
+    let nullify grid =
+      let grid = copy grid in
+      List.iter
+        (fun i1 ->
+          for i2 = 0 to D.n_bins grid.d2 -1 do
+            grid.w.(i1).(i2) <- 0.
+          done)
+        (D.null_bins grid.d1);
+      List.iter
+        (fun i2 ->
+          for i1 = 0 to D.n_bins grid.d1 -1 do
+            grid.w.(i1).(i2) <- 0.
+          done)
+        (D.null_bins grid.d2);
+      grid
+
+    let normalize grid =
+      let sum_w = ThoMatrix.sum_float grid.w in
+      if sum_w > 0. then
+        { d1 = D.copy grid.d1;
+          d2 = D.copy grid.d2;
+          w = ThoMatrix.map (fun w -> w /. sum_w) grid.w;
+          var = ThoMatrix.copy grid.var;
+          triangle = grid.triangle }
+      else
+        failwith "Grid.normalize: non-positive sum of weights"
+
     let to_channel_2d oc grid =
+      let grid = normalize (nullify grid) in
       for i = 0 to D.n_bins grid.d1 - 1 do
         Printf.fprintf oc "%g" grid.w.(i).(0);
         for j = 1 to D.n_bins grid.d2 - 1 do
@@ -198,14 +226,14 @@ module Make (D : Division.T) =
        a distribution.  It is not needed for the event generator
        anyway. *)
     let record grid x y f =
-      let x', y' = project_triangle grid.triangle x y in
-      D.record grid.d1 x' f;
-      D.record grid.d2 y' f;
-      let n1 = D.find grid.d1 x'
-      and n2 = D.find grid.d2 y' in
-      grid.w.(n1).(n2) <- grid.w.(n1).(n2) +. f;
-      grid.var.(n1).(n2) <- grid.var.(n1).(n2)
-          +. f /. D.caj grid.d1 x' /. D.caj grid.d2 y'
+      if not (D.is_null grid.d1 x || D.is_null grid.d2 y) then
+        let x', y' = project_triangle grid.triangle x y in
+        D.record grid.d1 x' f;
+        D.record grid.d2 y' f;
+        let n1 = D.find grid.d1 x'
+        and n2 = D.find grid.d2 y' in
+        grid.w.(n1).(n2) <- grid.w.(n1).(n2) +. f;
+        grid.var.(n1).(n2) <- grid.var.(n1).(n2) +. f /. D.caj grid.d1 x' /. D.caj grid.d2 y'
 
     let rebin ?power ?fixed_x1_min ?fixed_x1_max
         ?fixed_x2_min ?fixed_x2_max grid =
@@ -217,14 +245,6 @@ module Make (D : Division.T) =
           ?fixed_min:fixed_x2_min ?fixed_max:fixed_x2_max grid.d2;
         w = Array.make_matrix n1 n2 0.0;
         var = Array.make_matrix n1 n2 0.0;
-        triangle = grid.triangle }
-
-    let normalize grid =
-      let sum_w = ThoMatrix.sum_float grid.w in
-      { d1 = D.copy grid.d1;
-        d2 = D.copy grid.d2;
-        w = ThoMatrix.map (fun w -> w /. sum_w) grid.w;
-        var = ThoMatrix.copy grid.var;
         triangle = grid.triangle }
 
     (* Monitoring the variance in each cell is \emph{not} a good idea for
@@ -395,18 +415,18 @@ module Make (D : Division.T) =
       fprintf oc "pid1, pol1, pid2, pol2, lumi\n";
       fprintf oc " %d %d %d %d %G\n"
         ch.pid1 ch.pol1 ch.pid2 ch.pol2 ch.lumi;
+      let g = normalize (nullify ch.g) in
       fprintf oc "#bins1, #bins2, triangle?\n";
       fprintf oc " %d %d %s\n"
-        (D.n_bins ch.g.d1) (D.n_bins ch.g.d2)
-        (if ch.g.triangle then "T" else "F");
+        (D.n_bins g.d1) (D.n_bins g.d2) (if g.triangle then "T" else "F");
       fprintf oc "x1, map1, alpha1, xi1, eta1, a1, b1\n";
-      D.to_channel oc ch.g.d1;
+      D.to_channel oc g.d1;
       fprintf oc "x2, map2, alpha2, xi2, eta2, a2, b2\n";
-      D.to_channel oc ch.g.d2;
+      D.to_channel oc g.d2;
       fprintf oc "weights\n";
       ThoMatrix.iter
         (fun x -> fprintf oc " %s\n" (Float.Double.to_string x))
-        (ThoMatrix.transpose ch.g.w)
+        (ThoMatrix.transpose g.w)
 
     type design =
         { name : string;
@@ -466,11 +486,3 @@ module Make (D : Division.T) =
       close_out oc
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

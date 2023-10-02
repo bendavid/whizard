@@ -1965,6 +1965,25 @@ for efficiency,  it is useful to provide a dedicated
 ``implementation'' anyway.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Null}
+The null map
+%HEVEA\begin{center}
+%BEGIN IMAGE
+\begin{equation}
+   \begin{aligned}
+     \iota : [x_{i-1},x_{i}]
+        &\to [y_{i-1},y_{i}] = [x_{i-1},x_{i}] \\
+      x &\mapsto \iota(x) = x
+   \end{aligned}
+\end{equation}
+%END IMAGE
+%HEVEA\imageflush
+%HEVEA\end{center}
+is a special case of the identity map, where all weights are set to zero.
+This is useful for the regions where the beam simulations do not produce enough
+events and should be ignored.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Resonances}
 \begin{dubious}
   \begin{itemize}
@@ -2165,8 +2184,9 @@ to~$x_{1}$ and~$x_{2}$ respectively.
     $0$~means unpolarized (see page~\ref{pg:PDG-codes}).
   \item \texttt{min}: minimum value of the coordinate(s).  The default is~$0$.
   \item \texttt{max}: maximum value of the coordinate(s).  The default is~$1$.
-  \item \texttt{fix}
-  \item \texttt{free}
+  \item \texttt{fix}: fix the boundaries: \texttt{min}, \texttt{max} or \texttt{*}.
+  \item \texttt{free}: lower the lower boundary or raise the upper boundary,
+    if necessary.
   \item \texttt{map}: apply a map to a subinterval.  Currently, three
     types of maps are supported:
     \begin{params}
@@ -2175,6 +2195,12 @@ to~$x_{1}$ and~$x_{2}$ respectively.
         identity map in the interval~$[x_{\min},x_{\max}]$ subdivided
         into~$n$ bins.  The non-trivial effect of this map is that the
         endpoints~$x_{\min}$ and~$x_{\max}$ are frozen.
+      \item \verb+null {+ $n$
+        \verb+[+$x_{\min}$\verb+,+$x_{\max}$\verb+] }+: apply a
+        null map in the interval~$[x_{\min},x_{\max}]$ subdivided
+        into~$n$ bins.  $n$ will almost always be~$1$.  The non-trivial
+        effect of this map is that the weights between~$x_{\min}$ and~$x_{\max}$
+        are set to zero.
       \item \verb+power {+ $n$
         \verb+[+$x_{\min}$\verb+,+$x_{\max}$%
         \verb+] beta = +$\beta$\verb+ eta = +$\eta$\verb+ }+: apply a
@@ -2190,8 +2216,8 @@ to~$x_{1}$ and~$x_{2}$ respectively.
         into~$n$ bins.  This map is hardly ever needed, since
         VEGAS/VAMP appears to be able to handle non-singular peaks very well.
     \end{params}
-  \item \texttt{triangle}
-  \item \texttt{notriangle}
+  \item \texttt{triangle}: \textit{experimental, do not use!}
+  \item \texttt{notriangle}: \textit{experimental, do not use!}
   \item \texttt{lumi}: luminosity of the beam design, it units of
     \begin{equation}
       \unit{fb}^{-1}\upsilon^{-1} = 10^{32} \unit{cm}^{-2}\unit{sec}^{-1}

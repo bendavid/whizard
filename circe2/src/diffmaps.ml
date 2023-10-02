@@ -16,6 +16,7 @@ module type T =
   sig
     include Diffmap.T
     val id : ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
+    val null : ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
   end
 
 module type Real = T with type domain = float and type codomain = float
@@ -48,7 +49,8 @@ module Default =
           phi : domain -> codomain;
           ihp : codomain -> domain;
           jac : domain -> float;
-          caj : codomain -> float }
+          caj : codomain -> float;
+          is_null : bool }
 
     let encode m = m.encode
     let with_domain m = m.with_domain
@@ -62,6 +64,11 @@ module Default =
     let ihp m = m.ihp
     let jac m = m.jac
     let caj m  = m.caj
+    let is_null m = m.is_null
+
+    (* \begin{dubious}
+         Functors or first class modules should streamline this.
+       \end{dubious} *)
 
     let rec id ?x_min ?x_max y_min y_max =
       let m = Diffmap.Id.create ?x_min ?x_max y_min y_max in
@@ -76,7 +83,24 @@ module Default =
         phi = Diffmap.Id.phi m;
         ihp = Diffmap.Id.ihp m;
         jac = Diffmap.Id.jac m;
-        caj = Diffmap.Id.caj m }
+        caj = Diffmap.Id.caj m;
+        is_null = Diffmap.Id.is_null m }
+
+    let rec null ?x_min ?x_max y_min y_max =
+      let m = Diffmap.Null.create ?x_min ?x_max y_min y_max in
+      let with_domain ~x_min ~x_max =
+        null ~x_min ~x_max y_min y_max in
+      { encode = Diffmap.Null.encode m;
+        with_domain = with_domain;
+        x_min = Diffmap.Null.x_min m;
+        x_max = Diffmap.Null.x_max m;
+        y_min = Diffmap.Null.y_min m;
+        y_max = Diffmap.Null.y_max m;
+        phi = Diffmap.Null.phi m;
+        ihp = Diffmap.Null.ihp m;
+        jac = Diffmap.Null.jac m;
+        caj = Diffmap.Null.caj m;
+        is_null = Diffmap.Null.is_null m }
 
     let rec power ~alpha ~eta ?x_min ?x_max y_min y_max =
       let m = Diffmap.Power.create ~alpha ~eta ?x_min ?x_max y_min y_max in
@@ -91,7 +115,8 @@ module Default =
         phi = Diffmap.Power.phi m;
         ihp = Diffmap.Power.ihp m;
         jac = Diffmap.Power.jac m;
-        caj = Diffmap.Power.caj m }
+        caj = Diffmap.Power.caj m;
+        is_null = Diffmap.Power.is_null m }
 
     let rec resonance ~eta ~a ?x_min ?x_max y_min y_max =
       let m = Diffmap.Resonance.create ~eta ~a ?x_min ?x_max y_min y_max  in
@@ -106,14 +131,7 @@ module Default =
         phi = Diffmap.Resonance.phi m;
         ihp = Diffmap.Resonance.ihp m;
         jac = Diffmap.Resonance.jac m;
-        caj = Diffmap.Resonance.caj m }
+        caj = Diffmap.Resonance.caj m;
+        is_null = Diffmap.Resonance.is_null m }
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

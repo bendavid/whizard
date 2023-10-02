@@ -18,7 +18,7 @@ rule token = parse
   | '#' [^'\n']* '\n'
                  { token lexbuf }     (* skip comments *)
   | ['+''-']? digit+
-    ( '.' digit* ( ['e''E'] digit+ )? | ['e''E'] digit+ )
+    ( '.' digit* ( ['e''E'] '-'? digit+ )? | ['e''E'] '-'? digit+ )
                  { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
   | ['+''-']? digit+
                  { INT (int_of_string (Lexing.lexeme lexbuf)) }
@@ -38,6 +38,7 @@ rule token = parse
   | '*'          { STAR }
   | '+'          { PLUS }
   | '-'          { MINUS }
+  | "antimuon"   { Antimuon }
   | "ascii"      { Ascii }
   | "beta"       { Beta }
   | "binary"     { Binary }
@@ -52,6 +53,7 @@ rule token = parse
   | "file"       { File }
   | "fix"        { Fix }
   | "free"       { Free }
+  | "gamma"      { Photon }
   | "histogram"  { Histogram }
   | "id"         { Id }
   | "iterations" { Iterations }
@@ -59,9 +61,10 @@ rule token = parse
   | "map"        { Map }
   | "max"        { Max }
   | "min"        { Min }
+  | "muon"       { Muon }
   | "notriangle" { Notriangle }
+  | "null"       { Null }
   | "photon"     { Photon }
-  | "gamma"      { Photon }
   | "pid"        { Pid }
   | "pol"        { Pol }
   | "positron"   { Positron }

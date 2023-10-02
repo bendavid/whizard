@@ -21,7 +21,7 @@ let parse_error msg =
 %token Columns
 %token Comment
 %token Design
-%token Electron Positron Photon
+%token Electron Positron Photon Muon Antimuon
 %token Events Histogram File
 %token Fix
 %token Free
@@ -31,6 +31,7 @@ let parse_error msg =
 %token Map
 %token Min Max
 %token Notriangle
+%token Null
 %token Pid
 %token Pol Unpol
 %token Power Resonance
@@ -112,6 +113,8 @@ particle:
     INT                             { $1 }
   | Electron                        { 11 }
   | Positron                        { -11 }
+  | Muon                            { 13 }
+  | Antimuon                        { -13 }
   | Photon                          { 22 }
 ;
 
@@ -140,6 +143,7 @@ side:
 
 map:
    Id LBRACE id RBRACE              { $3 }
+ | Null LBRACE null RBRACE          { $3 }
  | Power LBRACE power RBRACE        { $3 }
  | Resonance LBRACE resonance RBRACE{ $3 }
 ;
@@ -159,6 +163,12 @@ id:
    INT real_interval                {
      let x_min, x_max = $2 in
      ($1, Maps.id x_min x_max) }
+;
+
+null:
+   INT real_interval                    {
+     let x_min, x_max = $2 in
+     ($1, Maps.null x_min x_max) }
 ;
 
 real_interval:

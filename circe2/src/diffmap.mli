@@ -70,6 +70,8 @@ module type T =
        \end{equation} *)
     val caj : t -> codomain -> float
 
+    val is_null : t -> bool
+
     (* [with_domain map x_min x_max] takes the map [map] and
        returns the `same' map with the new
        domain~$\lbrack x_{\min},x_{\max}\rbrack$ *)
@@ -119,6 +121,13 @@ module Id :
          Default values for [x_min] and~[x_max] are [y_min] and~[y_max],
          respectively.   Indeed, they are the only
          possible values and other values raise an exception. *)
+      val create :
+          ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
+    end
+
+module Null :
+    sig
+      include Real
       val create :
           ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
     end
@@ -185,13 +194,3 @@ module Resonance :
       val create : eta:float -> a:float ->
         ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
     end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
-

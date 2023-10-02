@@ -32,6 +32,8 @@ module type T =
     val jac : t -> domain -> float
     val caj : t -> codomain -> float
 
+    val is_null : t -> bool
+
     val with_domain : t -> x_min:domain -> x_max:domain -> t
 
     val encode : t -> string
@@ -192,8 +194,16 @@ module Id =
     let phi m = m.phi
     let ihp m = m.ihp
     let jac m = m.jac
-    let caj m  = m.caj
+    let caj m = m.caj
 
+    let is_null m = false
+
+  end
+
+module Null =
+  struct
+    include Id
+    let is_null m = true
   end
 
 module Linear =
@@ -266,7 +276,9 @@ module Linear =
     let phi m = m.phi
     let ihp m = m.ihp
     let jac m = m.jac
-    let caj m  = m.caj
+    let caj m = m.caj
+
+    let is_null m = false
 
   end
 
@@ -392,6 +404,8 @@ module Power =
     let jac m = m.jac
     let caj m  = m.caj
 
+    let is_null m = false
+
   end
 
 module Resonance =
@@ -499,12 +513,6 @@ module Resonance =
     let jac m = m.jac
     let caj m  = m.caj
 
-  end
+    let is_null m = false
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+  end
