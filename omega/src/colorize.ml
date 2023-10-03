@@ -46,6 +46,10 @@ let su0 s =
 let colored_vertex s =
   invalid_arg ("Colorize." ^ s ^ ": colored vertex!")
 
+let non_legacy_color s cp =
+  invalid_arg ("Colorize." ^ s ^ ": non legacy color in legacy code: " ^
+                 Color_Propagator.to_string cp)
+
 let baryonic_vertex s =
   invalid_arg ("Colorize." ^ s ^
                  ": baryonic (i.e. eps_ijk) vertices not supported yet!")
@@ -60,6 +64,9 @@ let color_flow_of_string s =
   else
     c
 
+let young_tableaux s =
+  failwith ("Colorize." ^ s ^ " classic colorizer can't support Young tableaux!")
+
 (* \thocwmodulesubsection{Multiplying Vertices by a Constant Factor} *)
 
 module Q = Algebra.Q
@@ -69,8 +76,8 @@ let of_int n =
   QC.make (Q.make n 1) Q.null
 
 let integer z =
-  if Q.is_null (QC.imag z) then
-    let x = QC.real z in
+  if Q.is_null (QC.im z) then
+    let x = QC.re z in
     try
       Some (Q.to_integer x)
     with
@@ -349,12 +356,21 @@ module Flavor (M : Model.T) =
     type cf_in = int
     type cf_out = int
 
+    (* \begin{dubious}
+         The legacy types [CF_in], etc, are not orthogonal
+         to [Color_Propagator.t], unfortunately, but we will
+         have to life with this for a while.
+       \end{dubious} *)
+
+    module CP = Color_Propagator
+
     type t =
       | White of M.flavor
       | CF_in of M.flavor * cf_in
       | CF_out of M.flavor * cf_out
       | CF_io of M.flavor * cf_in * cf_out
       | CF_aux of M.flavor
+      | CF of M.flavor * CP.t
 
     let flavor_sans_color = function
       | White f -> f
@@ -362,9 +378,34 @@ module Flavor (M : Model.T) =
       | CF_out (f, _) -> f
       | CF_io (f, _, _) -> f
       | CF_aux f -> f
+      | CF (f, _) -> f
 
     let pullback f arg1 =
       f (flavor_sans_color arg1)
+
+    (* Since the alternatives in the sum type [t] are not orthogonal,
+       we have make sure that we don't produce false negatives.
+       In addition, non trivial color flows of type [Color_Propagator.t]
+       need a special equality.
+       \begin{dubious}
+         Converting everything to [CF (f, cp)] first is the most concise,
+         but not the most efficient approach.  However, it's probably not
+         worth the effort to cook up an optimized comparison before
+         we retire the other alternatives in [t].
+       \end{dubious} *)
+
+    let to_cp = function
+      | White f -> (f, CP.white)
+      | CF_in (f, cfi) -> (f, CP.of_lists [cfi] [])
+      | CF_out (f, cfo) -> (f, CP.of_lists [] [cfo])
+      | CF_io (f, cfi, cfo) -> (f, CP.of_lists [cfi] [cfo])
+      | CF_aux f -> (f, CP.Ghost)
+      | CF (f, cp) -> (f, cp)
+
+    let equal f1 f2 =
+      let f1, cp1 = to_cp f1
+      and f2, cp2 = to_cp f2 in
+      f1 = f2 && CP.equal cp1 cp2
 
   end
 
@@ -590,6 +631,7 @@ module Legacy_Implementation (M : Model.T) =
           | CF_in _, CF_in _ | CF_out _, CF_out _ ->
               colored_vertex "colorize_fusion2"
 
+          | CF (_, c), _ | _, CF (_, c) -> non_legacy_color "colorize_fusion2" c
           end
 
       | C.SUN nc1 ->
@@ -646,6 +688,7 @@ module Legacy_Implementation (M : Model.T) =
                 (White _ | CF_io _ | CF_aux _) ->
               colored_vertex "colorize_fusion2"
 
+          | CF (_, c), _ | _, CF (_, c) -> non_legacy_color "colorize_fusion2" c
           end
 
       | C.AdjSUN _ ->
@@ -653,6 +696,19 @@ module Legacy_Implementation (M : Model.T) =
 
           | White _, CF_io (_, c1, c2') | CF_io (_, c1, c2'), White _ ->
               [CF_io (f, c1, c2'), v]
+
+          (* Note that for $\tr(F_{mu\nu}F^{\mu\nu})$ couplings, like
+             the effective $Hgg$ coupling, we can't inplement the
+             rules derived in~\cite{Kilian:2012pz}.  fusing [White]
+             with [CF_aux] would have to produce a [CF_io], but there
+             is canonical source for a fresh color flow index!  If the
+             gluons are not connected via an inbroken string of such
+             couplings to an external line, we can use the
+             considerations in~\eqref{eq:qqqqH} to replace the
+             factor~$N_C$ by $-N_C$.  In order to account for the
+             gluons that are connected via an inbroken string of such
+             couplings to an external line, we apply a correction
+             factor $1-2/N_C^2$ for each gluon loop in the very end. *)
 
           | White _, CF_aux _ | CF_aux _, White _ ->
               [CF_aux f, mult_vertex (- (nc ())) v]
@@ -796,8 +852,11 @@ module Legacy_Implementation (M : Model.T) =
           | CF_in _, CF_in _ | CF_out _, CF_out _ -> 
               colored_vertex "colorize_fusion2"
 
+          | CF (_, c), _ | _, CF (_, c) -> non_legacy_color "colorize_fusion2" c
           end
 
+      | C.YT _ | C.YTC _ -> young_tableaux "colorize_fusion2"
+         
 (* \thocwmodulesubsection{Quartic Vertices} *)
 
     let colorize_fusion3 f1 f2 f3 (f, v) =
@@ -903,6 +962,8 @@ module Legacy_Implementation (M : Model.T) =
               (CF_in _ | CF_out _) ->
                 colored_vertex "colorize_fusion3"
 
+          | CF (_, c), _, _ | _, CF (_, c), _ | _, _, CF (_, c) ->
+             non_legacy_color "colorize_fusion3" c
           end
 
       | C.SUN nc1 ->
@@ -1068,6 +1129,8 @@ module Legacy_Implementation (M : Model.T) =
               (CF_in _ | CF_out _) ->
               colored_vertex "colorize_fusion3"
 
+          | CF (_, c), _, _ | _, CF (_, c), _ | _, _, CF (_, c) ->
+             non_legacy_color "colorize_fusion3" c
           end
 
       | C.AdjSUN nc ->
@@ -1287,7 +1350,11 @@ module Legacy_Implementation (M : Model.T) =
               (CF_in _ | CF_out _) ->
               colored_vertex "colorize_fusion3"
 
+          | CF (_, c), _, _ | _, CF (_, c), _ | _, _, CF (_, c) ->
+             non_legacy_color "colorize_fusion3" c
           end
+
+      | C.YT _ | C.YTC _ -> young_tableaux "colorize_fusion3"
 
 (* \thocwmodulesubsection{Quintic and Higher Vertices} *)
 
@@ -1317,6 +1384,8 @@ module Legacy_Implementation (M : Model.T) =
             colored_vertex "colorize_fusionn"
           else
             incomplete_match ()
+      | C.YT _ | C.YTC _ -> young_tableaux "colorize_fusionn"
+
 
   end
 
@@ -1328,6 +1397,8 @@ module It (M : Model.T) =
     open Coupling
 
     module C = Color
+    module CA = Arrow
+    module CV = Color.Vertex
 
     module Colored_Flavor = Flavor(M)
 
@@ -1340,7 +1411,14 @@ module It (M : Model.T) =
     let options = M.options
     let caveats = M.caveats
 
+    type coupling_order = M.coupling_order
+    let all_coupling_orders = M.all_coupling_orders
+    let coupling_orders = M.coupling_orders
+    let coupling_order_to_string = M.coupling_order_to_string
+
     open Colored_Flavor
+
+    let flavor_equal = Colored_Flavor.equal
 
     let color = pullback M.color
     let nc = M.nc
@@ -1373,6 +1451,13 @@ module It (M : Model.T) =
       | CF_in (f, _) -> M.propagator f
       | CF_out (f, _) -> M.propagator f
       | CF_io (f, _, _) -> M.propagator f
+      | CF (f, c) ->
+         begin match c with
+         | CP.Flow _ | CP.Flow_with_Epsilons _ | CP.Flow_with_Epsilon_Bars _->
+            M.propagator f
+         | CP.Ghost | CP.Ghost_with_Epsilons _ | CP.Ghost_with_Epsilon_Bars _ ->
+            cf_aux_propagator (M.propagator f)
+         end
 
     let width = pullback M.width
 
@@ -1402,6 +1487,11 @@ module It (M : Model.T) =
           | None -> None
           | Some (f', g) -> Some (CF_aux f', g)
           end
+      | CF (f, c) ->
+          begin match M.goldstone f with
+          | None -> None
+          | Some (f', g) -> Some (CF (f', c), g)
+          end
 
     let conjugate = function
       | White f -> White (M.conjugate f)
@@ -1409,6 +1499,7 @@ module It (M : Model.T) =
       | CF_out (f, c) -> CF_in (M.conjugate f, c)
       | CF_io (f, c1, c2) -> CF_io (M.conjugate f, c2, c1)
       | CF_aux f -> CF_aux (M.conjugate f)
+      | CF (f, c) -> CF (M.conjugate f, CP.conjugate c)
 
     let conjugate_sans_color = M.conjugate
 
@@ -1451,6 +1542,8 @@ module It (M : Model.T) =
             | "", "" -> CF_aux f
             | _, _ -> CF_io (f, color_flow_of_string sc1, color_flow_of_string sc2)
             end
+        | C.YT _ | C.YTC _ ->
+           incomplete "flavor_of_string: Young tableaux"
       with
       | Failure s ->
          if s = "int_of_string" then
@@ -1468,8 +1561,13 @@ module It (M : Model.T) =
       | CF_io (f, c1, c2) ->
           M.flavor_to_string f ^ "/" ^ string_of_int c1 ^ "/" ^ string_of_int c2
       | CF_aux f ->
-          M.flavor_to_string f ^ "//"
+         M.flavor_to_string f ^ "//"
+      | CF (f, cp) ->
+         M.flavor_to_string f ^ "/" ^ CP.to_string cp
 
+    (* \begin{dubious}
+         [CP.to_string] need to be replaced!
+       \end{dubious} *)
     let flavor_to_TeX = function
       | White f ->
           M.flavor_to_TeX f
@@ -1483,18 +1581,22 @@ module It (M : Model.T) =
           string_of_int c1 ^ "\\overline{" ^ string_of_int c2 ^ "}}"
       | CF_aux f ->
           "{" ^ M.flavor_to_TeX f ^ "}_{\\mathstrut 0}"
+      | CF (f, cp) ->
+          "{" ^ M.flavor_to_TeX f ^ "}_{\\mathstrut " ^ CP.to_string cp ^ "}"
 
     let flavor_symbol = function
       | White f ->
-          M.flavor_symbol f
+         "f" ^ M.flavor_symbol f
       | CF_in (f, c) ->
-          M.flavor_symbol f ^ "_" ^ string_of_int c ^ "_"
+         "f" ^ M.flavor_symbol f ^ "_i" ^ string_of_int c
       | CF_out (f, c) ->
-          M.flavor_symbol f ^ "__" ^ string_of_int c
+         "f" ^ M.flavor_symbol f ^ "_o" ^ string_of_int c
       | CF_io (f, c1, c2) ->
-          M.flavor_symbol f ^ "_" ^ string_of_int c1 ^ "_" ^ string_of_int c2
+         "f" ^ M.flavor_symbol f ^ "_i" ^ string_of_int c1 ^ "o" ^ string_of_int c2
       | CF_aux f ->
-          M.flavor_symbol f ^ "__"
+         "f" ^ M.flavor_symbol f ^ "_g"
+      | CF (f, cp) ->
+         "f" ^ M.flavor_symbol f ^ "_" ^ CP.to_symbol cp
 
     let gauge_symbol = M.gauge_symbol
 
@@ -1551,28 +1653,41 @@ module It (M : Model.T) =
       let p = P.of_list (List.map pred l') in
       PosMap.of_lists l (P.list p l)
 
-    module CA = Color.Arrow
-    module CV = Color.Vertex
-    module CP = Color.Propagator
-
     let color_sans_flavor = function
-      | White _ -> CP.W
-      | CF_in (_, cfi) -> CP.I cfi
-      | CF_out (_, cfo) -> CP.O cfo
-      | CF_io (_, cfi, cfo) -> CP.IO (cfi, cfo)
-      | CF_aux _ -> CP.G
+      | White _ -> CP.white
+      | CF_in (_, cfi) -> CP.of_lists [cfi] []
+      | CF_out (_, cfo) -> CP.of_lists [] [cfo]
+      | CF_io (_, cfi, cfo) -> CP.of_lists [cfi] [cfo]
+      | CF_aux _ -> CP.Ghost
+      | CF (f, cp) -> cp
+
+    (* \begin{dubious}
+         Should we continue to translate the flows back and forth?
+       \end{dubious} *)
 
     let color_with_flavor f = function
-      | CP.W -> White f
-      | CP.I cfi -> CF_in (f, cfi)
-      | CP.O cfo -> CF_out (f, cfo)
-      | CP.IO (cfi, cfo) -> CF_io (f, cfi, cfo)
-      | CP.G -> CF_aux f
+      | CP.Flow (cfis, cfos) as cp ->
+         begin match PArray.to_option_list cfis, PArray.to_option_list cfos with
+         | [], [] -> White f
+         | [Some cfi], [] -> CF_in (f, cfi)
+         | [], [Some cfo] -> CF_out (f, cfo)
+         | [Some cfi], [Some cfo] -> CF_io (f, cfi, cfo)
+         | _, _ -> CF (f, cp)
+         end
+      | CP.Flow_with_Epsilons (_, _) ->
+         failwith "Colorize.color_with_flavor: unexpected epsilon"
+      | CP.Flow_with_Epsilon_Bars (_, _) ->
+         failwith "Colorize.color_with_flavor: unexpected epsilon bar"
+      | CP.Ghost -> CF_aux f
+      | CP.Ghost_with_Epsilons _ ->
+         failwith "Colorize.color_with_flavor: unexpected epsilon"
+      | CP.Ghost_with_Epsilon_Bars _ ->
+         failwith "Colorize.color_with_flavor: unexpected epsilon bar"
 
     let colorize vertex_list flavors f v =
       List.map
         (fun (coef, cf) -> (color_with_flavor f cf, cmult_vertex coef v))
-        (CV.fuse (nc ()) vertex_list (List.map color_sans_flavor flavors))
+        (Color_Fusion.fuse (nc ()) vertex_list (List.map color_sans_flavor flavors))
 
     let partial_map_undoing_fusen fusen =
       partial_map_undoing_permutation
@@ -1585,9 +1700,9 @@ module It (M : Model.T) =
         (partial_map_undoing_fusen fusen)
 
     let colorize_fusionn_ufo flist f c v spins flines color fuse xtra =
-      let v = Vn (UFO (c, v, spins, flines, Color.Vertex.one), fuse, xtra) in
+      let v = Vn (UFO (c, v, spins, flines, Birdtracks.one), fuse, xtra) in
       let p = undo_permutation_of_fusen fuse in
-      colorize (CV.relocate p color) flist f v
+      colorize (Birdtracks.relocate p color) flist f v
 
     let colorize_fusionn flist (f, v) =
       match v with
@@ -1629,27 +1744,65 @@ module It (M : Model.T) =
 
 (* \thocwmodulesubsection{Adding Color to External Particles} *)
 
+(* Count the color strings in [f_list]: one incoming each quark and
+   gluon, one outgoing for each antiquark and gluon.  Keep track
+   of the number of gluons separately.  *)
+
+(* Count the number of color lines for a given combination of flavors,
+   assuming that the incoming lines have been crossed.  Returns a
+   pair $(n_{\text{in}},n_{\text{out}})$, corresponding to the number
+   of incoming and outgoing lines respectively.
+   Note that the two lines of gluons are included
+   in~$n_{\text{in}}$ and~$n_{\text{out}}$. *)
+
     let count_color_strings f_list =
-      let rec count_color_strings' n_in n_out n_glue = function
+      let rec count_color_strings' n_in n_out = function
         | f :: rest ->
             begin match M.color f with
-            | C.Singlet -> count_color_strings' n_in n_out n_glue rest
+            | C.Singlet -> count_color_strings' n_in n_out rest
             | C.SUN nc ->
                 if nc > 0 then
-                  count_color_strings' (succ n_in) n_out n_glue rest
+                  count_color_strings' (succ n_in) n_out rest
                 else if nc < 0 then
-                  count_color_strings' n_in (succ n_out) n_glue rest
+                  count_color_strings' n_in (succ n_out) rest
                 else
                   su0 "count_color_strings"
             | C.AdjSUN _ ->
-                count_color_strings' (succ n_in) (succ n_out) (succ n_glue) rest
+                count_color_strings' (succ n_in) (succ n_out) rest
+            | C.YT y ->
+                count_color_strings' (Young.num_cells_tableau y + n_in) n_out rest
+            | C.YTC y ->
+                count_color_strings' n_in (Young.num_cells_tableau y + n_out) rest
             end
-        | [] -> (n_in, n_out, n_glue)
+        | [] -> (n_in, n_out)
       in
-      count_color_strings' 0 0 0 f_list
+      count_color_strings' 0 0 f_list
+
+(* Return a list of all permutations of outgoing color lines.
+   \begin{dubious}
+     Currently, this assumes that there are an equal number of
+     incoming and outgoing lines.  This has to change, since we
+     want to support $\epsilon$- and $\bar\epsilon$-couplings that
+     act as sources and sinks of lines.
+   \end{dubious}
+   \begin{dubious}
+     For efficiency, we could check whether the model contains
+     $\epsilon$- or $\bar\epsilon$-couplings and produce only
+     conserved color lines if not.
+   \end{dubious}
+   \begin{dubious}
+     We can do even better if we add an optional parameter that
+     contains the number of $\epsilon$- and $\bar\epsilon$-couplings
+     appearing in the amplitude.  This can be computed
+     from the still uncolorized [DAG.t] by the calling function.
+   \end{dubious} *)
+
+(* If there are an equal number of incoming and outgoing color strings,
+   generate all permutations, e.\,g.~for $n=2$ we get
+   [([1,2],[1,2]);([1,2],[2,1])]. *)
 
     let external_color_flows f_list =
-      let n_in, n_out, n_glue = count_color_strings f_list in
+      let n_in, n_out = count_color_strings f_list in
       if n_in <> n_out then
         []
       else
@@ -1683,69 +1836,82 @@ module It (M : Model.T) =
         | _ -> false) vertices4 ||
       List.exists (fun (flist, _, g) -> true) verticesn
 
+    (* [colorize_crossed_amplitude_opt ghosts flavors (cfi, cfo)] attempts to join the
+       [flavors] with the external color flow [(cfi, cfo)].
+       Includes $\mathrm{U}(1)$ ghosts iff [ghosts] is [true] (i.\,e.~iff there are
+       \emph{only} external gluons).
+       Note that, despite the name, this only maps the external states and not yet
+       the [DAG.t] describing the scattering amplitude.  This will
+       happen in [Fusion] (chapter~\ref{sec:fusion}). *)
+
     let external_ghosts f_list =
       if pure_adjoints f_list then
         two_adjoints_couple_to_singlets ()
       else
         true
 
-(* We use [List.hd] and [List.tl] instead of pattern matching, because we
-   consume [ecf_in] and [ecf_out] at a different pace. *)
+    let snoc = function
+      | [] -> invalid_arg "Colorize.It().snoc: not enough color flow lines"
+      | a :: alist -> (a, alist)
 
-    let tail_opt = function
-      | [] -> []
-      | _ :: tail -> tail
+    let snoc_n n alist =
+      try
+        ThoList.splitn n alist
+      with
+      | Invalid_argument _ ->
+         invalid_arg "Colorize.It().snoc_n: not enough color flow lines"
 
-    let head_req = function
-      | [] ->
-          invalid_arg "Colorize.It().colorize_crossed_amplitude1: insufficient flows"
-      | x :: _ -> x
-
-    let rec colorize_crossed_amplitude1 ghosts acc f_list (ecf_in, ecf_out) =
+    let rec cca_opt ghosts acc f_list (ecf_in, ecf_out) =
       match f_list, ecf_in, ecf_out with
-      | [], [], [] -> [List.rev acc]
+      | [], [], [] -> Some (List.rev acc)
       | [], _, _ ->
-          invalid_arg "Colorize.It().colorize_crossed_amplitude1: leftover flows"
+          invalid_arg "Colorize.It().colorize_crossed_amplitude_opt: leftover color flow lines"
       | f :: rest, _, _ ->
           begin match M.color f with
-          | C.Singlet ->
-              colorize_crossed_amplitude1 ghosts
-                (White f :: acc)
-                rest (ecf_in, ecf_out)
+          | C.Singlet -> cca_opt ghosts (White f :: acc) rest (ecf_in, ecf_out)
           | C.SUN nc ->
               if nc > 0 then
-                colorize_crossed_amplitude1 ghosts
-                  (CF_in (f, head_req ecf_in) :: acc)
-                  rest (tail_opt ecf_in, ecf_out)
+                let cfi, ecf_in = snoc ecf_in in
+                cca_opt ghosts (CF_in (f, cfi) :: acc) rest (ecf_in, ecf_out)
               else if nc < 0 then
-                colorize_crossed_amplitude1 ghosts
-                  (CF_out (f, head_req ecf_out) :: acc)
-                  rest (ecf_in, tail_opt ecf_out)
+                let cfo, ecf_out = snoc ecf_out in
+                cca_opt ghosts (CF_out (f, cfo) :: acc) rest (ecf_in, ecf_out)
               else
                 su0 "colorize_flavor"
           | C.AdjSUN _ ->
-              let ecf_in' = head_req ecf_in
-              and ecf_out' = head_req ecf_out in
-              if ecf_in' = ecf_out' then begin
+              let cfi, ecf_in = snoc ecf_in
+              and cfo, ecf_out = snoc ecf_out in
+              if cfi = cfo then begin
                 if ghosts then
-                  colorize_crossed_amplitude1 ghosts
-                    (CF_aux f :: acc)
-                    rest (tail_opt ecf_in, tail_opt ecf_out)
+                  cca_opt ghosts (CF_aux f :: acc) rest (ecf_in, ecf_out)
                 else
-                  []
+                  None
               end else
-                colorize_crossed_amplitude1 ghosts
-                  (CF_io (f, ecf_in', ecf_out') :: acc)
-                  rest (tail_opt ecf_in, tail_opt ecf_out)
+                cca_opt ghosts (CF_io (f, cfi, cfo) :: acc) rest (ecf_in, ecf_out)
+          | C.YT y ->
+             let cfi, ecf_in = snoc_n (Young.num_cells_tableau y) ecf_in in
+             cca_opt ghosts (CF (f, CP.of_lists cfi []) :: acc) rest (ecf_in, ecf_out)
+          | C.YTC y ->
+             let cfo, ecf_out = snoc_n (Young.num_cells_tableau y) ecf_out in
+             cca_opt ghosts (CF (f, CP.of_lists [] cfo) :: acc) rest (ecf_in, ecf_out)
           end
 
-    let colorize_crossed_amplitude1 ghosts f_list (ecf_in, ecf_out) =
-      colorize_crossed_amplitude1 ghosts [] f_list (ecf_in, ecf_out)
+    let colorize_crossed_amplitude_opt ghosts f_list (ecf_in, ecf_out) =
+      cca_opt ghosts [] f_list (ecf_in, ecf_out)
 
     let colorize_crossed_amplitude f_list =
-      ThoList.rev_flatmap
-        (colorize_crossed_amplitude1 (external_ghosts f_list) f_list)
-        (external_color_flows f_list)
+      let ghosts = external_ghosts f_list in
+      List.fold_left
+        (fun ca_list ecf ->
+          match colorize_crossed_amplitude_opt ghosts f_list ecf with
+          | None -> ca_list
+          | Some ca -> ca :: ca_list)
+        [] (external_color_flows f_list)
+
+    let colorize_crossed_amplitude_logging f_list =
+      let amplitudes = colorize_crossed_amplitude f_list in
+      List.iter (fun a -> Printf.eprintf "%s\n" (ThoList.to_string flavor_to_string a)) amplitudes;
+      amplitudes
 
     let cross_uncolored p_in p_out =
       (List.map M.conjugate p_in) @ p_out
@@ -1763,12 +1929,21 @@ module It (M : Model.T) =
         (colorize_crossed_amplitude (cross_uncolored p_in p_out))
 
     (* The $-$-sign in the second component is redundant, but a Whizard convention. *)
+
+    (* \begin{dubious}
+         The case [CF (f, cp)] needs to be handled properly!
+       \end{dubious} *)
     let indices = function
       | White _ -> Color.Flow.of_list [0; 0]
       | CF_in (_, c) -> Color.Flow.of_list [c; 0]
       | CF_out (_, c) -> Color.Flow.of_list [0; -c]
       | CF_io (_, c1, c2) -> Color.Flow.of_list [c1; -c2]
-      | CF_aux f -> Color.Flow.ghost ()
+      | CF_aux _ -> Color.Flow.ghost ()
+      | CF (f, cp) ->
+         Printf.eprintf
+           "Colorize.indices: color flow `%s' not handled yet\n"
+           (CP.to_string cp);
+         Color.Flow.of_list [-42; -42]
 
     let flow p_in p_out =
       (List.map indices p_in, List.map indices p_out)
@@ -1786,9 +1961,14 @@ module Gauge (M : Model.Gauge) =
     type flavor_sans_color = CM.flavor_sans_color
     type gauge = CM.gauge
     type constant = CM.constant
+    type coupling_order = CM.coupling_order
     module Ch = CM.Ch
+    let all_coupling_orders = CM.all_coupling_orders
+    let coupling_orders = CM.coupling_orders
+    let coupling_order_to_string = CM.coupling_order_to_string
     let charges = CM.charges
     let flavor_sans_color = CM.flavor_sans_color
+    let flavor_equal = CM.flavor_equal
     let color = CM.color
     let pdg = CM.pdg
     let lorentz = CM.lorentz

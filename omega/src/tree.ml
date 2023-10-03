@@ -495,6 +495,15 @@ let feynmf_sets_wrapped latex file
   if latex then feynmf_footer tex;
   close_out tex
 
+let feynmf_sets_wrapped_to_channel latex channel
+    to_TeX_outer to_label_outer to_TeX_inner to_label_inner sets =
+  if latex then feynmf_header channel "\\jobname";
+  List.iter
+    (feynmf_sets channel latex 1
+       to_TeX_outer to_label_outer to_TeX_inner to_label_inner)
+    sets;
+  if latex then feynmf_footer channel
+
 let rec feynmf_levels tex sections level to_TeX to_label set =
   fprintf tex "%s\\%s{%s}\n"
     (if sections then "" else "%%% ")
@@ -750,11 +759,3 @@ let dump g =
   Printf.eprintf "\n => ";
   Array.iter (fun (_, x, y) -> Printf.eprintf "(%g,%g) " x y) g.int_nodes;
   Printf.eprintf "\n"
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

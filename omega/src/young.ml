@@ -20,10 +20,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* Avoid refering to [Pervasives.compare], because [Pervasives] will
-   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
-let pcompare = compare
-
 type diagram = int list
 type 'a tableau = 'a list list
 
@@ -49,12 +45,15 @@ let rec for_all_pairs predicate = function
      else
        for_all_pairs predicate a_list
 
-let decreasing l = for_all_pairs (fun a1 a2 -> pcompare a1 a2 > 0) l
-let increasing l = for_all_pairs (fun a1 a2 -> pcompare a1 a2 < 0) l
-let non_increasing l = for_all_pairs (fun a1 a2 -> pcompare a1 a2 >= 0) l
-let non_decreasing l = for_all_pairs (fun a1 a2 -> pcompare a1 a2 <= 0) l
+let decreasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 > 0) l
+let increasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 < 0) l
+let non_increasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 >= 0) l
+let non_decreasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 <= 0) l
 
-let valid_diagram = non_increasing
+let non_increasing_never_zero l =
+  for_all_pairs (fun a1 a2 -> a2 > 0 && compare a1 a2 >= 0) l
+
+let valid_diagram = non_increasing_never_zero
 
 let diagram_rows d =
   List.length d
@@ -157,12 +156,21 @@ let semistandard_tableau t =
   && List.for_all increasing columns
 
 let standard_tableau ?offset t =
-  match List.sort pcompare (cells_tableau t) with
+  match List.sort compare (cells_tableau t) with
   | [] -> true
   | cell :: _ as cell_list ->
      (match offset with None -> true | Some o -> cell = o)
      && for_all_pairs (fun c1 c2 -> c2 = c1 + 1) cell_list
      && semistandard_tableau t
+
+let map f t =
+  List.map (List.map f) t
+
+let tableau_to_string to_string t =
+  ThoList.to_string (ThoList.to_string to_string) t
+
+let pp fmt y =
+  Format.fprintf fmt "%s" (tableau_to_string string_of_int y)
 
 let hook_lengths_table d =
   let nr = diagram_rows d

@@ -62,7 +62,8 @@ val enumerate : ?stride:int -> int -> 'a list -> (int * 'a) list
    [list] that satisfy [predicate] and forms a list of pairs of
    an offset into the original [list] and the element with the
    offsets starting from [offset].  NB: the order of the returned
-   alist is not specified! *)
+   alist is not specified!  For example [ alist_of_list ["a";"b";"c"]
+    = [(2, "c"); (1, "b"); (0, "a")] ]*)
 val alist_of_list :
   ?predicate:('a -> bool) -> ?offset:int -> 'a list -> (int * 'a) list
 
@@ -97,6 +98,12 @@ val classify : 'a list -> (int * 'a) list
    \label{ThoList.factorize} *)
 val factorize : ('a * 'b) list -> ('a * 'b list) list
 
+(* [factorize_fold op init pairs] combines the second elements of the [pairs]
+   with common first element using the binary operator [op] and initial
+   value [init]. If [op] is not associative and commutative, the result is
+   \emph{not} well defined. *)
+val factorize_fold : ('b -> 'b -> 'b) -> 'b -> ('a * 'b) list -> ('a * 'b) list
+
 (* [flatmap f] is equivalent to $\ocwlowerid{flatten} \circ
    (\ocwlowerid{map}\;\ocwlowerid{f})$, but more efficient,
    because no intermediate lists are built.  Unfortunately, it is
@@ -118,6 +125,9 @@ val multiply : int -> 'a list -> 'a list
 
 (* [filtermap f l] applies [f] to each element of [l] and drops
    the results [None]. *)
+(* \begin{dubious}
+     This will be [List.filter_map] starting with O'Caml 4.08!
+   \end{dubious} *)
 val filtermap : ('a -> 'b option) -> 'a list -> 'b list
 
 (* [power a_list] computes the list of all sublists of [a_list],
@@ -196,6 +206,31 @@ val common : 'a list -> 'a list -> 'a list
    in [l1]. *)
 val complement : 'a list -> 'a list -> 'a list
 
+(* [to_string f list] formats the elements of the list with [f],
+   concatenates them with ["; "] and encloses the result in brakets.*)
 val to_string : ('a -> string) -> 'a list -> string
+
+(* [take_first_even_opt predicate list] find the first element [a] in
+   [list] with [predicate a = true].  It returns [Some (a, remainder)],
+   where [remainder] are all other elements of [list] reordered such
+   that [a :: remainder] is equal to an even permutation of [list].
+   It returns [None], if the predicate is never satisfied.
+
+   For a list of 2 elements, when the second element satisfies the
+   predicate, there are not enough elements to construct an even
+   permutation.  Therefore the function is not well defined for this
+   input.  Instead of returning [None], it raises the exception
+   [Invalid_argument "ThoList.take_first_even_opt: pair"]  *)
+val take_first_even_opt : ('a -> bool) -> 'a list -> ('a * 'a list) option
+
+(* [merge_alist op f1 f2 l1 l2] applies [op] to the values in the association
+   lists with matching keys and [f1] or [f2] to the others.  The result will
+   be sorted according to the keys. *)
+val merge_alist : ('a -> 'b -> 'c) -> ('a -> 'c) -> ('b -> 'c) ->
+   ('d * 'a) list -> ('d * 'b) list -> ('d * 'c) list
+
+(* Like [merge_alist], but faster since it assumes that the lists are sorted. *)
+val merge_sorted_alist : ('a -> 'b -> 'c) -> ('a -> 'c) -> ('b -> 'c) ->
+   ('d * 'a) list -> ('d * 'b) list -> ('d * 'c) list
 
 module Test : sig val suite : OUnit.test end

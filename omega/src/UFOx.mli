@@ -146,6 +146,7 @@ module type Tensor =
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
+    val rep_of_int_or_young_tableau : bool -> int option -> int Young.tableau option -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
 
@@ -176,6 +177,7 @@ module type Atom =
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
+    val rep_of_int_or_young_tableau : bool -> int option -> int Young.tableau option -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
     type r_omega
@@ -229,7 +231,9 @@ module type Color_Atom =
     type t = (* private *)
       | Identity of int * int
       | Identity8 of int * int
+      | Delta of int Young.tableau * int * int
       | T of int * int * int
+      | TY of int Young.tableau * int * int * int
       | F of int * int * int
       | D of int * int * int
       | Epsilon of int * int * int

@@ -22,8 +22,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module Omega_Dirac = Omega.Nary(Targets.Fortran)(UFO.Model)
-module Omega_Majorana = Omega.Nary_Majorana(Targets.Fortran_Majorana)(UFO.Model)
+module Omega_Dirac = Omega.Nary(Target_Fortran.Make)(UFO.Model)
+module Omega_Majorana = Omega.Nary_Majorana(Target_Fortran.Make_Majorana)(UFO.Model)
 
 let _ =
   try Omega_Dirac.main () with

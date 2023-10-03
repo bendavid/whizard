@@ -256,10 +256,10 @@ module Make (R : R) : T =
           Printf.printf
             "   i = %d, j =%d: %s + %s*I | %s + %s*I\n"
             i j
-            (Q.to_string (QC.real lhs.(i).(j)))
-            (Q.to_string (QC.imag lhs.(i).(j)))
-            (Q.to_string (QC.real rhs.(i).(j)))
-            (Q.to_string (QC.imag rhs.(i).(j)))
+            (Q.to_string (QC.re lhs.(i).(j)))
+            (Q.to_string (QC.im lhs.(i).(j)))
+            (Q.to_string (QC.re rhs.(i).(j)))
+            (Q.to_string (QC.im rhs.(i).(j)))
         done
       done
 

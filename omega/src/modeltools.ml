@@ -376,14 +376,20 @@ module Constant (M : Model.T) : Constant with type t = M.constant =
 
 (* \thocwmodulesection{Mutable Models} *)
 
-module Mutable (FGC : sig type f and g and c end) : Model.Mutable
-       with type flavor = FGC.f and type gauge = FGC.g and type constant = FGC.c =
+exception Uninitialized of string
+
+module Mutable (FGC : sig type f and g and c and co end) : Model.Mutable
+       with type flavor = FGC.f and type gauge = FGC.g
+        and type constant = FGC.c and type coupling_order = FGC.co =
   struct
     type flavor = FGC.f
     type gauge = FGC.g
     type constant = FGC.c
+    type coupling_order = FGC.co
 
-    let init () = ()
+    type init = string
+    let init _ = ()
+    let write_whizard _ = ()
 
     let options = Options.empty
     let caveats () = []
@@ -391,7 +397,6 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
     module Ch = Charges.Null
     let charges _ = ()
 
-    exception Uninitialized of string
     let uninitialized name =
       raise (Uninitialized name)
       
@@ -400,86 +405,47 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
 
 (* Also note that the references are \emph{not} shared among results
    of functor applications.  Simple module renaming causes sharing.  *)
-    let declare template =
-      let reference = ref template in
+    let declare initial =
+      let reference = ref initial in
       let update fct = reference := fct
       and lookup arg = !reference arg in
       (update, lookup)
 
-    let set_color, color =
-      declare (fun f -> uninitialized "color")
+    let declare1 name = declare (fun _ -> uninitialized name)
+    let declare2 name = declare (fun _ _ -> uninitialized name)
+    let declare3 name = declare (fun _ _ _ -> uninitialized name)
 
-    let set_nc, nc =
-      declare (fun f -> uninitialized "nc")
-
-    let set_pdg, pdg =
-      declare (fun f -> uninitialized "pdg")
-
-    let set_lorentz, lorentz =
-      declare (fun f -> uninitialized "lorentz")
-
-    let set_propagator, propagator =
-      declare (fun f -> uninitialized "propagator")
-
-    let set_width, width =
-      declare (fun f -> uninitialized "width")
-
-    let set_goldstone, goldstone =
-      declare (fun f -> uninitialized "goldstone")
-
-    let set_conjugate, conjugate =
-      declare (fun f -> uninitialized "conjugate")
-
-    let set_fermion, fermion =
-      declare (fun f -> uninitialized "fermion")
-
-    let set_max_degree, max_degree =
-      declare (fun () -> uninitialized "max_degree")
-
-    let set_vertices, vertices =
-      declare (fun () -> uninitialized "vertices")
-
-    let set_fuse2, fuse2 =
-      declare (fun f1 f2 -> uninitialized "fuse2")
-
-    let set_fuse3, fuse3 =
-      declare (fun f1 f2 f3 -> uninitialized "fuse3")
-
-    let set_fuse, fuse =
-      declare (fun f -> uninitialized "fuse")
-
-    let set_flavors, flavors =
-      declare (fun () -> [])
-
-    let set_external_flavors, external_flavors =
-      declare (fun () -> [("uninitialized", [])])
-
-    let set_parameters, parameters =
-      declare (fun () -> uninitialized "parameters")
-
-    let set_flavor_of_string, flavor_of_string =
-      declare (fun f -> uninitialized "flavor_of_string")
-
-    let set_flavor_to_string, flavor_to_string =
-      declare (fun f -> uninitialized "flavor_to_string")
-
-    let set_flavor_to_TeX, flavor_to_TeX =
-      declare (fun f -> uninitialized "flavor_to_TeX")
-
-    let set_flavor_symbol, flavor_symbol =
-      declare (fun f -> uninitialized "flavor_symbol")
-
-    let set_gauge_symbol, gauge_symbol =
-      declare (fun g -> uninitialized "gauge_symbol")
-
-    let set_mass_symbol, mass_symbol =
-      declare (fun f -> uninitialized "mass_symbol")
-
-    let set_width_symbol, width_symbol =
-      declare (fun f -> uninitialized "width_symbol")
-
-    let set_constant_symbol, constant_symbol =
-      declare (fun c -> uninitialized "constant_symbol")
+    let set_all_coupling_orders, all_coupling_orders =
+      declare1 "all_coupling_orders"
+    let set_coupling_orders, coupling_orders =
+      declare1 "coupling_orders"
+    let set_coupling_order_to_string, coupling_order_to_string =
+      declare1 "coupling_order_to_string"
+    let set_color, color = declare1 "color"
+    let set_nc, nc = declare1 "nc"
+    let set_pdg, pdg = declare1 "pdg"
+    let set_lorentz, lorentz = declare1 "lorentz"
+    let set_propagator, propagator = declare1 "propagator"
+    let set_width, width = declare1 "width"
+    let set_goldstone, goldstone = declare1 "goldstone"
+    let set_conjugate, conjugate = declare1 "conjugate"
+    let set_fermion, fermion = declare1 "fermion"
+    let set_max_degree, max_degree = declare1 "max_degree"
+    let set_vertices, vertices = declare1 "vertices"
+    let set_fuse2, fuse2 = declare2 "fuse2"
+    let set_fuse3, fuse3 = declare3 "fuse3"
+    let set_fuse, fuse = declare1 "fuse"
+    let set_flavors, flavors = declare1 "flavors"
+    let set_external_flavors, external_flavors = declare (fun () -> [("uninitialized", [])])
+    let set_parameters, parameters = declare1 "parameters"
+    let set_flavor_of_string, flavor_of_string = declare1 "flavor_of_string"
+    let set_flavor_to_string, flavor_to_string = declare1 "flavor_to_string"
+    let set_flavor_to_TeX, flavor_to_TeX = declare1 "flavor_to_TeX"
+    let set_flavor_symbol, flavor_symbol = declare1 "flavor_symbol"
+    let set_gauge_symbol, gauge_symbol = declare1 "gauge_symbol"
+    let set_mass_symbol, mass_symbol = declare1 "mass_symbol"
+    let set_width_symbol, width_symbol = declare1 "width_symbol"
+    let set_constant_symbol, constant_symbol = declare1 "constant_symbol"
 
     module F = Fusions (struct
       type f = flavor
@@ -498,7 +464,8 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
         ~conjugate ~fermion ~vertices
         ~flavors ~parameters ~flavor_of_string ~flavor_to_string
         ~flavor_to_TeX ~flavor_symbol
-        ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol =
+        ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol
+        ~all_coupling_orders ~coupling_order_to_string ~coupling_orders =
       set_color color;
       set_nc nc;
       set_pdg pdg;
@@ -527,7 +494,10 @@ module Mutable (FGC : sig type f and g and c end) : Model.Mutable
       set_gauge_symbol gauge_symbol;
       set_mass_symbol mass_symbol;
       set_width_symbol width_symbol;
-      set_constant_symbol constant_symbol
+      set_constant_symbol constant_symbol;
+      set_all_coupling_orders all_coupling_orders;
+      set_coupling_orders coupling_orders;
+      set_coupling_order_to_string coupling_order_to_string
 
   end
 
@@ -536,7 +506,12 @@ module Static (M : Model.T) =
     type flavor = M.flavor
     type gauge = M.gauge
     type constant = M.constant
+    type coupling_order = M.coupling_order
+    type init = string
     module Ch = M.Ch
+    let all_coupling_orders = M.all_coupling_orders
+    let coupling_orders = M.coupling_orders
+    let coupling_order_to_string = M.coupling_order_to_string
     let color = M.color
     let nc = M.nc
     let charges = M.charges
@@ -565,12 +540,14 @@ module Static (M : Model.T) =
     let constant_symbol = M.constant_symbol
     let options = M.options
     let caveats = M.caveats
-    let init () = ()
+    let init _ = ()
+    let write_whizard _ = ()
     let setup ~color ~nc ~pdg ~lorentz ~propagator ~width ~goldstone
         ~conjugate ~fermion ~vertices
         ~flavors ~parameters ~flavor_of_string ~flavor_to_string
         ~flavor_to_TeX ~flavor_symbol
-        ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol =
+        ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol
+        ~all_coupling_orders ~coupling_order_to_string ~coupling_orders =
       ()
   end
 
@@ -609,7 +586,11 @@ module Topology (M : Model.T) =
     type flavor = M.flavor
     type gauge = M.gauge
     type constant = M.constant
+    type coupling_order = M.coupling_order
     module Ch = M.Ch
+    let all_coupling_orders = M.all_coupling_orders
+    let coupling_orders = M.coupling_orders
+    let coupling_order_to_string = M.coupling_order_to_string
     let color = M.color
     let nc = M.nc
     let charges = M.charges
@@ -649,7 +630,11 @@ module Topology3 (M : Model.T) =
     type flavor = M.flavor
     type gauge = M.gauge
     type constant = M.constant
+    type coupling_order = M.coupling_order
     module Ch = M.Ch
+    let all_coupling_orders = M.all_coupling_orders
+    let coupling_orders = M.coupling_orders
+    let coupling_order_to_string = M.coupling_order_to_string
     let color = M.color
     let nc = M.nc
     let charges = M.charges

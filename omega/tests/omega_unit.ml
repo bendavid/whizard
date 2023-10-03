@@ -181,20 +181,25 @@ let suite =
      ThoList.Test.suite;
      ThoArray.Test.suite;
      ThoString.Test.suite;
+     ThoMap.Test.suite;
+     PArray.Test.suite;
      Partial.Test.suite;
      Permutation_Test_Using_Lists.suite;
      Permutation_Test_Using_Arrays.suite;
      Combinatorics_Unit_Tests.suite;
      Combinatorics.Test.suite;
+     DAG.Test.suite;
+     Orders.Test.suite;
      Young.Test.suite;
      Algebra.Q.Test.suite;
      Algebra.QC.Test.suite;
      Algebra.Laurent.Test.suite;
+     Arrow.Test.suite;
+     Birdtracks.Test.suite;
+     Color_Fusion.Test.suite;
      Color.Flow.Test.suite;
-     Color.Arrow.Test.suite;
-     Color.Birdtracks.Test.suite;
-     Color.SU3.Test.suite;
-     (* [Color.U3.Test.suite;] *)
+     SU3.Test.suite;
+     (* [U3.Test.suite;] *)
      UFO_targets.Fortran.Test.suite;
      UFO_Lorentz.Test.suite;
      UFOx.Test.suite;
@@ -208,10 +213,11 @@ let suite_long =
   "omega long" >:::
     [Young.Test.suite_long;
      Color.Flow.Test.suite_long;
-     Color.Arrow.Test.suite_long;
-     Color.Birdtracks.Test.suite_long;
-     Color.SU3.Test.suite_long;
-     (* [Color.U3.Test.suite_long] *) ]
+     Arrow.Test.suite_long;
+     Birdtracks.Test.suite_long;
+     Color_Fusion.Test.suite_long;
+     SU3.Test.suite_long;
+     (* [U3.Test.suite_long] *) ]
 
 let run_suite_long = ref false
 

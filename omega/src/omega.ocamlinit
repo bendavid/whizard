@@ -1,20 +1,25 @@
 (* This is for running O'Mega inside the utop O'Caml
    toplevel in order to debug some modules. *)
 
+#install_printer Algebra.Q.pp;;
+#install_printer Algebra.QC.pp;;
 #install_printer Algebra.Laurent.pp;;
-#install_printer Color.Arrow.pp_free;;
-#install_printer Color.Arrow.pp_factor;;
-#install_printer Color.Birdtracks.pp;;
-#install_printer Color.SU3.pp;;
-(* #install_printer Color.U3.pp;; *)
+#install_printer Arrow.pp_free;;
+#install_printer Arrow.pp_factor;;
+#install_printer Young.pp;;
+#install_printer Birdtracks.pp;;
+#install_printer Color_Propagator.pp;;
 #install_printer Dirac.Chiral.pp;;
 #install_printer Dirac.Dirac.pp;;
 #install_printer Dirac.Majorana.pp;;
-module A = Algebra.Laurent;;
-module SU3 = Color.SU3;;
-(* module U3 = Color.U3;; *)
-open SU3;;
+module Q = Algebra.Q;;
+module QC = Algebra.QC;;
+module L = Algebra.Laurent;;
+open Birdtracks;;
 open Infix;;
+open SU3;;
+open Color_Propagator;;
+open Color_Fusion;;
 
 (* parse and unparse *)
 let pnup spins s =
@@ -26,3 +31,28 @@ let pnup spins s =
 
 let pnup1 spin s =
   pnup [spin; spin] s;;
+
+
+(* Abbreviations *)
+let e = Algebra.QC.unit
+let half = Algebra.QC.fraction 2
+let w = white
+
+(* Quarks and anti quarks: *)
+let q i = of_lists [i] []
+let aq i = of_lists [] [i]
+
+(* Diquarks and anti diquarks: *)
+let dq i j = of_lists [i; j] []
+let adq i j = of_lists [] [i; j]
+
+(* Gluons without ghosts *)
+let g i j = of_lists [i] [j]
+
+(* Couplings *)
+let d = delta3
+let d6 = delta6
+let t = t
+let t6 = t6
+let k6 = k6
+let k6b = k6bar

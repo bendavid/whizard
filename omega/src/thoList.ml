@@ -22,10 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* Avoid refering to [Pervasives.compare], because [Pervasives] will
-   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
-let pcompare = compare
-
 let rec hdn n l =
   if n <= 0 then
     []
@@ -219,7 +215,7 @@ let transpose lists =
      else
        failwith ("ThoList.transpose: unexpected Failure(" ^ s ^ ")")
 
-let compare ?(cmp=pcompare) l1 l2 =
+let compare ?(cmp=Stdlib.compare) l1 l2 =
   let rec compare' l1' l2' =
     match l1', l2' with
     | [], [] -> 0
@@ -271,7 +267,7 @@ let rec pairs' acc = function
        end
 
 let pairs l =
-  pairs' [] (List.sort pcompare l)
+  pairs' [] (List.sort Stdlib.compare l)
 
 (* If we needed it, we could use a polymorphic version of [Set] to
    speed things up from~$O(n^2)$ to~$O(n\ln n)$.  But not before it
@@ -306,6 +302,11 @@ let rec factorize l =
   in
   List.map (fun (x, ys) -> (x, List.rev ys)) (factorize' [] l)
     
+let factorize_fold f acc l =
+  List.map
+    (fun (key, values) -> (key, List.fold_left f acc values))
+    (factorize l)
+
 let rec clone x n =
   if n < 0 then
     invalid_arg "ThoList.clone"
@@ -384,7 +385,7 @@ let partitioned_sort cmp index_sets list =
     () (complement_index_sets (List.length list) index_sets);
   Array.to_list array
 
-let ariadne_sort ?(cmp=pcompare) list =
+let ariadne_sort ?(cmp=Stdlib.compare) list =
   let sorted =
     List.sort (fun (n1, a1) (n2, a2) -> cmp a1 a2) (enumerate 0 list) in
   (List.map snd sorted, List.map fst sorted)
@@ -392,10 +393,10 @@ let ariadne_sort ?(cmp=pcompare) list =
 let ariadne_unsort (sorted, indices) =
   List.map snd
     (List.sort
-       (fun (n1, a1) (n2, a2) -> pcompare n1 n2)
+       (fun (n1, a1) (n2, a2) -> Stdlib.compare n1 n2)
        (List.map2 (fun n a -> (n, a)) indices sorted))
 
-let lexicographic ?(cmp=pcompare) l1 l2 =
+let lexicographic ?(cmp=Stdlib.compare) l1 l2 =
   let rec lexicographic' = function
     | [], [] -> 0
     | [], _ -> -1
@@ -427,9 +428,50 @@ let complement l1 = function
      else
        invalid_arg "ThoList.complement"
 
+let split_first_opt predicate list =
+  let rec split_first_opt' rev_head = function
+    | [] -> None
+    | a :: tail ->
+       if predicate a then
+         Some (List.rev rev_head, a, tail)
+       else
+         split_first_opt' (a :: rev_head) tail in
+  split_first_opt' [] list
+
+let take_first_even_opt predicate list =
+  match split_first_opt predicate list with
+  | None -> None
+  | Some ([], i, []) -> Some (i, [])
+  | Some ([_], _, []) -> invalid_arg "ThoList.take_first_even_opt: pair"
+  | Some ([], i, tail) -> Some (i, tail)
+  | Some (i1 :: i2 :: head, i, []) -> (* [ [i; i1; i2] ] is an even permutaion of [ [i1; i2; i] ]  *)
+     Some (i, i1 :: head @ [i2])
+  | Some (i1 :: head, i, i2 :: tail) -> (* [ [i; i2; i1] ] is an even permutaion of [ [i1; i; i2] ] *)
+     Some (i, head @ (i2 :: i1 :: tail))
 
 let to_string a2s alist =
   "[" ^ String.concat "; " (List.map a2s alist) ^ "]"
+
+let merge_sorted_alist op f1 f2 l1 l2 =
+  let rec merge_sorted_alist' acc l1 l2 =
+    match l1, l2 with
+    | [], [] -> List.rev acc
+    | tl1, [] -> List.rev_append acc (List.map (fun (k, v) -> (k, f1 v)) tl1)
+    | [], tl2 -> List.rev_append acc (List.map (fun (k, v) -> (k, f2 v)) tl2)
+    | (k1, v1) :: tl1, (k2, v2) :: tl2 ->
+       let c = Stdlib.compare k1 k2 in
+       if c = 0 then
+         merge_sorted_alist' ((k1, op v1 v2) :: acc) tl1 tl2
+       else if c < 0 then
+         merge_sorted_alist' ((k1, f1 v1) :: acc) tl1 l2
+       else
+         merge_sorted_alist' ((k2, f2 v2) :: acc) l1 tl2 in
+  merge_sorted_alist' [] l1 l2
+
+let merge_alist op f1 f2 l1 l2 =
+  merge_sorted_alist op f1 f2
+    (List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) l1)
+    (List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) l2)
 
 let random_int_list imax n =
   let imax_plus = succ imax in
@@ -438,14 +480,16 @@ let random_int_list imax n =
 module Test =
   struct
 
+    let id x = x
+
     let int_list2_to_string l2 =
       to_string (to_string string_of_int) l2
 
     (* Inefficient, must only be used for unit tests. *)
     let compare_lists_by_size l1 l2 =
-      let lengths = pcompare (List.length l1) (List.length l2) in
+      let lengths = Stdlib.compare (List.length l1) (List.length l2) in
       if lengths = 0 then
-        pcompare l1 l2
+        Stdlib.compare l1 l2
       else
         lengths
 
@@ -593,6 +637,14 @@ module Test =
                 (alist_of_list
                    ~predicate:(fun n -> n mod 2 = 0) ~offset:42 [0;1;2;3;4;5])) ]
 
+    let suite_factorize_fold =
+      "factorize_fold" >:::
+	[ "simple" >::
+	    (fun () ->
+	      assert_equal
+                [(1, 21); (2, 41)]
+                (factorize_fold (+) 0 [(1, 10); (2, 20); (2, 21); (1, 11)])) ]
+
     let suite_complement =
       "complement" >:::
 	[ "simple" >::
@@ -607,6 +659,74 @@ module Test =
                 (Invalid_argument ("ThoList.complement"))
 	        (fun () -> complement (complement [1;2;3;4] [5]))) ]
 
+    let suite_merge_alist =
+      "merge_alist" >:::
+	[ "[] []" >::
+	    (fun () ->
+	      assert_equal [] (merge_alist (+) id id [] []));
+
+          "[] [(a, 1); (b, 2)]" >::
+	    (fun () ->
+	      assert_equal
+                [("a", 1); ("b", 2)]
+                (merge_alist (+) id id [] [("a", 1); ("b", 2)]));
+
+          "[(a, 1); (b, 2)] []" >::
+	    (fun () ->
+	      assert_equal
+                [("a", 1); ("b", 2)]
+                (merge_alist (+) id id [("a", 1); ("b", 2)] []));
+
+          "[(a, 1); (b, 2)] [(c, 3); (b, 2)]" >::
+	    (fun () ->
+	      assert_equal
+                [("a", 1); ("b", 4); ("c", 3)]
+                (merge_alist (+) id id [("a", 1); ("b", 2)] [("c", 3); ("b", 2)])) ]
+
+    let suite_take_first_even_opt =
+      "take_first_even_opt" >:::
+	[ "empty" >::
+	    (fun () ->
+	      assert_equal None (take_first_even_opt ((=) 1) []));
+
+          "not found" >::
+	    (fun () ->
+	      assert_equal None (take_first_even_opt ((=) 0) [1;2;3]));
+
+          "1 [1;2;3]" >::
+	    (fun () ->
+	      assert_equal (Some (1, [2;3])) (take_first_even_opt ((=) 1) [1;2;3]));
+
+          "2 [1;2;3]" >::
+	    (fun () ->
+	      assert_equal (Some (2, [3;1])) (take_first_even_opt ((=) 2) [1;2;3]));
+
+          "3 [1;2;3]" >::
+	    (fun () ->
+	      assert_equal (Some (3, [1;2])) (take_first_even_opt ((=) 3) [1;2;3]));
+
+          "1 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal (Some (1, [2;3;4])) (take_first_even_opt ((=) 1) [1;2;3;4]));
+
+          "2 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal (Some (2, [3;1;4])) (take_first_even_opt ((=) 2) [1;2;3;4]));
+
+          "3 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal (Some (3, [2;4;1])) (take_first_even_opt ((=) 3) [1;2;3;4]));
+
+          "4 [1;2;3;4]" >::
+	    (fun () ->
+	      assert_equal (Some (4, [1;3;2])) (take_first_even_opt ((=) 4) [1;2;3;4]));
+
+          "pair" >::
+	    (fun () ->
+              assert_raises
+                (Invalid_argument ("ThoList.take_first_even_opt: pair"))
+	        (fun () -> take_first_even_opt ((=) 2) [1;2])) ]
+
     let suite =
       "ThoList" >:::
 	[suite_filtermap;
@@ -614,6 +734,9 @@ module Test =
          suite_split;
          suite_cycle;
          suite_alist_of_list;
-         suite_complement]
+         suite_factorize_fold;
+         suite_complement;
+         suite_merge_alist;
+         suite_take_first_even_opt]
 
   end

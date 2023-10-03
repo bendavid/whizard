@@ -24,23 +24,13 @@
 
 module Dummy : Target.Maker
 
-(* \thocwmodulesection{Supported Targets} *)
-module Fortran : Target.Maker
-module Fortran_Majorana : Target.Maker
-module VM : Target.Maker
-
 (* \thocwmodulesection{Potential Targets} *)
+
+(* Most will probably never materialize \ldots{} *)
+
 module Fortran77 : Target.Maker
 module C : Target.Maker
 module Cpp : Target.Maker
 module Java : Target.Maker
 module Ocaml : Target.Maker
 module LaTeX : Target.Maker
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -20,6 +20,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+(* \label{sec:bundle} *)
+
 (* \begin{figure}
      \begin{center}
        \begin{emp}(80,80)
@@ -47,8 +49,8 @@
          drawarrow (.7w,.2h){up} .. {-1,1}(base intersectionpoint fiber);
          label.bot (btex $x\in B$ etex, (.7w,.2h));
          drawarrow (.2w,.8h){right} .. point .8 of fiber;
-         label.lft (btex $\pi^{-1}(x)$ etex, (.2w,.8h));
-         label.lft (btex $E = \pi^{-1}(b)$ etex, (.2w,.6h));
+         label.lft (btex $\pi^{-1}(x) \subset E$ etex, (.2w,.8h));
+         label.lft (btex $\pi^{-1}(B) = \bigcup_{x\in B}\pi^{-1}(x) \subset 2^E$ etex, (.2w,.6h));
          setbounds currentpicture to (0,0)--(w,0)--(w,h)--(0,h)--cycle;
        \end{emp}
      \end{center}
@@ -76,35 +78,26 @@ module type Elt_Base =
 module type Projection =
   sig
     include Elt_Base
-
-    (* $\pi: E \to B$ *)
-    val pi : elt -> base
-
+    val pi : elt -> base (* projection $\pi: E \to B$ *)
   end
 
+(* Note that writing $\pi^{-1}$ for the ``inverse'' is an \textit{abuse-de-langage},
+   because $\pi^{-1}\circ\pi$ is \emph{not} the identity.  It does not map each element
+   to itself but to the fiber that contains it.  It is not an
+   automorphism of~$E$, but a map from~$E$ to its power set~$2^E$. *)
 module type T =
   sig
-
     type t
-
     type elt
     type fiber = elt list
     type base
-
-    val add : elt -> t -> t
+    val empty : t
+    val add : t -> elt -> t
     val of_list : elt list -> t
-
-    (* $\pi: E \to B$ *)
-    val pi : elt -> base
-
-    (* $\pi^{-1}: B \to E$ *)
-    val inv_pi : base -> t -> fiber
-
+    val pi : elt -> base (* projection $\pi: E \to B$ *)
+    val inv_pi : t -> base -> fiber (*``inverse'' projection $\pi^{-1}:B\to 2^E$*)
     val base : t -> base list
-
-    (* $\pi^{-1}\circ\pi$ *)
-    val fiber : elt -> t -> fiber
-
+    val fiber : t -> elt -> fiber (* $\pi^{-1}\circ\pi: E\to 2^E$ *)
     val fibers : t -> (base * fiber) list
   end
 
@@ -119,20 +112,13 @@ module type Dyn =
     type elt
     type fiber = elt list
     type base
-    val add : (elt -> base) -> elt -> t -> t
+    val empty : t
+    val add : (elt -> base) -> t -> elt -> t
     val of_list : (elt -> base) -> elt list -> t
-    val inv_pi : base -> t -> fiber
+    val inv_pi : t -> base -> fiber
     val base : t -> base list
-    val fiber : (elt -> base) -> elt -> t -> fiber
+    val fiber : (elt -> base) -> t -> elt -> fiber
     val fibers : t -> (base * fiber) list
   end
 
 module Dyn (P : Elt_Base) : Dyn with type elt = P.elt and type base = P.base
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

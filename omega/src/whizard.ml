@@ -210,8 +210,7 @@ module Make (FM : Fusion.Maker) (P : Momentum.T)
       | "H" -> "H"
       | s -> s ^ " (not translated)"
 
-    module Mappable =
-      Set.Make (struct type t = string let compare = compare end)
+    module Mappable = Sets.String
     let mappable =
       List.fold_right Mappable.add
         [ "T"; "Z"; "W+"; "W-"; "H" ] Mappable.empty
@@ -408,11 +407,3 @@ let write_makefile_processes ch names =
   List.iter (fun f ->
     fprintf ch "%s.o: omega_bundle_whizard.o parameters.o\n" f;
     fprintf ch "process_interface.o: %s.o\n" f) names
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

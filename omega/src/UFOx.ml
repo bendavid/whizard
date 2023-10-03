@@ -36,7 +36,7 @@ let error_in_file name start_pos end_pos =
     end_pos.Lexing.pos_lnum
     (end_pos.Lexing.pos_cnum - end_pos.Lexing.pos_bol)
 
-module SMap = Map.Make (struct type t = string let compare = compare end)
+module SMap = Map.Make(String)
 
 module Expr =
   struct
@@ -68,7 +68,7 @@ module Expr =
     open UFOx_syntax
 
     let rec map f = function
-      | Integer _ | Float _ | Quoted _ as e -> e
+      | Integer _ | Float _ | Quoted _ | Young_Tableau _ as e -> e
       | Variable s as e ->
          begin match f s with
          | Some value -> value
@@ -427,6 +427,9 @@ module Value =
       | S.Quoted name ->
 	 invalid_arg ("UFOx.Value.of_expr: unexpected quoted variable '" ^
 			 name ^ "'")
+      | S.Young_Tableau y ->
+	 invalid_arg ("UFOx.Value.of_expr: unexpected Young tableau '" ^
+			Young.tableau_to_string string_of_int y ^ "'")
       | S.Variable name -> Variable name
       | S.Sum (e1, e2) ->
 	 begin match of_expr e1, of_expr e2 with
@@ -661,6 +664,7 @@ module type Atom =
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
+    val rep_of_int_or_young_tableau : bool -> int option -> int Young.tableau option -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
     type r_omega
@@ -689,6 +693,7 @@ module type Tensor =
     val rep_to_string : r -> string
     val rep_to_string_whizard : r -> string
     val rep_of_int : bool -> int -> r
+    val rep_of_int_or_young_tableau : bool -> int option -> int Young.tableau option -> r
     val rep_conjugate : r -> r
     val rep_trivial : r -> bool
     type r_omega
@@ -871,6 +876,9 @@ module Tensor (A : Atom) : Tensor
       | S.Quoted name ->
 	 invalid_arg ("UFOx.Tensor.of_expr: unexpected quoted variable '" ^
 			 name ^ "'")
+      | S.Young_Tableau y ->
+	 invalid_arg ("UFOx.Tensor.of_expr: unexpected top level Young tableau '" ^
+			Young.tableau_to_string string_of_int y ^ "'")
       | S.Variable name ->
          (* There should be a gatekeeper here or in [A.of_expr]: *)
          Linear [(A.of_expr name [], QC.unit)]
@@ -878,7 +886,7 @@ module Tensor (A : Atom) : Tensor
          begin match of_expr re, of_expr im with
          | Linear [([], re)], Linear [([], im)] ->
             if QC.is_real re && QC.is_real im then
-              Linear [([], QC.make (QC.real re) (QC.real im))]
+              Linear [([], QC.make (QC.re re) (QC.re im))]
             else
 	      invalid_arg ("UFOx.Tensor.of_expr: argument of complex is complex")
          | _ ->
@@ -915,7 +923,7 @@ module Tensor (A : Atom) : Tensor
 	 begin match of_expr e, of_expr p with
 	 | Linear [([], q)], Linear [([], p)] ->
 	    if QC.is_real p then
-              let re_p = QC.real p in
+              let re_p = QC.re p in
 	      if Q.is_integer re_p then
 	        Linear [([], QC.pow q (Q.to_integer re_p))]
 	      else
@@ -926,7 +934,7 @@ module Tensor (A : Atom) : Tensor
 	    invalid_arg "UFOx.Tensor.of_expr: non-numeric power of number"
 	 | t, Linear [([], p)] ->
             if QC.is_integer p then
-              power (Q.to_integer (QC.real p)) t
+              power (Q.to_integer (QC.re p)) t
             else
 	      invalid_arg "UFOx.Tensor.of_expr: non integer power of tensor"
 	 | _ -> invalid_arg "UFOx.Tensor.of_expr: non numeric power of tensor"
@@ -936,6 +944,7 @@ module Tensor (A : Atom) : Tensor
     let rep_to_string = A.rep_to_string
     let rep_to_string_whizard = A.rep_to_string_whizard
     let rep_of_int = A.rep_of_int
+    let rep_of_int_or_young_tableau = A.rep_of_int_or_young_tableau
     let rep_conjugate = A.rep_conjugate
     let rep_trivial = A.rep_trivial
 
@@ -1339,6 +1348,12 @@ module Lorentz_Atom' : Atom
       | _ ->
          invalid_arg "UFOx.Lorentz: invalid non-positive spin value"
 	 
+    let rep_of_int_or_young_tableau neutral i yt =
+      match i, yt with
+      | Some i, None -> rep_of_int neutral i
+      | None, None -> S
+      | _, Some _ -> invalid_arg "UFOx.Lorentz: Young tableau not supported"
+
     let rep_conjugate = function
       | S -> S
       | V -> V
@@ -1368,7 +1383,7 @@ module Lorentz_Atom' : Atom
       | Vector v -> classify_vector_indices1 v
       | Scalar _ | Inverse _ -> []
 
-    module IMap = Map.Make (struct type t = int let compare = compare end)
+    module IMap = Map.Make(Int)
 
     exception Incompatible_factors of r * r
 
@@ -1463,7 +1478,9 @@ module type Color_Atom =
     type t = (* private *)
       | Identity of int * int
       | Identity8 of int * int
+      | Delta of int Young.tableau * int * int
       | T of int * int * int
+      | TY of int Young.tableau * int * int * int
       | F of int * int * int
       | D of int * int * int
       | Epsilon of int * int * int
@@ -1478,7 +1495,9 @@ module Color_Atom =
     type t =
       | Identity of int * int
       | Identity8 of int * int
+      | Delta of int Young.tableau * int * int
       | T of int * int * int
+      | TY of int Young.tableau * int * int * int
       | F of int * int * int
       | D of int * int * int
       | Epsilon of int * int * int
@@ -1501,7 +1520,9 @@ module Color_Atom' : Atom
     let map_indices f = function
       | Identity (i, j) -> Identity (f i, f j)
       | Identity8 (a, b) -> Identity8 (f a, f b)
+      | Delta (y, a, b) -> Delta (y, f a, f b)
       | T (a, i, j) -> T (f a, f i, f j)
+      | TY (y, a, i, j) -> TY (y, f a, f i, f j)
       | F (a, i, j) -> F (f a, f i, f j)
       | D (a, i, j) -> D (f a, f i, f j)
       | Epsilon (i, j, k) -> Epsilon (f i, f j, f k)
@@ -1521,14 +1542,33 @@ module Color_Atom' : Atom
     let invert _ =
       invalid_arg "UFOx.Color_Atom.invert"
 
+    let young_tableau_valid_particle y =
+      Young.standard_tableau ~offset:1 y
+
     let of_expr1 name args =
       match name, args with
       | "Identity", [S.Integer i; S.Integer j] -> Identity (i, j)
       | "Identity", _ ->
 	 invalid_arg "UFOx.Color.of_expr: invalid arguments to Identity()"
+      | "Delta", [S.Young_Tableau y; S.Integer i; S.Integer j] ->
+         if young_tableau_valid_particle y then
+            Delta (y, i, j)
+         else
+	   invalid_arg ("UFOx.Color.of_expr: invalid Young tableau in Delta: " ^
+                          Young.tableau_to_string string_of_int y)
+      | "Delta", _ ->
+	 invalid_arg "UFOx.Color.of_expr: invalid arguments to Identity()"
       | "T", [S.Integer a; S.Integer i; S.Integer j] -> T (a, i, j)
       | "T", _ ->
 	 invalid_arg "UFOx.Color.of_expr: invalid arguments to T()"
+      | "TY", [S.Young_Tableau y; S.Integer a; S.Integer i; S.Integer j] ->
+         if young_tableau_valid_particle y then
+           TY (y, a, i, j)
+         else
+	   invalid_arg ("UFOx.Color.of_expr: invalid Young tableau in TY: " ^
+                          Young.tableau_to_string string_of_int y)
+      | "TY", _ ->
+	 invalid_arg "UFOx.Color.of_expr: invalid arguments to TY()"
       | "f", [S.Integer a; S.Integer b; S.Integer c] -> F (a, b, c)
       | "f", _ ->
 	 invalid_arg "UFOx.Color.of_expr: invalid arguments to f()"
@@ -1561,7 +1601,9 @@ module Color_Atom' : Atom
     let to_string = function
       | Identity (i, j) -> Printf.sprintf "Identity(%d,%d)" i j
       | Identity8 (a, b) -> Printf.sprintf "Identity8(%d,%d)" a b
+      | Delta (y, a, b) -> Printf.sprintf "Delta(%s,%d,%d)" (Young.tableau_to_string string_of_int y) a b
       | T (a, i, j) -> Printf.sprintf "T(%d,%d,%d)" a i j
+      | TY (y, a, i, j) -> Printf.sprintf "TY(%s,%d,%d,%d)" (Young.tableau_to_string string_of_int y) a i j
       | F (a, b, c) -> Printf.sprintf "f(%d,%d,%d)" a b c
       | D (a, b, c) -> Printf.sprintf "d(%d,%d,%d)" a b c
       | Epsilon (i, j, k) -> Printf.sprintf "Epsilon(%d,%d,%d)" i j k
@@ -1570,55 +1612,109 @@ module Color_Atom' : Atom
       | K6 (i', j, k) -> Printf.sprintf "K6(%d,%d,%d)" i' j k
       | K6Bar (i', j, k) -> Printf.sprintf "K6Bar(%d,%d,%d)" i' j k
 
-    type r = S | F | C | A
+    type r = S | F | C | A | YT of int Young.tableau
+
+    let conjugate_tableau y =
+      Young.map (~-) y
+
+    let young_tableau_valid_UFO y =
+      young_tableau_valid_particle y ||
+        young_tableau_valid_particle (conjugate_tableau y)
+
+    let young_to_string y =
+      ThoList.to_string (ThoList.to_string string_of_int) y
 
     let rep_trivial = function
-      | S -> true
-      | F | C | A -> false
+      | S | YT [] | YT [[]] -> true
+      | F | C | A | YT _ -> false
 
     let rep_to_string = function
       | S -> "1"
       | F -> "3"
       | C -> "3bar"
-      | A-> "8"
+      | A -> "8"
+      | YT y -> young_to_string y
 
     let rep_to_string_whizard = function
       | S -> "1"
       | F -> "3"
       | C -> "-3"
-      | A-> "8"
+      | A -> "8"
+      | YT y -> young_to_string y
 
     let rep_of_int neutral = function
       | 1 -> S
       | 3 -> F
       | -3 -> C
       | 8 -> A
-      | 6 | -6 -> failwith "UFOx.Color: sextets not supported yet!"
-      | 10 | -10 -> failwith "UFOx.Color: decuplets not supported yet!"
+      | 6 -> YT [[1;2]]
+      | -6 -> YT [[-1;-2]]
+      | 10 -> YT [[1;2;3]]
+      | -10 -> YT [[-1;-2;-3]]
       | n ->
          invalid_arg
            (Printf.sprintf
               "UFOx.Color: impossible representation color = %d!" n)
-	 
+
+    let simplify_young_tableau = function
+      | [] | [[]] -> S
+      | [[i]] ->
+         if i < 0 then
+           C
+         else
+           F
+      | y -> YT y
+
+    let rep_of_int_or_young_tableau neutral i = function
+      | None ->
+         begin match i with
+         | Some i -> rep_of_int neutral i
+         | None ->
+            Printf.eprintf "UFO: warning: missing required attribute color!\n";
+            S
+         end
+      | Some y ->
+         if young_tableau_valid_UFO y then
+           begin match i with
+           | None | Some 0 -> YT y
+           | Some i ->
+              let ri = rep_of_int neutral i in
+              if ri = simplify_young_tableau y then
+                ri
+              else
+                invalid_arg
+                  (Printf.sprintf
+                     "UFOx.Color.rep_of_int_or_young_tableau: color = %d != color_young = %s"
+                     i (young_to_string y))
+           end
+         else
+           invalid_arg
+             ("UFOx.Color.rep_of_int_or_young_tableau: not a standard tableau: " ^ young_to_string y)
+
     let rep_conjugate = function
       | S -> S
       | C -> F
       | F -> C
       | A -> A
+      | YT y -> YT (conjugate_tableau y)
+
+    (* \begin{dubious}
+         Check the particle/anti-particle assignments for
+         the sextets!
+       \end{dubious} *)
 
     let classify_indices1 = function
       | Identity (i, j) -> [(i, C); (j, F)]
       | Identity8 (a, b) -> [(a, A); (b, A)]
+      | Delta (y, a, b) -> [(a, YT (conjugate_tableau y)); (b, YT y)]
       | T (a, i, j) -> [(i, F); (j, C); (a, A)]
+      | TY (y, a, i, j) -> [(i, YT y); (j, YT (conjugate_tableau y)); (a, A)]
       | Color_Atom.F (a, b, c) | D (a, b, c) -> [(a, A); (b, A); (c, A)] 
       | Epsilon (i, j, k) -> [(i, F); (j, F); (k, F)]
       | EpsilonBar (i, j, k) -> [(i, C); (j, C); (k, C)]
-      | T6 (a, i', j') ->
-	 failwith "UFOx.Color: sextets not supported yet!"
-      | K6 (i', j, k) ->
-	 failwith "UFOx.Color: sextets not supported yet!"
-      | K6Bar (i', j, k) ->
-	 failwith "UFOx.Color: sextets not supported yet!"
+      | T6 (a, i, j) -> [(a, A); (i, YT [[1;2]]); (j, YT [[-1;-2]])]
+      | K6 (i, j, k) -> [(i, YT [[-1;-2]]); (j, F); (k, F)]
+      | K6Bar (i, j, k) ->  [(i, YT [[1;2]]); (j, C); (k, C)]
 
     let classify_indices tensors =
       List.sort compare
@@ -1631,13 +1727,26 @@ module Color_Atom' : Atom
 
     type r_omega = Color.t
 
+    (* Our encoding of charge conjugation only works
+       if the indices start from 1.  In [SU3], we use
+       tableau with indices that start from 0. *)
+
     (* FIXME: $N_C=3$ should not be hardcoded! *)
+
     let omega = function
       | S -> Color.Singlet
       | F -> Color.SUN (3)
       | C -> Color.SUN (-3)
       | A -> Color.AdjSUN (3)
-    
+      | YT [] | YT [[]] -> Color.Singlet
+      | YT ([] :: _ as y) -> failwith ("UFOx.Color.omega: invalid tableau: " ^ young_to_string y)
+      | YT ((i0 :: _) :: _ as y) ->
+         let y = Young.map (fun i -> abs i - 1) y in
+         if i0 < 0 then
+           Color.YTC y
+         else
+           Color.YT y
+
   end
 
 module Color = Tensor(Color_Atom')

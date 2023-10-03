@@ -6,7 +6,7 @@ Use git log/svn log to see detailed changes.
 
 2023-10-02
 	CIRCE2: add 'null' maps for regions with not enough statistics
-	Since OCaml 4.08, we can retire the Bigarray compatibility hack
+	OMEGA/CIRCE2: remove pre OCaml 4.08 workarounds
 
 2023-09-25
 	Minimal compiler versions: OCaml 4.08, gfortran 9.1.0

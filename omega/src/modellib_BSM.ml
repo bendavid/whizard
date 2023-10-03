@@ -150,7 +150,7 @@ module Littlest (Flags : BSM_flags) =
           | Psi1 | Psip | Psim | Psipp | Psimm -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | M TopH -> Color.SUN 3 | M TopHb -> Color.SUN (-3)
@@ -360,10 +360,14 @@ module Littlest (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.Littlest.orders: not implemented yet!"
 
     let input_parameters =
       []
@@ -1320,7 +1324,7 @@ module Littlest_Tpar (Flags : BSM_flags) =
       | Wp | Wm | Z | WHp | WHm | ZH | AH -> Massive_Vector
       | _ -> Scalar
 
-    let color = function 
+    let color = function
       | U n -> Color.SUN (if n > 0 then 3 else -3)
       | Uodd n -> Color.SUN (if n > 0 then 3 else -3)
       | D n -> Color.SUN  (if n > 0 then 3 else -3)
@@ -1489,10 +1493,14 @@ module Littlest_Tpar (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.Littlest_Tpar.orders: not implemented yet!"
 
     let input_parameters =
       []
@@ -2431,7 +2439,7 @@ module Simplest (Flags : BSM_flags) =
       | Wp | Wm | Z | Xp | Xm | X0 | Y0 | ZH -> Massive_Vector
       | _ -> Scalar
 
-    let color = function 
+    let color = function
       | U n -> Color.SUN (if n > 0 then 3 else -3)
       | D n -> Color.SUN  (if n > 0 then 3 else -3)
       | QH n -> Color.SUN  (if n > 0 then 3 else -3)
@@ -2560,10 +2568,14 @@ module Simplest (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.Simplest.orders: not implemented yet!"
 
 (* \begin{dubious}
      The current abstract syntax for parameter dependencies is admittedly
@@ -3202,7 +3214,7 @@ module Xdim (Flags : BSM_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -3358,10 +3370,14 @@ module Xdim (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.Xdim.orders: not implemented yet!"
 
     let input_parameters =
       []
@@ -3823,7 +3839,7 @@ module UED (Flags : BSM_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | M (U_K1_L n) -> Color.SUN (if n > 0 then 3 else -3)
@@ -4038,10 +4054,14 @@ module UED (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.UED.orders: not implemented yet!"
 
     let input_parameters =
       []
@@ -4781,7 +4801,7 @@ module GravTest (Flags : BSM_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -4948,10 +4968,14 @@ module GravTest (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.GravTest.orders: not implemented yet!"
 
     let input_parameters =
       []
@@ -5393,7 +5417,7 @@ module Template (Flags : BSM_flags) =
           end
       | O f -> Scalar
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -5549,10 +5573,14 @@ module Template (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.Template.orders: not implemented yet!"
 
     let input_parameters = []
 
@@ -5932,7 +5960,7 @@ module HSExt (Flags : BSM_flags) =
           end
       | O f -> Scalar
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -6091,10 +6119,14 @@ module HSExt (Flags : BSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.HSExt.orders: not implemented yet!"
 
     let input_parameters = []
 
@@ -6666,7 +6698,7 @@ module Threeshl (Module_options: Threeshl_options) =
       let spinorprop = function
          | (_, Pos, _, _) -> Prop_Spinor
          | (_, Neg, _, _) -> Prop_ConjSpinor
-      in function 
+      in function
          | Fermion (Lepton x) | Fermion (Quark x) -> spinorprop x
          | Boson (W _) | Boson (Z _) ->
             (match !all_feynman with false -> Prop_Unitarity | true -> Prop_Feynman)
@@ -6757,10 +6789,14 @@ module Threeshl (Module_options: Threeshl_options) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+      type coupling_order = QCD | EW
+      let all_coupling_orders () = [QCD; EW]
+      let coupling_order_to_string = function
+        | QCD -> "QCD"
+        | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+      let coupling_orders = function
+        | _ -> failwith "Modellib_BSM.Threeshl.orders: not implemented yet!"
 
       (* Functions for the construction of constants from indices *)
       let g_a_quark x = G_a_quark x
@@ -7247,7 +7283,7 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
           end
       | O f -> Scalar
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | G Gl  -> Color.AdjSUN 3
@@ -7440,10 +7476,14 @@ module TwoHiggsDoublet (Flags : THDM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.TwoHiggsDoublet.orders: not implemented yet!"
 
     let g_over_2_costh =
       Quot (Neg (Atom G_weak), Prod [Integer 2; Atom Costhw])
@@ -8249,7 +8289,7 @@ module SSC (Flags : SSC_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -8608,10 +8648,14 @@ module SSC (Flags : SSC_flags) =
      it should include simple functions.
    \end{dubious} *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.SSC.orders: not implemented yet!"
 
 (* \begin{subequations}
      \begin{align}
@@ -11784,7 +11828,7 @@ module SSC_AltT (Flags : SSC_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -12153,10 +12197,14 @@ module SSC_AltT (Flags : SSC_flags) =
      it should include simple functions.
    \end{dubious} *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_BSM.SSC_AltT.orders: not implemented yet!"
 
 (* \begin{subequations}
      \begin{align}

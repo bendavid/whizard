@@ -43,7 +43,7 @@ let invalid_parameter_attr () =
 %token < float > FLOAT
 %token < string > ID QUOTED
 %token PLUS MINUS TIMES POWER DIV
-%token LPAREN RPAREN COMMA
+%token LPAREN RPAREN LBRACKET RBRACKET COMMA
 
 %token END
 
@@ -66,6 +66,7 @@ expr:
  | FLOAT           	  { X.float $1 }
  | ID              	  { X.variable $1 }
  | QUOTED             	  { X.quoted $1 }
+ | young_tableau          { X.young_tableau $1 }
  | expr PLUS expr  	  { X.add $1 $3 }
  | expr MINUS expr 	  { X.subtract $1 $3 }
  | expr TIMES expr 	  { X.multiply $1 $3 }
@@ -81,4 +82,30 @@ expr:
 args:
  | expr            { [$1] }
  | expr COMMA args { $1 :: $3 }
+;
+
+young_tableau:
+ | LBRACKET RBRACKET                { [] }
+ | LBRACKET integer_lists RBRACKET  { $2 }
+;
+
+integer_lists:
+ | integer_list                     { [$1] }
+ | integer_list COMMA integer_lists { $1 :: $3 }
+;
+
+integer_list:
+ | LBRACKET RBRACKET          { [] }
+ | LBRACKET integers RBRACKET { $2 }
+
+;
+
+integers:
+ | integer                { [$1] }
+ | integer COMMA integers { $1 :: $3 }
+;
+
+integer:
+ | INT       { $1 }
+ | MINUS INT { ~- $2 }
 ;

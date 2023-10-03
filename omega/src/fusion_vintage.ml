@@ -23,10 +23,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* Avoid refering to [Pervasives.compare], because [Pervasives] will
-   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
-let pcompare = compare
-
 module type T =
   sig
     val options : Options.t
@@ -34,22 +30,20 @@ module type T =
     type wf
     val conjugate : wf -> wf
     type flavor
+    type flavor_all_orders
     type flavor_sans_color
     val flavor : wf -> flavor
+    val flavor_all_orders : wf -> flavor_all_orders
     val flavor_sans_color : wf -> flavor_sans_color
     type p
     val momentum : wf -> p
     val momentum_list : wf -> int list
-    val wf_tag : wf -> string option
     type constant
     type coupling
     type rhs
     type 'a children
     val sign : rhs -> int
     val coupling : rhs -> constant Coupling.t
-    val coupling_tag : rhs -> string option
-    type exclusions
-    val no_exclusions : exclusions
     val children : rhs -> wf list
     type fusion
     val lhs : fusion -> wf
@@ -60,9 +54,12 @@ module type T =
     type amplitude
     type amplitude_sans_color
     type selectors
-    val amplitudes : bool -> exclusions -> selectors ->
+    type slicings
+    val amplitudes : bool -> selectors -> slicings option ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
-    val amplitude_sans_color : bool -> exclusions -> selectors ->
+    val amplitudes_all_orders : bool -> selectors ->
+      flavor_sans_color list -> flavor_sans_color list -> amplitude list
+    val amplitude_sans_color : bool -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude_sans_color
     val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
     val incoming : amplitude -> flavor list
@@ -70,10 +67,12 @@ module type T =
     val externals : amplitude -> wf list
     val variables : amplitude -> wf list
     val fusions : amplitude -> fusion list
-    val brakets : amplitude -> braket list
+    type 'a slices
+    val brakets : amplitude -> braket list slices
     val on_shell : amplitude -> (wf -> bool)
     val is_gauss : amplitude -> (wf -> bool)
     val constraints : amplitude -> string option
+    val slicings : amplitude -> string list
     val symmetry : amplitude -> int
     val allowed : amplitude -> bool
 (*i
@@ -96,10 +95,13 @@ i*)
 module type Maker =
     functor (P : Momentum.T) -> functor (M : Model.T) ->
       T with type p = P.t
-      and type flavor = Colorize.It(M).flavor
+      and type flavor = Orders.Slice(Colorize.It(M)).flavor
+      and type flavor_all_orders = Colorize.It(M).flavor
       and type flavor_sans_color = M.flavor
       and type constant = M.constant
       and type selectors = Cascade.Make(M)(P).selectors
+      and type slicings = Orders.Conditions(Colorize.It(M)).t
+      and type 'a slices = (Orders.Slice(Colorize.It(M)).orders * 'a) list
 
 (* \thocwmodulesection{Fermi Statistics} *)
 
@@ -235,77 +237,9 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
   end
 
-(* \thocwmodulesection{Tags} *)
+(* \thocwmodulesection{The [Fusion.Make] Functor} *)
 
-module type Tags =
-  sig
-    type wf
-    type coupling
-    type 'a children
-    val null_wf : wf
-    val null_coupling : coupling
-    val fuse : coupling -> wf children -> wf
-    val wf_to_string : wf -> string option
-    val coupling_to_string : coupling -> string option
-   end
-
-module type Tagger =
-    functor (PT : Tuple.Poly) -> Tags with type 'a children = 'a PT.t
-
-module type Tagged_Maker =
-    functor (Tagger : Tagger) ->
-      functor (P : Momentum.T) -> functor (M : Model.T) ->
-        T with type p = P.t
-        and type flavor = Colorize.It(M).flavor
-        and type flavor_sans_color = M.flavor
-        and type constant = M.constant
-
-(* No tags is one option for good tags \ldots *)
-
-module No_Tags (PT : Tuple.Poly) =
-  struct
-    type wf = unit
-    type coupling = unit
-    type 'a children = 'a PT.t
-    let null_wf = ()
-    let null_coupling = ()
-    let fuse () _ = ()
-    let wf_to_string () = None
-    let coupling_to_string () = None
-  end
-
-(* \begin{dubious}
-     Here's a simple additive tag that can grow into something useful
-     for loop calculations.
-   \end{dubious} *)
-
-module Loop_Tags (PT : Tuple.Poly) =
-  struct
-    type wf = int
-    type coupling = int
-    type 'a children = 'a PT.t
-    let null_wf = 0
-    let null_coupling = 0
-    let fuse c wfs = PT.fold_left (+) c wfs
-    let wf_to_string n = Some (string_of_int n)
-    let coupling_to_string n = Some (string_of_int n)
-  end
-
-module Order_Tags (PT : Tuple.Poly) =
-  struct
-    type wf = int
-    type coupling = int
-    type 'a children = 'a PT.t
-    let null_wf = 0
-    let null_coupling = 0
-    let fuse c wfs = PT.fold_left (+) c wfs
-    let wf_to_string n = Some (string_of_int n)
-    let coupling_to_string n = Some (string_of_int n)
-  end
-    
-(* \thocwmodulesection{[Tagged], the [Fusion.Make] Functor} *)
-
-module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
+module Make (PT : Tuple.Poly)
     (Stat : Stat_Maker) (T : Topology.T with type 'a children = 'a PT.t)
     (P : Momentum.T) (M : Model.T) =
   struct 
@@ -380,35 +314,28 @@ i*)
    we can build them using the same types with only [flavor] replaced, it pays
    to use a functor to set up the scaffolding. *)
 
-    module Tags = Tagger(PT)
-
 (* In the future, we might want to have [Coupling] among the functor
    arguments.  However, for the moment, [Coupling] is assumed to be
    comprehensive. *)
 
-    module type Tagged_Coupling =
+    module type Signed_Coupling =
       sig
         type sign = int
         type t =
             { sign : sign;
-              coupling : constant Coupling.t;
-              coupling_tag : Tags.coupling }
+              coupling : constant Coupling.t }
         val sign : t -> sign
         val coupling : t -> constant Coupling.t
-        val coupling_tag : t -> string option
       end
 
-    module Tagged_Coupling : Tagged_Coupling =
+    module Signed_Coupling : Signed_Coupling =
       struct
         type sign = int
         type t =
             { sign : sign;
-              coupling : constant Coupling.t;
-              coupling_tag : Tags.coupling }
+              coupling : constant Coupling.t }
         let sign c = c.sign
         let coupling c = c.coupling
-        let coupling_tag_raw c = c.coupling_tag
-        let coupling_tag rhs = Tags.coupling_to_string (coupling_tag_raw rhs)
       end
 
 (* \thocwmodulesubsection{Amplitudes: Monochrome and Colored} *)
@@ -416,33 +343,25 @@ i*)
     module type Amplitude =
       sig
 
-        module Tags : Tags
-
         type flavor
         type p
 
         type wf =
             { flavor : flavor;
-              momentum : p;
-              wf_tag : Tags.wf }
+              momentum : p }
 
         val flavor : wf -> flavor
         val conjugate : wf -> wf
         val momentum : wf -> p
         val momentum_list : wf -> int list
-        val wf_tag : wf -> string option
-	val wf_tag_raw : wf -> Tags.wf
         val order_wf : wf -> wf -> int
         val external_wfs : int -> (flavor * int) list -> wf list
 
         type 'a children
-        type coupling = Tagged_Coupling.t
+        type coupling = Signed_Coupling.t
         type rhs = coupling * wf children
         val sign : rhs -> int
         val coupling : rhs -> constant Coupling.t
-        val coupling_tag : rhs -> string option
-	type exclusions
-	val no_exclusions : exclusions
 	    
         val children : rhs -> wf list
 
@@ -459,12 +378,16 @@ i*)
 
         val wavefunctions : braket list -> wf list
 
+        type 'a slices
+        val unsliced : 'a -> 'a slices
+
         type amplitude =
             { fusions : fusion list;
-              brakets : braket list;
+              brakets : braket list slices;
               on_shell : (wf -> bool);
               is_gauss : (wf -> bool);
               constraints : string option;
+              slicings : string list;
               incoming : flavor list;
               outgoing : flavor list;
               externals : wf list;
@@ -478,47 +401,54 @@ i*)
         val externals : amplitude -> wf list
         val variables : amplitude -> wf list
         val fusions : amplitude -> fusion list
-        val brakets : amplitude -> braket list
+        val brakets : amplitude -> braket list slices
         val on_shell : amplitude -> (wf -> bool)
         val is_gauss : amplitude -> (wf -> bool)
         val constraints : amplitude -> string option
+        val slicings : amplitude -> string list
         val symmetry : amplitude -> int
         val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
         val fusion_dag : amplitude -> D.t
 
       end
 
-    module Amplitude (PT : Tuple.Poly) (P : Momentum.T) (M : Model.T) :
+    module type Slicer =
+      sig
+        type 'a t
+        val all : 'a -> 'a t
+      end
+
+    module Unsliced =
+      struct
+        type 'a t = 'a
+        let all a = a
+      end
+
+    module Amplitude (PT : Tuple.Poly) (P : Momentum.T) (M : Model.T) (S : Slicer) :
         Amplitude
         with type p = P.t
         and type flavor = M.flavor
         and type 'a children = 'a PT.t
-        and module Tags = Tags =
+        and type 'a slices = 'a S.t =
       struct
 
         type flavor = M.flavor
         type p = P.t
 
-        module Tags = Tags
-
         type wf =
             { flavor : flavor;
-              momentum : p;
-              wf_tag : Tags.wf }
+              momentum : p }
 
         let flavor wf = wf.flavor
         let conjugate wf = { wf with flavor = M.conjugate wf.flavor }
         let momentum wf = wf.momentum
         let momentum_list wf = P.to_ints wf.momentum
-        let wf_tag wf = Tags.wf_to_string wf.wf_tag
-        let wf_tag_raw wf = wf.wf_tag
 
         let external_wfs rank particles =
           List.map
             (fun (f, p) ->
               { flavor = f;
-                momentum = P.singleton rank p;
-                wf_tag = Tags.null_wf })
+                momentum = P.singleton rank p })
             particles
 
 (* Order wavefunctions so that the external come first, then the pairs, etc.
@@ -564,25 +494,16 @@ i*)
           if c <> 0 then
             c
           else
-            let c = order_flavor wf1.flavor wf2.flavor in
-            if c <> 0 then
-              c
-            else
-              compare wf1.wf_tag wf2.wf_tag
+            order_flavor wf1.flavor wf2.flavor
 
 (* This \emph{must} be a pair matching the [edge * node children] pairs of
    [DAG.Forest]! *)
 
-        type coupling = Tagged_Coupling.t
+        type coupling = Signed_Coupling.t
         type 'a children = 'a PT.t
         type rhs = coupling * wf children
-        let sign (c, _) = Tagged_Coupling.sign c
-        let coupling (c, _) = Tagged_Coupling.coupling c
-        let coupling_tag (c, _) = Tagged_Coupling.coupling_tag c
-	type exclusions =
-	  { x_flavors : flavor list;
-	    x_couplings : coupling list }
-	let no_exclusions = { x_flavors = []; x_couplings = [] }
+        let sign (c, _) = Signed_Coupling.sign c
+        let coupling (c, _) = Signed_Coupling.coupling c
         let children (_, wfs) = PT.to_list wfs
 
         type fusion = wf * rhs list
@@ -606,12 +527,16 @@ i*)
             WFSet.add wf1 (List.fold_left (fun set' (_, wfs) ->
               PT.fold_right WFSet.add wfs set') set wf23)) WFSet.empty brakets)
           
+        type 'a slices = 'a S.t
+        let unsliced a = S.all a
+
         type amplitude =
             { fusions : fusion list;
-              brakets : braket list;
+              brakets : braket list slices;
               on_shell : (wf -> bool);
               is_gauss : (wf -> bool);
               constraints : string option;
+              slicings : string list;
               incoming : flavor list;
               outgoing : flavor list;
               externals : wf list;
@@ -629,13 +554,14 @@ i*)
         let on_shell a = a.on_shell
         let is_gauss a = a.is_gauss
         let constraints a = a.constraints
+        let slicings a = a.slicings
         let variables a = List.map lhs a.fusions
         let dependencies a = a.dependencies
         let fusion_dag a = a.fusion_dag
 
       end
 
-    module A = Amplitude(PT)(P)(M)
+    module A = Amplitude(PT)(P)(M)(Unsliced)
 
 (* Operator insertions can be fused only if they are external. *)
     let is_source wf =
@@ -1307,15 +1233,13 @@ i*)
 
     let flavor_keystone select_p dim (f1, f23) (p1, p23) =
       ({ A.flavor = f1;
-         A.momentum = P.of_ints dim p1;
-         A.wf_tag = A.Tags.null_wf },
+         A.momentum = P.of_ints dim p1 },
        Product.fold2 (fun (c, f) p acc ->
          try
            let p' = PT.map (P.of_ints dim) p in
            if select_p (P.of_ints dim p1) (PT.to_list p') && kmatrix_cuts c p' then
              (c, PT.map2 (fun f'' p'' -> { A.flavor = f'';
-                                           A.momentum = p'';
-                                           A.wf_tag = A.Tags.null_wf }) f p') :: acc
+                                           A.momentum = p'' }) f p') :: acc
            else
              acc
          with
@@ -1365,10 +1289,8 @@ i*)
         try
           let wfs, ss = PT.split wfss in
           let flavors = PT.map A.flavor wfs
-          and momenta = PT.map A.momentum wfs
-(*i       and wf_tags = PT.map A.wf_tag_raw wfs i*) in
+          and momenta = PT.map A.momentum wfs in
           let p = PT.fold_left_internal P.add momenta in
-(*i	  let wft = PT.fold_left Tags.fuse wf_tags in i*)
           List.fold_left
             (fun acc (f, c) ->
               if select_wf f p (PT.to_list momenta)
@@ -1378,11 +1300,9 @@ i*)
                 let flip =
                   PT.fold_left (fun acc s' -> acc * stat_sign s') (stat_sign s) ss in
                 ({ A.flavor = f;
-                   A.momentum = p;
-                   A.wf_tag = A.Tags.null_wf }, s,
-                 ({ Tagged_Coupling.sign = flip;
-                    Tagged_Coupling.coupling = c;
-                    Tagged_Coupling.coupling_tag = A.Tags.null_coupling }, wfs)) :: acc
+                   A.momentum = p }, s,
+                 ({ Signed_Coupling.sign = flip;
+                    Signed_Coupling.coupling = c }, wfs)) :: acc
               else
                 acc)
             [] (fuse_rhs flavors)
@@ -1465,7 +1385,7 @@ i*)
    \end{dubious} *)
     let grow select_wf select_vtx tower =
       let rank = succ (Array.length tower) in
-      List.sort pcompare
+      List.sort Stdlib.compare
         (PT.graded_sym_power_fold rank
            (fun wfs acc -> fuse select_wf select_vtx wfs @ acc) tower [])
 
@@ -1573,9 +1493,8 @@ i*)
         match List.filter (test_rhs dag) pairs with
         | [] -> acc
         | pairs' -> (wf1, List.map (fun (c, wfs) ->
-            ({ Tagged_Coupling.sign = stat_keystone stats wf1 wfs;
-               Tagged_Coupling.coupling = c;
-               Tagged_Coupling.coupling_tag = A.Tags.null_coupling },
+            ({ Signed_Coupling.sign = stat_keystone stats wf1 wfs;
+               Signed_Coupling.coupling = c },
              wfs)) pairs') :: acc
       else
         acc
@@ -1617,50 +1536,17 @@ i*)
 
     module C = Cascade.Make(M)(P)
     type selectors = C.selectors
+    type slicings = Orders.Conditions(Colorize.It(M)).t
 
     let external_wfs n particles =
       List.map (fun (f, p) ->
         ({ A.flavor = f;
-           A.momentum = P.singleton n p;
-           A.wf_tag = A.Tags.null_wf },
+           A.momentum = P.singleton n p },
          stat f p)) particles
 
 (* \thocwmodulesubsection{Main Function} *)
 
     module WFMap = Map.Make (struct type t = A.wf let compare = compare end)
-
-(* [map_amplitude_wfs f a] applies the function [f : wf -> wf] to all
-   wavefunctions appearing in the amplitude [a]. *)
-    let map_amplitude_wfs f a =
-      let map_rhs (c, wfs) = (c, PT.map f wfs) in
-      let map_braket (wf, rhs) = (f wf, List.map map_rhs rhs)
-      and map_fusion (lhs, rhs) = (f lhs, List.map map_rhs rhs) in
-      let map_dag = A.D.map f (fun node rhs -> map_rhs rhs) in
-      let tower = map_dag a.A.fusion_tower
-      and dag = map_dag a.A.fusion_dag in
-      let dependencies_map =
-        A.D.fold (fun wf _ -> WFMap.add wf (A.D.dependencies dag wf)) dag WFMap.empty in
-      { A.fusions = List.map map_fusion a.A.fusions;
-        A.brakets = List.map map_braket a.A.brakets;
-        A.on_shell = a.A.on_shell;
-        A.is_gauss = a.A.is_gauss;
-        A.constraints = a.A.constraints;
-        A.incoming = a.A.incoming;
-        A.outgoing = a.A.outgoing;
-        A.externals = List.map f a.A.externals;
-        A.symmetry = a.A.symmetry;
-        A.dependencies = (fun wf -> WFMap.find wf dependencies_map);
-        A.fusion_tower = tower;
-        A.fusion_dag = dag }
-
-(*i
-(* \begin{dubious}
-     Just a silly little test:
-   \end{dubious} *)
-
-    let hack_amplitude =
-      map_amplitude_wfs (fun wf -> { wf with momentum = P.split 2 16 wf.momentum })
-i*)
 
 (* This is the main function that constructs the amplitude for sets
    of incoming and outgoing particles and returns the results in
@@ -1684,7 +1570,6 @@ i*)
       (* Build the full fusion tower (including nodes that are never
          needed in the amplitude). *)
       let stats, tower =
-
         if goldstones then
           complete_fusion_tower select_wf select_vtx wfs
         else
@@ -1692,7 +1577,6 @@ i*)
 
       (* Find all vertices for which \emph{all} off shell wavefunctions
          are defined by the tower. *)
-
       let brakets =
         flavor_keystones (filter_keystone stats tower) select_p n
           (filter_vertices select_vtx
@@ -1724,6 +1608,7 @@ i*)
         A.on_shell = (fun wf -> C.on_shell selectors (A.flavor wf) wf.A.momentum);
         A.is_gauss = (fun wf -> C.is_gauss selectors (A.flavor wf) wf.A.momentum);
         A.constraints = C.description selectors;
+        A.slicings = [];
         A.incoming = fin;
         A.outgoing = fout;
         A.externals = List.map fst wfs;        
@@ -1735,17 +1620,15 @@ i*)
 (* \thocwmodulesubsection{Color} *)
 
     module CM = Colorize.It(M)
-    module CA = Amplitude(PT)(P)(CM)
+    module CA = Amplitude(PT)(P)(CM)(Unsliced)
 
     let colorize_wf flavor wf =
       { CA.flavor = flavor;
-        CA.momentum = wf.A.momentum;
-        CA.wf_tag = wf.A.wf_tag }
+        CA.momentum = wf.A.momentum }
 
     let uncolorize_wf wf =
       { A.flavor = CM.flavor_sans_color wf.CA.flavor;
-        A.momentum = wf.CA.momentum;
-        A.wf_tag = wf.CA.wf_tag }
+        A.momentum = wf.CA.momentum }
 
 (* \begin{dubious}
      At the end of the day, I shall want to have some sort of
@@ -1761,8 +1644,7 @@ i*)
           let compare_base = compare
           let pi wf =
             { A.flavor = CM.flavor_sans_color wf.CA.flavor;
-              A.momentum = wf.CA.momentum;
-              A.wf_tag = wf.CA.wf_tag }
+              A.momentum = wf.CA.momentum }
         end)
 
 (* \begin{dubious}
@@ -1802,7 +1684,7 @@ i*)
            { dag = CA.D.empty; bundle = wf_bundle })
 
     let colorize_external wf fibered_dag = 
-      match CWFBundle.inv_pi wf fibered_dag.bundle with
+      match CWFBundle.inv_pi fibered_dag.bundle wf with
       | [c_wf] -> (c_wf, fibered_dag.bundle)
       | [] -> failwith "colorize_external: not found"
       | _ -> failwith "colorize_external: not unique"
@@ -1814,11 +1696,11 @@ i*)
         (CM.fuse (List.map (fun wf -> wf.CA.flavor) (PT.to_list rhs)))
 
     let colorize_coupling c coupling =
-        { coupling with Tagged_Coupling.coupling = c }
+        { coupling with Signed_Coupling.coupling = c }
 
     let colorize_fusion wf (coupling, children) fibered_dag =
       let match_flavor (f, _) = (CM.flavor_sans_color f = A.flavor wf)
-      and find_colored wf' = CWFBundle.inv_pi wf' fibered_dag.bundle in
+      and find_colored wf' = CWFBundle.inv_pi fibered_dag.bundle wf' in
       let fusions =
         ThoList.flatmap
           (fun c_children ->
@@ -1828,13 +1710,13 @@ i*)
               (List.filter match_flavor (fuse_c_wf c_children)))
           (PT.product (PT.map find_colored children)) in
       let bundle =
-        List.fold_right
-          (fun (c_wf, _) -> CWFBundle.add c_wf)
-          fusions fibered_dag.bundle in
+        List.fold_left
+          (fun acc (c_wf, _) -> CWFBundle.add acc c_wf)
+          fibered_dag.bundle fusions in
       (fusions, bundle)
 
     let colorize_braket1 (wf, (coupling, children)) fibered_dag =
-      let find_colored wf' = CWFBundle.inv_pi wf' fibered_dag.bundle in
+      let find_colored wf' = CWFBundle.inv_pi fibered_dag.bundle wf' in
       Product.fold2
         (fun bra ket acc ->
           List.fold_left
@@ -1921,6 +1803,7 @@ i*)
       { CA.fusions = fusions;
         CA.brakets = brakets;
         CA.constraints = a.A.constraints;
+        CA.slicings = a.A.slicings;
         CA.incoming = fin;
         CA.outgoing = fout;
         CA.externals = external_wfs;
@@ -1931,71 +1814,207 @@ i*)
         CA.is_gauss = (fun wf -> a.A.is_gauss (uncolorize_wf wf));
         CA.dependencies = (fun wf -> CWFMap.find wf dependencies_map) }
 
-    let allowed amplitude =
-      match amplitude.CA.brakets with
-      | [] -> false
-      | _ -> true
-
     let colorize_amplitudes a =
       List.fold_left
         (fun amps (fin, fout) ->
           let amp = colorize_amplitude a fin fout in
-          if allowed amp then
-            amp :: amps
-          else
-            amps)
+          match amp.CA.brakets with
+          | [] -> amps
+          | _ -> amp :: amps)
         [] (CM.amplitude a.A.incoming a.A.outgoing)
 
-    let amplitudes goldstones exclusions selectors fin fout =
+    let amplitudes_all_orders goldstones selectors fin fout =
       colorize_amplitudes (amplitude goldstones selectors fin fout)
 
-    let amplitude_sans_color goldstones exclusions selectors fin fout =
+    let amplitude_sans_color goldstones selectors fin fout =
       amplitude goldstones selectors fin fout
 
-    type flavor = CA.flavor
+    (* \thocwmodulesubsection{Fake Coupling Constant Slices} *)
+
+    (* For the benefit of [Targets], we also copy the amplitudes to
+       equivalent sliced amplitudes with empty coupling orders. This
+       way, we can use the same output routines for the sliced and
+       unsliced amplitudes.  *)
+
+    module COC = Orders.Conditions(Colorize.It(M))
+    module SCM = Orders.Slice(Colorize.It(M))
+
+    module By_Orders =
+      struct
+        type orders = SCM.orders
+        type 'a t = (orders * 'a) list
+        let all a = [([], a)]
+      end
+
+
+    module SCA = Amplitude(PT)(P)(SCM)(By_Orders)
+    type 'a slices = 'a SCA.slices
+
+    type flavor = SCA.flavor
+    type flavor_all_orders = CA.flavor
     type flavor_sans_color = A.flavor
     type p = A.p
-    type wf = CA.wf
-    let conjugate = CA.conjugate
-    let flavor = CA.flavor
-    let flavor_sans_color wf = CM.flavor_sans_color (CA.flavor wf)
-    let momentum = CA.momentum
-    let momentum_list = CA.momentum_list
-    let wf_tag = CA.wf_tag
+    type wf = SCA.wf
+    let conjugate = SCA.conjugate
+    let flavor = SCA.flavor
+    let flavor_sans_color wf = SCM.flavor_sans_color (SCA.flavor wf)
+    let flavor_all_orders wf = SCM.flavor_all_orders (SCA.flavor wf)
+    let momentum = SCA.momentum
+    let momentum_list = SCA.momentum_list
 
-    type coupling = CA.coupling
+    type coupling = SCA.coupling
 
-    let sign = CA.sign
-    let coupling = CA.coupling
-    let coupling_tag = CA.coupling_tag
-    type exclusions = CA.exclusions
-    let no_exclusions = CA.no_exclusions
+    let sign = SCA.sign
+    let coupling = SCA.coupling
 
-    type 'a children = 'a CA.children
-    type rhs = CA.rhs
-    let children = CA.children
+    type 'a children = 'a SCA.children
+    type rhs = SCA.rhs
+    let children = SCA.children
 
-    type fusion = CA.fusion
-    let lhs = CA.lhs
-    let rhs = CA.rhs
+    type fusion = SCA.fusion
+    let lhs = SCA.lhs
+    let rhs = SCA.rhs
 
-    type braket = CA.braket
-    let bra = CA.bra
-    let ket = CA.ket   
+    type braket = SCA.braket
+    let bra = SCA.bra
+    let ket = SCA.ket   
 
-    type amplitude = CA.amplitude
+    type amplitude = SCA.amplitude
     type amplitude_sans_color = A.amplitude
-    let incoming = CA.incoming
-    let outgoing = CA.outgoing
-    let externals = CA.externals
-    let fusions = CA.fusions
-    let brakets = CA.brakets
-    let symmetry = CA.symmetry
-    let on_shell = CA.on_shell
-    let is_gauss = CA.is_gauss
-    let constraints = CA.constraints
+    let incoming = SCA.incoming
+    let outgoing = SCA.outgoing
+    let externals = SCA.externals
+    let fusions = SCA.fusions
+    let brakets = SCA.brakets
+    let symmetry = SCA.symmetry
+    let on_shell = SCA.on_shell
+    let is_gauss = SCA.is_gauss
+    let constraints = SCA.constraints
+    let slicings = SCA.slicings
     let variables a = List.map lhs (fusions a)
-    let dependencies = CA.dependencies
+    let dependencies = SCA.dependencies
+
+    let slice_wf flavor wf =
+      { SCA.flavor = flavor;
+        SCA.momentum = wf.CA.momentum }
+
+    let unslice_wf wf =
+      { CA.flavor = SCM.flavor_all_orders wf.SCA.flavor;
+        CA.momentum = wf.SCA.momentum }
+
+    module SCWFBundle = Bundle.Make
+        (struct
+          type elt = SCA.wf
+          let compare_elt = compare
+          type base = CA.wf
+          let compare_base = compare
+          let pi = unslice_wf
+        end)
+
+    type sliced_fibered_dag =
+      { sliced_dag : SCA.D.t; sliced_bundle : SCWFBundle.t }
+
+    type wf_slicer = CA.wf -> sliced_fibered_dag -> SCA.wf * SCWFBundle.t
+    type sliced_fusion = SCA.wf * SCA.rhs
+    type node_slicer = CA.wf -> CA.rhs -> sliced_fibered_dag -> sliced_fusion list * SCWFBundle.t
+
+    let slice_sterile_nodes : CA.D.t -> wf_slicer -> CA.D.node -> sliced_fibered_dag -> sliced_fibered_dag =
+      fun dag f wf fibered_dag ->
+      if CA.D.is_sterile wf dag then
+        let wf', wf_bundle' = f wf fibered_dag in
+        { sliced_dag = SCA.D.add_node wf' fibered_dag.sliced_dag;
+          sliced_bundle = wf_bundle' }
+      else
+        fibered_dag
+
+    let slice_nodes : node_slicer -> CA.wf -> CA.rhs -> sliced_fibered_dag -> sliced_fibered_dag =
+      fun f wf rhs fibered_dag ->
+      let wf_rhs_list', wf_bundle' = f wf rhs fibered_dag in
+      let dag' =
+        List.fold_right
+          (fun (wf', rhs') -> SCA.D.add_offspring wf' rhs')
+          wf_rhs_list' fibered_dag.sliced_dag in
+      { sliced_dag = dag';
+        sliced_bundle = wf_bundle' }
+
+    let slice_dag : node_slicer -> wf_slicer -> CA.D.t -> SCWFBundle.t -> sliced_fibered_dag =
+      fun f_node f_ext dag wf_bundle ->
+      CA.D.fold (slice_nodes f_node) dag
+        (CA.D.fold_nodes (slice_sterile_nodes dag f_ext) dag
+           { sliced_dag = SCA.D.empty; sliced_bundle = wf_bundle })
+
+    let lift_wf wf =
+      slice_wf (SCM.trivial wf.CA.flavor) wf
+
+    let lift_external : wf_slicer =
+      fun wf fibered_dag ->
+      (lift_wf wf, fibered_dag.sliced_bundle)
+
+    let lift_fusion : node_slicer =
+      fun wf (coupling, children) fibered_dag ->
+      let wf = lift_wf wf
+      and children = PT.map lift_wf children in
+      let sliced_bundle = SCWFBundle.add fibered_dag.sliced_bundle wf in
+      ( [ (wf, (coupling, children)) ], sliced_bundle )
+
+    let lift_dag : CA.D.t -> SCWFBundle.t -> sliced_fibered_dag =
+      fun dag wf_bundle ->
+      slice_dag lift_fusion lift_external dag wf_bundle
+
+    let lift_braket : CA.braket -> SCA.braket =
+      fun (wf, rhs) ->
+      let wf = lift_wf wf
+      and rhs = List.map (fun (coupling, children) -> (coupling, PT.map lift_wf children)) rhs in
+      (wf, rhs)
+
+    module SCBra = struct type t = SCA.wf let compare = SCA.order_wf end
+    module SCBraMap = Map.Make(SCBra)
+
+    let lift_amplitude a =
+      let fin = List.map SCM.trivial a.CA.incoming
+      and fout = List.map SCM.trivial a.CA.outgoing in
+      let f = fin @ List.map SCM.conjugate fout in
+      let nin, nout = List.length fin, List.length fout in
+      let n = nin + nout in
+      let externals = List.combine f (ThoList.range 1 n) in
+      let external_wfs = SCA.external_wfs n externals in
+      let wf_bundle = SCWFBundle.of_list external_wfs  in
+      let fibered_dag = lift_dag a.CA.fusion_dag wf_bundle in
+      let brakets = List.map lift_braket a.CA.brakets in
+      let dag = SCA.D.harvest_list fibered_dag.sliced_dag (SCA.wavefunctions brakets) in
+      let fusions = List.filter (function (_, []) -> false | _ -> true) (SCA.D.lists dag) in
+      let dependencies_map =
+        SCA.D.fold (fun wf _ -> SCBraMap.add wf (SCA.D.dependencies dag wf)) dag SCBraMap.empty in
+      { SCA.fusions = fusions;
+        SCA.brakets = SCA.unsliced brakets;
+        SCA.constraints = a.CA.constraints;
+        SCA.slicings = a.CA.slicings;
+        SCA.incoming = fin;
+        SCA.outgoing = fout;
+        SCA.externals = external_wfs;
+        SCA.fusion_dag = dag;
+        SCA.fusion_tower = dag;
+        SCA.symmetry = a.CA.symmetry;
+        SCA.on_shell = (fun wf -> a.CA.on_shell (unslice_wf wf));
+        SCA.is_gauss = (fun wf -> a.CA.is_gauss (unslice_wf wf));
+        SCA.dependencies = (fun wf -> SCBraMap.find wf dependencies_map) }
+
+    let lift_amplitudes amplitudes =
+      List.map lift_amplitude amplitudes
+
+    let amplitudes goldstones selectors slicings fin fout =
+      let a = amplitudes_all_orders goldstones selectors fin fout in
+      match slicings with
+      | None -> lift_amplitudes a
+      | Some _ -> invalid_arg "Fusion.*.amplitudes: order slicing not supported in the vintage version!"
+
+    let amplitudes_all_orders goldstones selectors fin fout =
+      lift_amplitudes (amplitudes_all_orders goldstones selectors fin fout)
+
+    let allowed amplitude =
+      match amplitude.SCA.brakets with
+      | [] -> false
+      | _ -> true
 
 (* \thocwmodulesubsection{Checking Conservation Laws} *)
 
@@ -2009,13 +2028,17 @@ i*)
 
 (* \thocwmodulesubsection{Diagnostics} *)
 
+    let all_brakets a =
+      ThoList.flatmap snd a.SCA.brakets
+
     let count_propagators a =
-      List.length a.CA.fusions
+      List.length a.SCA.fusions
 
     let count_fusions a =
-      List.fold_left (fun n (_, a) -> n + List.length a) 0 a.CA.fusions
-        + List.fold_left (fun n (_, t) -> n + List.length t) 0 a.CA.brakets
-        + List.length a.CA.brakets
+      let brakets = all_brakets a in
+      List.fold_left (fun n (_, a) -> n + List.length a) 0 a.SCA.fusions
+        + List.fold_left (fun n (_, t) -> n + List.length t) 0 brakets
+        + List.length brakets
 
 (* \begin{dubious}
      This brute force approach blows up for more than ten particles.
@@ -2024,16 +2047,16 @@ i*)
 
     let count_diagrams a =
       List.fold_left (fun n (wf1, wf23) ->
-        n + CA.D.count_trees wf1 a.CA.fusion_dag *
+        n + SCA.D.count_trees wf1 a.SCA.fusion_dag *
           (List.fold_left (fun n' (_, wfs) ->
             n' + PT.fold_left (fun n'' wf ->
-              n'' * CA.D.count_trees wf a.CA.fusion_dag) 1 wfs) 0 wf23))
-        0 a.CA.brakets
+              n'' * SCA.D.count_trees wf a.SCA.fusion_dag) 1 wfs) 0 wf23))
+        0 (all_brakets a)
 
     exception Impossible
 
     let forest' a =
-      let below wf = CA.D.forest_memoized wf a.CA.fusion_dag in
+      let below wf = SCA.D.forest_memoized wf a.SCA.fusion_dag in
       ThoList.flatmap
         (fun (bra, ket) ->
           (Product.list2 (fun bra' ket' -> bra' :: ket')
@@ -2042,12 +2065,11 @@ i*)
                 (fun (_, wfs) ->
                   Product.list (fun w -> w) (PT.to_list (PT.map below wfs)))
                 ket)))
-        a.CA.brakets
+        (all_brakets a)
 
     let cross wf =
-      { CA.flavor = CM.conjugate wf.CA.flavor;
-        CA.momentum = P.neg wf.CA.momentum;
-        CA.wf_tag = wf.CA.wf_tag }
+      { SCA.flavor = SCM.conjugate wf.SCA.flavor;
+        SCA.momentum = P.neg wf.SCA.momentum }
 
     let fuse_trees wf ts =
       Tree.fuse (fun (wf', e) -> (cross wf', e))
@@ -2076,8 +2098,7 @@ i*)
 
     let cross_uncolored wf =
       { A.flavor = M.conjugate wf.A.flavor;
-        A.momentum = P.neg wf.A.momentum;
-        A.wf_tag = wf.A.wf_tag }
+        A.momentum = P.neg wf.A.momentum }
 
     let fuse_trees_uncolored wf ts =
       Tree.fuse (fun (wf', e) -> (cross_uncolored wf', e))
@@ -2088,7 +2109,7 @@ i*)
 i*)
 
     let poles_beneath wf dag =
-      CA.D.eval_memoized (fun wf' -> [[]])
+      SCA.D.eval_memoized (fun wf' -> [[]])
         (fun wf' _ p -> List.map (fun p' -> wf' :: p') p)
         (fun wf1 wf2 ->
           Product.fold2 (fun wf' wfs' wfs'' -> (wf' @ wfs') :: wfs'') wf1 wf2 [])
@@ -2096,22 +2117,22 @@ i*)
 
     let poles a =
       ThoList.flatmap (fun (wf1, wf23) ->
-        let poles_wf1 = poles_beneath wf1 a.CA.fusion_dag in
+        let poles_wf1 = poles_beneath wf1 a.SCA.fusion_dag in
         (ThoList.flatmap (fun (_, wfs) ->
           Product.list List.flatten
             (PT.to_list (PT.map (fun wf ->
-              poles_wf1 @ poles_beneath wf a.CA.fusion_dag) wfs)))
+              poles_wf1 @ poles_beneath wf a.SCA.fusion_dag) wfs)))
            wf23))
-        a.CA.brakets
+        (all_brakets a)
 
     module WFSet =
-      Set.Make (struct type t = CA.wf let compare = CA.order_wf end)
+      Set.Make (struct type t = SCA.wf let compare = SCA.order_wf end)
 
     let s_channel a =
       WFSet.elements
         (ThoList.fold_right2
            (fun wf wfs ->
-             if P.Scattering.timelike wf.CA.momentum then
+             if P.Scattering.timelike wf.SCA.momentum then
                WFSet.add wf wfs
              else
                wfs) (poles a) WFSet.empty)
@@ -2121,13 +2142,13 @@ i*)
    \end{dubious} *)
 
     let poles' a =
-      List.map CA.lhs a.CA.fusions
+      List.map SCA.lhs a.SCA.fusions
 
     let s_channel a =
       WFSet.elements
         (List.fold_right
            (fun wf wfs ->
-             if P.Scattering.timelike wf.CA.momentum then
+             if P.Scattering.timelike wf.SCA.momentum then
                WFSet.add wf wfs
              else
                wfs) (poles' a) WFSet.empty)
@@ -2146,22 +2167,22 @@ i*)
         "_"
 
     let variable wf =
-      CM.flavor_symbol wf.CA.flavor ^
-      String.concat "" (List.map p2s (P.to_ints wf.CA.momentum))
+      SCM.flavor_symbol wf.SCA.flavor ^
+      String.concat "" (List.map p2s (P.to_ints wf.SCA.momentum))
 
-    module Int = Map.Make (struct type t = int let compare = compare end)
+    module IMap = Map.Make(Int)
 
     let add_to_list i n m =
-      Int.add i (n :: try Int.find i m with Not_found -> []) m
+      IMap.add i (n :: try IMap.find i m with Not_found -> []) m
 
     let classify_nodes dag =
-      Int.fold (fun i n acc -> (i, n) :: acc)
-        (CA.D.fold_nodes (fun wf -> add_to_list (P.rank wf.CA.momentum) wf)
-           dag Int.empty) []
+      IMap.fold (fun i n acc -> (i, n) :: acc)
+        (SCA.D.fold_nodes (fun wf -> add_to_list (P.rank wf.SCA.momentum) wf)
+           dag IMap.empty) []
 
     let dag_to_dot ch brakets dag =
       Printf.fprintf ch "digraph OMEGA {\n";
-      CA.D.iter_nodes (fun wf ->
+      SCA.D.iter_nodes (fun wf ->
         Printf.fprintf ch "  \"%s\" [ label = \"%s\" ];\n"
           (variable wf) (variable wf)) dag;
       List.iter (fun (_, wfs) ->
@@ -2172,17 +2193,17 @@ i*)
       List.iter (fun n ->
         Printf.fprintf ch " \"*\" -> \"%s\";\n" (variable n))
         (flatten_keystones brakets);
-      CA.D.iter (fun n (_, ns) ->
+      SCA.D.iter (fun n (_, ns) ->
         let p = variable n in
         PT.iter (fun n' ->
           Printf.fprintf ch "  \"%s\" -> \"%s\";\n" p (variable n')) ns) dag;
       Printf.fprintf ch "}\n"
 
     let tower_to_dot ch a =
-      dag_to_dot ch a.CA.brakets a.CA.fusion_tower
+      dag_to_dot ch (all_brakets a) a.SCA.fusion_tower
 
     let amplitude_to_dot ch a =
-      dag_to_dot ch a.CA.brakets a.CA.fusion_dag
+      dag_to_dot ch (all_brakets a) a.SCA.fusion_dag
 
 (* \thocwmodulesubsection{Phasespace} *)
 
@@ -2286,11 +2307,7 @@ i*)
 
   end
 
-module Make = Tagged(No_Tags)
-
 module Binary = Make(Tuple.Binary)(Stat_Dirac)(Topology.Binary)
-module Tagged_Binary (T : Tagger) =
-  Tagged(T)(Tuple.Binary)(Stat_Dirac)(Topology.Binary)
 
 (* \thocwmodulesection{Fusions with Majorana Fermions} *)
 
@@ -2500,12 +2517,11 @@ module type Multi =
     type amplitude
     type fusion
     type wf
-    type exclusions
-    val no_exclusions : exclusions
     type selectors
+    type slicings
     type amplitudes
     val amplitudes : bool -> int option ->
-      exclusions -> selectors -> process list -> amplitudes
+      selectors -> slicings option -> process list -> amplitudes
     val empty : amplitudes
 (*i
     val initialize_cache : string -> unit
@@ -2522,6 +2538,7 @@ i*)
     val dictionary : amplitudes -> amplitude -> wf -> int
     val color_factors : amplitudes -> Color.Flow.factor array array
     val constraints : amplitudes -> string option
+    val slicings : amplitudes -> string list
   end
 
 module type Multi_Maker = functor (Fusion_Maker : Maker) ->
@@ -2532,6 +2549,7 @@ module type Multi_Maker = functor (Fusion_Maker : Maker) ->
       and type fusion = Fusion_Maker(P)(M).fusion
       and type wf = Fusion_Maker(P)(M).wf
       and type selectors = Fusion_Maker(P)(M).selectors
+      and type slicings = Orders.Conditions(Colorize.It(M)).t
 
 module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
   struct
@@ -2546,6 +2564,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     let progress_option = ref Quiet
 
     module CM = Colorize.It(M)
+    module SCM = Orders.Slice(Colorize.It(M))
     module F = Fusion_Maker(P)(M)
     module C = Cascade.Make(M)(P)
 
@@ -2565,9 +2584,8 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     type amplitude = F.amplitude
     type fusion = F.fusion
     type wf = F.wf
-    type exclusions = F.exclusions
-    let no_exclusions = F.no_exclusions
     type selectors = F.selectors
+    type slicings = Orders.Conditions(Colorize.It(M)).t
 
     type flavors = flavor list array
     type helicities = int list array
@@ -2586,7 +2604,8 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
           multiplicity : (wf -> int);
           dictionary : (amplitude -> wf -> int);
           color_factors : Color.Flow.factor array array;
-          constraints : string option }
+          constraints : string option;
+          slicings : string list }
 
     let flavors a = a.flavors
     let vanishing_flavors a = a.vanishing_flavors
@@ -2599,9 +2618,10 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     let dictionary a = a.dictionary
     let color_factors a = a.color_factors
     let constraints a = a.constraints
+    let slicings a = a.slicings
 
     let sans_colors f =
-      List.map CM.flavor_sans_color f
+      List.map SCM.flavor_sans_color f
 
     let colors (fin, fout) =
       List.map M.color (fin @ fout)
@@ -2610,7 +2630,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
       (sans_colors (F.incoming a), sans_colors (F.outgoing a))
 
     let color_flow a =
-      CM.flow (F.incoming a) (F.outgoing a)
+      SCM.flow (F.incoming a) (F.outgoing a)
 
     let process_to_string fin fout =
       String.concat " " (List.map M.flavor_to_string fin)
@@ -2790,7 +2810,7 @@ i*)
 
 (* \thocwmodulesubsection{Calculate All The Amplitudes} *)
 
-    let amplitudes goldstones unphysical exclusions select_wf processes =
+    let amplitudes goldstones unphysical select_wf orders processes =
 
 (* \begin{dubious}
      Eventually, we might want to support inhomogeneous helicities.  However,
@@ -2814,7 +2834,7 @@ i*)
         ThoList.flatmap
           (fun (fi, fo) ->
             Progress.begin_step progress (process_to_string fi fo);
-            let amps = F.amplitudes goldstones exclusions select_wf fi fo in
+            let amps = F.amplitudes goldstones select_wf orders fi fo in
             begin match amps with
             | [] -> Progress.end_step progress "forbidden"
             | _ -> Progress.end_step progress "allowed"
@@ -2878,7 +2898,8 @@ i*)
         multiplicity = multiplicity;
         dictionary = dictionary;
         color_factors = color_factor_table;
-        constraints = C.description select_wf }
+        constraints = C.description select_wf;
+        slicings = [] }
 
 (*i
     let initialize_cache = F.initialize_cache
@@ -2896,6 +2917,7 @@ i*)
         multiplicity = (fun _ -> 1);
         dictionary = (fun _ _ -> 1);
         color_factors = Array.make_matrix 0 0 Color.Flow.zero;
-        constraints = None }
+        constraints = None;
+        slicings = [] }
 
   end

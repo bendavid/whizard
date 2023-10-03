@@ -112,7 +112,7 @@ val diagram_of_tableau : 'a tableau -> diagram
 val valid_tableau : 'a tableau -> bool
 
 (* A tableau is called \textit{semistandard}, iff the entries
-   don't increase along rows and strictly increase along columns.
+   don't decrease along rows and strictly increase along columns.
    Therefore, the conjugate of a semistandard tableau is \emph{not}
    necessarily semistandard. *)
 val semistandard_tableau : 'a tableau -> bool
@@ -135,6 +135,15 @@ val num_cells_tableau : 'a tableau -> int
      \mapsto \ytableaushort{01,24,3}
    \end{equation} *)
 val conjugate_tableau : 'a tableau -> 'a tableau
+
+(* Transform the contents cell-by-cell. *)
+val map: ('a -> 'b) -> 'a tableau -> 'b tableau
+
+(* Debugging and diagnostics. *)
+val tableau_to_string : ('a -> string) -> 'a tableau -> string
+
+(* Toplevel *)
+val pp : Format.formatter -> int tableau -> unit
 
 (* \thocwmodulesection{Unit Tests} *)
 module type Test =

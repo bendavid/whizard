@@ -101,12 +101,18 @@ value:
 ;
 
 list:
- | LBRACKET RBRACKET 	      { U.Empty_List }
- | LBRACKET names RBRACKET    { U.Name_List $2 }
- | LBRACKET strings RBRACKET  { U.String_List $2 }
- | LBRACKET integers RBRACKET { U.Integer_List $2 }
+ | LBRACKET RBRACKET 	            { U.Empty_List }
+ | LBRACKET names RBRACKET          { U.Name_List $2 }
+ | LBRACKET strings RBRACKET        { U.String_List $2 }
+ | LBRACKET integers RBRACKET       { U.Integer_List $2 }
+ | LBRACKET integer_lists RBRACKET  { U.Young_Tableau $2 }
 ;
 
+integer_list:
+ | LBRACKET RBRACKET          { [] }
+ | LBRACKET integers RBRACKET { $2 }
+
+;
 dictionary:
  | LBRACE orders RBRACE    { U.Order_Dictionary $2 }
  | LBRACE couplings RBRACE { U.Coupling_Dictionary $2 }
@@ -121,6 +127,11 @@ names:
 integers:
  | INT                { [$1] }
  | INT COMMA integers { $1 :: $3 }
+;
+
+integer_lists:
+ | integer_list                     { [$1] }
+ | integer_list COMMA integer_lists { $1 :: $3 }
 ;
 
 /* We demand that a [U.String_Expr] contains no adjacent literal strings.

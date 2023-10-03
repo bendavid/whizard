@@ -22,15 +22,12 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let (<<) f g x = f (g x)
-let (>>) f g x = g (f x)
-
 module P = Momentum.Default
 module P_Whizard = Momentum.DefaultW
 
 module type T =
   sig
-    val main : unit -> unit
+    val main : ?current:int ref -> ?argv:string array -> unit -> unit
     type flavor
     val diagrams : flavor -> flavor -> flavor list ->
       ((flavor * Momentum.Default.t) *
@@ -43,10 +40,13 @@ module Make (Fusion_Maker : Fusion.Maker) (PHS_Maker : Fusion.Maker)
   struct
 
     module CM = Colorize.It(M)
+    module SCM = Orders.Slice(Colorize.It(M))
 
     type flavor = M.flavor
 
     module Proc = Process.Make(M)
+
+    module Coupling_Orders = Orders.Conditions(Colorize.It(M))
 
 (* \begin{dubious}
      We must have initialized the vertices \emph{before}
@@ -113,8 +113,7 @@ module Make (Fusion_Maker : Fusion.Maker) (PHS_Maker : Fusion.Maker)
      in the tree to [None].  In this case, we will need
      to normalize different fusion orders [Coupling.fuse2],
      [Coupling.fuse3] or [Coupling.fusen], because they would
-     otherwise lead to inequivalent diagrams. Unfortunately, this
-     stuff packaged deep in [Fusion.Tagged_Coupling].
+     otherwise lead to inequivalent diagrams.
    \end{dubious} *)
 
 (*i
@@ -133,41 +132,6 @@ i*)
      topologically equivalent duplicates.
    \end{dubious} *)
 
-(* Take a [CF.amplitude list] assumed to correspond to the same
-   external states after stripping the color and return a
-   pair of the list of external particles and the corresponding
-   Feynman diagrams without color. *)
-
-    let wf1 amplitude = 
-      match F.externals amplitude with
-      | wf :: _ -> wf
-      | [] -> failwith "Omega.forest_sans_color: no external particles"
-
-    let uniq l =
-      ThoList.uniq (List.sort compare l)
-
-    let forest_sans_color = function
-      | amplitude :: _ as amplitudes ->
-	let externals = F.externals amplitude in
-	let prune_color wf =
-	  (F.flavor_sans_color wf, F.momentum_list wf) in
-	let prune_color_and_couplings (wf, c) =
-	  (prune_color wf, None) in
-	(List.map prune_color externals,
-	 uniq
-	   (List.map
-	      (fun t ->
-		Tree.canonicalize
-		  (Tree.map prune_color_and_couplings prune_color t))
-	      (ThoList.flatmap (fun a -> F.forest (wf1 a) a) amplitudes)))
-      | [] -> ([], [])
-
-    let dag_sans_color = function
-      | amplitude :: _ as amplitudes ->
-        let prune a = a in
-        List.map prune amplitudes
-      | [] -> []
-
     let p2s p =
       if p >= 0 && p <= 9 then
         string_of_int p
@@ -181,149 +145,6 @@ i*)
 
     let variable wf =
       M.flavor_to_string (F.flavor_sans_color wf) ^ "[" ^ format_p wf ^ "]"
-
-    let variable' wf =
-      CM.flavor_to_TeX (F.flavor wf) ^ "(" ^ format_p wf ^ ")"
-
-    let feynmf_style propagator color =
-      { Tree.style =
-          begin match propagator with
-          | Coupling.Prop_Feynman
-          | Coupling.Prop_Gauge _ ->
-            begin match color with
-            | Color.AdjSUN _ -> Some ("gluon", "")
-            | _ -> Some ("boson", "")
-            end
-          | Coupling.Prop_Col_Feynman -> Some ("gluon", "")
-          | Coupling.Prop_Unitarity
-          | Coupling.Prop_Rxi _ -> Some ("dbl_wiggly", "")
-          | Coupling.Prop_Spinor
-          | Coupling.Prop_ConjSpinor -> Some ("fermion", "")
-          | _ -> None
-          end;
-        Tree.rev =
-          begin match propagator with
-          | Coupling.Prop_Spinor -> true
-          | Coupling.Prop_ConjSpinor -> false
-          | _ -> false
-          end;
-        Tree.label = None;
-        Tree.tension = None }
-
-    let header incoming outgoing =
-      "$ " ^
-      String.concat " "
-	(List.map (CM.flavor_to_TeX << F.flavor) incoming) ^
-      " \\to " ^
-      String.concat " "
-	(List.map (CM.flavor_to_TeX << CM.conjugate << F.flavor) outgoing) ^
-      " $"
-
-    let header_sans_color incoming outgoing =
-      "$ " ^
-      String.concat " "
-	(List.map (M.flavor_to_TeX << fst) incoming) ^
-      " \\to " ^
-      String.concat " "
-	(List.map (M.flavor_to_TeX << M.conjugate << fst) outgoing) ^
-      " $"
-	
-    let diagram incoming tree =
-      let fmf wf =
-	let f = F.flavor wf in
-	feynmf_style (CM.propagator f) (CM.color f) in
-      Tree.map
-        (fun (n, _) ->
-	  let n' = fmf n in
-	  if List.mem n incoming then
-            { n' with Tree.rev = not n'.Tree.rev }
-	  else
-            n')
-        (fun l ->
-	  if List.mem l incoming then
-            l
-	  else
-            F.conjugate l)
-	tree
-
-    let diagram_sans_color incoming (tree) =
-      let fmf (f, p) =
-	feynmf_style (M.propagator f) (M.color f) in
-      Tree.map
-	(fun (n, c) ->
-	  let n' = fmf n in
-	  if List.mem n incoming then
-	    { n' with Tree.rev = not n'.Tree.rev }
-	  else
-	    n')
-	(fun (f, p) ->
-	  if List.mem (f, p) incoming then
-	    (f, p)
-	  else
-	    (M.conjugate f, p))
-	tree
-
-    let feynmf_set amplitude =
-      match F.externals amplitude with
-      | wf1 :: wf2 :: wfs ->
-	let incoming = [wf1; wf2] in
-    	{ Tree.header = header incoming wfs;
-	  Tree.incoming = incoming;
-	  Tree.diagrams =
-	    List.map (diagram incoming) (F.forest wf1 amplitude) }
-      | _ -> failwith "less than two external particles"
-
-    let feynmf_set_sans_color (externals, trees) =
-      match externals with
-      | wf1 :: wf2 :: wfs ->
-	let incoming = [wf1; wf2] in
-	{ Tree.header = header_sans_color incoming wfs;
-	  Tree.incoming = incoming;
-	  Tree.diagrams =
-	    List.map (diagram_sans_color incoming) trees }
-      | _ -> failwith "less than two external particles"
-
-    let feynmf_set_sans_color_empty (externals, trees) =
-      match externals with
-      | wf1 :: wf2 :: wfs ->
-	let incoming = [wf1; wf2] in
-	{ Tree.header = header_sans_color incoming wfs;
-	  Tree.incoming = incoming;
-	  Tree.diagrams = [] }
-      | _ -> failwith "less than two external particles"
-
-    let uncolored_colored amplitudes =
-      { Tree.outer = feynmf_set_sans_color (forest_sans_color amplitudes);
-	Tree.inner = List.map feynmf_set amplitudes }
-
-    let uncolored_only amplitudes =
-      { Tree.outer = feynmf_set_sans_color (forest_sans_color amplitudes);
-	Tree.inner = [] }
-
-    let colored_only amplitudes =
-      { Tree.outer = feynmf_set_sans_color_empty (forest_sans_color amplitudes);
-	Tree.inner = List.map feynmf_set amplitudes }
-
-    let momentum_to_TeX (_, p) =
-      String.concat "" (List.map p2s p)
-
-    let wf_to_TeX (f, _ as wf) =
-      M.flavor_to_TeX f ^ "(" ^ momentum_to_TeX wf ^ ")"
-
-    let amplitudes_to_feynmf latex name amplitudes =
-	Tree.feynmf_sets_wrapped latex name
-	  wf_to_TeX momentum_to_TeX variable' format_p
-	  (List.map uncolored_colored (amplitudes_by_flavor amplitudes))
-	
-    let amplitudes_to_feynmf_sans_color latex name amplitudes =
-	Tree.feynmf_sets_wrapped latex name
-	  wf_to_TeX momentum_to_TeX variable' format_p
-	  (List.map uncolored_only (amplitudes_by_flavor amplitudes))
-
-    let amplitudes_to_feynmf_color_only latex name amplitudes =
-	Tree.feynmf_sets_wrapped latex name
-	  wf_to_TeX momentum_to_TeX variable' format_p
-	  (List.map colored_only (amplitudes_by_flavor amplitudes))
 
     let debug (str, descr, opt, var) =
       [ "-warning:" ^ str, Arg.Unit (fun () -> var := (opt, false):: !var),
@@ -363,9 +184,11 @@ i*)
 
     let unphysical_polarization = ref None
 
+    module FMP = Feynmp.Make(Fusion_Maker)(P)(M)
+
 (* \thocwmodulesection{Main Program} *)
 
-    let main () =
+    let main ?current ?argv () =
       (* Delay evaluation of [M.external_flavors ()]! *)
       let usage () =
         "usage: " ^ Sys.argv.(0) ^
@@ -376,6 +199,7 @@ i*)
       and rev_scatterings = ref []
       and rev_decays = ref []
       and cascades = ref []
+      and orders = ref []
       and checks = ref []
       and output_file = ref None
       and print_forest = ref false
@@ -391,7 +215,7 @@ i*)
       and dag_out = ref None
       and dag0_out = ref None
       and phase_space_out = ref None in
-      Options.parse
+      Options.parse ?current ?argv
         (Options.cmdline "-target:" T.options @
          Options.cmdline "-model:" M.options @
          Options.cmdline "-fusion:" CF.options @
@@ -415,6 +239,8 @@ i*)
            "name    each line: in -> out1 out2 ...");
           ("-cascade", Arg.String (fun s -> cascades := s :: !cascades),
            "expr       select diagrams");
+          ("-orders", Arg.String (fun s -> orders := s :: !orders),
+           "expr       select coupling orders");
 (*i
           ("-initialize",
            Arg.String (fun s -> cache_option := Cache_Initialize s),
@@ -522,6 +348,11 @@ i*)
           let fin, fout = List.hd processes in
           C.to_selectors (C.of_string_list (List.length fin + List.length fout) !cascades) in
 
+        let orders =
+          match !orders with
+          | [] -> None
+          | strings -> Some (Coupling_Orders.of_strings (List.rev strings)) in
+
         let amplitudes =
           try
             begin match F.check_charges () with
@@ -535,8 +366,7 @@ i*)
                        violators) in
                 failwith ("charge violating vertices: " ^ violator_strings)
             end;
-            CF.amplitudes (include_goldstones !checks) !unphysical_polarization
-	      CF.no_exclusions selectors processes
+            CF.amplitudes (include_goldstones !checks) !unphysical_polarization selectors orders processes
           with
           | Fusion.Majorana ->
              begin
@@ -571,10 +401,10 @@ i*)
           let couplings =
             List.fold_left
               (fun acc p ->
+                let brakets = ThoList.flatmap snd (F.brakets p) in
                 let fusions = ThoList.flatmap F.rhs (F.fusions p)
-                and brakets = ThoList.flatmap F.ket (F.brakets p) in
-                let couplings =
-                  VSet.of_list (List.map F.coupling (fusions @ brakets)) in
+                and brakets = ThoList.flatmap F.ket brakets in
+                let couplings = VSet.of_list (List.map F.coupling (fusions @ brakets)) in
                 VSet.union acc couplings)
               VSet.empty (CF.processes amplitudes) in
           Printf.eprintf "SUMMARY: %d vertices\n" (VSet.cardinal couplings);
@@ -633,19 +463,10 @@ i*)
                  | [] ->
                     failwith "Omega(): phase space: no incoming particles"
                  | [f] ->
-                    PHS.phase_space_channels
-                      ch
-                      (PHS.amplitude_sans_color
-                         false PHS.no_exclusions selectors fin fout)
+                    PHS.phase_space_channels ch (PHS.amplitude_sans_color false selectors fin fout)
                  | [f1; f2] ->
-                    PHS.phase_space_channels
-                      ch
-                      (PHS.amplitude_sans_color
-                         false PHS.no_exclusions selectors fin fout);
-                    PHS.phase_space_channels_flipped
-                      ch
-                      (PHS.amplitude_sans_color
-                         false PHS.no_exclusions selectors [f2; f1] fout)
+                    PHS.phase_space_channels ch (PHS.amplitude_sans_color false selectors fin fout);
+                    PHS.phase_space_channels_flipped ch (PHS.amplitude_sans_color false selectors [f2; f1] fout)
                  | _ ->
                     failwith "Omega(): phase space: 3 or more incoming particles")
                processes;
@@ -673,20 +494,17 @@ i*)
             (CF.processes amplitudes);
 
         begin match !diagrams_all with
-        | Some name ->
-	  amplitudes_to_feynmf !diagrams_LaTeX name amplitudes
+        | Some name -> FMP.amplitudes !diagrams_LaTeX name amplitudes
         | None -> ()
         end;
 
         begin match !diagrams_sans_color with
-        | Some name ->
-	  amplitudes_to_feynmf_sans_color !diagrams_LaTeX name amplitudes
+        | Some name -> FMP.amplitudes_sans_color !diagrams_LaTeX name amplitudes
         | None -> ()
         end;
 
         begin match !diagrams_color_only with
-        | Some name ->
-	  amplitudes_to_feynmf_color_only !diagrams_LaTeX name amplitudes
+        | Some name -> FMP.amplitudes_color_only !diagrams_LaTeX name amplitudes
         | None -> ()
         end;
 
@@ -704,7 +522,7 @@ i*)
       (F.flavor wf, (F.momentum wf : Momentum.Default.t))
 
     let diagrams in1 in2 out =
-      match F.amplitudes false F.no_exclusions C.no_cascades [in1; in2] out with
+      match F.amplitudes false C.no_cascades None [in1; in2] out with
       | a :: _ ->
           let wf1 = List.hd (F.externals a)
           and wf2 = List.hd (List.tl (F.externals a)) in

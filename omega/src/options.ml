@@ -22,7 +22,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module A = Map.Make (struct type t = string let compare = compare end)
+module A = Map.Make(String)
 
 type t =
     { actions : Arg.spec A.t;
@@ -41,6 +41,10 @@ let merge o1 o2 =
 i*)
 
 let create = extend empty
+
+let exclude f options =
+  { actions = A.filter (fun o _ -> not (f o)) options.actions;
+    raw = List.filter (fun (o, _, _) -> not (f o)) options.raw }
 
 let cmdline prefix options =
   List.map (fun (o, f, d) -> (prefix ^ o, f, d)) options.raw
@@ -85,22 +89,14 @@ i*)
      do this!
    \end{dubious} *)
     
-let parse specs anonymous usage =
+let parse ?current ?(argv=Sys.argv) specs anonymous usage =
   let help () =
     raise (Arg.Help (usage ())) in
-  let specs' =
-    [("-usage", Arg.Unit help, "Display the external particles");
-     ("--usage", Arg.Unit help, "Display the external particles")] @ specs in
+  let specs =
+    [("-usage", Arg.Unit help, " display the external particles");
+     ("--usage", Arg.Unit help, "display the external particles")] @ specs in
   try
-    Arg.parse_argv Sys.argv specs' anonymous (usage ())
+    Arg.parse_argv ?current argv specs anonymous (usage ())
   with
   | Arg.Bad msg -> Printf.eprintf "%s\n" msg; exit 2;
   | Arg.Help msg -> Printf.printf "%s\n" msg; exit 0
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

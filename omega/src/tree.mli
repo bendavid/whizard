@@ -114,6 +114,10 @@ val feynmf_sets_wrapped : bool -> string ->
   ('l -> string) -> ('l -> string) ->
   ('m -> string) -> ('m -> string) -> ('l, 'm) feynmf_sets list -> unit
 
+val feynmf_sets_wrapped_to_channel : bool -> out_channel ->
+  ('l -> string) -> ('l -> string) ->
+  ('m -> string) -> ('m -> string) -> ('l, 'm) feynmf_sets list -> unit
+
 (* If the diagrams at all levels are of the same type,
    we can recurse to arbitrary depth. *)
 
@@ -158,11 +162,3 @@ val iter_incoming : ('ext * float * float -> unit) ->
   ('e, 'n, 'ext) layout -> unit
 val iter_outgoing : ('ext * float * float -> unit) ->
   ('e, 'n, 'ext) layout -> unit
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

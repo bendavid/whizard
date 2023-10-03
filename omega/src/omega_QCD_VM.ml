@@ -23,5 +23,5 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 
-module O = Omega.Mixed23(Targets.VM)(Modellib_SM.QCD)
+module O = Omega.Mixed23(Target_VM.Make)(Modellib_SM.QCD)
 let _ = O.main ()

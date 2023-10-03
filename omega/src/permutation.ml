@@ -229,38 +229,9 @@ module Using_Arrays : T =
 
 module Default = Using_Arrays
 
-(*
-  This is the Fisher-Yates shuffle, cf. D. Knuth, {\em Seminumerical
-  algorithms.  The Art of Computer Programming. 2}. Reading, MA:
-  Addison–Wesley. pp. 139-140.
- *)
-
-(*i
-  To shuffle an array a of n elements (indices 0..n-1):
-
-     for i from n − 1 downto 1 do
-          j ← random integer with 0 ≤ j ≤ i
-          exchange a[j] and a[i]
-
-   To initialize an array a of n elements to a randomly shuffled copy
-   of source, both 0-based: 
-
-     a[0] ← source[0]
-     for i from 1 to n − 1 do
-         j ← random integer with 0 ≤ j ≤ i
-         a[i] ← a[j]
-         a[j] ← source[i]
-i*)
-
 let shuffle l =
   let a = Array.of_list l in
-  for n = Array.length a - 1 downto 1 do
-    let k = Random.int (succ n) in
-    if k <> n then
-      let tmp  = Array.get a n in
-      Array.set a n (Array.get a k);
-      Array.set a k tmp
-  done;
+  ThoArray.shuffle a;
   Array.to_list a
 
 let time f x =

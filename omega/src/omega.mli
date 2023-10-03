@@ -24,7 +24,8 @@
 
 module type T =
   sig
-    val main : unit -> unit
+
+    val main : ?current:int ref -> ?argv:string array -> unit -> unit
 
 (* \begin{dubious}
      This used to be only intended for debugging O'Giga,

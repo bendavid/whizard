@@ -40,9 +40,11 @@ module Phi3 =
     type gauge = unit
     type constant = G
 
-    type orders = unit
-    let orders = function 
-      | _ -> ()
+    type coupling_order = unit
+    let all_coupling_orders () = [()]
+    let coupling_order_to_string () = ""
+    let coupling_orders = function
+      | G -> [((), 1)]
 
     let lorentz _ = Scalar
     let color _ = Color.Singlet
@@ -107,9 +109,11 @@ module Phi4 =
     type gauge = unit
     type constant = G3 | G4
 
-    type orders = unit
-    let orders = function 
-      | _ -> ()
+    type coupling_order = unit
+    let all_coupling_orders () = [()]
+    let coupling_order_to_string () = ""
+    let coupling_orders = function
+      | G3 | G4 -> [((), 1)]
 
     let lorentz _ = Scalar
     let color _ = Color.Singlet
@@ -134,13 +138,10 @@ module Phi4 =
       ([(Phi, Phi, Phi), Scalar_Scalar_Scalar 1, G3],
        [(Phi, Phi, Phi, Phi), Scalar4 1, G4], [])
 
-    let fuse2 _ = failwith "Modellib.Phi4.fuse2"
-    let fuse3 _ = failwith "Modellib.Phi4.fuse3"
-    let fuse = function
-      | [] | [_] -> invalid_arg "Modellib.Phi4.fuse"
-      | [_; _] -> [Phi, V3 (Scalar_Scalar_Scalar 1, F23, G3)]
-      | [_; _; _] -> [Phi, V4 (Scalar4 1, F234, G4)]
-      | _ -> []
+    let table = F.of_vertices (vertices ())
+    let fuse2 = F.fuse2 table
+    let fuse3 = F.fuse3 table
+    let fuse = F.fuse table
     let max_degree () = 4
     let parameters () =
       { input = [G3, 1.0; G4, 1.0]; derived = []; derived_arrays = [] }
@@ -188,9 +189,11 @@ module QED =
     type gauge = unit
     type constant = Q
 
-    type orders = unit
-    let orders = function
-      | _ -> ()
+    type coupling_order = unit
+    let all_coupling_orders () = [()]
+    let coupling_order_to_string () = ""
+    let coupling_orders = function
+      | Q -> [((), 1)]
 
     let lorentz = function
       | Electron | Muon | Tau -> Spinor
@@ -320,16 +323,19 @@ module QCD =
     type gauge = unit
     type constant = Gs | G2 | I_Gs
 
-    type orders = unit
-    let orders = function 
-      | _ -> ()
+    type coupling_order = unit
+    let all_coupling_orders () = [()]
+    let coupling_order_to_string () = ""
+    let coupling_orders = function
+      | Gs | I_Gs -> [((), 1)]
+      | G2 -> [((), 2)]
 
     let lorentz = function
       | U | D | C | S | T | B -> Spinor
       | Ubar | Dbar | Cbar | Sbar | Tbar | Bbar -> ConjSpinor
       | Gl -> Vector
 
-    let color = function 
+    let color = function
       | U | D | C | S | T | B -> Color.SUN 3
       | Ubar | Dbar | Cbar | Sbar | Tbar | Bbar -> Color.SUN (-3)
       | Gl -> Color.AdjSUN 3
@@ -686,17 +692,17 @@ module SM (Flags : SM_flags) =
 
     let options = Options.create
       [ "constant_width", Arg.Unit (fun () -> default_width := Constant),
-        "use constant width (also in t-channel)";
+        " use constant width (also in t-channel)";
         "fudged_width", Arg.Set use_fudged_width,
-        "use fudge factor for charge particle width";
+        " use fudge factor for charge particle width";
         "custom_width", Arg.String (fun f -> default_width := Custom f),
-        "use custom width";
+        "width use custom width";
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
-        "use vanishing width";
+        " use vanishing width";
         "cms_width", Arg.Unit (fun () -> default_width := Complex_Mass),
-        "use complex mass scheme";
+        " use complex mass scheme";
         "running_width", Arg.Unit (fun () -> default_width := Running),
-        "use running width" ]
+        " use running width" ]
     let caveats () = []
 
     type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW 
@@ -785,7 +791,7 @@ module SM (Flags : SM_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -1019,9 +1025,12 @@ module SM (Flags : SM_flags) =
 	  
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
-
-    let orders = function 
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
+    let coupling_orders = function
       | Q_lepton | Q_up | Q_down | G_NC_lepton | G_NC_neutrino 
       | G_NC_up | G_NC_down | G_CC | G_CCQ _ | G_Htt | G_H3
       | G_Hbb | G_Hcc | G_Hss | G_Htautau | G_Hmm | G_Hee | I_Q_W
@@ -1067,7 +1076,7 @@ module SM (Flags : SM_flags) =
       | Anom_Dim6_WWZZ_DWDPW
       | Anom_Dim6_HHAA | Anom_Dim6_HHZZ_D | Anom_Dim6_HHZZ_DP
       | Anom_Dim6_HHZZ_PB | Anom_Dim6_HHZZ_T
-      | G_TVA_ttWW | G_TVA_bbWW | G_SP_ttH -> (0,1)
+      | G_TVA_ttWW | G_TVA_bbWW | G_SP_ttH ->  [(EW, 1)]
       | G_HHWW | G_HHZZ | G_H4
       | G_WWWW | G_ZZWW | G_AZWW | G_AAWW  
       |	Alpha_WWWW0 | Alpha_WWWW2 | Alpha_ZZWW0 
@@ -1075,16 +1084,16 @@ module SM (Flags : SM_flags) =
       | D_Alpha_WWWW0_S | D_Alpha_WWWW0_T | D_Alpha_WWWW0_U
       | D_Alpha_WWWW2_S | D_Alpha_WWWW2_T | D_Alpha_ZZWW0_S 
       | D_Alpha_ZZWW0_T | D_Alpha_ZZWW1_S | D_Alpha_ZZWW1_T
-      | D_Alpha_ZZWW1_U | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T -> (0,2)
+      | D_Alpha_ZZWW1_U | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T -> [(EW, 2)]
       | Gs | I_Gs | G_TVA_ttG | G_TVA_ttGG | G_TVA_tcG | G_TVA_tcGG
       | G_TVA_tuG | G_TVA_tuGG | G_VLR_qGuG 
       | C_quqd1R_bt | C_quqd1R_tb | C_quqd1L_bt | C_quqd1L_tb
-      | C_quqd8R_bt | C_quqd8R_tb | C_quqd8L_bt | C_quqd8L_tb -> (1,0)
-      | G2 | G_Hgg -> (2,0)
+      | C_quqd8R_bt | C_quqd8R_tb | C_quqd8L_bt | C_quqd8L_tb -> [(QCD, 1)]
+      | G2 | G_Hgg -> [(QCD, 2)]
 	(* These constants are not used, hence initialized to zero. *)
       | Sinthw | Sin2thw | Costhw | Pi 
       | Alpha_QED | G_weak | K_Matrix_Coeff _ 
-      | K_Matrix_Pole _ | Mass _ | Width _ | Vev | E -> (0,0)
+      | K_Matrix_Pole _ | Mass _ | Width _ | Vev | E -> []
 
 (* \begin{dubious}
      The current abstract syntax for parameter dependencies is admittedly
@@ -2615,9 +2624,11 @@ module SM_Rxi =
     type flavor = SM.flavor
     let flavors = SM.flavors
     let external_flavors = SM.external_flavors
-    (* Later: [type orders = SM.orders] *)
     type constant = SM.constant
-    (* Later: [let orders = SM.orders] *)
+    type coupling_order = SM.coupling_order
+    let all_coupling_orders = SM.all_coupling_orders
+    let coupling_orders = SM.coupling_orders
+    let coupling_order_to_string = SM.coupling_order_to_string
     let lorentz = SM.lorentz
     let color = SM.color
     let nc = SM.nc
@@ -2724,11 +2735,14 @@ module Groves (M : Model.Gauge) : Model.Gauge with module Ch = M.Ch =
     let flavor_symbol f = M.flavor_symbol (project f)
 
     type constant = M.constant
-    (* Later: [type orders = M.orders] *)
+    type coupling_order = M.coupling_order
+    let all_coupling_orders = M.all_coupling_orders
+    let coupling_orders = M.coupling_orders
     let constant_symbol = M.constant_symbol
     let max_degree = M.max_degree
     let parameters = M.parameters
-    (* Later: [let orders = M.orders] *)
+    let coupling_orders = M.coupling_orders
+    let coupling_order_to_string = M.coupling_order_to_string
 
     let conjugate = function
       | M (_, g) as f -> inject g (M.conjugate (project f))

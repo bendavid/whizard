@@ -4,6 +4,7 @@
 \RequirePackage{ifpdf}
 \ifpdf
   \documentclass[a4paper,notitlepage,chapters]{flex}
+  \usepackage[T1]{fontenc}
   \usepackage{type1cm}
   \usepackage[pdftex,colorlinks]{hyperref}
   \usepackage[pdftex]{graphicx,feynmp,emp}
@@ -16,6 +17,7 @@
 \fi
 \usepackage{verbatim,array,amsmath,amssymb}
 \usepackage{url,thophys,thohacks}
+\usepackage{alphalph} %%% too many appendices ...
 \usepackage{pgf}
 \usepackage{ytableau}
 \setlength{\unitlength}{1mm}
@@ -108,6 +110,10 @@
 \newcommand{\signature}[1]{%
   \InputIfFileExists{#1.interface}{}%
     {\begin{dubious}\textit{Interface \ttfilename{#1.mli} unavailable!}\end{dubious}}}
+\newcommand{\interface}[1]{%
+  \label{mod:#1}%
+  \InputIfFileExists{#1.implementation}{}%
+    {\begin{dubious}\textit{Interface \ttfilename{#1.ml} unavailable!}\end{dubious}}}
 \newcommand{\application}[1]{%
   \InputIfFileExists{#1.implementation}{}%
     {\begin{dubious}\textit{Application \ttfilename{#1.ml} unavailable!}\end{dubious}}}
@@ -370,7 +376,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newpage
 \begin{quote}
-  Copyright \textcopyright~1999-2017 by
+  Copyright \textcopyright~1999-2023 by
   \begin{itemize}
     \item Wolfgang~Kilian ~\texttt{<kilian@hep.physik.uni-siegen.de>}
     \item Thorsten~Ohl~\texttt{<ohl@physik.uni-wuerzburg.de>}
@@ -553,7 +559,7 @@ implementations translate the abstract expressions derived by
 \ocwupperid{Fusion} to expressions in the target
 (section~\ref{sec:targets}, p.~\pageref{sec:targets}).
 \begin{modules}{}
-  \item[Targets.Fortran] Fortran95 language implementation, calling
+  \item[Target_Fortran] Fortran95 language implementation, calling
     subroutines
 \end{modules}
 Other targets could come in the future: \texttt{C}, \texttt{C++},
@@ -666,9 +672,143 @@ All features required for leading order physics applications are in place.
 \module{cascade}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Arrows and Epsilon Tensors}
+\label{sec:arrow}
+\module{arrow}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Birdtracks}
+\label{sec:birdtracks}
+\module{birdtracks}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{$\mathrm{SU}(3)$}
+\label{sec:su3}
+Using the normalization~$\tr(T_{a}T_{b}) = \delta_{ab}$, we can
+check the selfconsistency of the completeness relation
+\begin{equation}
+    T_{a}^{i_1j_1} T_{a}^{i_2j_2} =
+      \left(                 \delta^{i_1j_2} \delta^{i_2j_1}
+             - \frac{1}{N_C} \delta^{i_1j_1} \delta^{j_1j_2}\right)
+\end{equation}
+as
+\begin{multline}
+  T_{a}^{i_1j_1} T_{a}^{i_2j_2}
+    = \tr\left(T_{a_1}T_{a_2}\right) T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2}
+    = T_{a_1}^{l_1l_2} T_{a_2}^{l_2l_1}
+      T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} \\
+    = \left(                 \delta^{l_1j_1} \delta^{i_1l_2}
+             - \frac{1}{N_C} \delta^{l_1l_2} \delta^{i_1j_1}\right)
+      \left(                 \delta^{l_2j_2} \delta^{i_2l_1}
+             - \frac{1}{N_C} \delta^{l_2l_1} \delta^{i_2j_2}\right)
+    = \left(                 \delta^{i_1j_2} \delta^{i_2j_1}
+             - \frac{1}{N_C} \delta^{i_1i_2} \delta^{j_2j_1}\right)
+\end{multline}
+With
+\begin{equation}
+\label{eq:f=tr(TTT)'}
+  \ii f_{a_1a_2a_3}
+    = \tr\left(T_{a_1}\left\lbrack T_{a_2},T_{a_3}\right\rbrack\right)
+    = \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+    - \tr\left(T_{a_1}T_{a_3}T_{a_2}\right)
+\end{equation}
+and
+\begin{multline}
+  \tr\left(T_{a_1}T_{a_2}T_{a_3}\right)
+      T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} T_{a_3}^{i_3j_3}
+    = T_{a_1}^{l_1l_2} T_{a_2}^{l_2l_3} T_{a_3}^{l_3l_1}
+      T_{a_1}^{i_1j_1} T_{a_2}^{i_2j_2} T_{a_3}^{i_3j_3} = \\
+      \left(                 \delta^{l_1j_1} \delta^{i_1l_2}
+             - \frac{1}{N_C} \delta^{l_1l_2} \delta^{i_1j_1}\right)
+      \left(                 \delta^{l_2j_2} \delta^{i_2l_3}
+             - \frac{1}{N_C} \delta^{l_2l_3} \delta^{i_2j_2}\right)
+      \left(                 \delta^{l_3j_3} \delta^{i_3l_1}
+             - \frac{1}{N_C} \delta^{l_3l_1} \delta^{i_3j_3}\right)
+\end{multline}
+we find the decomposition
+\begin{equation}
+\label{eq:fTTT'}
+    \ii f_{a_1a_2a_3} T_{a_1}^{i_1j_1}T_{a_2}^{i_2j_2}T_{a_3}^{i_3j_3}
+  = \delta^{i_1j_2}\delta^{i_2j_3}\delta^{i_3j_1}
+  - \delta^{i_1j_3}\delta^{i_3j_2}\delta^{i_2j_1}\,.
+\end{equation}
+
+Indeed,
+\begin{verbatim}
+symbol nc;
+Dimension nc;
+vector i1, i2, i3, j1, j2, j3;
+index l1, l2, l3;
+
+local [TT] =
+        ( j1(l1) * i1(l2) - d_(l1,l2) * i1.j1 / nc )
+      * ( j2(l2) * i2(l1) - d_(l2,l1) * i2.j2 / nc );
+
+#procedure TTT(sign)
+local [TTT`sign'] =
+        ( j1(l1) * i1(l2) - d_(l1,l2) * i1.j1 / nc )
+      * ( j2(l2) * i2(l3) - d_(l2,l3) * i2.j2 / nc )
+      * ( j3(l3) * i3(l1) - d_(l3,l1) * i3.j3 / nc )
+ `sign' ( j1(l1) * i1(l2) - d_(l1,l2) * i1.j1 / nc )
+      * ( j3(l2) * i3(l3) - d_(l2,l3) * i3.j3 / nc )
+      * ( j2(l3) * i2(l1) - d_(l3,l1) * i2.j2 / nc );
+#endprocedure
+
+#call TTT(-)
+#call TTT(+)
+
+bracket nc;
+print;
+.sort
+.end
+\end{verbatim}
+gives
+\begin{verbatim}
+   [TT] =
+       + nc^-1 * (  - i1.j1*i2.j2 )
+       + i1.j2*i2.j1;
+
+   [TTT-] =
+       + i1.j2*i2.j3*i3.j1 - i1.j3*i2.j1*i3.j2;
+
+   [TTT+] =
+       + nc^-2 * (    4*i1.j1*i2.j2*i3.j3 )
+       + nc^-1 * (  - 2*i1.j1*i2.j3*i3.j2
+                    - 2*i1.j2*i2.j1*i3.j3
+                    - 2*i1.j3*i2.j2*i3.j1 )
+       + i1.j2*i2.j3*i3.j1 + i1.j3*i2.j1*i3.j2;
+\end{verbatim}
+\module{SU3}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Color Propagators}
+\label{sec:color_propagator}
+\module{color_Propagator}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Color Fusions}
+\label{sec:color_fusion}
+\module{color_fusion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Color}
 \label{sec:color}
 \module{color}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Colorization}
+\label{sec:colorize}
+\module{colorize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Count Coupling Constants}
+\label{sec:orders}
+\module{orders}
+\module{orders_syntax}
+\section{Lexer}
+\lexer{orders}
+\section{Parser}
+\parser{orders}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Fusions}
@@ -681,7 +821,7 @@ All features required for leading order physics applications are in place.
 \signature{coupling}
 \signature{model}
 \module{dirac}
-\module{vertex}
+%%% \module{vertex}
 \signature{target}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -690,24 +830,19 @@ All features required for leading order physics applications are in place.
 \module{charges}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Colorization}
-\label{sec:colorize}
-\module{colorize}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Processes}
 \label{sec:process}
 \module{process}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Model Files}
-\label{sec:model-files}
-\module{vertex_syntax}
-\section{Lexer}
-\lexer{vertex}
-\section{Parser}
-\parser{vertex}
-\module{vertex}
+%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% \chapter{Model Files}
+%%% \label{sec:model-files}
+%%% \module{vertex_syntax}
+%%% \section{Lexer}
+%%% \lexer{vertex}
+%%% \section{Parser}
+%%% \parser{vertex}
+%%% \module{vertex}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{UFO Models}
@@ -731,9 +866,16 @@ All features required for leading order physics applications are in place.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Hardcoded Targets}
 \label{sec:targets}
+The following modules used to be submodules of [Targets], but this
+as become unwieldy over time.
 \module{format_Fortran}
-\module{targets}
+\module{target_Fortran_Names}
+\module{target_Fortran}
+\module{targets_vintage}
 \module{targets_Kmatrix}
+\module{targets_Kmatrix_2}
+\module{target_VM}
+%module{targets}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Phase Space}
@@ -747,11 +889,17 @@ Talk to~\cite{Kilian:WHIZARD}.
 \module{whizard}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{FeynMP, n\'ee FeynMF}
+\label{sec:feynmp}
+Talk to~\cite{Ohl:1995kr}.
+\module{feynmp}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Applications}
 \label{sec:omega}
-\section{Sample}
-{\small\verbatiminput{sample.prc}}
 \module{omega}
+\module{omega_cli}
+\application{omega3}
 %application{omega_Phi3}
 %application{omega_Phi3h}
 %application{omega_Phi4}
@@ -830,6 +978,14 @@ language that does not insult the programmer's intelligence.
    (Feynman diagram library for O'Caml, unpublished).
   \bibitem{Kilian:WHIZARD}
     W. Kilian, \textit{\texttt{WHIZARD}}, University of Karlsruhe, 2000.
+  %\cite{Ohl:1995kr}
+  \bibitem{Ohl:1995kr}
+    T.~Ohl,
+    %``Drawing Feynman diagrams with Latex and Metafont,''
+    Comput. Phys. Commun. \textbf{90} (1995), 340-354
+    doi:10.1016/0010-4655(95)90137-S
+    [arXiv:hep-ph/9505351 [hep-ph]].
+    %51 citations counted in INSPIRE as of 13 Jun 2023
   \bibitem{Boos/Ohl:groves}
     E.\,E. Boos, T. Ohl,
     Phys.\ Rev.\ Lett.\ \textbf{83} (1999) 480.
@@ -869,9 +1025,14 @@ C.~Degrande, C.~Duhr, B.~Fuks, D.~Grellscheid, O.~Mattelaer and T.~Reiter,
 Comput.{} Phys.{} Commun.{} \textbf{183} (2012), 1201-1214
 doi:10.1016/j.cpc.2012.01.022
 [arXiv:1108.2040 [hep-ph]].
+\bibitem{TAOCP2}
+Donald E.~Knuth,
+\textit{The Art of Computer Programming. 2: Seminumerical algorithms}
 \end{thebibliography}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \appendix
+%%% we've started to have too many appendices \ldots
+\renewcommand{\thechapter}{\AlphAlph{\value{chapter}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Autotools}
@@ -904,14 +1065,34 @@ doi:10.1016/j.cpc.2012.01.022
 \module{thoList}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Non-Empty Lists}
+\label{sec:nelist}
+\module{NEList}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Lists with Typed Length}
+\label{sec:nlist}
+\module{NList}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{More On Arrays}
 \label{sec:thoarray}
 \module{thoArray}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Persistent Arrays}
+\label{sec:parray}
+\module{PArray}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{More On Strings}
 \label{sec:thostring}
 \module{thoString}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Structured Maps}
+\label{sec:thomap}
+\module{thoMap}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Polymorphic Maps}
@@ -920,11 +1101,11 @@ From~\cite{Ohl:LOTR}.
 \module{pmap}
 \module{partial}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Tries}
-\label{sec:trie}
-From~\cite{Okasaki:1998:book}, extended for~\cite{Ohl:LOTR}.
-\module{trie}
+%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% \chapter{Tries}
+%%% \label{sec:trie}
+%%% From~\cite{Okasaki:1998:book}, extended for~\cite{Ohl:LOTR}.
+%%% \module{trie}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Tensor Products}

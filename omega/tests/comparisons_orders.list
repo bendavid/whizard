@@ -1,0 +1,10 @@
+# comparisons_orders.list --
+# ----------------------------------------------------------------------
+#        thr   abs_thr n    roots  model process ...
+# ----------------------------------------------------------------------
+uudd     0.95  1E-11   100  1000   SM    scatter u ubar -> d dbar
+uuddg    0.90  1E-11   100  1000   SM    scatter u ubar -> d dbar g
+uudda    0.90  1E-11   100  1000   SM    scatter u ubar -> d dbar A
+uuddga   0.80  1E-11   100  1000   SM    scatter u ubar -> d dbar g A
+uudduu   0.75  1E-11   100  1000   SM    scatter u ubar -> d dbar u ubar
+uudduudd 0.75  1E-11   100  1000   SM    scatter u ubar -> d dbar u ubar d dbar

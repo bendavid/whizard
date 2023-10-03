@@ -27,15 +27,9 @@
 module It (M : Model.T) :
     Model.Colorized with type flavor_sans_color = M.flavor
     and type constant = M.constant
+    and type coupling_order = M.coupling_order
 
 module Gauge (M : Model.Gauge) :
     Model.Colorized_Gauge with type flavor_sans_color = M.flavor
     and type constant = M.constant
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+    and type coupling_order = M.coupling_order

@@ -22,5 +22,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Binary(Targets.Fortran)(Modellib_SM.QED)
+module O = Omega.Binary(Target_Fortran.Make)(Modellib_SM.QED)
 let _ = O.main ()

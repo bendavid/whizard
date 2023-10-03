@@ -11,5 +11,5 @@ build_root=/home/ohl/physics/whizard/_build/default
 build_dir=$build_root/omega/src
 init_file=omega.ocamlinit
 
-( cd $build_dir; make omega_core.cma ) || exit 1
+( cd $build_dir; make omega_core.cma modellib_SM.cmo) || exit 1
 exec utop -init $init_file -I $build_dir omega_core.cma "$@"

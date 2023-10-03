@@ -115,12 +115,12 @@ module Forest (PT : Tuple.Poly) (N : Ord) (E : Ord) :
     type children = node PT.t
     type t = edge * children
 
-    let compare (e1, n1) (e2, n2) =
-      let c = PT.compare N.compare n1 n2 in
+    let compare (edge1, children1) (edge2, children2) =
+      let c = PT.compare N.compare children1 children2 in
       if c <> 0 then
         c
       else
-        E.compare e1 e2
+        E.compare edge1 edge2
 
     let for_all f (_, nodes) = PT.for_all f nodes
     let fold f (_, nodes) acc = PT.fold_right f nodes acc
@@ -171,15 +171,22 @@ module Grade_Forest (G : Grader) (F : Forest) =
     let fold = F.fold
   end
 
-(* \begin{dubious}
-     The following can easily be extended to [Map.S] in its full glory,
-     if we ever need it.
-   \end{dubious} *)
+(* A subset of [Map.S], with graded keys. The map is implemented
+   as a two level map with the outer map from the rank of the key
+   to a map from all key of this rank to the values.
+   Thus we can find query the minimal and maximal ranks
+   and find all keys with a given rank without having to
+   scan the entire map.*)
 
 module type Graded_Map =
   sig
+
+(* We implement the subset of [Map.S] from the standard library
+   that we need in our applications. The semantics is identical
+   to [Map.S] so we don't need to duplicate the documentation.
+   It would be trivial to implement the rest, if we ever need it. *)
+
     type key
-    type rank
     type 'a t
     val empty : 'a t
     val add : key -> 'a -> 'a t -> 'a t
@@ -187,14 +194,33 @@ module type Graded_Map =
     val mem : key -> 'a t -> bool
     val iter : (key -> 'a -> unit) -> 'a t -> unit
     val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+
+(* Here come the additional functions dealing with the [rank].
+   All could be implemented by inspecting all keys in a map,
+   but the keeping track of the grading makes them much more
+   efficient.*)
+    type rank
+
+(* Return a list of all ranks in a map.  The application should not
+   rely on the fact that the list is sorted. *)
     val ranks : 'a t -> rank list
+
+(* Return the minimal and maximal rank in the map, according to the
+   order of [rank]. *)
     val min_max_rank : 'a t -> rank * rank
+
+(* Return all keys with the given [rank].  *)
     val ranked : rank -> 'a t -> key list
+
   end
 
 module type Graded_Map_Maker = functor (O : Graded_Ord) ->
   Graded_Map with type key = O.t and type rank = O.G.t
 
+(* \begin{dubious}
+      Nested ['a -> 'b opt] functions cry out for the
+      monadic binding operators introduced by O'Caml 4.08.
+   \end{dubious} *)
 module Graded_Map (O : Graded_Ord) :
     Graded_Map with type key = O.t and type rank = O.G.t =
   struct
@@ -207,36 +233,62 @@ module Graded_Map (O : Graded_Ord) :
     type (+'a) t = 'a M2.t M1.t
 
     let empty = M1.empty
+
+    let map2_of_rank rank map1 = 
+      match M1.find_opt rank map1 with
+      | None -> M2.empty
+      | Some map2 -> map2
+
     let add key data map1 =
       let rank = O.rank key in
-      let map2 = try M1.find rank map1 with Not_found -> M2.empty in
-      M1.add rank (M2.add key data map2) map1
-    let find key map = M2.find key (M1.find (O.rank key) map)
-    let mem key map =
-      M2.mem key (try M1.find (O.rank key) map with Not_found -> M2.empty)
-    let iter f map1 = M1.iter (fun rank -> M2.iter f) map1
-    let fold f map1 acc1 = M1.fold (fun rank -> M2.fold f) map1 acc1
+      M1.add rank (M2.add key data (map2_of_rank rank map1)) map1
+
+    let find key map1 =
+      M2.find key (M1.find (O.rank key) map1)
+
+    let mem key map1 =
+      M2.mem key (map2_of_rank (O.rank key) map1)
+
+    let iter f map1 =
+      M1.iter (fun rank -> M2.iter f) map1
+
+    let fold f map1 acc1 =
+      M1.fold (fun rank -> M2.fold f) map1 acc1
 
 (* \begin{dubious}
      The set of ranks and its minimum and maximum should be maintained
      explicitely!
    \end{dubious} *)
     module S1 = Set.Make(O.G)
-    let ranks map = M1.fold (fun key data acc -> key :: acc) map []
-    let rank_set map = M1.fold (fun key data -> S1.add key) map S1.empty
+
+    let ranks map =
+      M1.fold (fun key data acc -> key :: acc) map []
+
+    let rank_set map =
+      M1.fold (fun key data -> S1.add key) map S1.empty
+
     let min_max_rank map =
       let s = rank_set map in
       (S1.min_elt s, S1.max_elt s)
 
     module S2 = Set.Make(O)
-    let keys map = M2.fold (fun key data acc -> key :: acc) map []
+
+    let keys map =
+      M2.fold (fun key data acc -> key :: acc) map []
+
     let sorted_keys map =
       S2.elements (M2.fold (fun key data -> S2.add key) map S2.empty)
-    let ranked rank map =
-      keys (try M1.find rank map with Not_found -> M2.empty)
+
+    let ranked rank map1 =
+      keys (map2_of_rank rank map1)
+
   end
 
-(* \thocwmodulesection{The DAG Functor} *)   
+(* \thocwmodulesection{The DAG Functor} *)
+
+(* Currently, we are \emph{not} using the grading in O'Mega.
+   It seemed to be an interesting idea for structuring DAGs,
+   but we have not yet come up with a real use case \ldots *)
 
 module Maybe_Graded (GMM : Graded_Map_Maker) (F : Graded_Forest) =
   struct
@@ -490,11 +542,100 @@ module Make (F : Forest) =
      (cf.~the generalized tries in~\cite{Okasaki:1998:book}).
    \end{dubious} *)
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+(* \begin{dubious}
+     GADTs to the rescue?
+   \end{dubious} *)
 
+(* \thocwmodulesection{Unit Tests} *)
+
+module Test =
+  struct
+
+    let random_int_list imax n =
+      let imax_plus = succ imax in
+      Array.to_list (Array.init n (fun _ -> Random.int imax_plus))
+
+    module OInts =
+      struct
+        type t = int
+        let compare = compare
+      end
+
+    module GOInts =
+      struct
+        type t = int
+        let compare = compare
+        module G = 
+          struct
+            type t = int
+            let compare = compare
+          end
+        let rank i = i mod 100
+      end
+
+    module GM = Graded_Map(GOInts)
+
+    let int_list_to_string l =
+      ThoList.to_string string_of_int l
+
+    let int_list2_to_string l =
+      ThoList.to_string int_list_to_string l
+
+    let int_pair_to_string (i1, i2) =
+      int_list_to_string [i1; i2]
+
+    let uniq l =
+      ThoList.uniq (List.sort compare l)
+
+    open OUnit
+
+    let assert_equal_int_pair p1 p2 =
+      assert_equal ~printer:int_pair_to_string p1 p2
+
+    let assert_equal_unsorted_int_list l1 l2 =
+      assert_equal ~printer:int_list_to_string
+        (List.sort compare l1)
+        (List.sort compare l2)
+
+    let assert_equal_unsorted_int_list_ignore_duplicates l1 l2 =
+      assert_equal ~printer:int_list_to_string (uniq l1) (uniq l2)
+
+    let squares n =
+      let data =
+        List.map (fun i -> (i, i * i)) (random_int_list 10000 n) in
+      let map =
+        List.fold_left (fun acc (i, s) -> GM.add i s acc) GM.empty data in
+      (data, map)
+
+    let suite_graded_map =
+
+      "Graded_Map" >:::
+        [ "ranks" >::
+            (fun () ->
+              let data, graded_map = squares 100 in
+              assert_equal_unsorted_int_list
+                (uniq (List.map (fun (i, _) -> GOInts.rank i) data))
+                (GM.ranks graded_map));
+
+          "min_max_rank" >::
+            (fun () ->
+              match squares 100 with
+              | [], _ -> failwith "empty test data"
+              | (r0, _) :: data, graded_map ->
+                 assert_equal_int_pair
+                   (List.fold_left
+                      (fun (r_min, r_max) (i, _) ->
+                        let r = GOInts.rank i in
+                        (min r r_min, max r r_max))
+                      (GOInts.rank r0, GOInts.rank r0) data)
+                   (GM.min_max_rank graded_map)) ]
+
+(* \begin{dubious}
+     We should add more unit tests, time permitting.
+   \end{dubious} *)
+
+    let suite =
+      "DAG" >:::
+        [suite_graded_map]
+
+  end

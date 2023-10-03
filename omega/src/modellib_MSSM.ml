@@ -136,7 +136,7 @@ module MSSM (Flags : MSSM_flags) =
     type sfm =
       | M1 | M2
 
-    let string_of_sfm = function 
+    let string_of_sfm = function
       | M1 -> "1" | M2 -> "2"
 
 (* We also introduce special types for the charginos and neutralinos. *)
@@ -533,10 +533,14 @@ module MSSM (Flags : MSSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_MSSM.MSSM.orders: not implemented yet!"
 
     let ferm_of_sff = function
       | SL, g -> (L g) | SN, g -> (N g) 
@@ -2639,11 +2643,3 @@ generalization to complex parameters is obvious. *)
       | G_Gr4W_Snc -> "ggr4wsnc"
       
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

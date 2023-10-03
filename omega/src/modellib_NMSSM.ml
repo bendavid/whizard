@@ -128,7 +128,7 @@ module NMSSM_func (Flags : NMSSM_flags) =
     type sfm =
       | M1 | M2
 
-    let string_of_sfm = function 
+    let string_of_sfm = function
       | M1 -> "1" | M2 -> "2"
 
 (* We also introduce special types for the charginos and neutralinos. *)
@@ -422,10 +422,14 @@ module NMSSM_func (Flags : NMSSM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_NMSSM.NMSSM_func.orders: not implemented yet!"
 
 (* \begin{subequations}
      \begin{align}

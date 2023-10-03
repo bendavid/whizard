@@ -94,6 +94,9 @@ omega_models.cma: $(OMEGA_MODELS_CMO)
 	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
 	$(AM_V_at)$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
 
+orders_lexer.mli: orders_lexer.ml orders_parser.cmi
+	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
+
 cascade_lexer.mli: cascade_lexer.ml cascade_parser.cmi
 	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
 
@@ -170,7 +173,7 @@ if OCAML_AVAILABLE
 
 @am__include@ @am__quote@Makefile.depend_ocaml@am__quote@
 
-PARSERS = cascade vertex UFO UFOx
+PARSERS = orders cascade vertex UFO UFOx
 
 Makefile.depend_ocaml: $(OMEGA_CAML_PRIMARY)
 	@if $(AM_V_P); then :; else echo "  OCAMLDEP " $@; fi

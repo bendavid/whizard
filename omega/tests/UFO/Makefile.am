@@ -27,7 +27,7 @@
 #
 ########################################################################
 
-SUBDIRS = SM MSSM SMEFTsim_top_alphaScheme
+SUBDIRS = SM MSSM Exotic_Color SMEFTsim_top_alphaScheme
 
 ########################################################################
 ## The End.

@@ -20,8 +20,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module String =
-  Set.Make (struct type t = string let compare = compare end)
+module String = Set.Make(String)
 
 module String_Caseless =
   Set.Make
@@ -30,5 +29,4 @@ module String_Caseless =
       let compare = ThoString.compare_caseless
      end)
 
-module Int =
-  Set.Make (struct type t = int let compare = compare end)
+module Int = Set.Make(Int)

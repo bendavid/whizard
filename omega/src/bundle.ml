@@ -34,11 +34,12 @@ module type Dyn =
     type elt
     type fiber = elt list
     type base
-    val add : (elt -> base) -> elt -> t -> t
+    val empty : t
+    val add : (elt -> base) -> t -> elt -> t
     val of_list : (elt -> base) -> elt list -> t
-    val inv_pi : base -> t -> fiber
+    val inv_pi : t -> base -> fiber
     val base : t -> base list
-    val fiber : (elt -> base) -> elt -> t -> fiber
+    val fiber : (elt -> base) -> t -> elt -> fiber
     val fibers : t -> (base * fiber) list
   end
 
@@ -55,31 +56,31 @@ module Dyn (P : Elt_Base) =
 
     type t = Fiber.t InvPi.t
 
-    let add pi element fibers =
+    let empty = InvPi.empty
+
+    let add pi fibers element =
       let base = pi element in
       let fiber =
         try InvPi.find base fibers with Not_found -> Fiber.empty in
       InvPi.add base (Fiber.add element fiber) fibers
 
     let of_list pi list =
-      List.fold_right (add pi) list InvPi.empty
+      List.fold_left (add pi) InvPi.empty list
 
     let fibers bundle =
-      InvPi.fold
-        (fun base fiber acc -> (base, Fiber.elements fiber) :: acc) bundle []
+      InvPi.fold (fun base fiber acc -> (base, Fiber.elements fiber) :: acc) bundle []
 
     let base bundle =
-      InvPi.fold
-        (fun base fiber acc -> base :: acc) bundle []
+      InvPi.fold (fun base fiber acc -> base :: acc) bundle []
       
-    let inv_pi base bundle =
+    let inv_pi bundle base =
       try
         Fiber.elements (InvPi.find base bundle)
       with
       | Not_found -> []
 
-    let fiber pi elt bundle =
-      inv_pi (pi elt) bundle
+    let fiber pi bundle elt =
+      inv_pi bundle (pi elt) 
 
   end
 
@@ -95,12 +96,13 @@ module type T =
     type elt
     type fiber = elt list
     type base
-    val add : elt -> t -> t
+    val empty : t
+    val add : t -> elt -> t
     val of_list : elt list -> t
     val pi : elt -> base
-    val inv_pi : base -> t -> fiber
+    val inv_pi : t -> base -> fiber
     val base : t -> base list
-    val fiber : elt -> t -> fiber
+    val fiber : t -> elt -> fiber
     val fibers : t -> (base * fiber) list
   end
 
@@ -114,6 +116,7 @@ module Make (P : Projection) =
     type fiber = D.fiber
     type t = D.t
 
+    let empty = D.empty
     let pi = P.pi
 
     let add = D.add pi
@@ -122,8 +125,8 @@ module Make (P : Projection) =
     let inv_pi = D.inv_pi
     let fibers = D.fibers
 
-    let fiber elt bundle =
-      inv_pi (pi elt) bundle
+    let fiber bundle elt =
+      inv_pi bundle (pi elt)
 
   end
 
@@ -139,12 +142,4 @@ end)
 let sample = [-1; -4; 7; -8; 9; 42; -137; -42; 42; 4; 1; -9]
 
 Test.fibers (Test.classify sample);;
-i*)
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
 i*)

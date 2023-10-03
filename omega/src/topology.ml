@@ -541,7 +541,7 @@ module Count (I : Integer) =
     let two = of_int 2
     let three = of_int 3
 
-(* If [I.t] is an abstract datatype, the polymorphic [Pervasives.min]
+(* If [I.t] is an abstract datatype, the polymorphic [Stdlib.min]
    can fail.  Provide our own version using the specific comparison
    ``[(<=)]''. *)
 
@@ -558,7 +558,7 @@ module Count (I : Integer) =
    instead.  For efficiency, we also maintain the number of external
    lines and the total number of propagators. *)
 
-    module IMap = Map.Make (struct type t = integer let compare = compare end)
+    module IMap = Map.Make (struct type t = integer let compare = I.compare end)
 
     type diagram_class = { ext : integer; prop : integer; v : integer IMap.t }
 
@@ -858,14 +858,3 @@ module Helac_Binary =
     let max_subtree n = pred n
 
   end
-    
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
-
-

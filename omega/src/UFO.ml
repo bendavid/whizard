@@ -31,7 +31,7 @@ let (<*>) f g x =
 let (<**>) f g x y =
   f (g x y)
 
-module SMap = Map.Make (struct type t = string let compare = compare end)
+module SMap = Map.Make(String)
 module SSet = Sets.String
 
 module CMap =
@@ -225,6 +225,11 @@ let string_expr_attrib name attribs =
   | S.String s -> [S.Literal s]
   | S.String_Expr e -> e
   | _ -> invalid_arg ("UFO.string_expr_attrib: " ^ name)
+
+let young_tableau_attrib name attribs =
+  match find_attrib name attribs with
+  | S.Young_Tableau y -> y
+  | _ -> invalid_arg ("UFO.young_tableau_attrib: " ^ name)
 
 let boolean_attrib name attribs =
   try
@@ -570,7 +575,9 @@ module Particle : Particle =
 	     spin =
                UFOx.Lorentz.rep_of_int neutral (required integer_attrib "spin");
 	     color =
-               UFOx.Color.rep_of_int neutral (required integer_attrib "color");
+               UFOx.Color.rep_of_int_or_young_tableau neutral
+                 (try Some (integer_attrib "color" attribs) with _ -> None)
+                 (try Some (young_tableau_attrib "color_young" attribs) with _ -> None);
 	     mass = required (name_attrib ~strip:"Param") "mass";
 	     width = required (name_attrib ~strip:"Param") "width";
 	     texname = required string_attrib "texname";
@@ -1427,7 +1434,7 @@ let check_color_reps_of_vertex particles v =
       let reps_vertex =
         List.sort compare (UFOx.Color.classify_indices lcc.Vertex.color) in
       if reps_vertex <> reps_particles then begin
-	Printf.printf "%s <> %s\n"
+	Printf.eprintf "particles: %s\n<> vertex: %s\n"
 	  (UFOx.Index.classes_to_string UFOx.Color.rep_to_string reps_particles)
 	  (UFOx.Index.classes_to_string UFOx.Color.rep_to_string reps_vertex);
 	invalid_arg "check_color_reps_of_vertex"
@@ -1865,7 +1872,7 @@ let nc_of_particles particles =
     List.fold_left
       (fun nc_set (_, p) ->
         match UFOx.Color.omega p.Particle.color with
-        | Color.Singlet -> nc_set
+        | Color.Singlet | Color.YT _ | Color.YTC _ -> nc_set
         | Color.SUN nc -> Sets.Int.add (abs nc) nc_set
         | Color.AdjSUN nc -> Sets.Int.add (abs nc) nc_set)
       Sets.Int.empty (SMap.bindings particles) in
@@ -1950,15 +1957,20 @@ module Model =
        for maps below. *)
     type flavor = int
     type constant = string
+    type coupling_order = string
     type gauge = unit
 
-    module M = Modeltools.Mutable
-        (struct type f = flavor type g = gauge type c = constant end)
+    module M =
+      Modeltools.Mutable (struct type f = flavor type g = gauge type c = constant type co = string end)
+
+    let setup = M.setup
 
     let flavors = M.flavors
     let external_flavors = M.external_flavors
-    let external_flavors = M.external_flavors
     let lorentz = M.lorentz
+    let all_coupling_orders = M.all_coupling_orders
+    let coupling_orders = M.coupling_orders
+    let coupling_order_to_string co = co
     let color = M.color
     let nc = M.nc
     let propagator = M.propagator
@@ -2111,6 +2123,9 @@ module Model =
 
     let verbatim_higgs_glue = ref false
 
+    let yt_to_omega y =
+      Young.map pred y
+
     let translate_color_atom model p = function
       | UFOx.Color_Atom.Identity (i, j) -> Color.Vertex.delta3 j i
       | UFOx.Color_Atom.Identity8 (a, b) ->
@@ -2118,7 +2133,9 @@ module Model =
            Color.Vertex.delta8 a b
          else
            delta8_heuristics model p a b
+      | UFOx.Color_Atom.Delta (y, a, b) -> Color.Vertex.delta_of_tableau (yt_to_omega y) a b
       | UFOx.Color_Atom.T (a, i, j) -> Color.Vertex.t a i j
+      | UFOx.Color_Atom.TY (y, a, i, j) -> Color.Vertex.t_of_tableau (yt_to_omega y) a i j
       | UFOx.Color_Atom.F (a, b, c) -> Color.Vertex.f a b c
       | UFOx.Color_Atom.D (a, b, c) -> Color.Vertex.d a b c
       | UFOx.Color_Atom.Epsilon (i, j, k) -> Color.Vertex.epsilon [i; j; k]
@@ -2128,20 +2145,17 @@ module Model =
       | UFOx.Color_Atom.K6Bar (i, j, k) -> Color.Vertex.k6bar i j k
 
     let translate_color_term model p = function
-      | [], q ->
-         Color.Vertex.scale q Color.Vertex.one
-      | [atom], q ->
-         Color.Vertex.scale q (translate_color_atom model p atom)
+      | [], q -> Birdtracks.scale q Birdtracks.one
+      | [atom], q -> Birdtracks.scale q (translate_color_atom model p atom)
       | atoms, q ->
          let atoms = List.map (translate_color_atom model p) atoms in
-         Color.Vertex.scale q (Color.Vertex.multiply atoms)
+         Birdtracks.scale q (Birdtracks.multiply atoms)
 
     let translate_color model p terms =
       match terms with
       | [] -> invalid_arg "translate_color: empty"
       | [ term ] -> translate_color_term model p term
-      | terms ->
-         Color.Vertex.sum (List.map (translate_color_term model p) terms)
+      | terms -> Birdtracks.sum (List.map (translate_color_term model p) terms)
 
     let translate_coupling_1 model p lcc =
       let l = lcc.Vertex.lorentz in
@@ -2530,7 +2544,11 @@ i*)
       | None -> name
       | Some name -> name
 
-    let init dir =
+    type init = string * string list
+
+    let init (dir, flags) =
+      if List.mem "dump" flags then
+        dump_raw := true;
       let model = filter_unphysical (parse_directory dir) in
       if !dump_raw then
 	dump model;
@@ -2548,6 +2566,11 @@ i*)
         | Some s -> Coupling.Prop_UFO s in
       let gauge_symbol () = "?GAUGE?" in
       let constant_symbol s = s in
+      let all_coupling_orders () =
+        List.map fst (SMap.bindings model.coupling_orders)
+      and coupling_orders c =
+        (coupling_of_symbol model c).UFO_Coupling.order
+      and coupling_order_to_string co = co in
       M.setup
         ~color:(fun f -> UFOx.Color.omega (particle f).Particle.color)
         ~nc:(fun () -> model.nc)
@@ -2568,7 +2591,10 @@ i*)
         ~gauge_symbol
         ~mass_symbol:(fun f -> (particle f).Particle.mass)
         ~width_symbol:(fun f -> (particle f).Particle.width)
-        ~constant_symbol;
+        ~constant_symbol
+        ~all_coupling_orders
+        ~coupling_orders
+        ~coupling_order_to_string;
       initialized := Some { directory = dir; model = model }
 
     let ufo_directory = ref Config.default_UFO_dir
@@ -2577,7 +2603,7 @@ i*)
       if is_initialized_from !ufo_directory then
 	()
       else
-	init !ufo_directory
+	init (!ufo_directory, [])
 
     let include_all_fusions = ref false
 
@@ -2656,6 +2682,7 @@ i*)
 
     let include_hadrons = ref true
 
+(*i
     let ufo_majorana_warnings =
       [ "***************************************************";
         "*                                                 *";
@@ -2678,109 +2705,111 @@ i*)
         ufo_majorana_warnings
       else
         []
+i*)
 
-    module Whizard : sig val write : unit -> unit end =
+    let caveats () = []
+
+    module Whizard : sig val write : out_channel -> unit end =
       struct
         
-        let write_header dir =
-          Printf.printf "# WHIZARD Model file derived from UFO directory\n";
-          Printf.printf "#   '%s'\n\n" dir;
-          List.iter (fun s -> Printf.printf "# %s\n" s) (M.caveats ());
-          Printf.printf "model \"%s\"\n\n" (Filename.basename dir)
+        let write_header oc dir =
+          let open Printf in
+          fprintf oc "# WHIZARD Model file derived from UFO directory\n";
+          fprintf oc "#   '%s'\n\n" dir;
+          List.iter (fun s -> fprintf oc "# %s\n" s) (M.caveats ());
+          fprintf oc "model \"%s\"\n\n" (Filename.basename dir)
 
-        let write_input_parameters parameters =
+        let write_input_parameters oc parameters =
+          let open Printf in
           let open Parameter in
-          Printf.printf "# Independent (input) Parameters\n";
+          fprintf oc "# Independent (input) Parameters\n";
           List.iter
             (fun p ->
-              Printf.printf
+              fprintf oc
                 "parameter %s = %s"
                 p.name (value_to_numeric p.value);
               begin match p.lhablock, p.lhacode with
               | None, None -> ()
               | Some name, Some (index :: indices) ->
-                 Printf.printf " slha_entry %s %d" name index;
-                 List.iter (fun i -> Printf.printf " %d" i) indices
+                 fprintf oc " slha_entry %s %d" name index;
+                 List.iter (fun i -> fprintf oc " %d" i) indices
               | Some name, None ->
-                 Printf.eprintf
-                   "UFO: parameter %s: slhablock %s without slhacode\n"
-                   p.name name
+                 eprintf "UFO: parameter %s: slhablock %s without slhacode\n" p.name name
               | Some name, Some [] ->
-                 Printf.eprintf
-                   "UFO: parameter %s: slhablock %s with empty slhacode\n"
-                   p.name name
+                 eprintf "UFO: parameter %s: slhablock %s with empty slhacode\n" p.name name
               | None, Some _ ->
-                 Printf.eprintf
-                   "UFO: parameter %s: slhacode without slhablock\n"
-                   p.name
+                 eprintf "UFO: parameter %s: slhacode without slhablock\n" p.name
               end;
-              Printf.printf "\n")
+              fprintf oc "\n")
             parameters;
-          Printf.printf "\n"
+          fprintf oc "\n"
 
-        let write_derived_parameters parameters =
+        let write_derived_parameters oc parameters =
+          let open Printf in
           let open Parameter in
-          Printf.printf "# Dependent (derived) Parameters\n";
+          fprintf oc "# Dependent (derived) Parameters\n";
           List.iter
             (fun p ->
-              Printf.printf
+              fprintf oc
                 "derived %s = %s\n"
                 p.name (value_to_expr alpha_s_half p.value))
             parameters
 
-        let write_particles particles =
+        let write_particles oc particles =
+          let open Printf in
           let open Particle in
-          Printf.printf "# Particles\n";
-          Printf.printf "# NB: hypercharge assignments appear to be unreliable\n";
-          Printf.printf "#     therefore we can't infer the isospin\n";
-          Printf.printf "# NB: parton-, gauge- & handedness are unavailable\n";
+          fprintf oc "# Particles\n";
+          fprintf oc "# NB: hypercharge assignments appear to be unreliable\n";
+          fprintf oc "#     therefore we can't infer the isospin\n";
+          fprintf oc "# NB: parton-, gauge- & handedness are unavailable\n";
           List.iter
             (fun p ->
               if not p.is_anti then begin
-                  Printf.printf
+                  fprintf oc
                     "particle \"%s\" %d ### parton? gauge? left?\n"
                     p.name p.pdg_code;
-                  Printf.printf
+                  fprintf oc
                     "  spin %s charge %s color %s ### isospin?\n"
                     (UFOx.Lorentz.rep_to_string_whizard p.spin)
                     (charge_to_string p.charge)
                     (UFOx.Color.rep_to_string_whizard p.color);
-                  Printf.printf "  name \"%s\"\n" p.name;
+                  fprintf oc "  name \"%s\"\n" p.name;
                   if p.antiname <> p.name then
-                    Printf.printf "  anti \"%s\"\n" p.antiname;
-                  Printf.printf "  tex_name \"%s\"\n" p.texname;
+                    fprintf oc "  anti \"%s\"\n" p.antiname;
+                  fprintf oc "  tex_name \"%s\"\n" p.texname;
                   if p.antiname <> p.name then
-                    Printf.printf "  tex_anti \"%s\"\n" p.antitexname;
-                  Printf.printf "  mass %s width %s\n\n" p.mass p.width
+                    fprintf oc "  tex_anti \"%s\"\n" p.antitexname;
+                  fprintf oc "  mass %s width %s\n\n" p.mass p.width
                 end)
             (values particles);
-          Printf.printf "\n"
+          fprintf oc "\n"
 
-        let write_hadrons () =
-          Printf.printf "# Hadrons (protons and beam remnants)\n";
-          Printf.printf "# NB: these are NOT part of the UFO model\n";
-          Printf.printf "#     but added for WHIZARD's convenience!\n";
-          Printf.printf "particle PROTON 2212\n";
-          Printf.printf "  spin 1/2  charge 1\n";
-          Printf.printf "  name p \"p+\"\n";
-          Printf.printf "  anti pbar \"p-\"\n";
-          Printf.printf "particle HADRON_REMNANT 90\n";
-          Printf.printf "  name hr\n";
-          Printf.printf "  tex_name \"had_r\"\n";
-          Printf.printf "particle HADRON_REMNANT_SINGLET 91\n";
-          Printf.printf "  name hr1\n";
-          Printf.printf "  tex_name \"had_r^{(1)}\"\n";
-          Printf.printf "particle HADRON_REMNANT_TRIPLET 92\n";
-          Printf.printf "  color 3\n";
-          Printf.printf "  name hr3\n";
-          Printf.printf "  tex_name \"had_r^{(3)}\"\n";
-          Printf.printf "  anti hr3bar\n";
-          Printf.printf "  tex_anti \"had_r^{(\\bar 3)}\"\n";
-          Printf.printf "particle HADRON_REMNANT_OCTET 93\n";
-          Printf.printf "  color 8\n";
-          Printf.printf "  name hr8\n";
-          Printf.printf "  tex_name \"had_r^{(8)}\"\n";
-          Printf.printf "\n"
+        let write_hadrons oc =
+          let open Printf in
+          fprintf oc "# Hadrons (protons and beam remnants)\n";
+          fprintf oc "# NB: these are NOT part of the UFO model\n";
+          fprintf oc "#     but added for WHIZARD's convenience!\n";
+          fprintf oc "particle PROTON 2212\n";
+          fprintf oc "  spin 1/2  charge 1\n";
+          fprintf oc "  name p \"p+\"\n";
+          fprintf oc "  anti pbar \"p-\"\n";
+          fprintf oc "particle HADRON_REMNANT 90\n";
+          fprintf oc "  name hr\n";
+          fprintf oc "  tex_name \"had_r\"\n";
+          fprintf oc "particle HADRON_REMNANT_SINGLET 91\n";
+          fprintf oc "  name hr1\n";
+          fprintf oc "  tex_name \"had_r^{(1)}\"\n";
+          fprintf oc "particle HADRON_REMNANT_TRIPLET 92\n";
+          fprintf oc "  color 3\n";
+          fprintf oc "  name hr3\n";
+          fprintf oc "  tex_name \"had_r^{(3)}\"\n";
+          fprintf oc "  anti hr3bar\n";
+          fprintf oc "  tex_anti \"had_r^{(\\bar 3)}\"\n";
+          fprintf oc "particle HADRON_REMNANT_OCTET 93\n";
+          fprintf oc "  color 8\n";
+          fprintf oc "  name hr8\n";
+          fprintf oc "  tex_name \"had_r^{(8)}\"\n";
+          fprintf oc "\n"
 
         let vertex_to_string model v =
           String.concat
@@ -2790,75 +2819,108 @@ i*)
                  "\"" ^ (SMap.find s model.particles).Particle.name ^ "\"")
                (Array.to_list v.Vertex.particles))
 
-        let write_vertices3 model vertices  =
-          Printf.printf "# Vertices (for phasespace generation only)\n";
-          Printf.printf "# NB: particles should be sorted increasing in mass.\n";
-          Printf.printf "#     This is NOT implemented yet!\n";
+        let write_vertices3 oc model vertices  =
+          let open Printf in
+          fprintf oc "# Vertices (for phasespace generation only)\n";
+          fprintf oc "# NB: particles should be sorted increasing in mass.\n";
+          fprintf oc "#     This is NOT implemented yet!\n";
           List.iter
             (fun v ->
               if Array.length v.Vertex.particles = 3 then
-                Printf.printf "vertex %s\n" (vertex_to_string model v))
+                fprintf oc "vertex %s\n" (vertex_to_string model v))
             (values vertices);
-          Printf.printf "\n"
+          fprintf oc "\n"
 
-        let write_vertices_higher model vertices  =
-          Printf.printf
+        let write_vertices_higher oc model vertices  =
+          let open Printf in
+          fprintf oc
             "# Higher Order Vertices (ignored by phasespace generation)\n";
           List.iter
             (fun v ->
               if Array.length v.Vertex.particles <> 3 then
-                Printf.printf "# vertex %s\n" (vertex_to_string model v))
+                fprintf oc "# vertex %s\n" (vertex_to_string model v))
             (values vertices);
-          Printf.printf "\n"
+          fprintf oc "\n"
 
-        let write_vertices model vertices  =
-          write_vertices3 model vertices;
-          write_vertices_higher model vertices
+        let write_vertices oc model vertices  =
+          write_vertices3 oc model vertices;
+          write_vertices_higher oc model vertices
 
-        let write () =
+        let write oc =
           match !initialized with
           | None -> failwith "UFO.Whizard.write: UFO model not initialized"
           | Some { directory = dir; model = model } ->
              let input_parameters, derived_parameters =
                classify_parameters model in
-             write_header dir;
-             write_input_parameters input_parameters;
-             write_derived_parameters derived_parameters;
-             write_particles model.particles;
+             write_header oc dir;
+             write_input_parameters oc input_parameters;
+             write_derived_parameters oc derived_parameters;
+             write_particles oc model.particles;
              if !include_hadrons then
-               write_hadrons ();
-             write_vertices model model.vertices;
+               write_hadrons oc;
+             write_vertices oc model model.vertices;
              exit 0
 
       end
 
-    let options =
+    let write_whizard = Whizard.write
+
+    let coupling_order_option co =
+      let s = M.coupling_order_to_string co in
+      ("-order:" ^ s,
+       Arg.Int
+         (fun n ->
+           Printf.eprintf "coupling_order(%s) = %d\n" s n;
+           flush stderr (*; [M.set_coupling_order co n] *) ),
+       Printf.sprintf "n set %s coupling order n [>=0] (still ignored)" s)
+
+    let coupling_order_options () =
+      Arg.align (List.map coupling_order_option (all_coupling_orders ()))
+
+    let flavor_list_to_string f_list =
+      String.concat "|" (List.map flavor_to_string f_list)
+
+    let all_flavors () =
+      try
+        ThoList.flatmap snd (external_flavors ())
+      with
+      | Modeltools.Uninitialized _ -> []
+
+    let load_and_update_cmdline () =
+      load () (* [;
+      Options.global := !Options.global @ (coupling_order_options ());
+      Options.usage :=
+        "usage: " ^ Sys.argv.(0) ^
+          " [options] [-scatter|-decay] process {flavors: " ^
+            flavor_list_to_string (all_flavors ()) ^ "}"] *)
+
+   let options =
       Options.create
         [ ("UFO_dir", Arg.String (fun name -> ufo_directory := name),
-           "UFO model directory (default: " ^ !ufo_directory ^ ")");
+           "dir UFO model directory (default: " ^ !ufo_directory ^ ")");
           ("Majorana", Arg.Set use_majorana_spinors,
-           "use Majorana spinors (must come _before_ exec!)");
+           " use Majorana spinors (must come _before_ exec!)");
           ("divide_propagators_by_i", Arg.Set divide_propagators_by_i,
-           "divide propagators by I (pre 2013 FeynRules convention)");
+           " divide propagators by I (pre 2013 FeynRules convention)");
           ("verbatim_Hg", Arg.Set verbatim_higgs_glue,
-           "don't correct the color flows for effective Higgs Gluon couplings");
-          ("write_WHIZARD", Arg.Unit Whizard.write,
-           "write the WHIZARD model file (required once per model)");
+           " don't correct the color flows for effective Higgs Gluon couplings");
+          ("write_WHIZARD", Arg.Unit (fun () -> Whizard.write stdout),
+           " write the WHIZARD model file (required once per model)");
           ("long_flavors",
            Arg.Unit (fun () -> Lookup.flavor_format := Lookup.Long),
-           "write use the UFO flavor names instead of integers");
+           " write use the UFO flavor names instead of integers");
           ("dump", Arg.Set dump_raw,
-           "dump UFO model for debugging the parser (must come _before_ exec!)");
+           " dump UFO model for debugging the parser (must come _before_ exec!)");
           ("all_fusions", Arg.Set include_all_fusions,
-           "include all fusions in the fortran module");
+           " include all fusions in the fortran module");
           ("no_hadrons", Arg.Clear include_hadrons,
-           "don't add any particle not in the UFO file");
+           " don't add any particle not in the UFO file");
           ("add_hadrons", Arg.Set include_hadrons,
-           "add protons and beam remants for WHIZARD");
-          ("exec", Arg.Unit load,
-           "load the UFO model files (required _before_ using particles names)");
+           " add protons and beam remants for WHIZARD");
+          ("exec", Arg.Unit load_and_update_cmdline,
+           " load the UFO model files (required _before_ using particles names)");
           ("help", Arg.Unit (fun () -> prerr_endline "..."),
-           "print information on the model")]
+           " print information on the model")]
 
   end
 

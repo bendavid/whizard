@@ -46,6 +46,7 @@ module type T =
        or provide a fallback. *)
     exception Undefined of domain
     val apply : 'a t -> domain -> 'a
+    val apply_opt : 'a t -> domain -> 'a option
     val apply_with_fallback : (domain -> 'a) -> 'a t -> domain -> 'a
 
     (* Iff domain and codomain of the map agree, we can

@@ -22,13 +22,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Mixed23_Majorana_vintage(Targets.Fortran_Majorana)(Modellib_PSSSM.ExtMSSM(Modellib_PSSSM.PSSSM))
+module O = Omega.Mixed23_Majorana_vintage(Target_Fortran.Make_Majorana)(Modellib_PSSSM.ExtMSSM(Modellib_PSSSM.PSSSM))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

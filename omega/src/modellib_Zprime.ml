@@ -274,10 +274,14 @@ module Zprime (Flags : SM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_Zprime.Zprime.orders: not implemented yet!"
 
     let input_parameters =
       []

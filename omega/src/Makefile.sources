@@ -58,6 +58,12 @@ CASCADE_MLD = $(CASCADE_MLL:.mll=.ml) $(CASCADE_MLY:.mly=.ml)
 CASCADE_ML_PRIMARY = cascade_syntax.ml cascade.ml
 CASCADE_ML = cascade_syntax.ml $(CASCADE_MLD) cascade.ml
 
+ORDERS_MLL = orders_lexer.mll
+ORDERS_MLY = orders_parser.mly
+ORDERS_MLD = $(ORDERS_MLL:.mll=.ml) $(ORDERS_MLY:.mly=.ml)
+ORDERS_ML_PRIMARY = orders_syntax.ml orders.ml
+ORDERS_ML = orders_syntax.ml $(ORDERS_MLD) orders.ml
+
 VERTEX_MLL = vertex_lexer.mll
 VERTEX_MLY = vertex_parser.mly
 VERTEX_MLD = $(VERTEX_MLL:.mll=.ml) $(VERTEX_MLY:.mly=.ml)
@@ -70,8 +76,8 @@ UFO_MLD = $(UFO_MLL:.mll=.ml) $(UFO_MLY:.mly=.ml)
 UFO_ML_PRIMARY = UFO_tools.ml UFOx_syntax.ml UFOx.ml UFO_syntax.ml UFO_Lorentz.ml UFO_targets.ml UFO.ml
 UFO_ML = UFO_tools.ml UFOx_syntax.ml UFO_syntax.ml $(UFO_MLD) UFOx.ml UFO_Lorentz.ml UFO_targets.ml UFO.ml
 
-OMEGA_MLL = $(CASCADE_MLL) $(VERTEX_MLL) $(UFO_MLL)
-OMEGA_MLY = $(CASCADE_MLY) $(VERTEX_MLY) $(UFO_MLY)
+OMEGA_MLL = $(CASCADE_MLL) $(ORDERS_MLL) $(VERTEX_MLL) $(UFO_MLL)
+OMEGA_MLY = $(CASCADE_MLY) $(ORDERS_MLY) $(VERTEX_MLY) $(UFO_MLY)
 
 OMEGA_DERIVED_CAML = \
     $(OMEGA_MLL:.mll=.mli) $(OMEGA_MLL:.mll=.ml) \
@@ -95,24 +101,31 @@ OMEGA_CONFIG_ML = \
 
 OMEGA_CONFIG_MLI = $(OMEGA_CONFIG_ML:.ml=.mli)
 
+# Not used anymore: trie.ml
+
 OMEGA_CORE_ML_PART1 = \
     OUnit.ml OUnitDiff.ml \
     partial.ml pmap.ml format_Fortran.ml \
-    thoString.ml sets.ml thoList.ml thoArray.ml bundle.ml powSet.ml \
-    thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
+    thoString.ml sets.ml NList.ml NEList.ml thoList.ml \
+    PArray.ml thoArray.ml thoMap.ml bundle.ml powSet.ml \
+    thoFilename.ml cache.ml progress.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml \
     permutation.ml partition.ml tree.ml young.ml \
     tuple.ml topology.ml DAG.ml momentum.ml phasespace.ml \
-    charges.ml color.ml modeltools.ml whizard.ml dirac.ml
+    charges.ml arrow.ml birdtracks.ml SU3.ml \
+    color_Propagator.ml color_Fusion.ml color.ml \
+    modeltools.ml whizard.ml dirac.ml
 
 OMEGA_CORE_ML_PART2 = \
-    $(VERTEX_ML) $(UFO_ML) $(CASCADE_ML)
+    $(VERTEX_ML) $(UFO_ML) $(CASCADE_ML) $(ORDERS_ML)
 
 OMEGA_CORE_ML_PART2_PRIMARY = \
-    $(VERTEX_ML_PRIMARY) $(UFO_ML_PRIMARY) $(CASCADE_ML_PRIMARY)
+    $(VERTEX_ML_PRIMARY) $(UFO_ML_PRIMARY) $(CASCADE_ML_PRIMARY) $(ORDERS_ML_PRIMARY)
 
 OMEGA_CORE_ML_PART3 = \
-    colorize.ml process.ml fusion.ml fusion_vintage.ml omega.ml
+    colorize.ml orders.ml process.ml fusion.ml fusion_vintage.ml \
+    feynmp.ml omega.ml omega_cli.ml
+
 
 OMEGA_CORE_ML_PRIMARY = \
     $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2_PRIMARY) $(OMEGA_CORE_ML_PART3)
@@ -139,6 +152,10 @@ OMEGA_MODELLIB_MLI = $(OMEGA_MODELLIB_ML:.ml=.mli)
 OMEGA_TARGETLIB_ML = \
     targets_Kmatrix.ml \
     targets_Kmatrix_2.ml \
+    target_Fortran_Names.ml \
+    targets_vintage.ml \
+    target_Fortran.ml \
+    target_VM.ml \
     targets.ml
 
 OMEGA_TARGETLIB_MLI = $(OMEGA_TARGETLIB_ML:.ml=.mli)
@@ -153,6 +170,7 @@ OMEGA_MINIMAL_APPLICATIONS_ML = \
     omega_SM.ml
 
 OMEGA_APPLICATIONS_ML = \
+    omega3.ml \
     omega_QED.ml \
     omega_QED_VM.ml \
     omega_QCD.ml \

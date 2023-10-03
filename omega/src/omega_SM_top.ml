@@ -119,7 +119,7 @@ module Anomtop (Flags : SM_flags) =
       | O f -> 
           Scalar
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -280,10 +280,14 @@ module Anomtop (Flags : SM_flags) =
 
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Omega_SM_top.Anomtop.orders: not implemented yet!"
 
     let input_parameters =
       []
@@ -616,14 +620,5 @@ module Anomtop (Flags : SM_flags) =
       | Width f -> "width" ^ flavor_symbol f
   end
 
-module O = Omega.Mixed23(Targets.Fortran)
-    (Anomtop(SM_no_anomalous))
+module O = Omega.Mixed23(Target_Fortran.Make)(Anomtop(SM_no_anomalous))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

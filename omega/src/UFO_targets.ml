@@ -165,8 +165,8 @@ module Fortran : T =
         Printf.sprintf "%d.0_default/%d" n d
 
     let format_complex_rational cq =
-      let real = QC.real cq
-      and imag = QC.imag cq in
+      let real = QC.re cq
+      and imag = QC.im cq in
       if Q.is_null imag then
         begin
           if Q.is_negative real then
@@ -194,8 +194,8 @@ module Fortran : T =
         "+ " ^ format_rational q ^ "*"
 
     let format_complex_rational_factor cq =
-      let real = QC.real cq
-      and imag = QC.imag cq in
+      let real = QC.re cq
+      and imag = QC.im cq in
       if Q.is_null imag then
         begin
           if Q.is_unit real then

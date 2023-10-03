@@ -394,7 +394,7 @@ module Make (M : Model.T) (P : Momentum.T) :
 
     let dummy3 = Coupling.Scalar_Scalar_Scalar 1
     let dummy4 = Coupling.Scalar4 1
-    let dummyn = Coupling.UFO (Algebra.QC.unit, "dummy", [], [], Color.Vertex.one)
+    let dummyn = Coupling.UFO (Algebra.QC.unit, "dummy", [], [], Birdtracks.one)
 
 (* Translate the vertices in a pair of lists: the first is the list
    of always rejected couplings and the second the remaining
@@ -475,8 +475,7 @@ i*)
      Not a working implementation yet, but it isn't used either \ldots 
    \end{dubious} *)
 
-    module IPowSet =
-      PowSet.Make (struct type t = int let compare = compare let to_string = string_of_int end)
+    module IPowSet = PowSet.Make (Int)
       
     let rec coarsest_partition' = function
         | True | False -> IPowSet.empty

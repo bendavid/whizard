@@ -151,7 +151,7 @@ module NoH (Flags : NoH_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -351,9 +351,12 @@ module NoH (Flags : NoH_flags) =
 	  
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
-    type orders = int * int
-
-    let orders = function 
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
+    let coupling_orders = function
       | Q_lepton | Q_up | Q_down | G_NC_lepton | G_NC_neutrino 
       | G_NC_up | G_NC_down | G_CC | G_CCQ _ 
       | I_Q_W 
@@ -376,22 +379,22 @@ module NoH (Flags : NoH_flags) =
       | G_VLR_qBuB | G_VLR_qBuB_u | G_VLR_qBuB_d
       | G_VLR_qBuB_e | G_VL_qBuB_n | G_VL_qW | G_VL_qW_u | G_VL_qW_d
       | G_SL_DttR | G_SR_DttR  | G_SL_DttL | G_SLR_DbtR | G_SL_DbtL
-      | G_TVA_ttWW | G_TVA_bbWW -> (0,1)
+      | G_TVA_ttWW | G_TVA_bbWW -> [(EW, 1)]
       | G_WWWW | G_ZZWW | G_AZWW | G_AAWW  
       |	Alpha_WWWW0 | Alpha_WWWW2 | Alpha_ZZWW0 
       | Alpha_ZZWW1 | Alpha_ZZZZ 
       | D_Alpha_WWWW0_S | D_Alpha_WWWW0_T | D_Alpha_WWWW0_U
       | D_Alpha_WWWW2_S | D_Alpha_WWWW2_T | D_Alpha_ZZWW0_S 
       | D_Alpha_ZZWW0_T | D_Alpha_ZZWW1_S | D_Alpha_ZZWW1_T
-      | D_Alpha_ZZWW1_U | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T -> (0,2)
+      | D_Alpha_ZZWW1_U | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T -> [(EW, 2)]
       | Gs | I_Gs | G_TVA_ttG | G_TVA_ttGG | G_VLR_qGuG 
       | C_quqd1R_bt | C_quqd1R_tb | C_quqd1L_bt | C_quqd1L_tb
-      | C_quqd8R_bt | C_quqd8R_tb | C_quqd8L_bt | C_quqd8L_tb -> (1,0)
-      | G2  -> (2,0)
+      | C_quqd8R_bt | C_quqd8R_tb | C_quqd8L_bt | C_quqd8L_tb -> [(QCD, 1)]
+      | G2  ->  [(QCD, 2)]
 	(* These constants are not used, hence initialized to zero. *)
       | Sinthw | Sin2thw | Costhw | Pi 
       | Alpha_QED | G_weak | K_Matrix_Coeff _ 
-      | K_Matrix_Pole _ | Mass _ | Width _ | Vev | E -> (0,0)
+      | K_Matrix_Pole _ | Mass _ | Width _ | Vev | E -> []
 
 (* \begin{dubious}
      The current abstract syntax for parameter dependencies is admittedly
@@ -1576,7 +1579,7 @@ module AltH (Flags : NoH_flags) =
           | _ -> Scalar
           end
 
-    let color = function 
+    let color = function
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
       | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
@@ -1795,10 +1798,14 @@ module AltH (Flags : NoH_flags) =
      it should include simple functions.
    \end{dubious} *)
 
-    type orders = int * int
+    type coupling_order = QCD | EW
+    let all_coupling_orders () = [QCD; EW]
+    let coupling_order_to_string = function
+      | QCD -> "QCD"
+      | EW -> "EW"
 
-    let orders = function 
-      | _ -> (0,0)
+    let coupling_orders = function
+      | _ -> failwith "Modellib_NoH.AltH.orders: not implemented yet!"
 
 (* \begin{subequations}
      \begin{align}

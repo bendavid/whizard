@@ -43,6 +43,7 @@ type value =
   | Name_List of name list
   | Integer_List of int list
   | String_List of string list
+  | Young_Tableau of int Young.tableau
   | Order_Dictionary of (string * int) list
   | Coupling_Dictionary of (int * int * name) list
   | Decay_Dictionary of (name list * string) list

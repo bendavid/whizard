@@ -28,6 +28,7 @@ module type T =
     val of_lists : domain list -> 'a list -> 'a t
     exception Undefined of domain
     val apply : 'a t -> domain -> 'a
+    val apply_opt : 'a t -> domain -> 'a option
     val apply_with_fallback : (domain -> 'a) -> 'a t -> domain -> 'a
     val auto : domain t -> domain -> domain
   end
@@ -64,6 +65,12 @@ module Make (D : Map.OrderedType) : T with type domain = D.t =
 	M.find d partial
       with
       | Not_found -> raise (Undefined d)
+
+    let apply_opt partial d =
+      try
+	Some (M.find d partial)
+      with
+      | Not_found -> None
 
     let apply_with_fallback fallback partial d =
       try

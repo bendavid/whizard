@@ -51,6 +51,8 @@ rule token = parse
     white             { token lexbuf }     (* skip blanks *)
   | '('        	      { LPAREN }
   | ')'        	      { RPAREN }
+  | '['        	      { LBRACKET }
+  | ']'        	      { RBRACKET }
   | ','        	      { COMMA }
   | '*' '*'    	      { POWER }
   | '*'        	      { TIMES }

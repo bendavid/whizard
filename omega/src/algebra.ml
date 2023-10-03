@@ -22,10 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* Avoid refering to [Pervasives.compare], because [Pervasives] will
-   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
-let pcompare = compare
-
 module type Test =
   sig
     val suite : OUnit.test
@@ -38,27 +34,23 @@ module PM = Pmap.List
 
 (* \thocwmodulesection{Coefficients} *)
 
-(* For our algebra, we need coefficient rings. *)
-
 module type CRing =
   sig
     type t
     val null : t
-    val unit : t
-    val mul : t -> t -> t
+    val is_null : t -> bool
     val add : t -> t -> t
-    val sub : t -> t -> t
     val neg : t -> t
-    val to_string : t -> string
+    val sub : t -> t -> t
+    val unit : t
+    val is_unit : t -> bool
+    val mul : t -> t -> t
+    val equal : t -> t -> bool
   end
-
-(* And rational numbers provide a particularly important example: *)
 
 module type Rational =
   sig
     include CRing
-    val is_null : t -> bool
-    val is_unit : t -> bool
     val is_positive : t -> bool
     val is_negative : t -> bool
     val is_integer : t -> bool
@@ -71,6 +63,11 @@ module type Rational =
     val to_ratio : t -> int * int
     val to_float : t -> float
     val to_integer : t -> int
+    val int : int -> t
+    val fraction : int -> t
+    val compare : t -> t -> int
+    val to_string : t -> string
+    val pp : Format.formatter -> t -> unit
     module Test : Test
   end
 
@@ -95,17 +92,22 @@ let abs_int = abs
 
 module Small_Rational : Rational =
   struct
+
     type t = int * int
+
     let is_null (n, _) = (n = 0)
     let is_unit (n, d) = (n <> 0) && (n = d)
     let is_positive (n, d) = n * d > 0
     let is_negative (n, d) = n * d < 0
     let is_integer (n, d) = (gcd n d = d)
+
     let null = (0, 1)
     let unit = (1, 1)
+
     let make n d =
       let c = gcd n d in
       (n / c, d / c)
+
     let abs (n, d) = (abs n, abs d)
     let inv (n, d) = (d, n)
     let mul (n1, d1) (n2, d2) = make (n1 * n2) (d1 * d2)
@@ -113,6 +115,7 @@ module Small_Rational : Rational =
     let add (n1, d1) (n2, d2) = make (n1 * d2 + n2 * d1) (d1 * d2)
     let sub (n1, d1) (n2, d2) = make (n1 * d2 - n2 * d1) (d1 * d2)
     let neg (n, d) = (- n, d)
+
     let rec pow q p =
       if p = 0 then
 	unit
@@ -120,32 +123,48 @@ module Small_Rational : Rational =
 	pow (inv q) (-p)
       else
 	mul q (pow q (pred p))
+
     let sum qs =
       List.fold_right add qs null
+
     let to_ratio (n, d) =
       if d < 0 then
         (-n, -d)
       else
         (n, d)
+
     let to_float (n, d) = float n /. float d
+
     let to_string (n, d) =
       if abs_int d = 1 then
         Printf.sprintf "%d" (d * n)
       else
         let n, d = to_ratio (n, d) in
         Printf.sprintf "(%d/%d)" n d
+
+    let pp fmt qc =
+      Format.fprintf fmt "%s" (to_string qc)
+
     let to_integer (n, d) =
       if is_integer (n, d) then
         n
       else
         invalid_arg "Algebra.Small_Rational.to_integer"
 
+    let int n = make n 1
+    let fraction n = make 1 n
+
+    let compare q1 q2 =
+      let n1, d1 = to_ratio q1
+      and n2, d2 = to_ratio q2 in
+      compare (d2 * n1) (d1 * n2)
+
+    let equal (n1, d1) (n2, d2) =
+      d2 * n1 = d1 * n2
+
     module Test =
       struct
         open OUnit
-
-        let equal z1 z2 =
-          is_null (sub z1 z2)
 
         let assert_equal_rational z1 z2 =
           assert_equal ~printer:to_string ~cmp:equal z1 z2
@@ -170,40 +189,28 @@ module Q = Small_Rational
 
 module type QComplex =
   sig
-
+    include CRing
     type q
-    type t
-
     val make : q -> q -> t 
-    val null : t
-    val unit : t
-
-    val real : t -> q
-    val imag : t -> q
-
+    val re : t -> q
+    val im : t -> q
     val conj : t -> t
-    val neg : t -> t
-
-    val add : t -> t -> t
-    val sub : t -> t -> t
-    val mul : t -> t -> t
     val inv : t -> t
     val div : t -> t -> t
-
     val pow : t -> int -> t
     val sum : t list -> t
-
-    val is_null : t -> bool
-    val is_unit : t -> bool
     val is_positive : t -> bool
     val is_negative : t -> bool
     val is_integer : t -> bool
     val is_real : t -> bool
-
+    val rational : q -> t
+    val int : int -> t
+    val fraction : int -> t
+    val imag : int -> t
+    val compare : t -> t -> int
     val to_string : t -> string
-
+    val pp : Format.formatter -> t -> unit
     module Test : Test
-
   end
 
 module QComplex (Q : Rational) : QComplex with type q = Q.t =
@@ -216,8 +223,8 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
     let null = { re = Q.null; im = Q.null }
     let unit = { re = Q.unit; im = Q.null }
 
-    let real z = z.re
-    let imag z = z.im
+    let re z = z.re
+    let im z = z.im
     let conj z = { re = z.re; im = Q.neg z.im }
 
     let neg z = { re = Q.neg z.re; im = Q.neg z.im }
@@ -269,6 +276,21 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
     let is_negative = test_real Q.is_negative
     let is_integer = test_real Q.is_integer
 
+    let rational q = make q Q.null
+    let int n = rational (Q.int n)
+    let fraction n = rational (Q.fraction n)
+    let imag n = make Q.null (Q.int n)
+
+    let compare { re = re1; im = im1 } { re = re2; im = im2 } =
+      let c = compare re1 re2 in
+      if c <> 0 then
+        c
+      else
+        compare im1 im2
+
+    let equal c1 c2 =
+      compare c1 c2 = 0
+
     let q_to_string q =
       (if Q.is_negative q then "-" else " ") ^ Q.to_string (Q.abs q)
 
@@ -285,12 +307,12 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
       else
         Printf.sprintf "(%s%s*I)" (Q.to_string z.re) (q_to_string z.im)
 
+    let pp fmt qc =
+      Format.fprintf fmt "%s" (to_string qc)
+
     module Test =
       struct
         open OUnit
-
-        let equal z1 z2 =
-          is_null (sub z1 z2)
 
         let assert_equal_complex z1 z2 =
           assert_equal ~printer:to_string ~cmp:equal z1 z2
@@ -315,38 +337,36 @@ module QC = QComplex(Q)
 
 module type Laurent =
   sig
+    include CRing
     type c
-    type t
-    val null : t
-    val is_null : t -> bool
-    val unit : t
     val atom : c -> int -> t
     val const : c -> t
     val scale : c -> t -> t
-    val neg : t -> t
-    val add : t -> t -> t
-    val diff : t -> t -> t
     val sum : t list -> t
-    val mul : t -> t -> t
     val product : t list -> t
-    val pow : int -> t -> t
+    val pow : t -> int -> t
+    val log : t -> (c * int) option
+    val to_list : t -> (c * int) list
     val eval : c -> t -> c
     val compare : t -> t -> int
+    val rationals : (Q.t * int) list -> t
+    val ints : (int * int) list -> t
+    val rational : Q.t -> t
+    val int : int -> t
+    val fraction : int -> t
+    val imag : int -> t
+    val nc : int -> t
+    val over_nc : int -> t
     val to_string : string -> t -> string
     val pp : Format.formatter -> t -> unit
     module Test : Test
   end
 
+
 module Laurent : Laurent with type c = QC.t =
   struct
 
-    module IMap =
-      Map.Make
-        (struct
-          type t = int
-          let compare i1 i2 =
-            pcompare i2 i1
-        end)
+    module IMap = Map.Make(Int)
 
     type c = QC.t
 
@@ -366,6 +386,7 @@ module Laurent : Laurent with type c = QC.t =
 
     let const z = atom z 0
     let unit = const QC.unit
+    let is_unit l = IMap.equal QC.equal l unit
 
     let add1 n qc l =
       try
@@ -392,8 +413,8 @@ module Laurent : Laurent with type c = QC.t =
     let neg l =
       IMap.map QC.neg l
 
-    let diff l1 l2 =
-      add l1 (scale qc_minus_one l2)
+    let sub l1 l2 =
+      add l1 (neg l2)
 
     (* cf.~[Product.fold2_rev] *)
     let fold2 f l1 l2 acc =
@@ -416,7 +437,7 @@ module Laurent : Laurent with type c = QC.t =
       | l :: l_list ->
          List.fold_left mul l l_list
 
-    let poly_pow multiply one inverse n x  =
+    let poly_pow multiply one inverse x n  =
       let rec pow' i x' acc =
         if i < 1 then
           acc
@@ -430,18 +451,27 @@ module Laurent : Laurent with type c = QC.t =
       else
         pow' (pred n) x x
 
-    let qc_pow n z =
-      poly_pow QC.mul QC.unit QC.inv n z
+    let qc_pow z n =
+      poly_pow QC.mul QC.unit QC.inv z n
 
-    let pow n l =
-      poly_pow mul unit (fun _ -> invalid_arg "Algebra.Laurent.pow") n l
+    let pow l n =
+      poly_pow mul unit (fun _ -> invalid_arg "Algebra.Laurent.pow") l n
+
+    let log l =
+      match IMap.bindings l with
+      | [] -> Some (QC.null, 0)
+      | [(p, c)] -> Some (c, p)
+      | _ -> None
+
+    let to_list l =
+      List.map (fun (p, c) -> (c, p)) (IMap.bindings l)
 
     let q_to_string q =
       (if Q.is_positive q then "+" else "-") ^ Q.to_string (Q.abs q)
 
     let qc_to_string z =
-      let r = QC.real z
-      and i = QC.imag z in
+      let r = QC.re z
+      and i = QC.im z in
       if Q.is_null i then
         q_to_string r
       else if Q.is_null r then
@@ -486,23 +516,32 @@ module Laurent : Laurent with type c = QC.t =
 
     let eval v l =
       IMap.fold
-        (fun n qc acc -> QC.add (QC.mul qc (qc_pow n v)) acc)
+        (fun n qc acc -> QC.add (QC.mul qc (qc_pow v n)) acc)
         l QC.null
 
     let compare l1 l2 =
-      pcompare
-        (List.sort pcompare (IMap.bindings l1))
-        (List.sort pcompare (IMap.bindings l2))
+      IMap.compare Stdlib.compare l1 l2
 
-    let compare l1 l2 =
-      IMap.compare pcompare l1 l2
+    let equal l1 l2 =
+      compare l1 l2 = 0
+
+    (* Laurent polynomials: *)
+    let of_pairs f pairs =
+      sum (List.map (fun (coeff, power) -> atom (f coeff) power) pairs)
+
+    let rationals = of_pairs QC.rational
+    let ints = of_pairs QC.int
+
+    let rational q = rationals [(q, 0)]
+    let int n = ints [(n, 0)]
+    let fraction n = const (QC.fraction n)
+    let imag n = const (QC.imag n)
+    let nc n = ints [(n, 1)]
+    let over_nc n = ints [(n, -1)]
 
     module Test =
       struct
         open OUnit
-
-        let equal l1 l2 =
-          compare l1 l2 = 0
 
         let assert_equal_laurent l1 l2 =
           assert_equal ~printer:(to_string "N") ~cmp:equal l1 l2
@@ -541,7 +580,7 @@ module type Term =
     val unit : unit -> 'a t
     val is_unit : 'a t -> bool
     val atom : 'a -> 'a t
-    val power : int -> 'a t -> 'a t
+    val power : 'a t -> int -> 'a t
     val mul : 'a t -> 'a t -> 'a t
     val map : ('a -> 'b) -> 'a t -> 'b t
     val to_string : ('a -> string) -> 'a t -> string
@@ -603,7 +642,7 @@ module Term : Term =
 
     let atom f = M.singleton f 1
 
-    let power p x = M.map (( * ) p) x
+    let power x p = M.map (( * ) p) x
 
     let insert1 binop f p term =
       let p' = binop (try M.find compare f term with Not_found -> 0) p in

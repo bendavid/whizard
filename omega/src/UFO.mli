@@ -50,7 +50,12 @@ type t
 
 exception Unhandled of string
 
-module Model : Model.T
+(* \begin{dubious}
+     If we want we can switch the implementation from
+     [type init = string * string list] to
+     [type init = string * flag list] with a structured [flag] type.
+   \end{dubious} *)
+module Model : Model.Mutable with type init = string * string list
 
 val parse_directory : string -> t
 

@@ -65,9 +65,11 @@ module Constant : functor (M : Model.T) -> Constant with type t = M.constant
 
 (* \thocwmodulesection{Mutable Models} *)
 
-module Mutable : functor (FGC : sig type f and g and c end) ->
+exception Uninitialized of string
+
+module Mutable : functor (FGC : sig type f and g and c and co end) ->
   Model.Mutable with type flavor = FGC.f and type gauge = FGC.g 
-  and type constant = FGC.c
+  and type constant = FGC.c and type coupling_order = FGC.co
 
 module Static (M : Model.T) : Model.Mutable
 

@@ -29,27 +29,38 @@ module type Test =
 
 (* \thocwmodulesection{Coefficients} *)
 
-(* For our algebra, we need coefficient rings. *)
+(* For our algebra, we need coefficient rings with addition, subtraction,
+   multiplication and the corresponding neutral elements. *)
 
 module type CRing =
   sig
     type t
+
+    (* [add null x = x = add x null] *)
     val null : t
-    val unit : t
-    val mul : t -> t -> t
+    val is_null : t -> bool
     val add : t -> t -> t
-    val sub : t -> t -> t
+
+    (* [neg x = sub null x] and [sub x y = add x (neg y)] *)
     val neg : t -> t
-    val to_string : t -> string
+    val sub : t -> t -> t
+
+    (* [mul unit x = x = mul x unit] *)
+    val unit : t
+    val is_unit : t -> bool
+    val mul : t -> t -> t
+
+    (* Equality: *)
+    val equal : t -> t -> bool
+
   end
 
-(* And rational numbers provide a particularly important example: *)
+(* Rational numbers provide a particularly important example and they come
+   with a partial inverse: *)
 
 module type Rational =
   sig
     include CRing
-    val is_null : t -> bool
-    val is_unit : t -> bool
     val is_positive : t -> bool
     val is_negative : t -> bool
     val is_integer : t -> bool
@@ -62,6 +73,14 @@ module type Rational =
     val to_ratio : t -> int * int
     val to_float : t -> float
     val to_integer : t -> int
+    (* Convenience: $n \mapsto n/1$ and $n \mapsto 1/n$ *)
+    val int : int -> t
+    val fraction : int -> t
+    (* Order *)
+    val compare : t -> t -> int
+    (* Tracing, debugging, toplevel and unit testing *)
+    val to_string : t -> string
+    val pp : Format.formatter -> t -> unit
     module Test : Test
   end
 
@@ -81,37 +100,42 @@ module Q : Rational
 module type QComplex =
   sig
 
+    include CRing
+
     type q
-    type t
-
     val make : q -> q -> t
-    val null : t
-    val unit : t
 
-    val real : t -> q
-    val imag : t -> q
-
+    val re : t -> q
+    val im : t -> q
     val conj : t -> t
-    val neg : t -> t
 
-    val add : t -> t -> t
-    val sub : t -> t -> t
-    val mul : t -> t -> t
     val inv : t -> t
     val div : t -> t -> t
 
     val pow : t -> int -> t
     val sum : t list -> t
 
-    val is_null : t -> bool
-    val is_unit : t -> bool
     val is_positive : t -> bool
     val is_negative : t -> bool
     val is_integer : t -> bool
     val is_real : t -> bool
 
-    val to_string : t -> string
+    (* Convenience: real rationals and integers, *)
+    val rational : q -> t
+    val int : int -> t
 
+    (* $n \to 1/n$ *)
+    val fraction : int -> t
+
+    (* $n \to n\ii$ *)
+    val imag : int -> t
+
+    (* Order *)
+    val compare : t -> t -> int
+
+    (* Tracing, debugging, toplevel and unit testing *)
+    val to_string : t -> string
+    val pp : Format.formatter -> t -> unit
     module Test : Test
 
   end
@@ -130,16 +154,12 @@ module QC : QComplex with type q = Q.t
 module type Laurent =
   sig
 
+    include CRing
+
     (* The type of coefficients.  In the implementation below,
        it is [QComplex.t]: complex numbers with rational real
        and imaginary parts. *)
     type c
-    type t
-
-    (* Elementary constructors *)
-    val null : t
-    val is_null : t -> bool
-    val unit : t
 
     (* [atom c n] constructs a term $c x^n$, where $x$ denotes
        the variable. *)
@@ -150,13 +170,16 @@ module type Laurent =
 
     (* Elementary arithmetic *)
     val scale : c -> t -> t
-    val neg : t -> t
-    val add : t -> t -> t
-    val diff : t -> t -> t
     val sum : t list -> t
-    val mul : t -> t -> t
     val product : t list -> t
-    val pow : int -> t -> t
+    val pow : t -> int -> t
+
+    (* [log]$(cN_C^n)$ returns [Some]$(c,n)$.  For other terms,
+       [log] returns [None]. *)
+    val log : t -> (c * int) option
+
+    (* return the corresponding list of coefficients and descending powers *)
+    val to_list : t -> (c * int) list
 
     (* [eval c p] evaluates the polynomial [p] by substituting
        the constant [c] for the variable. *)
@@ -165,10 +188,38 @@ module type Laurent =
     (* A total ordering.  Does not correspond to any mathematical order. *)
     val compare : t -> t -> int
 
-    (* Logging, debugging and toplevel integration. *)
+    (* Provide some convenience functions for constructing coefficients
+       from integers and rationals. *)
+
+    (* Rationals coefficients (without imaginary part!)
+       $\left\{(q_i,n_i)\right\}_n \mapsto \sum_i q_i x^{n_i}$ *)
+    val rationals : (Q.t * int) list -> t
+
+    (* Integer coefficients
+       $\left\{(k_i,n_i)\right\}_n \mapsto \sum_i k_i x^{n_i}$ *)
+    val ints : (int * int) list -> t
+
+    (* For convenience, some special cases.  Starting with injections *)
+    val rational : Q.t -> t
+    val int : int -> t
+
+    (* $k\mapsto 1/k = k^{-1}$ *)
+    val fraction : int -> t
+
+    (* $k\mapsto k \ii$ *)
+    val imag : int -> t
+
+    (* $k\mapsto k x$ *)
+    val nc : int -> t
+
+    (* $k\mapsto k / x = k x^{-1}$ *)
+    val over_nc : int -> t
+
+    (* Tracing, debugging, toplevel and unit testing *)
     val to_string : string -> t -> string
     val pp : Format.formatter -> t -> unit
     module Test : Test
+
   end
 
 (* \begin{dubious}
@@ -189,7 +240,7 @@ module type Term =
     val unit : unit -> 'a t
     val is_unit : 'a t -> bool
     val atom : 'a -> 'a t
-    val power : int -> 'a t -> 'a t
+    val power : 'a t -> int -> 'a t
     val mul : 'a t -> 'a t -> 'a t
     val map : ('a -> 'b) -> 'a t -> 'b t
     val to_string : ('a -> string) -> 'a t -> string

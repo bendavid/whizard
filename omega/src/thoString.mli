@@ -22,7 +22,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* This is a very simple library if stroing manipulation functions missing
+(* This is a very simple library if string manipulation functions missing
    in O'Caml's standard library. *)
 
 (* [strip_prefix prefix string] returns [string] with 0 or 1

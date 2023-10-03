@@ -23,14 +23,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Mixed23(Targets.Fortran)
-  (Modellib_BSM.TwoHiggsDoublet(Modellib_BSM.THDM_CKM))
+module O = Omega.Mixed23(Target_Fortran.Make)(Modellib_BSM.TwoHiggsDoublet(Modellib_BSM.THDM_CKM))
 let _ = O.main ()
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -74,8 +74,6 @@ module type T =
    \end{dubious} *)
     type constant 
 
-    (* Later: [type orders] to count orders of couplings *)
-
     val max_degree : unit -> int
     val vertices : unit ->
       ((((flavor * flavor * flavor) * constant Coupling.vertex3 * constant) list)
@@ -85,7 +83,11 @@ module type T =
     val fuse3 : flavor -> flavor -> flavor -> (flavor * constant Coupling.t) list
     val fuse : flavor list -> (flavor * constant Coupling.t) list
 
-    (* Later: [val orders : constant -> orders] counting orders of couplings *)
+(* For counting coupling orders. *)
+    type coupling_order
+    val all_coupling_orders : unit -> coupling_order list
+    val coupling_order_to_string : coupling_order -> string
+    val coupling_orders : constant -> (coupling_order * int) list
 
 (* The list of all known flavors. *)
     val flavors : unit -> flavor list
@@ -137,7 +139,12 @@ module type Mutable =
   sig
     include T
 
-    val init : unit -> unit
+(* Pass initialization data to the model.  Typically,
+   this is the name of a UFO directory and we can specialize
+   [Mutable with type init = string] *)
+    type init
+    val init : init -> unit
+    val write_whizard : out_channel -> unit
 
 (* Export only one big initialization function to discourage
    partial initializations.  Labels make this usable. *)
@@ -167,6 +174,9 @@ module type Mutable =
         mass_symbol:(flavor -> string) ->
         width_symbol:(flavor -> string) ->
         constant_symbol:(constant -> string) ->
+        all_coupling_orders:(unit -> coupling_order list) ->
+        coupling_order_to_string:(coupling_order -> string) ->
+        coupling_orders:(constant -> (coupling_order * int) list) ->
         unit
   end
 
@@ -258,9 +268,15 @@ module type Colorized =
     val flavor_sans_color : flavor -> flavor_sans_color
     val conjugate_sans_color : flavor_sans_color -> flavor_sans_color
 
+(* [amplitude] does \emph{not} compute the amplitude, but
+   returns all possible color combinations for the given flavor.
+   These will be used by the functions in [Fusion]. *)
+
     val amplitude : flavor_sans_color list -> flavor_sans_color list ->
       (flavor list * flavor list) list
     val flow : flavor list -> flavor list -> Color.Flow.t
+
+    val flavor_equal : flavor -> flavor -> bool
 
   end
 
@@ -277,12 +293,30 @@ module type Colorized_Gauge =
       (flavor list * flavor list) list
     val flow : flavor list -> flavor list -> Color.Flow.t
 
+    val flavor_equal : flavor -> flavor -> bool
+
   end
 
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+module type Sliced_by_Orders =
+  sig
+
+    include Colorized
+
+    type flavor_all_orders
+    val flavor_all_orders : flavor -> flavor_all_orders
+    val conjugate_all_orders : flavor_all_orders -> flavor_all_orders
+
+    type orders
+    val orders : flavor -> orders
+    val add_orders : orders -> orders -> orders
+    val incr_orders : orders -> orders -> orders
+    val orders_to_string : orders -> string
+    val orders_symbol : orders -> string
+
+    val trivial : flavor_all_orders -> flavor
+
+    val amplitude : orders -> flavor_all_orders list -> flavor_all_orders list ->
+                    flavor list * flavor list
+    val flow : flavor list -> flavor list -> Color.Flow.t
+
+  end

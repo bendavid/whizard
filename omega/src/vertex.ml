@@ -22,10 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* Avoid refering to [Pervasives.compare], because [Pervasives] will
-   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
-let pcompare = compare
-
 module type Test =
   sig
     val example : unit -> unit
@@ -1249,7 +1245,7 @@ module Lorentz : Lorentz =
           Map.Make
             (struct
               type t = int * int
-              let compare = pcompare
+              let compare = Stdlib.compare
             end)
             
         let init2 triples =
@@ -1269,7 +1265,7 @@ module Lorentz : Lorentz =
           Map.Make
             (struct
               type t = int * (int * int)
-              let compare = pcompare
+              let compare = Stdlib.compare
             end)
             
         let init3 quadruples =
@@ -1293,7 +1289,7 @@ module Lorentz : Lorentz =
           Map.Make
             (struct
               type t = int * int * (int * int)
-              let compare = pcompare
+              let compare = Stdlib.compare
             end)
             
         let init4 quadruples =

@@ -31,6 +31,7 @@ type expr =
   | Float of float
   | Variable of string
   | Quoted of string
+  | Young_Tableau of int Young.tableau
   | Sum of expr * expr
   | Difference of expr * expr
   | Product of expr * expr
@@ -49,6 +50,9 @@ let variable s =
 
 let quoted s =
   Quoted s
+
+let young_tableau y =
+  Young_Tableau y
 
 let add e1 e2 =
   Sum (e1, e2)
@@ -76,7 +80,7 @@ let multiply e1 e2 =
     
 let divide e1 e2 =
   Quotient (e1, e2)
-    
+
 let power e p =
   Power (e, p)
 
@@ -86,7 +90,7 @@ let apply f args =
 module CSet = Sets.String_Caseless
 
 let rec variables = function
-  | Integer _ | Float _ | Quoted _ -> CSet.empty
+  | Integer _ | Float _ | Quoted _ | Young_Tableau _ -> CSet.empty
   | Variable name -> CSet.singleton name
   | Sum (e1, e2) | Difference (e1, e2)
   | Product (e1, e2) | Quotient (e1, e2)
@@ -95,7 +99,7 @@ let rec variables = function
      List.fold_left CSet.union CSet.empty (List.map variables elist)
 
 let rec functions = function
-  | Integer _ | Float _ | Variable _ | Quoted _ -> CSet.empty
+  | Integer _ | Float _ | Variable _ | Quoted _ | Young_Tableau _ -> CSet.empty
   | Sum (e1, e2) | Difference (e1, e2)
   | Product (e1, e2) | Quotient (e1, e2)
   | Power (e1, e2) -> CSet.union (functions e1) (functions e2)

@@ -61,11 +61,10 @@ val match_all : 'a -> 'a array -> int list
 val num_rows : 'a array array -> int
 val num_columns : 'a array array -> int
 
-module Test : sig val suite : OUnit.test end
+(* Implement the Fisher-Yates shuffle to randomly
+   shuffle an array in place, cf.~\cite{TAOCP2}, pp.~139-140. *)
+val shuffle : 'a array -> unit
 
-(*i
- *  Local Variables:
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
+val rank3 : int -> int -> int -> 'a -> 'a array array array
+
+module Test : sig val suite : OUnit.test end

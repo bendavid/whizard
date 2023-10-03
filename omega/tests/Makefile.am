@@ -212,6 +212,26 @@ ects_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 ########################################################################
 
+TESTS += exotic_color
+# if there is some debugging output ...
+# XFAIL_TESTS += exotic_color
+
+EXOTIC_COLOR_TESTS = \
+	sextet-exchange.exotic_color
+
+exotic_color: exotic_color_driver.sh Makefile $(OMEGA_UFO)
+	$(SED) -e 's|%%EXOTIC_COLOR_TESTS%%|$(EXOTIC_COLOR_TESTS)|' \
+	  -e 's|%%srcdir%%|$(srcdir)|' \
+	  -e 's|%%SED%%|$(SED)|' \
+	  -e 's|%%OMEGA_UFO%%|$(OMEGA_UFO)|' \
+	  -e 's|%%OMEGA_UFO_MAJORANA%%|$(OMEGA_UFO_MAJORANA)|' \
+	  -e 's|%%EXOTIC_COLOR_UFO_DIR%%|$(OMEGA_UFO_PATH)/Exotic_Color|' $< >$@
+	chmod +x $@
+
+EXTRA_DIST += exotic_color_driver.sh $(EXOTIC_COLOR_TESTS)
+
+########################################################################
+
 TESTS += cascade
 # if there is some debugging output ...
 # XFAIL_TESTS += cascade
@@ -392,9 +412,6 @@ compare_split_module.f90: comparisons.list
 	"$(OMEGA_XXX) -target:single_function" \
 	"$(OMEGA_XXX) -target:split_module 10" < $< > $@
 
-compare_split_function.f90 compare_split_module.f90: \
-	compare_driver.sh $(OMEGA_QCD) $(OMEGA_SM)
-
 compare_split_function_SOURCES = $(COMPARE_LIB_F90)
 nodist_compare_split_function_SOURCES = compare_split_function.f90
 compare_split_function_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
@@ -404,6 +421,29 @@ nodist_compare_split_module_SOURCES = compare_split_module.f90
 compare_split_module_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
+
+########################################################################
+
+TESTS += compare_orders
+EXTRA_PROGRAMS += compare_orders
+EXTRA_DIST += compare_orders_driver.sh
+EXTRA_DIST += comparisons_orders.list
+
+COMPARE_ORDERS_SUPPORT_F90 = $(WARD_SUPPORT_F90)
+COMPARE_ORDERS_SUPPORT_O = $(WARD_SUPPORT_O)
+
+run_compare_orders: compare_orders
+	./compare_orders
+
+compare_orders.f90: comparisons_orders.list compare_orders_driver.sh
+	@if $(AM_V_P); then :; else echo "  COMPARE_ORDERS_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_orders_driver.sh "$(OMEGA_SM)" < $< > $@
+
+compare_orders_SOURCES = $(COMPARE_LIB_F90)
+nodist_compare_orders_SOURCES = compare_orders.f90
+compare_orders_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+compare_orders.o: $(COMPARE_LIB_O)
 
 ########################################################################
 
@@ -1051,8 +1091,9 @@ clean-local: clean-macosx
 		keystones_UFO_bispinors.f90 keystones_omegalib_bispinors.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
 		parameters_UFO_SMEFT.f90 \
-		*.hbc *wrappers.f90 cascade phase_space \
-		output.rcl recola.log
+		*.hbc *wrappers.f90 cascade exotic_color phase_space \
+		output.rcl recola.log \
+		*.exotic_color.expected *.exotic_color.result
 	rm -fr  output_cll
 
 if FC_SUBMODULES

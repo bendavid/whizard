@@ -22,5 +22,5 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-module O = Omega.Nary_Majorana(Targets.Fortran_Majorana)(UFO.Model)
+module O = Omega.Nary_Majorana(Target_Fortran.Make_Majorana)(UFO.Model)
 let _ = O.main ()

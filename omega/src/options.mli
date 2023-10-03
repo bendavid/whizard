@@ -27,6 +27,7 @@ type t
 val empty : t
 val create : (string * Arg.spec * string) list -> t
 
+val exclude : (string -> bool) -> t -> t
 val extend : t -> (string * Arg.spec * string) list -> t
 (*i val merge : t -> t -> t i*)
 
@@ -37,13 +38,6 @@ val cmdline : string -> t -> (string * Arg.spec * string) list
 (*i exception Invalid of string * string i*)
 
 (* This is a clone of [Arg.parse] with a delayed usage string. *)
-val parse : (string * Arg.spec * string) list ->
+val parse : ?current:int ref -> ?argv:string array ->
+  (string * Arg.spec * string) list ->
   (string -> unit) -> (unit -> string) -> unit
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

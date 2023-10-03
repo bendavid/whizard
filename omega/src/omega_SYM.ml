@@ -78,9 +78,11 @@ module SYM =
       | I_G3 of int * int * int
       | G4 of int * int * int * int
 
-    type orders = unit
-    let orders = function
-      | _ -> ()
+    type coupling_order = unit
+    let all_coupling_orders () = [()]
+    let coupling_order_to_string () = ""
+    let coupling_orders = function
+      | _ -> failwith "Modellib_SYM.orders: not implemented yet!"
 
     let lorentz = function
       | Q i ->
@@ -321,14 +323,5 @@ i*)
 
   end
 
-module O = Omega.Mixed23(Targets.Fortran_Majorana)(SYM)
+module O = Omega.Mixed23(Target_Fortran.Make_Majorana)(SYM)
 let _ = O.main ()
-
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

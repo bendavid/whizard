@@ -22,10 +22,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* Avoid refering to [Pervasives.compare], because [Pervasives] will
-   become [Stdlib.Pervasives] in O'Caml 4.07 and [Stdlib] in O'Caml 4.08. *)
-let pcompare = compare
-
 (* \thocwmodulesection{Abstract Syntax} *)
 
 exception Syntax_Error of string * Lexing.position * Lexing.position
@@ -233,7 +229,7 @@ module Token =
       String.concat "" (List.map to_string (interleave_spaces tl)) 
 
     let	compare t1 t2 =
-      pcompare t1 t2
+      Stdlib.compare t1 t2
 
   end
 
