@@ -49,12 +49,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{3.1.2.1}
-\def\WhizardDate{Mar 21 2023}
+\def\WhizardVersion{3.1.3}
+\def\WhizardDate{Oct 06 2023}
 <<Version>>=
-3.1.2.1
+3.1.3
 <<Date>>=
-Mar 21 2023
+Oct 06 2023
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -78,7 +78,8 @@ Mar 21 2023
  David Gordo Gomez, Uta Klein, Nils Kreher, Krzysztof~M\k{e}ka{\l}a,
  Akiya Miyamoto, Moritz Prei{\ss}er, Vincent Rothe, Sebastian Schmidt,
  Marco Sekulla, So Young Shim, Christian Speckner, Pascal Stienemeier,
- Tobias Striegl, Manuel Utsch, Christian Weiss, Daniel Wiesler, Zhijie Zhao
+ Tobias Striegl, Manuel Utsch, Christian Weiss, Daniel Wiesler, 
+ Aleksander Filip \.Zarnecki, Zhijie Zhao
  \vspace{1cm}
  \begin{center}
  \includegraphics[width=4cm]{Whizard-Logo}

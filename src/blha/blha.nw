@@ -443,7 +443,8 @@ This types control the creation of BLHA-interface files
     else
        default_method = var_list%get_sval (var_str ("$method"))
        cmp_born = default_method /= 'omega'
-       cmp_real = .false.; cmp_loop = .false.; cmp_corr = .false.
+       cmp_real = .false.; cmp_loop = .false.
+       cmp_corr = .false.; cmp_dglap = .false.
        call set_me_method (4, default_method)
     end if
     master%n_files = count ([cmp_born, cmp_real, cmp_loop, cmp_corr, cmp_dglap])

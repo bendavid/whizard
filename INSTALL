@@ -25,7 +25,7 @@ Prerequisites are:
 
  - Make
  - Objective Caml compiler (version 4.08.0 or higher)
- - Fortran 2008/2018 compiler
+ - Fortran 2008/2018 compiler (e.g. gfortran 9.1.0 or higher)
  - C/C++ (for PYTHIA8/FastJet/HepMC/LHAPDF/LCIO interfaces)
 
 The Objective Caml (OCaml) compiler is available from 
@@ -49,7 +49,7 @@ The following external libraries and programs can be linked to
 WHIZARD:
 
 -- PYTHIA8 for hadronization and showering. It is available
-   from http://home.thep.lu.se/~torbjorn/Pythia.html
+   from https://pythia.org
 
 -- LHAPDF for proton, pion and photon structure functions. 
    You can get it from: https://lhapdf.hepforge.org
@@ -69,7 +69,7 @@ WHIZARD:
    Available from: https://openloops.hepforge.org/
 
 -- Recola for NLO matrix elements.
-   Available from: https://recola.hepforge.org/
+   Available from: https://recola.gitlab.io/recola2/
 
 -- LoopTools for one-loop functions (for the top threshold)
    You can get it from: http://www.feynarts.de/looptools/
@@ -87,10 +87,10 @@ WHIZARD:
 -- ROOT and DELPHES can be interfaced via event file and 
    ASCII histogram file output
 
--- An interface to SARAH exists and is included in the
+-- UFO models can be created via e.g. the
    SARAH program: https://sarah.hepforge.org/
 
--- An interface to FeynRules exists and is included in the 
+-- UFO models can be created via. e.g. the
    FeynRules program: http://feynrules.irmp.ucl.ac.be
 
 -- Parallelization with MPI requires a at least MPI-3 capable MPI library.

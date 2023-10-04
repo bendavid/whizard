@@ -1,7 +1,7 @@
 General:
 
 * WHIZARD 3.1.3+ currently runs only with the NAGFOR 7.1 (or newer) and
-  gfortran 9.4.0 (or newer) Fortran compilers as well as Intel ifort
+  gfortran 9.1.0 (or newer) Fortran compilers as well as Intel ifort
   21.3 (or newer). An OCaml as new as at least version 4.08 is needed.
 
 * WHIZARD 2.7+ incorporates all features from WHIZARD 1, making the
@@ -14,6 +14,10 @@ General:
   <whizard@desy.de>
 
 Known (recent) bugs:
+
+* WHIZARD 3.1.2 contains a bug in parsing tokens from UFO models correctly.
+  This has been resolved in v3.1.3. For UFO fixes, please upgrade always
+  to the most recent versions
 
 * WHIZARD 3.1.1 contains a (harmless) cyclic build dependence that triggers
   a partial rebuild of the WHIZARD core. This has been resolved in v3.1.2.
@@ -72,7 +76,7 @@ Compilers and OS specialties:
 
 Manual:
 
-* For WHIZARD 3.0, the manual is still quite sparse. We are working on
+* For WHIZARD 3.1, the manual is still quite sparse. We are working on
   that. Regular updates independent from the subreleases can be found
   on the Hepforge webpage:
   https://whizard.hepforge.org/manual.pdf
