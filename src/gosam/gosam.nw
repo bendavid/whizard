@@ -46,6 +46,8 @@ module prc_gosam
 
 <<Prc gosam: public>>
 
+<<Prc gosam: main parameters>>
+
 <<Prc gosam: types>>
 
 <<Prc gosam: interfaces>>
@@ -68,6 +70,7 @@ end module prc_gosam
 
 submodule (prc_gosam) prc_gosam_s
 
+<<Use debug>>
   use io_units
   use constants
   use numeric_utils
@@ -110,9 +113,8 @@ end submodule prc_gosam_s
   <<Prc gosam: gosam writer: TBP>>
   end type gosam_writer_t
 
-@
 @ %def gosam_writer_t
-
+@
 <<Prc gosam: public>>=
   public :: gosam_def_t
 <<Prc gosam: types>>=
@@ -160,12 +162,14 @@ end submodule prc_gosam_s
   procedure :: init => gosam_def_init
 <<Prc gosam: main procedures>>=
   subroutine gosam_def_init (object, basename, model_name, &
-     prt_in, prt_out, nlo_type, restrictions, var_list)
+     prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions, var_list)
     class(gosam_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
     type(var_list_t), intent(in) :: var_list
     object%basename = basename
@@ -177,12 +181,14 @@ end submodule prc_gosam_s
        object%suffix = '_REAL'
     case (NLO_VIRTUAL)
        object%suffix = '_LOOP'
-    case (NLO_SUBTRACTION)
+    case (NLO_SUBTRACTION, NLO_MISMATCH)
        object%suffix = '_SUB'
+    case (NLO_DGLAP)
+       object%suffix = "_DGLAP"
     end select
     select type (writer => object%writer)
     type is (gosam_writer_t)
-      call writer%init (model_name, prt_in, prt_out, restrictions)
+      call writer%init (model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
       writer%filter_lo = var_list%get_sval (var_str ("$gosam_filter_lo"))
       writer%filter_nlo = var_list%get_sval (var_str ("$gosam_filter_nlo"))
       writer%symmetries = &
@@ -228,8 +234,8 @@ end submodule prc_gosam_s
     string = "gosam"
   end function gosam_def_type_string
 
-@
 @ %def gosam_def_type_string
+@
 <<Prc gosam: gosam def: TBP>>=
   procedure :: write => gosam_def_write
 <<Prc gosam: sub interfaces>>=
@@ -294,18 +300,22 @@ end submodule prc_gosam_s
   procedure :: init => gosam_writer_init
 <<Prc gosam: sub interfaces>>=
     pure module subroutine gosam_writer_init &
-         (writer, model_name, prt_in, prt_out, restrictions)
+         (writer, model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
       class(gosam_writer_t), intent(inout) :: writer
       type(string_t), intent(in) :: model_name
       type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
       type(string_t), intent(in), optional :: restrictions
     end subroutine gosam_writer_init
 <<Prc gosam: procedures>>=
   pure module subroutine gosam_writer_init &
-       (writer, model_name, prt_in, prt_out, restrictions)
+       (writer, model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
     class(gosam_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
     writer%gosam_dir = GOSAM_DIR
     writer%golem_dir = GOLEM_DIR
@@ -313,7 +323,7 @@ end submodule prc_gosam_s
     writer%ninja_dir = NINJA_DIR
     writer%form_dir = FORM_DIR
     writer%qgraf_dir = QGRAF_DIR
-    call writer%base_init (model_name, prt_in, prt_out)
+    call writer%base_init (model_name, prt_in, prt_out, ufo, ufo_path)
   end subroutine gosam_writer_init
 
 @ %def gosam_writer_init
@@ -452,16 +462,17 @@ end submodule prc_gosam_s
     !!! write (unit, "(A)") "zero=mU,mD,mC,mS,mB"
     !!! This is covered by the BLHA2 interface
     write (unit, "(A)") "PSP_check=False"
-      if (char (object%filter_lo) /= "") &
-         write (unit, "(A)") "filter.lo=" // char (object%filter_lo)
-      if (char (object%filter_nlo) /= "") &
-         write (unit, "(A)") "filter.nlo=" // char (object%filter_nlo)
-      if (char (object%symmetries) /= "") &
-         write (unit, "(A)") "symmetries=" // char(object%symmetries)
-      write (unit, "(A,I0)") "form.threads=", object%form_threads
-      write (unit, "(A,I0)") "form.workspace=", object%form_workspace
-      if (char (object%fc) /= "") &
-         write (unit, "(A)") "fc.bin=" // char(object%fc)
+    write (unit, "(A)") "all_mandelstam=True"
+    if (char (object%filter_lo) /= "") &
+       write (unit, "(A)") "filter.lo=" // char (object%filter_lo)
+    if (char (object%filter_nlo) /= "") &
+       write (unit, "(A)") "filter.nlo=" // char (object%filter_nlo)
+    if (char (object%symmetries) /= "") &
+       write (unit, "(A)") "symmetries=" // char(object%symmetries)
+    write (unit, "(A,I0)") "form.threads=", object%form_threads
+    write (unit, "(A,I0)") "form.workspace=", object%form_workspace
+    if (char (object%fc) /= "") &
+       write (unit, "(A)") "fc.bin=" // char(object%fc)
   end subroutine gosam_writer_generate_configuration_file
 
 @ %def gosam_writer_generate_configuration_file
@@ -483,15 +494,14 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     write (unit, "(2A)")  "OLP_FILE = ", char (object%olp_file)
     write (unit, "(2A)")  "OLP_DIR = ", char (object%olp_dir)
     write (unit, "(A)")
-    write (unit, "(A)")   "all: $(OLP_DIR)/config.log"
-    write (unit, "(2A)")  TAB, "make -C $(OLP_DIR) install"
+    write (unit, "(A)")   "all: $(OLP_DIR)/.libs/libgolem_olp.so"
     write (unit, "(A)")
-    write (unit, "(3A)")  "$(OLP_DIR)/config.log: "
+    write (unit, "(3A)")  "$(OLP_DIR)/.libs/libgolem_olp.so: "
     write (unit, "(4A)")  TAB, char (object%gosam_dir // "/bin/gosam.py "), &
                              "--olp $(OLP_FILE) --destination=$(OLP_DIR)", &
                              " -f -z"
     write (unit, "(3A)")  TAB, "cd $(OLP_DIR); ./autogen.sh --prefix=", &
-         "$(dir $(abspath $(lastword $(MAKEFILE_LIST))))"
+         "$(dir $(abspath $(lastword $(MAKEFILE_LIST)))); make install"
   end subroutine gosam_driver_write_makefile
 @ %def gosam_driver_write_makefile
 @
@@ -575,6 +585,28 @@ in the GoSam code are ready. This is done with a stamp mechanism.
 @ %def gosam_driver_set_weinberg_angle
 @
 <<Prc gosam: gosam driver: TBP>>=
+  procedure :: set_ufo_parameter => gosam_driver_set_ufo_parameter
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_driver_set_ufo_parameter (driver, par_name, ufo_par)
+      class(gosam_driver_t), intent(inout) :: driver
+      type(string_t), intent(in) :: par_name
+      real(default), intent(in) :: ufo_par
+    end subroutine gosam_driver_set_ufo_parameter
+<<Prc gosam: procedures>>=
+  module subroutine gosam_driver_set_ufo_parameter (driver, par_name, ufo_par)
+    class(gosam_driver_t), intent(inout) :: driver
+    type(string_t), intent(in) :: par_name
+    real(default), intent(in) :: ufo_par
+    integer :: ierr
+    call driver%blha_olp_set_parameter &
+       (c_char_'mdl'//char(par_name)//c_null_char, &
+        dble(ufo_par), 0._double, ierr)
+    if (ierr == 0) call msg_fatal ('UFO parameter cannot be set by OLP.')
+  end subroutine gosam_driver_set_ufo_parameter
+
+@ %def gosam_driver_set_ufo_parameter
+@
+<<Prc gosam: gosam driver: TBP>>=
   procedure :: print_alpha_s => gosam_driver_print_alpha_s
 <<Prc gosam: sub interfaces>>=
     module subroutine gosam_driver_print_alpha_s (object)
@@ -641,8 +673,12 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call core%prepare_library (os_data, libname)
     call core%start ()
     call core%read_contract_file (flv_states)
-    call core%set_particle_properties (model)
-    call core%set_electroweak_parameters (model)
+    if (model%is_ufo_model ()) then
+       call core%set_ufo_parameters (model)
+    else
+       call core%set_particle_properties (model)
+       call core%set_electroweak_parameters (model)
+    end if
     call core%print_parameter_file (i_core)
   end subroutine prc_gosam_prepare_external_code
 
@@ -771,8 +807,8 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call msg_message (unit = unit, string = "GOSAM")
   end subroutine prc_gosam_write
 
-@
 @ %def prc_gosam_write
+@
 <<Prc gosam: prc gosam: TBP>>=
   procedure :: write_name => prc_gosam_write_name
 <<Prc gosam: sub interfaces>>=
@@ -853,12 +889,65 @@ of external particles and the enumeration of particles starts at zero.
 The subsequent position, i.e. $2i + 2nj + 1$ is designated to the
 imaginary part of $S_{ij}$. Note that, since the first array position
 is 1, the implemented position association deviates from the above one
-in the addition of 1.
-<<Prc gosam: procedures>>=
+in the addition of 1. This is here implemented in the form
+[[compute_sqme_spin_c_blha]]. In the routine [[compute_sqme_spin_c]], 
+this is a dedicated routine from [[GoSam]] is called, in the same
+spirit as for [[OpenLoops]].
 <<Prc gosam: prc gosam: TBP>>=
   procedure :: compute_sqme_spin_c => prc_gosam_compute_sqme_spin_c
 <<Prc gosam: sub interfaces>>=
     module subroutine prc_gosam_compute_sqme_spin_c (object, &
+         i_flv, i_hel, p, ren_scale, sqme_spin_c, bad_point)
+      class(prc_gosam_t), intent(inout) :: object
+      integer, intent(in) :: i_flv, i_hel
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: ren_scale
+      real(default), intent(out), dimension(OLP_RESULTS_LIMIT) :: sqme_spin_c
+      logical, intent(out) :: bad_point
+    end subroutine prc_gosam_compute_sqme_spin_c
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_compute_sqme_spin_c (object, &
+       i_flv, i_hel, p, ren_scale, sqme_spin_c, bad_point)
+    class(prc_gosam_t), intent(inout) :: object
+    integer, intent(in) :: i_flv, i_hel
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in) :: ren_scale
+    real(default), intent(out), dimension(OLP_RESULTS_LIMIT) :: sqme_spin_c
+    logical, intent(out) :: bad_point
+    real(double), dimension(5*object%n_particles) :: mom
+    real(double), dimension(OLP_RESULTS_LIMIT) :: r
+    real(double) :: ren_scale_dble
+    real(double) :: acc, acc_dble
+    real(default) :: alpha_s
+    if (object%i_spin_c(i_flv, i_hel) >= 0) then
+       mom = object%create_momentum_array (p)
+       if (vanishes (ren_scale)) call msg_fatal &
+            ("prc_gosam_compute_sqme_spin_c: ren_scale vanishes")
+       alpha_s = object%qcd%alpha%get (ren_scale)
+       select type (driver => object%driver)
+       type is (gosam_driver_t)
+          call driver%set_alpha_s (alpha_s)
+	  call driver%blha_olp_eval2 (object%i_spin_c(i_flv, i_hel), &
+               mom, ren_scale_dble, r, acc_dble)
+       end select
+       sqme_spin_c = r
+       
+       ! acc = acc_dble
+       ! if (acc > object%maximum_accuracy) bad_point = .true.
+       bad_point = .false.
+    else
+       sqme_spin_c = zero
+    end if
+  end subroutine prc_gosam_compute_sqme_spin_c
+
+@ %def prc_gosam_compute_sqme_spin_c
+@ This routine would use the BLHA interface to call the
+spin-correlated matrix elements. However, this is not supported on the
+\texttt{GoSam} side.
+<<Prc gosam: prc gosam: TBP>>=
+  procedure :: compute_sqme_spin_c_blha => prc_gosam_compute_sqme_spin_c_blha
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_compute_sqme_spin_c_blha (object, &
          i_flv, i_hel, em, p, ren_scale, me_sc, bad_point)
       class(prc_gosam_t), intent(inout) :: object
       integer, intent(in) :: i_flv, i_hel
@@ -867,9 +956,9 @@ in the addition of 1.
       real(default), intent(in) :: ren_scale
       complex(default), intent(out) :: me_sc
       logical, intent(out) :: bad_point
-    end subroutine prc_gosam_compute_sqme_spin_c
+    end subroutine prc_gosam_compute_sqme_spin_c_blha
 <<Prc gosam: procedures>>=
-  module subroutine prc_gosam_compute_sqme_spin_c (object, &
+  module subroutine prc_gosam_compute_sqme_spin_c_blha (object, &
        i_flv, i_hel, em, p, ren_scale, me_sc, bad_point)
     class(prc_gosam_t), intent(inout) :: object
     integer, intent(in) :: i_flv, i_hel
@@ -913,9 +1002,9 @@ in the addition of 1.
     else
        r = 0._double
     end if
-  end subroutine prc_gosam_compute_sqme_spin_c
+  end subroutine prc_gosam_compute_sqme_spin_c_blha
 
-@ %def prc_gosam_compute_sqme_spin_c
+@ %def prc_gosam_compute_sqme_spin_c_blha
 @ Gfortran 7/8/9 bug, has to remain in main module.
 <<Prc gosam: prc gosam: TBP>>=
   procedure :: allocate_workspace => prc_gosam_allocate_workspace
@@ -943,7 +1032,10 @@ in the addition of 1.
   end subroutine gosam_state_write
 
 @ %def prc_gosam_state_write
-@
+@ The [[MassiveParticles]] entry before forces \texttt{GoSam}
+to create only amplitudes for massive/massless particles according to
+that list. This list was already filtered for particles potentially
+declared massless. These must appear again here.
 <<Prc gosam: prc gosam: TBP>>=
   procedure :: set_particle_properties => prc_gosam_set_particle_properties
 <<Prc gosam: sub interfaces>>=
@@ -967,10 +1059,14 @@ in the addition of 1.
        mass = flv%get_mass (); width = flv%get_width ()
        select type (driver => object%driver)
        class is (blha_driver_t)
-          if (i_pdg == 13) then
-             call driver%set_mass_and_width (i_pdg, mass = mass)
-          else
-             call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
+          if (mass > 0) then
+             if (flv%mass_is_input () .and. flv%width_is_input ()) then
+                call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
+             else if (flv%mass_is_input () .and. .not. flv%width_is_input ()) then
+                call driver%set_mass_and_width (i_pdg, mass = mass)
+             else if (.not. flv%mass_is_input () .and. flv%width_is_input ()) then
+                call driver%set_mass_and_width (i_pdg, width = width)
+             end if
           end if
           if (i_pdg == 5) call driver%blha_olp_set_parameter &
              ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)

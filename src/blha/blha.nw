@@ -1588,6 +1588,7 @@ corrections are activated and photons are present at LO.
     character(6) :: suffix_char
     character(len=25), parameter :: pad = ""
     logical :: write_process, no_v, loop_ind
+    type(flavor_t) :: flv
     no_v = .false. ; if (present (no_version))  no_v = no_version
     u = given_output_unit (unit); if (u < 0) return
     full = .true.; if (present (internal)) full = .not. internal
@@ -1615,6 +1616,11 @@ corrections are activated and photons are present at LO.
        case (2); buf = "BLHA2"
     end select
     write (u, '(A25,A)') "InterfaceVersion " // pad, char (buf)
+    if (cfg%model%is_ufo_model ()) then
+       write (u, "(A25,A)") "Model " // pad, "ufo:/" // &
+       char(cfg%model%get_ufo_path_name ()) // "/" // &
+       char (cfg%model%get_name ())
+    end if
     node => cfg%processes
     do while (associated (node))
        loop_ind = node%amplitude_type == BLHA_AMP_LOOPINDUCED
@@ -1670,7 +1676,8 @@ corrections are activated and photons are present at LO.
           case (BLHA_EW_0); buf = "alpha0"
           case (BLHA_EW_RUN); buf = "alphaRUN"
        end select
-       write (u, '(A25, A)') "EWScheme " // pad, char (buf)
+       if (.not. cfg%model%is_ufo_model ()) &
+            write (u, '(A25, A)') "EWScheme " // pad, char (buf)
     case (BLHA_MODE_OPENLOOPS)
        select case (cfg%ew_scheme)
           case (BLHA_EW_0); buf = "alpha0"
@@ -1686,8 +1693,12 @@ corrections are activated and photons are present at LO.
     case (BLHA_MODE_GOSAM)
        write (u, '(A25)', advance='no') "MassiveParticles " // pad
        do i = 1, size (OLP_MASSIVE_PARTICLES)
-          if (OLP_MASSIVE_PARTICLES(i) > 0) &
-               write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
+          if (OLP_MASSIVE_PARTICLES(i) > 0) then
+             call flv%init (OLP_MASSIVE_PARTICLES(i), cfg%model)
+             if (flv%get_mass () > 0._default) then
+                write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
+             end if
+          end if
        end do
        write (u,*)
     case (BLHA_MODE_OPENLOOPS)
@@ -1752,6 +1763,8 @@ corrections are activated and photons are present at LO.
          case (BLHA_AMP_SPIN_C)
             if (cfg%mode == BLHA_MODE_OPENLOOPS) then
                buf = "sctree_polvect"
+            else if (cfg%mode == BLHA_MODE_GOSAM) then
+               buf = "scTree2"
             else
                buf = "scTree"
             end if
@@ -2632,6 +2645,20 @@ Obviously, this process-core type uses the BLHA interface.
 @ %def blha_driver_set_alpha_qed
 @
 <<BLHA OLP interfaces: blha driver: TBP>>=
+  procedure(blha_driver_set_ufo_parameter), deferred :: set_ufo_parameter
+<<BLHA OLP interfaces: interfaces>>=
+  abstract interface
+    subroutine blha_driver_set_ufo_parameter (driver, par_name, ufo_par)
+      import
+      class(blha_driver_t), intent(inout) :: driver
+      type(string_t), intent(in) :: par_name
+      real(default), intent(in) :: ufo_par
+    end subroutine blha_driver_set_ufo_parameter
+  end interface
+
+@ %def blha_driver_set_ufo_parameter
+@
+<<BLHA OLP interfaces: blha driver: TBP>>=
   procedure(blha_driver_print_alpha_s), deferred :: &
        print_alpha_s
 <<BLHA OLP interfaces: interfaces>>=
@@ -2879,7 +2906,8 @@ Obviously, this process-core type uses the BLHA interface.
             else if (rd_line(i_next : i_next + 6) == 'ccTree') then
                amp_type(label_count) = BLHA_AMP_COLOR_C
             else if (rd_line(i_next : i_next + 6) == 'scTree' .or. &
-                 rd_line(i_next : i_next + 14) == 'sctree_polvect') then
+                 rd_line(i_next : i_next + 14) == 'sctree_polvect' .or. &
+                 rd_line(i_next : i_next + 7) == 'scTree2') then
                amp_type(label_count) = BLHA_AMP_SPIN_C
             else
                call msg_fatal ("AmplitudeType present but AmpType not known!")
@@ -3236,6 +3264,36 @@ Obviously, this process-core type uses the BLHA interface.
   end subroutine prc_blha_set_electroweak_parameters
 
 @ %def prc_blha_set_electrweak_parameters
+@
+<<BLHA OLP interfaces: prc blha: TBP>>=
+  procedure :: set_ufo_parameters => &
+       prc_blha_set_ufo_parameters
+<<BLHA OLP interfaces: sub interfaces>>=
+    module subroutine prc_blha_set_ufo_parameters (object, model)
+      class(prc_blha_t), intent(inout) :: object
+      type(model_data_t), intent(in), target :: model
+    end subroutine prc_blha_set_ufo_parameters
+<<BLHA OLP interfaces: procedures>>=
+  module subroutine prc_blha_set_ufo_parameters (object, model)
+     class(prc_blha_t), intent(inout) :: object
+     type(model_data_t), intent(in), target :: model
+     class(modelpar_data_t), pointer :: par
+     type(string_t) :: name
+     integer :: i, ierr
+     call model%set_non_zero_masses_as_input ()
+     do i = 1, model%get_n_real ()
+        par => model%get_par_real_ptr (i)
+        if (par%is_input_par ()) then
+           name = par%get_name ()
+           select type (driver => object%driver)
+           class is (blha_driver_t)
+              call driver%set_ufo_parameter (name, model%get_real (name))
+           end select
+        end if
+     end do
+  end subroutine prc_blha_set_ufo_parameters
+
+@ %def prc_blha_set_ufo_parameters
 @
 <<BLHA OLP interfaces: prc blha: TBP>>=
   procedure :: read_contract_file => prc_blha_read_contract_file

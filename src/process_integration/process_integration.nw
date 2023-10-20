@@ -15046,13 +15046,14 @@ submodule (instances) instances_s
   !!! We should depend less on these modules (move it to pcm_nlo_t e.g.)
   use phs_wood, only: phs_wood_t
   use phs_fks
-  use blha_olp_interfaces, only: prc_blha_t
+  use blha_olp_interfaces, only: prc_blha_t, OLP_RESULTS_LIMIT
   use blha_config, only: BLHA_AMP_COLOR_C
   use prc_omega, only: prc_omega_t, omega_state_t
   use prc_external, only: prc_external_t, prc_external_state_t
   use prc_threshold, only: prc_threshold_t
   use blha_olp_interfaces, only: blha_result_array_size
   use prc_openloops, only: prc_openloops_t, openloops_state_t
+  use prc_gosam, only: prc_gosam_t
   use prc_recola, only: prc_recola_t
   use blha_olp_interfaces, only: blha_color_c_fill_offdiag, blha_color_c_fill_diag
   use ttv_formfactors, only: m1s_to_mpole
@@ -16504,6 +16505,10 @@ the threshold computation where the process is well-defined and fixed.
 @ The information about spin correlations is not stored in the
 [[nlo_settings]] because it is only available after the
 [[fks_regions]] have been created.
+
+Spin correlations have been originally foreseen for \texttt{OpenLoops}
+as OLP; all the quantum number combinatorics is the same for another
+BLHA-based OLP, so for \texttt{GoSam} we assume the same structure.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_spin_correlations => &
        term_instance_evaluate_spin_correlations
@@ -16528,7 +16533,7 @@ the threshold computation where the process is well-defined and fixed.
        if (pcm_work%real_sub%requires_spin_correlations () &
             .and. term%nlo_type == NLO_REAL) then
           select type (core)
-          type is (prc_openloops_t)
+          class is (prc_blha_t)
              select type (pcm => term%pcm)
              type is (pcm_nlo_t)
                 n_flv = term%connected%trace%get_qn_index_n_flv ()
@@ -17249,11 +17254,13 @@ only compute one and use the [[eqv_index]] determined by the
     real(default), dimension(:), allocatable :: sqme_color_c
     real(default), dimension(:), allocatable :: sqme_spin_c
     real(default), dimension(6) :: sqme_spin_c_tmp
+    real(default), dimension(OLP_RESULTS_LIMIT) :: sqme_spin_c_gosam
     integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off
     integer :: i_flv, i_hel, i_sub, i_color_c, i_color_c_eqv, &
          i_spin_c, i_spin_c_eqv
     integer :: i_flv_eqv, i_hel_eqv
     integer :: emitter, i_emitter
+    integer :: idl, idh
     logical :: bad_point, bp
     logical, dimension(:,:), allocatable :: eqv_me_evaluated
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
@@ -17355,6 +17362,32 @@ only compute one and use the [[eqv_index]] determined by the
                                     sqme_spin_c_tmp, &
                                     bp)
                                sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
+                               bad_point = bad_point .or. bp
+                            end if
+                         end do
+                      end select
+                      do i_sub = 1, n_sub_spin
+                         i_spin_c = term%int_hard%get_qn_index (i_flv, i_hel, &
+                              i_sub + n_pdf_off + n_sub_color)
+                         term%amp(i_spin_c) = cmplx &
+                              (sqme_spin_c(i_sub), 0, default)
+                      end do
+                   type is (prc_gosam_t)
+                      select type (pcm => term%pcm)
+                      type is (pcm_nlo_t)
+                         call core%compute_sqme_spin_c &
+                              (i_flv, &
+                              i_hel, &
+                              term%p_hard, &
+                              term%get_ren_scale (), &
+                              sqme_spin_c_gosam, &
+                              bp)
+                         do i_emitter = 1, pcm%region_data%n_emitters
+                            emitter = pcm%region_data%emitters(i_emitter)
+                            if (emitter > 0) then
+                               idl = 6*(emitter-1)+1
+                               idh = 6*(emitter-1)+6
+                               sqme_spin_c = [sqme_spin_c, sqme_spin_c_gosam(idl:idh)]
                                bad_point = bad_point .or. bp
                             end if
                          end do

@@ -70,7 +70,7 @@ AmplitudeType            Tree
 AmplitudeType            ccTree
  11 -11 ->   1  -1
 
-AmplitudeType            scTree
+AmplitudeType            scTree2
  11 -11 ->   1  -1
 
 AmplitudeType            Tree
@@ -79,7 +79,7 @@ AmplitudeType            Tree
 AmplitudeType            ccTree
  11 -11 ->   2  -2
 
-AmplitudeType            scTree
+AmplitudeType            scTree2
  11 -11 ->   2  -2
 
 AmplitudeType            Tree
@@ -88,7 +88,7 @@ AmplitudeType            Tree
 AmplitudeType            ccTree
  11 -11 ->   3  -3
 
-AmplitudeType            scTree
+AmplitudeType            scTree2
  11 -11 ->   3  -3
 
 ------------------------------------------------------------------------

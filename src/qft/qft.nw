@@ -97,6 +97,7 @@ so we provide to implementations of an abstract type.
   type, abstract :: modelpar_data_t
      private
      type(string_t) :: name
+     logical :: is_input = .false.
    contains
    <<Model data: par data: TBP>>
   end type modelpar_data_t
@@ -172,29 +173,35 @@ Fortran rules.
   procedure, private :: modelpar_data_init_real
   procedure, private :: modelpar_data_init_complex
 <<Model data: sub interfaces>>=
-    module subroutine modelpar_data_init_real (par, name, value)
+    module subroutine modelpar_data_init_real (par, name, value, is_input)
       class(modelpar_data_t), intent(out) :: par
       type(string_t), intent(in) :: name
       real(default), intent(in) :: value
+      logical, intent(in), optional :: is_input
     end subroutine modelpar_data_init_real
-    module subroutine modelpar_data_init_complex (par, name, value)
+    module subroutine modelpar_data_init_complex (par, name, value, is_input)
       class(modelpar_data_t), intent(out) :: par
       type(string_t), intent(in) :: name
       complex(default), intent(in) :: value
+      logical, intent(in), optional :: is_input
     end subroutine modelpar_data_init_complex
 <<Model data: procedures>>=
-  module subroutine modelpar_data_init_real (par, name, value)
+  module subroutine modelpar_data_init_real (par, name, value, is_input)
     class(modelpar_data_t), intent(out) :: par
     type(string_t), intent(in) :: name
     real(default), intent(in) :: value
+    logical, intent(in), optional :: is_input
+    if (present (is_input)) par%is_input = is_input
     par%name = name
     par = value
   end subroutine modelpar_data_init_real
 
-  module subroutine modelpar_data_init_complex (par, name, value)
+  module subroutine modelpar_data_init_complex (par, name, value, is_input)
     class(modelpar_data_t), intent(out) :: par
     type(string_t), intent(in) :: name
     complex(default), intent(in) :: value
+    logical, intent(in), optional :: is_input
+    if (present (is_input)) par%is_input = is_input
     par%name = name
     par = value
   end subroutine modelpar_data_init_complex
@@ -258,6 +265,40 @@ Return the parameter name.
   end function modelpar_data_get_name
 
 @ %def modelpar_data_get_name
+@
+Return logical about input information.
+<<Model data: par data: TBP>>=
+  procedure :: is_input_par => modelpar_data_is_input_par
+<<Model data: sub interfaces>>=
+    module function modelpar_data_is_input_par (par) result (is_input)
+      class(modelpar_data_t), intent(in) :: par
+      logical :: is_input
+    end function modelpar_data_is_input_par
+<<Model data: procedures>>=
+  module function modelpar_data_is_input_par (par) result (is_input)
+    class(modelpar_data_t), intent(in) :: par
+    logical :: is_input
+    is_input = par%is_input
+  end function modelpar_data_is_input_par
+
+@ %def modelpar_data_is_input_par
+@
+Set logical about input information
+<<Model data: par data: TBP>>=
+  procedure :: set_input_par => modelpar_data_set_input_par
+<<Model data: sub interfaces>>=
+    module subroutine modelpar_data_set_input_par (par, is_input)
+      class(modelpar_data_t), intent(inout) :: par
+      logical, intent(in) :: is_input
+    end subroutine modelpar_data_set_input_par
+<<Model data: procedures>>=
+  module subroutine modelpar_data_set_input_par (par, is_input)
+    class(modelpar_data_t), intent(inout) :: par
+    logical, intent(in) :: is_input
+    par%is_input = is_input
+  end subroutine modelpar_data_set_input_par
+
+@ %def modelpar_data_set_input_par
 @
 Return the value.  In case of a type mismatch, follow Fortran conventions.
 <<Model data: par data: TBP>>=
@@ -896,6 +937,8 @@ must be allocated.
   procedure :: is_right_handed => field_data_is_right_handed
   procedure :: has_antiparticle => field_data_has_antiparticle
   procedure :: is_stable => field_data_is_stable
+  procedure :: width_is_input => field_data_width_is_input
+  procedure :: mass_is_input => field_data_mass_is_input
   procedure :: get_decays => field_data_get_decays
   procedure :: decays_isotropically => field_data_decays_isotropically
   procedure :: decays_diagonal => field_data_decays_diagonal
@@ -932,6 +975,14 @@ must be allocated.
       class(field_data_t), intent(in) :: prt
       logical, intent(in), optional :: anti
     end function field_data_is_stable
+    elemental module function field_data_width_is_input (prt) result (flag)
+      logical :: flag
+      class(field_data_t), intent(in) :: prt
+    end function field_data_width_is_input
+    elemental module function field_data_mass_is_input (prt) result (flag)
+      logical :: flag
+      class(field_data_t), intent(in) :: prt
+    end function field_data_mass_is_input
     module subroutine field_data_get_decays (prt, decay, anti)
       class(field_data_t), intent(in) :: prt
       type(string_t), dimension(:), intent(out), allocatable :: decay
@@ -1017,6 +1068,18 @@ must be allocated.
        flag = prt%p_is_stable
     end if
   end function field_data_is_stable
+  elemental module function field_data_width_is_input (prt) result (flag)
+    logical :: flag
+    class(field_data_t), intent(in) :: prt
+    flag = .false.
+    if (associated (prt%width_data)) flag = prt%width_data%is_input
+  end function field_data_width_is_input
+  elemental module function field_data_mass_is_input (prt) result (flag)
+    logical :: flag
+    class(field_data_t), intent(in) :: prt
+    flag = .false.
+    if (associated (prt%mass_data)) flag = prt%mass_data%is_input
+  end function field_data_mass_is_input
 
   module subroutine field_data_get_decays (prt, decay, anti)
     class(field_data_t), intent(in) :: prt
@@ -1932,6 +1995,8 @@ it is ignored.
   type :: model_data_t
      private
      type(string_t) :: name
+     type(string_t) :: ufo_path_name
+     logical :: is_ufo = .false.
      integer :: scheme = 0
      type(modelpar_real_t), dimension(:), pointer :: par_real => null ()
      type(modelpar_complex_t), dimension(:), pointer :: par_complex => null ()
@@ -2035,22 +2100,30 @@ deep copy.
   procedure, private :: model_data_init
 <<Model data: sub interfaces>>=
     module subroutine model_data_init (model, name, &
-         n_par_real, n_par_complex, n_field, n_vtx)
+         n_par_real, n_par_complex, n_field, n_vtx, ufo_path)
       class(model_data_t), intent(out) :: model
       type(string_t), intent(in) :: name
       integer, intent(in) :: n_par_real, n_par_complex
       integer, intent(in) :: n_field
       integer, intent(in) :: n_vtx
+      type(string_t), intent(in), optional :: ufo_path
     end subroutine model_data_init
 <<Model data: procedures>>=
   module subroutine model_data_init (model, name, &
-       n_par_real, n_par_complex, n_field, n_vtx)
+       n_par_real, n_par_complex, n_field, n_vtx, ufo_path)
     class(model_data_t), intent(out) :: model
     type(string_t), intent(in) :: name
     integer, intent(in) :: n_par_real, n_par_complex
     integer, intent(in) :: n_field
     integer, intent(in) :: n_vtx
+    type(string_t), intent(in), optional :: ufo_path
     model%name = name
+    if (present(ufo_path)) then
+       model%ufo_path_name = ufo_path
+       model%is_ufo = .true.
+    else
+       model%ufo_path_name = ""
+    end if
     allocate (model%par_real (n_par_real))
     allocate (model%par_complex (n_par_complex))
     allocate (model%field (n_field))
@@ -2134,6 +2207,8 @@ not allocate memory.
 <<Model data: model data: TBP>>=
   procedure :: get_name => model_data_get_name
   procedure :: get_scheme_num => model_data_get_scheme_num
+  procedure :: is_ufo_model => model_data_is_ufo_model
+  procedure :: get_ufo_path_name => model_data_get_ufo_path_name
 <<Model data: sub interfaces>>=
     module function model_data_get_name (model) result (name)
       class(model_data_t), intent(in) :: model
@@ -2143,6 +2218,14 @@ not allocate memory.
       class(model_data_t), intent(in) :: model
       integer :: scheme
     end function model_data_get_scheme_num
+    module function model_data_is_ufo_model (model) result (flag)
+      class(model_data_t), intent(in) :: model
+      logical :: flag
+    end function model_data_is_ufo_model
+    module function model_data_get_ufo_path_name (model) result (ufo_path_name)
+      class(model_data_t), intent(in) :: model
+      type(string_t) :: ufo_path_name
+    end function model_data_get_ufo_path_name
 <<Model data: procedures>>=
   module function model_data_get_name (model) result (name)
     class(model_data_t), intent(in) :: model
@@ -2155,6 +2238,18 @@ not allocate memory.
     integer :: scheme
     scheme = model%scheme
   end function model_data_get_scheme_num
+
+  module function model_data_is_ufo_model (model) result (flag)
+    class(model_data_t), intent(in) :: model
+    logical :: flag
+    flag = model%is_ufo
+  end function model_data_is_ufo_model
+
+  module function model_data_get_ufo_path_name (model) result (ufo_path_name)
+    class(model_data_t), intent(in) :: model
+    type(string_t) :: ufo_path_name
+    ufo_path_name = model%ufo_path_name
+  end function model_data_get_ufo_path_name
 
 @ %def model_data_get_name
 @ %def model_data_get_scheme
@@ -2379,25 +2474,25 @@ directly by index.
   procedure :: get_par_complex_ptr => model_data_get_par_complex_ptr_index
 <<Model data: sub interfaces>>=
     module function model_data_get_par_real_ptr_index (model, i) result (ptr)
-      class(model_data_t), intent(inout) :: model
+      class(model_data_t), intent(in) :: model
       integer, intent(in) :: i
       class(modelpar_data_t), pointer :: ptr
     end function model_data_get_par_real_ptr_index
     module function model_data_get_par_complex_ptr_index (model, i) result (ptr)
-      class(model_data_t), intent(inout) :: model
+      class(model_data_t), intent(in) :: model
       integer, intent(in) :: i
       class(modelpar_data_t), pointer :: ptr
     end function model_data_get_par_complex_ptr_index
 <<Model data: procedures>>=
   module function model_data_get_par_real_ptr_index (model, i) result (ptr)
-    class(model_data_t), intent(inout) :: model
+    class(model_data_t), intent(in) :: model
     integer, intent(in) :: i
     class(modelpar_data_t), pointer :: ptr
     ptr => model%par_real(i)
   end function model_data_get_par_real_ptr_index
 
   module function model_data_get_par_complex_ptr_index (model, i) result (ptr)
-    class(model_data_t), intent(inout) :: model
+    class(model_data_t), intent(in) :: model
     integer, intent(in) :: i
     class(modelpar_data_t), pointer :: ptr
     ptr => model%par_complex(i)
@@ -2817,6 +2912,35 @@ Identify the particle via pdg.
 
 @ %def model_data_set_field_mass
 @ %def model_data_set_field_width
+
+@ Label masses of particles only as input if they are not zero.
+This is a requirement for input mass parameters of OLPs.
+<<Model data: model data: TBP>>=
+  procedure :: set_non_zero_masses_as_input => model_data_set_non_zero_masses_as_input
+<<Model data: sub interfaces>>=
+    module subroutine model_data_set_non_zero_masses_as_input (model)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+    end subroutine model_data_set_non_zero_masses_as_input
+<<Model data: procedures>>=
+    module subroutine model_data_set_non_zero_masses_as_input (model)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+      integer :: i
+      fields => model%get_field_array_ptr ()
+      do i = 1, size (fields)
+         if (associated (fields(i)%mass_data)) then
+            if (fields(i)%get_mass () > 0 &
+               .and. fields(i)%mass_data%is_input_par ()) then
+               call fields(i)%mass_data%set_input_par (.true.)
+            else
+               call fields(i)%mass_data%set_input_par (.false.)
+            end if
+         end if
+      end do
+    end subroutine model_data_set_non_zero_masses_as_input
+
+@ %def model_data_set_non_zero_masses_as_input
 @ Mark a particle as unstable and provide a list of names for its
 decay processes.  In contrast with the previous subroutine which is
 for internal use, we address the particle by its PDG code.  If the
@@ -6286,6 +6410,8 @@ Generic properties
   procedure :: is_antiparticle => flavor_is_antiparticle
   procedure :: has_antiparticle => flavor_has_antiparticle
   procedure :: is_stable => flavor_is_stable
+  procedure :: width_is_input => flavor_width_is_input
+  procedure :: mass_is_input => flavor_mass_is_input
   procedure :: get_decays => flavor_get_decays
   procedure :: decays_isotropically => flavor_decays_isotropically
   procedure :: decays_diagonal => flavor_decays_diagonal
@@ -6329,6 +6455,14 @@ Generic properties
       logical :: flag
       class(flavor_t), intent(in) :: flv
     end function flavor_is_stable
+    elemental module function flavor_width_is_input (flv) result (flag)
+      logical :: flag
+      class(flavor_t), intent(in) :: flv
+    end function flavor_width_is_input
+    elemental module function flavor_mass_is_input (flv) result (flag)
+      logical :: flag
+      class(flavor_t), intent(in) :: flv
+    end function flavor_mass_is_input
     module subroutine flavor_get_decays (flv, decay)
       class(flavor_t), intent(in) :: flv
       type(string_t), dimension(:), intent(out), allocatable :: decay
@@ -6451,6 +6585,18 @@ Generic properties
     end if
   end function flavor_is_stable
 
+  elemental module function flavor_width_is_input (flv) result (flag)
+    logical :: flag
+    class(flavor_t), intent(in) :: flv
+    flag = flv%field_data%width_is_input ()
+  end function flavor_width_is_input
+
+  elemental module function flavor_mass_is_input (flv) result (flag)
+    logical :: flag
+    class(flavor_t), intent(in) :: flv
+    flag = flv%field_data%mass_is_input ()
+  end function flavor_mass_is_input
+
   module subroutine flavor_get_decays (flv, decay)
     class(flavor_t), intent(in) :: flv
     type(string_t), dimension(:), intent(out), allocatable :: decay
@@ -6520,6 +6666,8 @@ Generic properties
 @ %def flavor_is_antiparticle
 @ %def flavor_has_antiparticle
 @ %def flavor_is_stable
+@ %def flavor_width_is_input
+@ %def flavor_mass_is_input
 @ %def flavor_get_decays
 @ %def flavor_decays_isotropically
 @ %def flavor_decays_diagonal

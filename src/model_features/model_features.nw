@@ -13375,7 +13375,7 @@ This implementation supports only real parameters and real values.
     real(default), intent(in) :: value
     par%type = PAR_INDEPENDENT
     par%data => par_data
-    call par%data%init (name, value)
+    call par%data%init (name, value, .true.)
   end subroutine parameter_init_independent_value
 
   module subroutine parameter_init_external (par, par_data, name)
@@ -13414,7 +13414,7 @@ This implementation supports only real parameters and real values.
        call expr%init_numeric_value (pn)
     end select
     par%data => par_data
-    call par%data%init (name, par%expr%get_real ())
+    call par%data%init (name, par%expr%get_real (), .true.)
   end subroutine parameter_init_independent
 
   subroutine parameter_init_derived (par, par_data, name, pn, var_list)
@@ -13648,8 +13648,12 @@ base.
     type(string_t) :: libpath
     integer :: scheme_num
     scheme_num = model%get_scheme_num ()
-    call model%basic_init (name, n_par, n_prt, n_vtx)
-    if (present (ufo))  model%ufo_model = ufo
+    if (present (ufo)) then
+       model%ufo_model = ufo
+       call model%basic_init (name, n_par, n_prt, n_vtx, model%ufo_path)
+    else
+       call model%basic_init (name, n_par, n_prt, n_vtx)
+    end if
     call model%set_scheme_num (scheme_num)
     if (libname /= "") then
        if (.not. os_data%use_testfiles) then
@@ -13696,18 +13700,20 @@ core of the full initializer above.
 <<Models: model: TBP>>=
   procedure, private :: basic_init => model_basic_init
 <<Models: sub interfaces>>=
-    module subroutine model_basic_init (model, name, n_par, n_prt, n_vtx)
+    module subroutine model_basic_init (model, name, n_par, n_prt, n_vtx, ufo_path)
       class(model_t), intent(inout) :: model
       type(string_t), intent(in) :: name
       integer, intent(in) :: n_par, n_prt, n_vtx
+      type(string_t), optional :: ufo_path
     end subroutine model_basic_init
 <<Models: procedures>>=
-  module subroutine model_basic_init (model, name, n_par, n_prt, n_vtx)
+  module subroutine model_basic_init (model, name, n_par, n_prt, n_vtx, ufo_path)
     class(model_t), intent(inout) :: model
     type(string_t), intent(in) :: name
     integer, intent(in) :: n_par, n_prt, n_vtx
+    type(string_t), optional :: ufo_path
     allocate (model%par (n_par))
-    call model%model_data_t%init (name, n_par, 0, n_prt, n_vtx)
+    call model%model_data_t%init (name, n_par, 0, n_prt, n_vtx, ufo_path)
   end subroutine model_basic_init
 
 @ %def model_basic_init
@@ -16158,7 +16164,11 @@ setup, UFO model information has to be transferred.
     n_par = orig%get_n_real ()
     n_prt = orig%get_n_field ()
     n_vtx = orig%get_n_vtx ()
-    call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
+    if (orig%ufo_model) then
+       call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx, orig%ufo_path)
+    else
+       call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
+    end if
     if (allocated (orig%schemes)) then
        model%schemes = orig%schemes
        if (allocated (orig%selected_scheme)) then

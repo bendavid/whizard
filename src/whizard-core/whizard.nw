@@ -3726,7 +3726,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
       type is (gosam_def_t)
         if (present (id)) then
            call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo, restrictions, var_list)
+                prt_out, nlo, ufo, ufo_path, restrictions, var_list)
         else
            call msg_fatal ("Dispatch GoSam def: No id!")
         end if
@@ -3737,7 +3737,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
        type is (openloops_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, &
-                  prt_out, nlo, restrictions, var_list)
+                  prt_out, nlo, ufo, ufo_path, restrictions, var_list)
           else
              call msg_fatal ("Dispatch OpenLoops def: No id!")
           end if
@@ -3750,7 +3750,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, prt_out, &
                   nlo, alpha_power, alphas_power, correction_type, &
-                  restrictions)
+                  ufo, ufo_path, restrictions)
           else
              call msg_fatal ("Dispatch RECOLA def: No id!")
           end if
@@ -3771,7 +3771,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
        type is (threshold_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, prt_out, &
-                  nlo, restrictions)
+                  nlo, ufo, ufo_path, restrictions)
           else
              call msg_fatal ("Dispatch Threshold def: No id!")
           end if

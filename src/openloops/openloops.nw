@@ -257,11 +257,13 @@ end submodule prc_openloops_s
   procedure :: init => openloops_def_init
 <<Prc openloops: main procedures>>=
   subroutine openloops_def_init (object, basename, model_name, &
-     prt_in, prt_out, nlo_type, restrictions, var_list)
+     prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions, var_list)
     class(openloops_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
     type(var_list_t), intent(in) :: var_list
   <<Prc openloops: openloops def init: variables>>
@@ -282,7 +284,7 @@ end submodule prc_openloops_s
   <<Prc openloops: openloops def init: suffix>>
     select type (writer => object%writer)
     class is (prc_blha_writer_t)
-       call writer%init (model_name, prt_in, prt_out, restrictions)
+       call writer%init (model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
     end select
     object%verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
   end subroutine openloops_def_init
@@ -451,6 +453,23 @@ filenames do not clash.
   end subroutine openloops_driver_set_weinberg_angle
 
 @ %def openloops_driver_set_weinberg_angle
+@
+<<Prc openloops: openloops driver: TBP>>=
+  procedure :: set_ufo_parameter => openloops_driver_set_ufo_parameter
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_driver_set_ufo_parameter (driver, par_name, ufo_par)
+      class(openloops_driver_t), intent(inout) :: driver
+      type(string_t), intent(in) :: par_name
+      real(default), intent(in) :: ufo_par
+    end subroutine openloops_driver_set_ufo_parameter
+<<Prc openloops: procedures>>=
+  module subroutine openloops_driver_set_ufo_parameter (driver, par_name, ufo_par)
+    class(openloops_driver_t), intent(inout) :: driver
+    type(string_t), intent(in) :: par_name
+    real(default), intent(in) :: ufo_par
+  end subroutine openloops_driver_set_ufo_parameter
+
+@ %def openloops_driver_set_ufo_parameter
 @
 <<Prc openloops: openloops driver: TBP>>=
   procedure :: print_alpha_s => openloops_driver_print_alpha_s

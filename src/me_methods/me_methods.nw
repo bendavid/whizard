@@ -6546,10 +6546,12 @@ This is the abstract external matrix-element interface.
     type(string_t) :: process_mode
     type(string_t) :: process_string
     type(string_t) :: restrictions
+    type(string_t) :: ufo_path
     integer :: n_in = 0
     integer :: n_out = 0
     logical :: active = .true.
     logical :: amp_triv = .true.
+    logical :: ufo = .false.
   contains
   <<Prc external: external writer: TBP>>
   end type prc_external_writer_t
@@ -6561,18 +6563,22 @@ This is the abstract external matrix-element interface.
   procedure :: base_init => prc_external_writer_init
 <<Prc external: sub interfaces>>=
     pure module subroutine prc_external_writer_init &
-         (writer, model_name, prt_in, prt_out, restrictions)
+         (writer, model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
       class(prc_external_writer_t), intent(inout) :: writer
       type(string_t), intent(in) :: model_name
       type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
       type(string_t), intent(in), optional :: restrictions
     end subroutine prc_external_writer_init
 <<Prc external: procedures>>=
   pure module subroutine prc_external_writer_init &
-       (writer, model_name, prt_in, prt_out, restrictions)
+       (writer, model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
     class(prc_external_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
     integer :: i
     writer%model_name = model_name
@@ -6580,6 +6586,12 @@ This is the abstract external matrix-element interface.
        writer%restrictions = restrictions
     else
        writer%restrictions = ""
+    end if
+    if (present (ufo)) then
+       writer%ufo = ufo
+       writer%ufo_path = ufo_path
+    else
+       writer%ufo_path = ""
     end if
     writer%n_in = size (prt_in)
     writer%n_out = size (prt_out)
@@ -6860,7 +6872,12 @@ can be exploited for its data-management parts.
     logical, intent(in), optional :: testflag
     type(string_t) :: omega_binary, omega_path
     type(string_t) :: restrictions_string, amp_triv_string
-    omega_binary = "omega_" // writer%model_name // ".opt"
+    type(string_t) :: parameter_module
+    if (writer%ufo) then
+       omega_binary = "omega_UFO.opt"
+    else
+       omega_binary = "omega_" // writer%model_name // ".opt"
+    end if
     omega_path = os_data%whizard_omega_binpath // "/" // omega_binary
     if (.not. verbose)  omega_path = "@" // omega_path
     if (writer%restrictions /= "") then
@@ -6872,17 +6889,52 @@ can be exploited for its data-management parts.
     if (writer%amp_triv)  amp_triv_string = " -target:amp_triv"
     write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
     write (unit, "(5A)")  char (id), ".f90:"
-    if (.not. verbose) then
-       write (unit, "(5A)")  TAB // '@echo  "  OMEGA     ', trim (char (id)), '.f90"'
+    if (writer%ufo) then
+       parameter_module = char (id) // "_par_" // replace (char (writer%model_name), &
+            "-", "_", every=.true.)
+       write (unit, "(5A)")  char (id), ".f90: ", char (parameter_module), ".lo"
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  OMEGA[UFO]', trim (char (id)), '.f90"'
+       end if
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -o ", char (id), ".f90", &
+            " -model:UFO_dir ", &
+            char (writer%ufo_path), "/", char (writer%model_name), &
+            " -model:exec", &
+            " -target:whizard", char (amp_triv_string), &
+            " -target:parameter_module ", char (parameter_module), &
+            " -target:module opr_", char (id), &
+            " -target:md5sum '", writer%md5sum, "'", &
+            char (writer%process_mode), char (writer%process_string), &
+            char (restrictions_string)
+       write (unit, "(5A)") "SOURCES += ", char (parameter_module), ".f90"
+       write (unit, "(5A)") "OBJECTS += ", char (parameter_module), ".lo"
+       write (unit, "(5A)")  char (parameter_module), ".f90:"
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -model:UFO_dir ", &
+            char (writer%ufo_path), "/", char (writer%model_name), &
+            " -model:exec", &
+            " -target:parameter_module ", char (parameter_module), &
+            " -params", &
+            " -o $@"
+       write (unit, "(5A)")  char (parameter_module), ".lo: ", char (parameter_module), ".f90"
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  FC       " $@'
+       end if
+       write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
+    else
+       if (.not. verbose) then
+          write (unit, "(5A)")  TAB // '@echo  "  OMEGA     ', trim (char (id)), '.f90"'
+       end if
+       write (unit, "(99A)")  TAB, char (omega_path), &
+            " -o ", char (id), ".f90", &
+            " -target:whizard", char (amp_triv_string), &
+            " -target:parameter_module parameters_", char (writer%model_name), &
+            " -target:module opr_", char (id), &
+            " -target:md5sum '", writer%md5sum, "'", &
+            char (writer%process_mode), char (writer%process_string), &
+            char (restrictions_string)
     end if
-    write (unit, "(99A)")  TAB, char (omega_path), &
-         " -o ", char (id), ".f90", &
-         " -target:whizard", char (amp_triv_string), &
-         " -target:parameter_module parameters_", char (writer%model_name), &
-         " -target:module opr_", char (id), &
-         " -target:md5sum '", writer%md5sum, "'", &
-         char (writer%process_mode), char (writer%process_string), &
-         char (restrictions_string)
     write (unit, "(5A)")  "clean-", char (id), ":"
     write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
     write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
@@ -7324,20 +7376,24 @@ end submodule prc_threshold_s
   procedure :: init => threshold_writer_init
 <<Prc threshold: sub interfaces>>=
     pure module subroutine threshold_writer_init &
-         (writer, model_name, prt_in, prt_out, restrictions)
+         (writer, model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
       class(threshold_writer_t), intent(inout) :: writer
       type(string_t), intent(in) :: model_name
       type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
       type(string_t), intent(in), optional :: restrictions
     end subroutine threshold_writer_init
 <<Prc threshold: procedures>>=
   pure module subroutine threshold_writer_init &
-       (writer, model_name, prt_in, prt_out, restrictions)
+       (writer, model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
     class(threshold_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
-    call writer%base_init (model_name, prt_in, prt_out, restrictions)
+    call writer%base_init (model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
     writer%amp_triv = .false.
   end subroutine threshold_writer_init
 
@@ -7614,11 +7670,13 @@ end submodule prc_threshold_s
   procedure :: init => threshold_def_init
 <<Prc threshold: main procedures>>=
   subroutine threshold_def_init (object, basename, model_name, &
-       prt_in, prt_out, nlo_type, restrictions)
+       prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions)
     class(threshold_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
     if (debug_on) call msg_debug (D_ME_METHODS, "threshold_def_init")
     object%basename = basename
@@ -7626,7 +7684,7 @@ end submodule prc_threshold_s
     allocate (threshold_writer_t :: object%writer)
     select type (writer => object%writer)
     type is (threshold_writer_t)
-       call writer%init (model_name, prt_in, prt_out, restrictions)
+       call writer%init (model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
        writer%nlo_type = nlo_type
     end select
   end subroutine threshold_def_init
