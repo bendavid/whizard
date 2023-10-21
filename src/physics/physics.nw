@@ -4678,7 +4678,7 @@ end submodule kinematics_vars_s
 <<Kinematics vars: nsolutionsmassless>>=
   integer function nsolutionsmassless (dsq) 
     !!! calculates the number of solutions of quartic function in massless case    
-    real*16 :: delta, a, b, &
+    real(kind=default) :: delta, a, b, &
          z0, z1, z2, z3, z4, &
          z0sq, z1sq, z2sq, z3sq, z4sq, &
          y0, y1, y2, y3, &
@@ -4758,7 +4758,7 @@ end submodule kinematics_vars_s
     !!! calculates the number of solutions of quartic function  in massive case
     integer:: nsol, nsolsmid
     real(kind=default):: deltasqmid, dsq, delta
-    real*16 :: z0, z1, z2, z3, z4, &
+    real(kind=default) :: z0, z1, z2, z3, z4, &
          z0sq, z1sq, z2sq, z3sq, z4sq, &
          y0, y1, y2, y3, &
          x0, x1, x2, &
@@ -4957,7 +4957,7 @@ Print input values.
 <<Kinematics vars: procedures>>=
   function signchangepositive (t1, t2, t3, t4, t5) result (n_sign)
     !!! calculates the number of sign changes in the sturm sequence
-    real*16 :: t1, t2, t3, t4, t5
+    real(kind=default) :: t1, t2, t3, t4, t5
     integer :: n_sign
     integer :: n
     n = 0
@@ -4981,7 +4981,7 @@ Print input values.
   integer function signchangenegative (t1, t2, t3, t4, t5)
     !!! calculates the number of times there is no sign
     !!!  change in the sturm sequence
-    real*16 :: t1, t2, t3, t4, t5
+    real(kind=default) :: t1, t2, t3, t4, t5
     integer:: n
 
     n=0
