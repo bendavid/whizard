@@ -4678,6 +4678,8 @@ end submodule kinematics_vars_s
 <<Kinematics vars: nsolutionsmassless>>=
   integer function nsolutionsmassless (dsq) 
     !!! calculates the number of solutions of quartic function in massless case    
+    !!! Problem with macOS XCode 14/15
+    ! real*16 :: delta, a, b, &
     real(kind=default) :: delta, a, b, &
          z0, z1, z2, z3, z4, &
          z0sq, z1sq, z2sq, z3sq, z4sq, &
@@ -4957,6 +4959,8 @@ Print input values.
 <<Kinematics vars: procedures>>=
   function signchangepositive (t1, t2, t3, t4, t5) result (n_sign)
     !!! calculates the number of sign changes in the sturm sequence
+    !!! Problem with macOS XCode 14/15
+    ! real*16 :: t1, t2, t3, t4, t5
     real(kind=default) :: t1, t2, t3, t4, t5
     integer :: n_sign
     integer :: n
@@ -4981,6 +4985,8 @@ Print input values.
   integer function signchangenegative (t1, t2, t3, t4, t5)
     !!! calculates the number of times there is no sign
     !!!  change in the sturm sequence
+    !!! Problem with macOS XCode 14/15
+    ! real*16 :: t1, t2, t3, t4, t5
     real(kind=default) :: t1, t2, t3, t4, t5
     integer:: n
 
