@@ -5087,7 +5087,9 @@ The output variables have been rescaled back.
     real(default) :: masq, mbsq, mnsq, Emiss, pmissz
     real(default), intent(out) :: Easq, Ebsq
     real(default) :: pmissxsq, pmissysq, mn_unscaled
-    real*16 :: temp, scalesq, rt, relative_precision100
+    !!! Problem with macOS XCode 14/15
+    ! real*16 :: temp, scalesq, rt, relative_precision100
+    real(default) :: temp, scalesq, rt, relative_precision100
     integer, intent(in) :: u
 
     !!! Here the 8 input variables are entered. This should be read in from 
