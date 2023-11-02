@@ -99,7 +99,7 @@ let parse_file name =
 	 begin
 	   close_in ic;
 	   invalid_arg (Printf.sprintf
-			  "%s: syntax error (%s)"
+			  "%s (or immediately afterwards): syntax error (%s)"
 			  (error_in_file name start_pos end_pos) msg)
 	 end
       | Parsing.Parse_error ->

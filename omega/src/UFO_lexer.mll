@@ -89,6 +89,7 @@ rule token = parse
   | eof               { END }
 and string1 sbuf = parse
     '\''              { Buffer.contents sbuf }
+  | '\\' crlf+        { new_line lexbuf; string1 sbuf lexbuf }
   | '\\' (esc as c)   { Buffer.add_char sbuf c; string1 sbuf lexbuf }
   | eof               { raise End_of_file }
   | '\\' '[' (word+ as stem) ']' (word* as suffix)
@@ -98,6 +99,7 @@ and string1 sbuf = parse
   | _ as c            { Buffer.add_char sbuf c; string1 sbuf lexbuf }
 and string2 sbuf = parse
     '"'               { Buffer.contents sbuf }
+  | '\\' crlf+        { new_line lexbuf; string2 sbuf lexbuf }
   | '\\' (esc as c)   { Buffer.add_char sbuf c; string2 sbuf lexbuf }
   | eof               { raise End_of_file }
   | '\\' '[' (word+ as stem) ']' (word* as suffix)
