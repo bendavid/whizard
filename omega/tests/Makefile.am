@@ -1015,6 +1015,7 @@ endif
 ########################################################################
 
 EXTRA_DIST += comparisons_recola.list
+EXTRA_DIST += compare_driver_recola.sh
 if RECOLA_AVAILABLE
 
 TESTS += compare_amplitude_recola
