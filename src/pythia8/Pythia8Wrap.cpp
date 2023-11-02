@@ -29,10 +29,17 @@ extern "C" {
   }
 #endif
 
+#if PYTHIA_VERSION_INTEGER > 8309
+  bool pythia8_set_rndm_engine_ptr (Pythia* pythia, void* rndm) {
+    auto whizard_rndm = std::make_shared<WhizardRndm> (rndm);
+    return pythia->setRndmEnginePtr (whizard_rndm);
+  }
+#else
   bool pythia8_set_rndm_engine_ptr (Pythia* pythia, void* rndm) {
     WhizardRndm* whizard_rndm = new WhizardRndm (rndm);
     return pythia->setRndmEnginePtr (whizard_rndm);
   }
+#endif
 
   bool pythia8_read_string (Pythia* pythia, const char* str) {
     return pythia->readString (string (str));

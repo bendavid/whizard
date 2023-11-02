@@ -447,6 +447,8 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/processes_17.ref \
     unit_tests/ref-output/processes_18.ref \
     unit_tests/ref-output/processes_19.ref \
+    unit_tests/ref-output/pythia8_1.ref \
+    unit_tests/ref-output/pythia8_2.ref \
     unit_tests/ref-output/radiation_generator_1.ref \
     unit_tests/ref-output/radiation_generator_2.ref \
     unit_tests/ref-output/radiation_generator_3.ref \
@@ -623,6 +625,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/vegas_6.ref \
     unit_tests/ref-output/vegas_7.ref \
     unit_tests/ref-output/whizard_lha_1.ref \
+    unit_tests/ref-output/whizard_lha_2.ref \
     unit_tests/ref-output/xml_1.ref \
     unit_tests/ref-output/xml_2.ref \
     unit_tests/ref-output/xml_3.ref \
