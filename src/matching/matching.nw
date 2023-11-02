@@ -1611,10 +1611,6 @@ submodule (powheg_matching) powheg_matching_s
   use process_config, only: COMP_REAL_FIN
   use prc_external, only: prc_external_state_t
   use prc_omega, only: omega_state_t
-  !!! Intel oneAPI 2022/23 regression workaround
-  use sm_qcd, only: qcd_t
-  use pdf, only: pdf_data_t
-  use instances, only: process_instance_t
 
   implicit none
 

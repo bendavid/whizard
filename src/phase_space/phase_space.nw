@@ -10314,8 +10314,6 @@ submodule (phs_forests) phs_forests_s
   use numeric_utils
   use ifiles
   use lexers
-  !!! Intel oneAPI 2022/23 regression workaround
-  use resonances, only: resonance_history_t
 
   implicit none
 
@@ -12551,10 +12549,6 @@ submodule (cascades) cascades_s
   use hashes
   use sorting
   use lorentz
-  !!! Intel oneAPI 2022/23 regression workaround
-  use resonances, only: resonance_info_t
-  use resonances, only: resonance_history_t
-  use resonances, only: resonance_history_set_t
 
   implicit none
 
@@ -22895,9 +22889,6 @@ submodule (phs_wood) phs_wood_s
   use process_constants
   use sf_mappings
   use sf_base
-  !!! Intel oneAPI 2022/23 regression workaround
-  use resonances, only: resonance_history_t
-  use resonances, only: resonance_history_set_t
 
   implicit none
 
@@ -24972,9 +24963,6 @@ submodule (phs_fks) phs_fks_s
   use cascades
   use cascades2
   use ttv_formfactors, only: generate_on_shell_decay_threshold, m1s_to_mpole
-  !!! Intel oneAPI 2022/23 regression workaround
-  use resonances, only: resonance_history_t
-  use resonances, only: resonance_contributors_t
 
   implicit none
 

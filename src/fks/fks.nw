@@ -7244,8 +7244,6 @@ submodule (virtual) virtual_s
   use sm_physics
   use flavors
   use nlo_data, only: ASSOCIATED_LEG_PAIR, get_threshold_momenta
-  !!! Intel oneAPI 2022/23 regression workaround
-  use model_data, only: field_data_t, model_data_t
 
   implicit none
 
@@ -8472,9 +8470,6 @@ submodule (real_subtraction) real_subtraction_s
   use sm_physics
   use models
   use ttv_formfactors, only: m1s_to_mpole
-  !!! Intel oneAPI 2022/23 regression workaround
-  use phs_fks, only: real_kinematics_t, isr_kinematics_t
-  use phs_fks, only: phs_point_set_t
 
   implicit none
 

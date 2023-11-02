@@ -2122,10 +2122,6 @@ submodule (syntax_rules) syntax_rules_s
   use diagnostics
   use ifiles, only: ifile_get_length
   use ifiles, only: line_p, line_init, line_get_string_advance, line_final
-  !!! Intel oneAPI 2022/23 regression workaround
-  use ifiles, only: ifile_t
-  use ifiles, only: ifile_get_length
-  use ifiles, only: line_p, line_init, line_get_string_advance, line_final
 
   implicit none
 

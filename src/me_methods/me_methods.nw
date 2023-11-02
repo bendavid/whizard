@@ -109,10 +109,6 @@ end module prc_core
 
 submodule (prc_core) prc_core_s
 
-  !!! Intel oneAPI 2022/23 regression workaround
-  use os_interface, only: os_data_t
-  use model_data, only: model_data_t
-
   implicit none
 
 contains
@@ -5717,8 +5713,6 @@ submodule (prc_external) prc_external_s
   use physics_defs, only: CF
   use diagnostics
   use prc_omega, only: omega_state_t
-  !!! Intel oneAPI 2022/23 regression workaround
-  use variables, only: var_list_t
 
   implicit none
 
@@ -7347,8 +7341,6 @@ submodule (prc_threshold) prc_threshold_s
   use io_units
   use system_defs, only: TAB
   use sm_qcd
-  !!! Intel oneAPI 2022/23 regression workaround
-  use variables, only: var_list_t
 
   implicit none
 

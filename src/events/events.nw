@@ -2367,11 +2367,6 @@ submodule (eio_direct) eio_direct_s
   use io_units
   use diagnostics
   use cputime
-  !!! Intel oneAPI 2022/23 regression workaround
-  use lorentz, only: vector4_t
-  use event_handles, only: event_handle_t
-  use particles, only: particle_set_t
-  use model_data, only: model_data_t
 
   implicit none
 
@@ -3107,8 +3102,6 @@ submodule (eio_checkpoints) eio_checkpoints_s
 
   use io_units
   use diagnostics
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -3623,8 +3616,6 @@ submodule (eio_callback) eio_callback_s
 
   use io_units
   use diagnostics
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -3906,8 +3897,6 @@ submodule (eio_weights) eio_weights_s
 
   use io_units
   use diagnostics
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -4512,8 +4501,6 @@ submodule (eio_dump) eio_dump_s
   use format_utils, only: write_separator
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_16, FMT_19
-   !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -5066,8 +5053,6 @@ submodule (eio_ascii) eio_ascii_s
   use diagnostics
   use hep_common
   use hep_events
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -14741,8 +14726,6 @@ submodule (eio_lhef) eio_lhef_s
   use os_interface
   use hep_common
   use hep_events
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -16883,8 +16866,6 @@ submodule (eio_stdhep) eio_stdhep_s
   use diagnostics
   use hep_common
   use hep_events
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -18082,8 +18063,6 @@ submodule (eio_hepmc) eio_hepmc_s
   use particles
   use model_data
   use hep_events
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 
@@ -19107,8 +19086,6 @@ submodule (eio_lcio) eio_lcio_s
   use diagnostics
   use particles
   use hep_events
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 

@@ -219,12 +219,12 @@ subroutine prclib2_get_md5sum_ptr (i, cptr, len) bind(C)
   character(kind=c_char), dimension(32), target, save :: md5sum
   select case (i)
   case (0)
-     call copy ((prclib2_md5sum ()))
+     call copy (prclib2_md5sum ())
      cptr = c_loc (md5sum)
   case (1)
      ! MD5sum call for test1 goes here.
   case (2)
-     call copy ((test2_md5sum ()))
+     call copy (test2_md5sum ())
      cptr = c_loc (md5sum)
   case default
      cptr = c_null_ptr

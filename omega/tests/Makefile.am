@@ -699,7 +699,7 @@ endif
 ########################################################################
 
 EXTRA_PROGRAMS += benchmark_VM_vs_Fortran
-EXTRA_DIST += benchmark_VM_vs_Fortran_driver.sh
+EXTRA_DIST += benchmark_VM_vs_Fortran_driver.sh benchmark_driver_wrappers.sh
 EXTRA_DIST += benchmark_processes.list
 
 BENCHMARK_LIB_F90 = benchmark_lib.f90 $(WARD_SUPPORT_F90)
@@ -729,6 +729,7 @@ benchmark_VM_vs_Fortran.o: $(BENCHMARK_LIB_O)
 
 ########################################################################
 
+EXTRA_DIST += benchmark_amp_parallel_driver.sh
 if FC_USE_OPENMP
 
 EXTRA_PROGRAMS += benchmark_amp_parallel

@@ -9002,8 +9002,6 @@ submodule (shower_pythia8) shower_pythia8_s
   use diagnostics
   use helicities
   use subevents
-  !!! Intel oneAPI 2022/23 regression workaround
-  use tauola_interface, only: taudec_settings_t
 
   implicit none
 

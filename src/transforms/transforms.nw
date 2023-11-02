@@ -95,8 +95,6 @@ submodule (event_transforms) event_transforms_s
   use format_utils, only: write_separator
   use diagnostics
   use subevents
-  !!! Intel oneAPI 2022/23 regression workaround
-  use quantum_numbers, only: quantum_numbers_t
 
   implicit none
 
@@ -879,10 +877,6 @@ submodule (hadrons) hadrons_s
   use io_units
   use numeric_utils, only: vanishes
   use subevents
-  !!! Intel oneAPI 2022/23 regression workaround
-  use rng_base, only: rng_t
-  use instances, only: process_instance_t
-  use process, only: process_t
 
   implicit none
 
@@ -1902,11 +1896,6 @@ submodule (resonance_insertion) resonance_insertion_s
   use format_defs, only: FMT_12
   use interactions, only: interaction_t
   use subevents, only: PRT_RESONANT
-  !!! Intel oneAPI 2022/23 regression workaround
-  use rng_base, only: rng_t
-  use particles, only: particle_t, particle_set_t
-  use resonances, only: resonance_history_set_t
-  use resonances, only: resonance_tree_t
 
   implicit none
 
@@ -4948,9 +4937,6 @@ submodule (isr_epa_handler) isr_epa_handler_s
   use recoil_kinematics, only: initial_transformation
   use recoil_kinematics, only: generate_recoil
   use recoil_kinematics, only: recoil_transformation
-  !!! Intel oneAPI 2022/23 regression workaround
-  use rng_base, only: rng_t
-  use flavors, only: flavor_t
 
   implicit none
 
@@ -6698,10 +6684,6 @@ submodule (decays) decays_s
   use numeric_utils
   use helicities
   use quantum_numbers
-  !!! Intel oneAPI 2022/23 regression workaround
-  use variables, only: var_list_t
-  use process, only: process_t
-  use instances, only: process_instance_t
 
   implicit none
 
@@ -10198,9 +10180,6 @@ submodule (shower) shower_s
   use powheg_matching, only: powheg_matching_t
   use rng_base
   use hep_common
-  !!! Intel oneAPI 2022/23 regression workaround
-  use process, only: process_t
-  use instances, only: process_instance_t
 
   implicit none
 
@@ -11105,10 +11084,6 @@ submodule (evt_nlo) evt_nlo_s
   use prc_core, only: prc_core_t
   use prc_external, only: prc_external_t
   use phs_fks, only: SQRTS_FIXED, SQRTS_VAR
-  !!! Intel oneAPI 2022/23 regression workaround
-  use quantum_numbers, only: quantum_numbers_t
-  use instances, only: process_instance_t
-  use fks_regions, only: region_data_t
 
   implicit none
 
@@ -12175,9 +12150,6 @@ submodule (events) events_s
   use decays
   use evt_nlo
   use phs_fks, only: SQRTS_FIXED, SQRTS_VAR
-  !!! Intel oneAPI 2022/23 regression workaround
-  use process, only: process_t
-  use instances, only: process_instance_t
 
   implicit none
 
@@ -14444,8 +14416,6 @@ submodule (eio_raw) eio_raw_s
   use diagnostics
   use model_data
   use particles
-  !!! Intel oneAPI 2022/23 regression workaround
-  use event_handles, only: event_handle_t
 
   implicit none
 

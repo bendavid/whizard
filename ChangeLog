@@ -8,6 +8,7 @@ Use git log/svn log to see detailed changes.
 	Pythia8 interface: support for Pythia v8.310+
 	UFO interface: allow backslash escaped new lines
 	Add missing O'Mega comparison files to distribution
+	Minimal Intel compiler version: 21.10 (oneAPI 23.2)
 
 2023-10-20
 	Infrastructure for NLO hadron collisions with GoSam

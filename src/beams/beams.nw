@@ -27567,11 +27567,6 @@ end module dispatch_beams
 
 submodule (dispatch_beams) dispatch_beams_s
 
-  !!! Intel oneAPI 2022/23 regression workaround
-  use os_interface, only: os_data_t
-  use model_data, only: model_data_t
-  use flavors, only: flavor_t
-
   implicit none
 
 contains

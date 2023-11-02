@@ -2856,9 +2856,6 @@ submodule (pcm_base) pcm_base_s
   use format_utils, only: write_integer_array
   use format_utils, only: write_separator
   use physics_defs, only: BORN, NLO_REAL
-  !!! Intel oneAPI 2022/23 regression workaround
-  use process_libraries, only: process_library_t
-  use variables, only: var_list_t
 
   implicit none
 
@@ -3560,8 +3557,6 @@ submodule (process) process_s
   use phs_forests, only: phs_parameters_t
   use phs_wood, only: phs_wood_config_t
   use blha_config, only: blha_master_t
-  !!! Intel oneAPI 2022/23 regression workaround
-  use prc_core, only: prc_core_t
 
   implicit none
 
@@ -11775,17 +11770,6 @@ submodule (pcm) pcm_s
   use resonances, only: resonance_history_t, resonance_history_set_t
   use prc_threshold, only: threshold_def_t
   use blha_olp_interfaces, only: prc_blha_t
-  !!! Intel oneAPI 2022/23 regression workaround
-  use quantum_numbers, only: quantum_numbers_t
-  use mappings, only: mapping_defaults_t
-  use phs_base, only: phs_config_t
-  use phs_forests, only: phs_parameters_t
-  use mci_base, only: mci_t
-  use model_data, only: model_data_t
-  use models, only: model_t
-  use variables, only: var_list_t
-  use blha_config, only: blha_master_t
-  use process_mci, only: process_mci_entry_t
 
   implicit none
 
@@ -15057,9 +15041,6 @@ submodule (instances) instances_s
   use prc_recola, only: prc_recola_t
   use blha_olp_interfaces, only: blha_color_c_fill_offdiag, blha_color_c_fill_diag
   use ttv_formfactors, only: m1s_to_mpole
-  !!! Intel oneAPI 2022/23 regression workaround
-  use sm_qcd, only: qcd_t
-  use prc_core, only: prc_core_t
 
   implicit none
 
