@@ -447,14 +447,15 @@ compare_orders.o: $(COMPARE_LIB_O)
 
 ########################################################################
 
+EXTRA_DIST += compare_driver_majorana.sh compare_driver_majorana_UFO.sh
+EXTRA_DIST += comparisons_majorana.list comparisons_majorana_legacy.list \
+	comparisons_majorana_UFO.list
+
 if OCAML_AVAILABLE
 
 TESTS += compare_majorana compare_majorana_legacy compare_majorana_UFO
 # XFAIL_TESTS += compare_majorana_UFO
 EXTRA_PROGRAMS += compare_majorana compare_majorana_legacy compare_majorana_UFO
-EXTRA_DIST += compare_driver_majorana.sh compare_driver_majorana_UFO.sh
-EXTRA_DIST += comparisons_majorana.list comparisons_majorana_legacy.list \
-	comparisons_majorana_UFO.list
 
 compare_majorana.f90: comparisons_majorana.list
 	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER"; fi
@@ -493,6 +494,9 @@ endif
 
 ########################################################################
 
+EXTRA_DIST += compare_driver_UFO.sh
+EXTRA_DIST += comparisons_UFO.list
+
 if OCAML_AVAILABLE
 
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
@@ -503,8 +507,6 @@ TESTS += compare_amplitude_UFO
 # XFAIL_TESTS += compare_amplitude_UFO
 
 EXTRA_PROGRAMS += compare_amplitude_UFO
-EXTRA_DIST += compare_driver_UFO.sh
-EXTRA_DIST += comparisons_UFO.list
 
 compare_amplitude_UFO_SOURCES = \
 	parameters_SM_from_UFO.f90 compare_lib.f90 \
@@ -536,6 +538,9 @@ endif
 
 ########################################################################
 
+EXTRA_DIST += fermi_driver_UFO.sh
+EXTRA_DIST += fermi_UFO.list
+
 if OCAML_AVAILABLE
 
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
@@ -552,8 +557,6 @@ XFAIL_TESTS += fermi_UFO
 endif
 
 EXTRA_PROGRAMS += fermi_UFO
-EXTRA_DIST += fermi_driver_UFO.sh
-EXTRA_DIST += fermi_UFO.list
 
 FERMI_UFO_SUPPORT_F90 = \
 	omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90
@@ -584,6 +587,9 @@ endif
 
 ########################################################################
 
+EXTRA_DIST += ward_driver_UFO.sh
+EXTRA_DIST += ward_identities_UFO.list
+
 if OCAML_AVAILABLE
 
 # At quadruple or extended precision, these tests take waaaaaayyyy too long!
@@ -599,8 +605,6 @@ XFAIL_TESTS += ward_UFO
 endif
 
 EXTRA_PROGRAMS += ward_UFO
-EXTRA_DIST += ward_driver_UFO.sh
-EXTRA_DIST += ward_identities_UFO.list
 
 WARD_UFO_SUPPORT_F90 = \
 	omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90
@@ -696,6 +700,7 @@ endif
 
 EXTRA_PROGRAMS += benchmark_VM_vs_Fortran
 EXTRA_DIST += benchmark_VM_vs_Fortran_driver.sh
+EXTRA_DIST += benchmark_processes.list
 
 BENCHMARK_LIB_F90 = benchmark_lib.f90 $(WARD_SUPPORT_F90)
 BENCHMARK_LIB_O = $(BENCHMARK_LIB_F90:.f90=.o)
@@ -1009,6 +1014,7 @@ endif
 
 ########################################################################
 
+EXTRA_DIST += comparisons_recola.list
 if RECOLA_AVAILABLE
 
 TESTS += compare_amplitude_recola
