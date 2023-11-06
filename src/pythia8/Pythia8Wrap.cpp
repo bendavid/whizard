@@ -29,7 +29,7 @@ extern "C" {
   }
 #endif
 
-#if PYTHIA_VERSION_INTEGER > 8309
+#if PYTHIA_VERSION_INTEGER >= 8310
   bool pythia8_set_rndm_engine_ptr (Pythia* pythia, void* rndm) {
     auto whizard_rndm = std::make_shared<WhizardRndm> (rndm);
     return pythia->setRndmEnginePtr (whizard_rndm);
