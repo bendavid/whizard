@@ -192,7 +192,7 @@ a(1:K) = state(1:K)
 @ The remaining $n-K$ random numbers can be gotten directly from the
 recursion~(\ref{eq:tao30}).  Note that Fortran90's [[modulo]]
 intrinsic does the right thing, since it guarantees (unlike
-Fortran77's [[mod]]) that~$0\le[[modulo]](a,m)<a$ if~$m>0$).
+Fortran77's [[mod]]) that~$0\le\text{[[modulo]]}(a,m)<a$ if~$m>0$).
 <<Load [[a]] and refresh [[state]]>>=
 do j = K+1, n
    a(j) = modulo (a(j-K) - a(j-L), M)
@@ -256,7 +256,7 @@ pure subroutine seed_stateless (state, seed)
   do
      <<$p(z)\to p(z)^2 \modpoly$>>
      <<$p(z)\to zp(z) \modpoly$>>
-     <<Shift [[s]] or [[t]] and exit if $[[t]]\le0$>>
+     <<Shift [[s]] or [[t]] and exit if $\text{[[t]]}\le0$>>
   end do
   <<Fill [[state]] from [[x]]>>
   <<Warm up [[state]]>>
@@ -327,7 +327,7 @@ if (modulo (s, 2) == 1) then
    x(L+1) = modulo (x(L+1) - x(K+1), M)
 end if
 @
-<<Shift [[s]] or [[t]] and exit if $[[t]]\le0$>>=
+<<Shift [[s]] or [[t]] and exit if $\text{[[t]]}\le0$>>=
 if (s /= 0) then
    s = s / 2
 else
@@ -407,7 +407,7 @@ pure subroutine seed_stateless (state, seed)
   do
      <<52-bit $p(z)\to p(z)^2 \modpoly$>>
      <<52-bit $p(z)\to zp(z) \modpoly$>>
-     <<Shift [[s]] or [[t]] and exit if $[[t]]\le0$>>
+     <<Shift [[s]] or [[t]] and exit if $\text{[[t]]}\le0$>>
   end do
   <<Fill [[state]] from [[x]]>>
   <<Warm up [[state]]>>
@@ -1549,9 +1549,9 @@ call tao_random_seed (SEED)
 do i = 1, N+1
    call tao_random_number (a, M)
 end do
-<<Test $[[a(1)]]=[[A_2027082]]$>>
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 @ 
-<<Test $[[a(1)]]=[[A_2027082]]$>>=
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>=
 if (a(1) == A_2027082) then
    print OK, a(1)
 else
@@ -1565,7 +1565,7 @@ call tao_random_seed (SEED)
 do i = 1, M+1
    call tao_random_number (a)
 end do
-<<Test $[[a(1)]]=[[A_2027082]]$>>
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 @ Now checkpoint the random number generator
 after~$N_{\text{short}}\cdot M$ numbers
 <<Perform more tests of [[tao_random_numbers]]>>=
@@ -1578,13 +1578,13 @@ call tao_random_create (t, s)
 do i = 1, N+1 - N_SHORT
    call tao_random_number (s, a, M)
 end do
-<<Test $[[a(1)]]=[[A_2027082]]$>>
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 @ and restart the saved generator
 <<Perform more tests of [[tao_random_numbers]]>>=
 do i = 1, N+1 - N_SHORT
    call tao_random_number (t, a, M)
 end do
-<<Test $[[a(1)]]=[[A_2027082]]$>>
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 @ The same story again, but this time saving the copy to a file
 <<Perform more tests of [[tao_random_numbers]]>>=
 if (present (name)) then
@@ -1597,12 +1597,12 @@ if (present (name)) then
    do i = 1, N+1 - N_SHORT
       call tao_random_number (s, a, M)
    end do
-   <<Test $[[a(1)]]=[[A_2027082]]$>>
+   <<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
    call tao_random_read (s, name)
    do i = 1, N+1 - N_SHORT
       call tao_random_number (s, a, M)
    end do
-   <<Test $[[a(1)]]=[[A_2027082]]$>>
+   <<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 end if
 @ And finally using marshaling/unmarshaling:
 <<Perform more tests of [[tao_random_numbers]]>>=
@@ -1617,12 +1617,12 @@ call tao_random_marshal (s, ibuf, dbuf)
 do i = 1, N+1 - N_SHORT
    call tao_random_number (s, a, M)
 end do
-<<Test $[[a(1)]]=[[A_2027082]]$>>
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 call tao_random_unmarshal (s, ibuf, dbuf)
 do i = 1, N+1 - N_SHORT
    call tao_random_number (s, a, M)
 end do
-<<Test $[[a(1)]]=[[A_2027082]]$>>
+<<Test $\text{[[a(1)]]}=\text{[[A_2027082]]}$>>
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{52-bit}
 DEK's ``official'' test

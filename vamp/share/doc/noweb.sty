@@ -11,8 +11,13 @@
 \newdimen\nwmarginglue
 \nwmarginglue=0.3in
 \def\nwtagstyle{\footnotesize\Rm}
+\def\nwgitversion{|GITVERSION|}
 % make \hsize in code sufficient for 88 columns
-\setbox0=\hbox{\tt m}
+\ifx\ttfamily\undefined
+  \setbox0=\hbox{\tt m}
+\else
+  \setbox0=\hbox{\ttfamily m}
+\fi
 \newdimen\codehsize
 \codehsize=91\wd0 % 88 columns wasn't enough; I don't know why
 \newdimen\codemargin
@@ -43,8 +48,6 @@
   \catcode`\"=\other    % fixes problem with german.sty
   \obeyspaces\Tt
 }
-\let\nwlbrace=\{
-\let\nwrbrace=\}
 \def\nwendquote{\relax\ifhmode\spacefactor=1000 \fi}
 {\catcode`\^^M=\active % make CR an active character
   \gdef\newlines{\catcode`\^^M=\active % make CR an active character
@@ -64,8 +67,8 @@
   \catcode`\^=7
   \catcode`\ =10
   \catcode`\^^M=5
-  \let\{\nwlbrace
-  \let\}\nwrbrace
+  \let\{\lbrace
+  \let\}\rbrace
   % bad news --- don't know what catcode to give "
   \Rm}
 \def\LA{\begingroup\maybehbox\bgroup\setupmodname\It$\langle$}
@@ -96,12 +99,15 @@ I'll try to avoid such incompatible changes in the future.}%
 \else\ifx\selectfont\undefined
   \let\Rm=\rm \let\It=\it \let\Tt=\tt       % LaTeX OFSS
 \else                                       % LaTeX NFSS
-  \def\Rm{\reset@font\rm}
-  \def\It{\reset@font\it}
-  \def\Tt{\reset@font\tt}
-  \def\Bf{\reset@font\bf}
+  \def\Rm{\reset@font\rmfamily}
+  \def\It{\reset@font\itshape}
+  \def\Tt{\reset@font\ttfamily}
+  \def\Bf{\reset@font\bfseries}
 \fi\fi
 \ifx\reset@font\undefined \let\reset@font=\relax \fi
+\def\nwbackslash{\char92}
+\def\nwlbrace{\char123}
+\def\nwrbrace{\char125}
 \def\noweboptions#1{%
   \def\@nwoptionlist{#1}%
   \@for\@nwoption:=\@nwoptionlist\do{%
@@ -142,7 +148,9 @@ I'll try to avoid such incompatible changes in the future.}%
   \@begincode
 }{%
   \endtrivlist}
+\newdimen\@nwbegincodelinewidth
 \def\@begincode{%
+  \@nwbegincodelinewidth=\linewidth
     \trivlist \item[]%
     \leftskip\@totalleftmargin \advance\leftskip\codemargin
     \rightskip\hsize \advance\rightskip -\codehsize
@@ -151,11 +159,11 @@ I'll try to avoid such incompatible changes in the future.}%
     \@@par
     \def\par{\leavevmode\null \@@par \penalty\nwcodepenalty}%
     \obeylines
+  \nowebsize \setupcode
     \@noligs   \ifx\verbatim@nolig@list\undefined\else
                  \let\do=\nw@makeother \verbatim@nolig@list \do@noligs\`
                \fi
     \setupcode \frenchspacing \@vobeyspaces
-  \nowebsize \setupcode
   \let\maybehbox\mbox }
   \newskip\nwcodetopsep \nwcodetopsep = 3pt plus 1.2pt minus 1pt
   \let\nowebsize=\normalsize
@@ -347,11 +355,11 @@ I'll try to avoid such incompatible changes in the future.}%
 \newcount\@nwpagecount
 \def\@nwfirstpagel#1{% label
   \@ifundefined{r@#1}{\@warning{Reference `#1' on page \thepage \space undefined}%
-                      \nwix@cons\nw@pages{\\{\bf ??}}}{%
+                      \nwix@cons\nw@pages{\\{\bfseries ??}}}{%
     \edef\@tempa{\noexpand\@nwfirstpage\subpagepair{#1}{#1}}\@tempa}}
 \def\@nwnextpagel#1{% label
   \@ifundefined{r@#1}{\@warning{Reference `#1' on page \thepage \space undefined}%
-                      \nwix@cons\nw@pages{\\{\bf ??}}}{%
+                      \nwix@cons\nw@pages{\\{\bfseries ??}}}{%
     \edef\@tempa{\noexpand\@nwnextpage\subpagepair{#1}{#1}}\@tempa}}
 \def\@pagesl#1{%  list of labels
   \gdef\nw@pages{}\@nwpagecount=0
@@ -514,6 +522,7 @@ I'll try to avoid such incompatible changes in the future.}%
 \def\@subpagepair#1#2#3\\{%
   \@ifundefined{2on#2}{{0}{#2}}{{#1}{#2}}}
 \newcommand{\sublabel}[1]{%
+  \leavevmode % needed to make \@bsphack work
   \@bsphack
   \nwblindhyperanchor{#1}%
   \if@filesw {\let\thepage\relax
@@ -812,9 +821,6 @@ I'll try to avoid such incompatible changes in the future.}%
 \newif\ifhtml
 \htmlfalse
 \let\nwixident=\relax
-\def\nwbackslash{\char92}
-\def\nwlbrace{\char123}
-\def\nwrbrace{\char125}
 \def\nwopt@english{%
   \def\@nwlangdepdef{This definition is continued}%
   \def\@nwlangdepcud{This code is used}%
@@ -831,6 +837,21 @@ I'll try to avoid such incompatible changes in the future.}%
   \def\@nwlangdepnvd{never defined}%
 }
 \let\nwopt@american\nwopt@english
+\def\nwopt@icelandic{%
+  \def\@nwlangdepdef{This definition is continued}%
+  \def\@nwlangdepcud{This code is used}%
+  \def\@nwlangdeprtc{Root chunk (not used in this document)}%
+  \def\@nwlangdepcwf{This code is written to file}%
+  \def\@nwlangdepchk{kóða}%
+  \def\@nwlangdepchks{kóðum}%
+  \def\@nwlangdepin{í}%
+  \def\@nwlangdepand{og}%
+  \def\@nwlangdepuss{Notar}%
+  \def\@nwlangdepusd{notað}%
+  \def\@nwlangdepnvu{hvergi notað}%
+  \def\@nwlangdepdfs{Skilgreinir}%
+  \def\@nwlangdepnvd{hvergi skilgreint}%
+}
 \def\nwopt@portuges{%
   \def\@nwlangdepdef{Defini\c{c}\~ao continuada em}%
   % This definition is continued
@@ -860,13 +881,13 @@ I'll try to avoid such incompatible changes in the future.}%
   % never defined
 }
 \def\nwopt@frenchb{%
-  \def\@nwlangdepdef{Cette d\'efinition suit}%
+  \def\@nwlangdepdef{Suite de la d\'efinition}%
   % This definition is continued
   \def\@nwlangdepcud{Ce code est employ\'e}%
   % This code is used
   \def\@nwlangdeprtc{Morceau racine (pas employ\'e dans ce document)}%
   % Root chunk (not used in this document)
-  \def\@nwlangdepcwf{Ce code est \'ecrit aux fichier}%
+  \def\@nwlangdepcwf{Ce code est \'ecrit dans le fichier}%
   % This code is written to file
   \def\@nwlangdepchk{le morceau}%
   % chunk
@@ -876,13 +897,13 @@ I'll try to avoid such incompatible changes in the future.}%
   % in
   \def\@nwlangdepand{et}%
   % and
-  \def\@nwlangdepuss{Il emploie}%
+  \def\@nwlangdepuss{Utilise}%
   % Uses
-  \def\@nwlangdepusd{employ\'{e}}%
+  \def\@nwlangdepusd{utilis\'{e}}%
   % used
   \def\@nwlangdepnvu{jamais employ\'{e}}%
   % never used
-  \def\@nwlangdepdfs{Il d\'{e}fine}%
+  \def\@nwlangdepdfs{D\'{e}finit}%
   % Defines
   % Cannot use the accent here: \def\@nwlangdepnvd{jamais d\'{e}fini}%
   \def\@nwlangdepnvd{jamais defini}%
@@ -896,8 +917,36 @@ I'll try to avoid such incompatible changes in the future.}%
   % This code is used
   \def\@nwlangdeprtc{Hauptteil (nicht in diesem Dokument benutzt)}%
   % Root chunk (not used in this document)
-  \def\@nwlangdepcwf{Dieser Code schreibt man zum File}%
+  \def\@nwlangdepcwf{Geh\"ort in die Datei}%
   % This code is written to file
+  \def\@nwlangdepchk{Abschnitt}%
+  % chunk
+  \def\@nwlangdepchks{den Abschnitten}%
+  % chunks
+  \def\@nwlangdepin{in}%
+  % in
+  \def\@nwlangdepand{und}%
+  % and
+  \def\@nwlangdepuss{Benutzt}%
+  % Uses
+  \def\@nwlangdepusd{benutzt}%
+  % used
+  \def\@nwlangdepnvu{nicht benutzt}%
+  % never used
+  \def\@nwlangdepdfs{Definiert}%
+  % Defines
+  \def\@nwlangdepnvd{nicht definiert}%
+  % never defined
+}
+\def\nwopt@german{%
+  \def\@nwlangdepdef{Diese Definition wird fortgesetzt}%
+  % This definition is continued
+  \def\@nwlangdepcud{Dieser Code wird benutzt}%
+  % This code is used
+  \def\@nwlangdeprtc{Hauptteil (nicht in diesem Dokument benutzt)}%
+  % Root chunk (not used in this document)
+  \def\@nwlangdepcwf{Dieser Code erzeugt die Datei}
+  % This code generates the file
   \def\@nwlangdepchk{Teil}%
   % chunk
   \def\@nwlangdepchks{Teils}%

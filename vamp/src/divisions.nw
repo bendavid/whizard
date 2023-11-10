@@ -103,9 +103,9 @@ end subroutine set_rigid_division
 @ %def set_rigid_division
 @
 \begin{equation}
-  [[dxg]] = \frac{n_{\text{div}}}{n_g}
+  \text{[[dxg]]} = \frac{n_{\text{div}}}{n_g}
 \end{equation}
-such that $0 < [[cell]]\cdot[[dxg]] < n_{\text{div}}$
+such that $0 < \text{[[cell]]}\cdot\text{[[dxg]]} < n_{\text{div}}$
 <<Implementation of [[divisions]] procedures>>=
 elemental subroutine reshape_division (d, max_num_div, ng, use_variance)
   type(division_t), intent(inout) :: d
@@ -483,8 +483,8 @@ Smooth the $d_i = \bar f_i \Delta x_i$
     d_n     &\to \frac{1}{2}(d_{n-1}+d_n)
   \end{aligned}
 \end{equation}
-As long as the initial $[[num_div]] \ge 6$,
-we know that $[[num_div]] \ge 3$.
+As long as the initial $\text{[[num_div]]} \ge 6$,
+we know that $\text{[[num_div]]} \ge 3$.
 @
 <<Variables in [[divisions]]>>=
 integer, private, parameter :: MIN_NUM_DIV = 3
@@ -696,7 +696,7 @@ sample the pieces separately and combine the results.
 public :: fork_division, join_division, sum_division
 @
 \begin{dubious}
-  Caveat emptor: splitting divisions can lead to $[[num_div]]<3$ and
+  Caveat emptor: splitting divisions can lead to $\text{[[num_div]]}<3$ and
   the application \emph{must not} try to refine such grids before
   merging them again!
 \end{dubious}

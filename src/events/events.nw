@@ -6983,7 +6983,7 @@ file, for offline showering.
 @
 \subsubsection{Process characteristics}
 Cross section and error in pb.  (Cross section is needed only for
-$[[IDWTUP]] = 2$, so here both values are given for informational
+$\text{[[IDWTUP]]} = 2$, so here both values are given for informational
 purposes only.)
 <<HEP common: variables>>=
   double precision, dimension(MAXPUP), public :: XSECUP

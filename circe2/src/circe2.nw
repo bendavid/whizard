@@ -168,11 +168,11 @@ and trivially
     = i_1 + (i_2 - 1) n_1 - (i_2 - 1) n_1 = i_1
 \end{equation}
 \end{subequations}
-<<$([[i1]],[[i2]]) \leftarrow [[i]]$>>=
+<<$(\text{[[i1]]},\text{[[i2]]}) \leftarrow \text{[[i]]}$>>=
 i2 = 1 + (i - 1) / ubound (ch%d(1)%x, dim=1)
 i1 = i - (i2 - 1) * ubound (ch%d(1)%x, dim=1)
 @ 
-<<$[[ib]] \leftarrow [[i]]$>>=
+<<$\text{[[ib]]} \leftarrow \text{[[i]]}$>>=
 ib(2) = 1 + (i - 1) / ubound (ch%d(1)%x, dim=1)
 ib(1) = i - (ib(2) - 1) * ubound (ch%d(1)%x, dim=1)
 @ The density normalized to the bin size
@@ -293,7 +293,7 @@ abstract interface
 end interface
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Event Generation}
-Generate a two-dimensional distribution for~$([[x1]],[[x2]])$
+Generate a two-dimensional distribution for~$(\text{[[x1]]},\text{[[x2]]})$
 according to the histogram for channel [[ic]].
 @
 <<[[circe2]] declarations>>=
@@ -311,7 +311,7 @@ subroutine circe2_generate_ph (c2s, rng, y, p, h)
   integer, dimension(:), intent(in) :: h
   integer :: i, ic
   <<Find [[ic]] for [[p]] and [[h]]>>
-  <<Complain and [[return]] iff $[[ic]] \le 0$>>
+  <<Complain and [[return]] iff $\text{[[ic]]} \le 0$>>
   call circe2_generate_channel (c2s%ch(ic), rng, y)
 end subroutine circe2_generate_ph
 <<Separator>>
@@ -331,9 +331,9 @@ subroutine circe2_generate_channel (ch, rng, y)
   real(kind=default), dimension(2) :: x, v
   real(kind=default) :: u, tmp
   call rng%generate (u)
-  <<Do a binary search for $[[wgt(i-1)]] \le [[u]] < [[wgt(i)]]$>>
-  <<$[[ib]] \leftarrow [[i]]$>>
-  <<$[[x]]\in[ [[x(ib-1)]], [[x(ib)]] ]$>>
+  <<Do a binary search for $\text{[[wgt(i-1)]]} \le \text{[[u]]} < \text{[[wgt(i)]]}$>>
+  <<$\text{[[ib]]} \leftarrow \text{[[i]]}$>>
+  <<$\text{[[x]]}\in[ \text{[[x(ib-1)]]}, \text{[[x(ib)]]} ]$>>
   y = circe2_map (ch%d, x, ib)
   <<Inverse triangle map>>
 end subroutine circe2_generate_channel
@@ -363,7 +363,7 @@ else
    end do
 end if
 @
-<<Complain and [[return]] iff $[[ic]] \le 0$>>=
+<<Complain and [[return]] iff $\text{[[ic]]} \le 0$>>=
 if (ic <= 0) then
    write (*, '(A,2I4,A,2I3)') &
         'circe2: no channel for particles', p, &
@@ -373,7 +373,7 @@ if (ic <= 0) then
 end if
 @ The number of bins is typically \emph{much} larger and we must use a
 binary search to get a reasonable performance.
-<<Do a binary search for $[[wgt(i-1)]] \le [[u]] < [[wgt(i)]]$>>=
+<<Do a binary search for $\text{[[wgt(i-1)]]} \le \text{[[u]]} < \text{[[wgt(i)]]}$>>=
 ibot = 0
 itop = ubound (ch%wgt, dim=1)
 do
@@ -390,7 +390,7 @@ do
    end if
 end do
 @
-<<$[[x]]\in[ [[x(ib-1)]], [[x(ib)]] ]$>>=
+<<$\text{[[x]]}\in[ \text{[[x(ib-1)]]}, \text{[[x(ib)]]} ]$>>=
 call rng%generate (v(1))
 call rng%generate (v(2))
 do d = 1, 2
@@ -445,7 +445,7 @@ end function circe2_jacobian
 \begin{dubious}
   There's still something wrong with \emph{unweighted} events
   for the case that there is a triangle map \emph{together} with a
-  non-trivial $[[x(2)]]\to[[y(2)]]$ map. \emph{Fix this!!!}
+  non-trivial $\text{[[x(2)]]}\to\text{[[y(2)]]}$ map. \emph{Fix this!!!}
 \end{dubious}
 <<Inverse triangle map>>=
 if (ch%triang) then
@@ -499,7 +499,7 @@ subroutine circe2_choose_channel (c2s, rng, p, h)
   write (*, '(A)') 'circe2: internal error'
   stop
 end subroutine circe2_choose_channel
-@ Below, we will always have $[[h]]=0$. but we don't have to
+@ Below, we will always have $\text{[[h]]}=0$. but we don't have to
 check this explicitely, because [[circe2_density_matrix]] will do it anyway.  The
 procedure could be made more efficient, since most of [[circe2_density_matrix]] is
 undoing parts of [[circe2_generate]].  
@@ -588,7 +588,7 @@ function circe2_distribution_channel (ch, yy)
   real(kind=default), dimension(2) :: y
   integer :: d, ibot, itop
   integer, dimension(2) :: ib
-  <<$[[y]])\leftarrow[[yy]]$>>
+  <<$\text{[[y]]}\leftarrow\text{[[yy]]}$>>
   if (      y(1) < ch%d(1)%y(0) &
        .or. y(1) > ch%d(1)%y(ubound (ch%d(1)%y, dim=1)) &
        .or. y(2) < ch%d(2)%y(0) &
@@ -596,7 +596,7 @@ function circe2_distribution_channel (ch, yy)
      circe2_distribution_channel = 0
      return
   end if
-  <<Do a binary search for $[[y(ib-1)]] \le [[y]] < [[y(ib)]]$>>
+  <<Do a binary search for $\text{[[y(ib-1)]]} \le \text{[[y]]} < \text{[[y(ib)]]}$>>
   circe2_distribution_channel = &
       ch%val(ib(1),ib(2)) * product (circe2_jacobian (ch%d, y, ib))
   <<Apply Jacobian for triangle map>>
@@ -618,7 +618,7 @@ and its inverse
       (y_{1},y_{2}) &\mapsto (x_{1},x_{2}) = (y_{1},y_{2}/y_{1})
   \end{aligned}
 \end{equation}
-<<$[[y]])\leftarrow[[yy]]$>>=
+<<$\text{[[y]]}\leftarrow\text{[[yy]]}$>>=
 if (ch%triang) then
    y(1) = maxval (yy)
    y(2) = minval (yy) / y(1)
@@ -636,7 +636,7 @@ if (ch%triang) then
 end if
 @ Careful: the loop over [[d]] \emph{must} be executed sequentially,
 because of the shared local variables [[ibot]] and [[itop]].
-<<Do a binary search for $[[y(ib-1)]] \le [[y]] < [[y(ib)]]$>>=
+<<Do a binary search for $\text{[[y(ib-1)]]} \le \text{[[y]]} < \text{[[y(ib)]]}$>>=
 do d = 1, 2
    ibot = 0
    itop = ubound (ch%d(d)%x, dim=1)
@@ -863,7 +863,7 @@ ch%wgt(0) = 0
 do i = 1, ubound (ch%wgt, dim=1)
    read (lun, *) w
    ch%wgt(i) = ch%wgt(i-1) + w
-   <<$([[i1]],[[i2]]) \leftarrow [[i]]$>>
+   <<$(\text{[[i1]]},\text{[[i2]]}) \leftarrow \text{[[i]]}$>>
    ch%val(i1,i2) = w &
         / (  (ch%d(1)%x(i1) - ch%d(1)%x(i1-1)) &
            * (ch%d(2)%x(i2) - ch%d(2)%x(i2-1)))
@@ -1551,7 +1551,7 @@ end subroutine generate_beta_multi
 @ Subtlety: if the upper limit of the do loop where
 [[size(channels)]], we could end up with [[n]] set to
 [[size(channels)+1]] when rounding errors produce
-$[[accum]]>[[sum(channels%w)]]$.
+$\text{[[accum]]}>\text{[[sum(channels%w)]]}$.
 <<Select [[n]] according to the weight [[channels(n)%w]]>>=
 call rng%generate (u)
 u = u * sum (channels%w)

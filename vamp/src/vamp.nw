@@ -402,7 +402,7 @@ pure subroutine vamp_create_grid &
 end subroutine vamp_create_grid
 @ %def vamp_create_grid
 @ %def ndim domain dx grid
-@ Below, we assume that $[[NUM_DIV_DEFAULT]] \ge 6$, but we will never
+@ Below, we assume that $\text{[[NUM_DIV_DEFAULT]]} \ge 6$, but we will never
 go that low anyway.
 <<Variables in [[vamp]]>>=
 integer, private, parameter :: NUM_DIV_DEFAULT = 20
@@ -647,11 +647,11 @@ g%calls = real (g%calls_per_cell) * real (num_cells)
 @ %def ng num_cells calls calls_per_cell
 @
 \begin{equation}
-  [[jacobi]] = J = \frac{\text{Volume}}{N_{\text{calls}}}
+  \text{[[jacobi]]} = J = \frac{\text{Volume}}{N_{\text{calls}}}
 \end{equation}
 and
 \begin{equation}
-  [[dv2g]]
+  \text{[[dv2g]]}
     = \frac{N_{\text{calls}}^2 \left((\Delta x)^{n_{\text{dim}}}\right)^2}
            {N_{\text{calls/cell}}^2(N_{\text{calls/cell}}-1)}
     = \frac{\left(\frac{N_{\text{calls}}}{N_{\text{cells}}}\right)^2}
@@ -1294,7 +1294,7 @@ interface vamp_join_grid
    module procedure vamp_join_grid_single, vamp_join_grid_multi
 end interface
 @ %def vamp_fork_grid vamp_join_grid
-@ Caveat emptor: splitting divisions can lead to $[[num_div]]<3$ an
+@ Caveat emptor: splitting divisions can lead to $\text{[[num_div]]}<3$ an
 the application must not try to refine such grids before merging them
 again! [[d == 0]] is special.
 <<Implementation of [[vamp]] procedures>>=
