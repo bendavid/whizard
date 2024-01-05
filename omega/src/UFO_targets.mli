@@ -1,6 +1,6 @@
 (* UFO_targets.mli --
 
-   Copyright (C) 1999-2017 by
+   Copyright (C) 1999-2024 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

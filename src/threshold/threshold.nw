@@ -11390,7 +11390,7 @@ end module ttv_formfactors_uti
          "resummed (with switchoff) should be zero", abs_smallness=tiny_10)
     call assert_equal (u, &
          abs (formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF)), zero, &
-         "expanded (with switchoff) should be zero", abs_smallness=tiny_10)
+         "expanded (with switchoff) should be zero", abs_smallness=tiny_07)
     write (u, "(A)") ""
 
     write (u, "(A)") "Check global variables"

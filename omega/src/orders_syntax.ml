@@ -1,6 +1,6 @@
-(* orders.ml --
+(* orders_syntax.ml --
 
-   Copyright (C) 2023- by
+   Copyright (C) 2023-2024 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
