@@ -2,6 +2,7 @@
 // Interface for building HEPMC events
 //////////////////////////////////////////////////////////////////////////
 
+#include "HepMC3/Version.h"
 #include "HepMC3/GenEvent.h"
 #include "HepMC3/GenParticle.h"
 #include "HepMC3/GenCrossSection.h"
@@ -178,6 +179,7 @@ extern "C" GenVertex* gen_event_get_signal_process_vertex
 ( GenEvent* evt ) {
   // No longer existent.
   // return evt->signal_process_vertex();
+  return NULL;
 }
 
 extern "C" void gen_event_set_beam_particles
@@ -197,7 +199,7 @@ extern "C" void gen_event_set_cross_section
 
 extern "C" GenEvent* 
 new_event_particle_const_iterator( GenEvent* evt ) {
-  new GenEvent();
+  return new GenEvent();
 }
 
 extern "C" void event_particle_const_iterator_delete
@@ -222,7 +224,8 @@ extern "C" bool event_particle_const_iterator_is_valid
 
 extern "C" GenParticlePtr event_particle_const_iterator_get
 ( GenEvent* it ) {
-  new GenParticlePtr;
+  GenParticlePtr p = make_shared<GenParticle>();
+  return p;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -283,7 +286,7 @@ extern "C" double gen_vertex_time( GenVertex* v ) {
 
 extern "C" GenVertex* 
 new_vertex_particles_in_const_iterator( GenVertex* v ) {
-  new GenVertex();  
+  return new GenVertex();
 }
 
 extern "C" void vertex_particles_in_const_iterator_delete
@@ -308,7 +311,8 @@ extern "C" bool vertex_particles_in_const_iterator_is_valid
 
 extern "C" GenParticlePtr vertex_particles_in_const_iterator_get
 ( GenVertex* it ) {
-  new GenParticlePtr();
+  GenParticlePtr p = make_shared<GenParticle>();
+  return p;
 }
 
 extern "C" GenParticle* vertex_get_nth_particle_in( GenVertex* vtx, int n) {
@@ -322,7 +326,7 @@ extern "C" GenParticle* vertex_get_nth_particle_in( GenVertex* vtx, int n) {
 
 extern "C" GenVertex* 
 new_vertex_particles_out_const_iterator( GenVertex* v ) {
-  new GenVertex();
+  return new GenVertex();
 }
 
 extern "C" void vertex_particles_out_const_iterator_delete
@@ -347,7 +351,8 @@ extern "C" bool vertex_particles_out_const_iterator_is_valid
 
 extern "C" GenParticlePtr vertex_particles_out_const_iterator_get
 ( GenVertex* it ) {
-  new GenParticlePtr();
+  GenParticlePtr p = make_shared<GenParticle>();
+  return p;
 }
 
 extern "C" GenParticle* vertex_get_nth_particle_out( GenVertex* vtx, int n) {
