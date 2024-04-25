@@ -36,10 +36,10 @@ open Birdtracks.Infix
 (* \thocwmodulesubsection{Fundamental and Adjoint Representation} *)
 
 let delta3 i j =
-  [ Arrows { coeff = L.int 1; arrows = j ==> i } ]
+  [ Arrows { coeff = L.unit; arrows = j ==> i } ]
 
 let delta8 a b =
-  [ Arrows { coeff = L.int 1; arrows = a <=> b } ]
+  [ Arrows { coeff = L.unit; arrows = a <=> b } ]
 
 (* If the~$\delta_{ab}$ originates from
    a~$\tr(T_aT_b)$, like an effective~$gg\to H$
@@ -50,7 +50,7 @@ let delta8 a b =
    has not been spelled out in that reference. *)
 
 let delta8_loop a b =
-  [ Arrows { coeff = L.int 1; arrows = a <=> b };
+  [ Arrows { coeff = L.unit; arrows = a <=> b };
     Arrows { coeff = L.int (-1); arrows = [a => a; ?? b] };
     Arrows { coeff = L.int (-1); arrows = [?? a; b => b] };
     Arrows { coeff = L.nc 1; arrows = [?? a; ?? b] } ]
@@ -137,7 +137,7 @@ let gluon a b =
 \end{subequations} *)
 
 let t a i j =
-  [ Arrows { coeff = L.int 1; arrows = [j => a; a => i] };
+  [ Arrows { coeff = L.unit; arrows = [j => a; a => i] };
     Arrows { coeff = L.int (-1); arrows = [j => i; ?? a] } ]
 
 (* Note that while we expect $\tr(T_a)=T_a^{ii}=0$,
@@ -234,8 +234,8 @@ let t8 a b c =
    above. *)
 
 let d a b c =
-  [ Arrows { coeff = L.int 1; arrows =  A.cycle [a; b; c] };
-    Arrows { coeff = L.int 1; arrows =  A.cycle [a; c; b] };
+  [ Arrows { coeff = L.unit; arrows =  A.cycle [a; b; c] };
+    Arrows { coeff = L.unit; arrows =  A.cycle [a; c; b] };
     Arrows { coeff = L.int (-2); arrows =  (a <=> b) @ [?? c] };
     Arrows { coeff = L.int (-2); arrows =  (b <=> c) @ [?? a] };
     Arrows { coeff = L.int (-2); arrows =  (c <=> a) @ [?? b] };
@@ -280,7 +280,7 @@ let delta3bar = delta_A 2
 
 (* Mixed symmetries, as in section 9.4 of the birdtracks book. *)
 
-module IM = Partial.Make (struct type t = int let compare = compare end)
+module IM = Partial.Make (Int)
 module P = Permutation.Default
 
 (* Map the elements of [original] to [permuted] in [all], with [all]
@@ -362,10 +362,10 @@ let delta_of_tableau tableau i j =
     let s = Young.tableau_to_string string_of_int tableau in
     invalid_arg ("SU3.delta_of_tableau: " ^ s ^ " is not standard!")
 
-let incomplete tensor =
+let _incomplete tensor =
   failwith ("SU3: " ^ tensor ^ " not supported yet!")
 
-let experimental tensor =
+let _experimental tensor =
   Printf.eprintf "SU3: %s support still experimental and untested!\n" tensor
 
 let distinct integers =
@@ -379,16 +379,16 @@ let distinct integers =
   distinct' Sets.Int.empty integers
       
 (* All lines start here: they point towards the vertex. *)
-let epsilon tips =
+let epsilon0 tips =
   if distinct tips then
-    [ Epsilons ({ coeff = L.int 1; arrows = [] }, NEList.singleton (A.epsilon tips)) ]
+    [ Epsilons ({ coeff = L.unit; arrows = [] }, NEList.singleton (A.epsilon0 tips)) ]
   else
     []
 
 (* All lines end here: they point away from the vertex. *)
-let epsilon_bar tails =
+let epsilon0_bar tails =
   if distinct tails then
-    [ Epsilon_Bars ({ coeff = L.int 1; arrows = [] },NEList.singleton (A.epsilon_bar tails)) ]
+    [ Epsilon_Bars ({ coeff = L.unit; arrows = [] },NEList.singleton (A.epsilon0_bar tails)) ]
   else
     []
 
@@ -426,7 +426,7 @@ let insert_gluon a k l term =
 let t_of_delta delta a k l =
   match delta k l with
   | [] -> []
-  | Arrows { arrows = arrows } :: _ as delta_kl ->
+  | Arrows { arrows = arrows; _ } :: _ as delta_kl ->
      let n =
        List.fold_left
          (fun acc arrow -> acc + A.dir k l arrow)
@@ -467,7 +467,7 @@ let t3bar = t_A 2
 
 (* Equivalent definition: *)
 
-let t8' a b c =
+let _t8' a b c =
   t_of_delta delta8 a b c
 
 let t_of_tableau tableau a k l =
@@ -478,51 +478,90 @@ let t_of_tableau tableau a k l =
    \end{dubious} *)
 
 (* In the UFO paper, the Clebsh-Gordan is defined
-   as~$K^{(6),ij}_{\hphantom{(6),ij}m}$.  Therefore, keeping
+   as~$(K_6)^{\bar\imath\bar\jmath}_{\hphantom{\bar\imath\bar\jmath}m}$.  Therefore, keeping
    our convention for the generators~$T_{a\hphantom{(6),j}i}^{(6),j}$,
-   the must arrows \emph{end} at~$m$. *)
+   the must arrows \emph{end} at~$m$.
+
+   Naively, one might have expected a normalization factor~$1/\sqrt{2}$,
+   but the~$1/2$ makes sure that
+     $(K_6)^{\bar\imath\bar\jmath}_{\hphantom{\bar\imath\bar\jmath}m}
+      (\overline K_6)^{\bar m}_{\hphantom{\bar m}i'j'}$ and
+     $(\overline K_6)^{\bar m}_{\hphantom{\bar m}ij}
+      (K_6)^{\bar\imath\bar\jmath}_{\hphantom{\bar\imath\bar\jmath}m'}$
+   are projectors. *)
 
 let k6 m i j =
-  experimental "k6";
-  [ Arrows { coeff = L.int 1; arrows = [i =>> (m, 0); j =>> (m, 1)] };
-    Arrows { coeff = L.int 1; arrows = [i =>> (m, 1); j =>> (m, 0)] } ]
+  [ Arrows { coeff = L.fraction 2; arrows = [i =>> (m, 0); j =>> (m, 1)] };
+    Arrows { coeff = L.fraction 2; arrows = [i =>> (m, 1); j =>> (m, 0)] } ]
 
-(* The arrow are reversed for~$\bar K^{(6),m}_{\hphantom{(6),m}ij}$
+(* The arrow are reversed for~$(\overline K_6)^{\bar m}_{\hphantom{\bar m}ij}$
    and \emph{start} at~$m$. *)
 
 let k6bar m i j =
-  experimental "k6bar";
-  [ Arrows { coeff = L.int 1; arrows = [(m, 0) >=> i; (m, 1) >=> j] };
-    Arrows { coeff = L.int 1; arrows = [(m, 1) >=> i; (m, 0) >=> j] } ]
+  [ Arrows { coeff = L.fraction 2; arrows = [(m, 0) >=> i; (m, 1) >=> j] };
+    Arrows { coeff = L.fraction 2; arrows = [(m, 1) >=> i; (m, 0) >=> j] } ]
 
 (* \begin{dubious}
-     Playing arround with an example, it appears that we need the
-     opposite direction. Investigate!
+     Playing around with an example, it appeared that people expect the
+     opposite direction.  But this makes no sense. Investigate!
    \end{dubious} *)
 
-let k6 m i j =
-  experimental "k6";
-  [ Arrows { coeff = L.int 1; arrows = [(m, 0) >=> i; (m, 1) >=> j] };
-    Arrows { coeff = L.int 1; arrows = [(m, 1) >=> i; (m, 0) >=> j] } ]
+let _k6 m i j =
+  [ Arrows { coeff = L.unit; arrows = [(m, 0) >=> i; (m, 1) >=> j] };
+    Arrows { coeff = L.unit; arrows = [(m, 1) >=> i; (m, 0) >=> j] } ]
 
-let k6bar m i j =
-  experimental "k6bar";
-  [ Arrows { coeff = L.int 1; arrows = [i =>> (m, 0); j =>> (m, 1)] };
-    Arrows { coeff = L.int 1; arrows = [i =>> (m, 1); j =>> (m, 0)] } ]
+let _k6bar m i j =
+  [ Arrows { coeff = L.unit; arrows = [i =>> (m, 0); j =>> (m, 1)] };
+    Arrows { coeff = L.unit; arrows = [i =>> (m, 1); j =>> (m, 0)] } ]
 
+(* \thocwmodulesection{Ghosts} *)
+
+let add_ghost_to_aterm a arrows aterm =
+  { coeff = L.neg aterm.coeff; arrows = ?? a :: arrows }
+
+let add_loop_to_aterm a arrows aterm =
+  { coeff = L.product [L.nc (-1); aterm.coeff]; arrows = ?? a :: arrows }
+
+let add_ghost_to_term a = function
+  | Arrows aterm ->
+     begin match A.adjoint_arrows_opt a aterm.arrows with
+     | None -> Arrows aterm
+     | Some (Tee, arrows) -> Arrows (add_ghost_to_aterm a arrows aterm)
+     | Some (Reflex, arrows) -> Arrows (add_loop_to_aterm a arrows aterm)
+     end
+  | Epsilons (aterm, eps) as eterm ->
+     begin match A.adjoint_eps_opt a aterm.arrows eps with
+     | None -> eterm
+     | Some (Tee, arrows, eps) -> Epsilons (add_ghost_to_aterm a arrows aterm, eps)
+     | Some (Reflex, arrows, eps) -> Epsilons (add_loop_to_aterm a arrows aterm, eps)
+     end
+  | Epsilon_Bars (aterm, eps_bar) as bterm ->
+     begin match A.adjoint_eps_bar_opt a aterm.arrows eps_bar with
+     | None -> bterm
+     | Some (Tee, arrows, eps_bar) -> Epsilon_Bars (add_ghost_to_aterm a arrows aterm, eps_bar)
+     | Some (Reflex, arrows, eps_bar) -> Epsilon_Bars (add_loop_to_aterm a arrows aterm, eps_bar)
+     end
+
+let add_ghost_to_terms a terms =
+  canonicalize (List.map (add_ghost_to_term a) terms)
+
+exception Haunted
+
+let evoke_some gluons terms =
+  if haunted terms then
+    raise Haunted
+  else
+    sum (Combinatorics.subfolds (Fun.flip add_ghost_to_terms) terms gluons)
+
+let evoke terms =
+  evoke_some (adjoints terms) terms
+  
 (* \thocwmodulesection{Unit Tests} *)
 
 module Test =
   struct
     open OUnit
     module L = Algebra.Laurent
-
-    let exorcise vertex =
-      List.filter
-        (function
-         | Arrows aterm | Epsilons (aterm, _) | Epsilon_Bars (aterm, _) ->
-            not (List.exists A.is_ghost aterm.arrows))
-        vertex
 
     let exorcised_equal v1 v2 =
       equal (exorcise v1) (exorcise v2)
@@ -577,6 +616,8 @@ module Test =
       product (nc_minus_n_plus rank) 1 k
 
     let suite_times =
+      let epsilon = epsilon0
+      and epsilon_bar = epsilon0_bar in
       "times" >:::
 
         [ "reorder components t1*t2" >:: (* trivial $T_a^{ik}T_a^{kj}=T_a^{kj}T_a^{ik}$ *)
@@ -818,7 +859,7 @@ module Test =
 	    (fun () ->
 	      equal
                 (minus *** over_nc *** t 1 2 3
-                 +++ [Arrows { coeff = L.int 1; arrows = [1 => 1; 3 => 2] };
+                 +++ [Arrows { coeff = L.unit; arrows = [1 => 1; 3 => 2] };
                       Arrows { coeff = L.nc (-1); arrows = [3 => 2; ?? 1] }])
                 (t (-1) 2 (-2) *** t 1 (-2) (-3) *** t (-1) (-3) 3));
 
@@ -945,13 +986,13 @@ module Test =
       rep_t a (-1) (-2) *** rep_t b (-2) (-3) *** rep_t c (-3) (-1)
 
     let loop3 a b c =
-      [ Arrows { coeff = L.int 1; arrows =  A.cycle (List.rev [a; b; c]) };
+      [ Arrows { coeff = L.unit; arrows =  A.cycle (List.rev [a; b; c]) };
         Arrows { coeff = L.int (-1); arrows =  (a <=> b) @ [?? c] };
         Arrows { coeff = L.int (-1); arrows =  (b <=> c) @ [?? a] };
         Arrows { coeff = L.int (-1); arrows =  (c <=> a) @ [?? b] };
-        Arrows { coeff = L.int 1; arrows =  [a => a; ?? b; ?? c] };
-        Arrows { coeff = L.int 1; arrows =  [?? a; b => b; ?? c] };
-        Arrows { coeff = L.int 1; arrows =  [?? a; ?? b; c => c] };
+        Arrows { coeff = L.unit; arrows =  [a => a; ?? b; ?? c] };
+        Arrows { coeff = L.unit; arrows =  [?? a; b => b; ?? c] };
+        Arrows { coeff = L.unit; arrows =  [?? a; ?? b; c => c] };
         Arrows { coeff = L.nc (-1); arrows =  [?? a; ?? b; ?? c] } ]
 
     let suite_trace =
@@ -972,7 +1013,7 @@ module Test =
           "tr(tttt)" >:: (* $\tr(T_aT_bT_cT_d)=\ldots$ *)
             (fun () ->
               exorcised_equal
-                [ Arrows { coeff = L.int 1; arrows = A.cycle [4; 3; 2; 1] }]
+                [ Arrows { coeff = L.unit; arrows = A.cycle [4; 3; 2; 1] }]
                 (t 1 (-1) (-2) *** t 2 (-2) (-3) *** t 3 (-3) (-4) *** t 4 (-4) (-1))) ]
 
     let suite_ghosts =
@@ -983,6 +1024,12 @@ module Test =
 	      equal
                 (delta8_loop 1 2)
                 (t 1 (-1) (-2) *** t 2 (-2) (-1)));
+
+          "|H->gg|^2" >::
+	    (fun () ->
+	      equal
+                (const (L.ints [ (1, 2);  (-1, 0) ]))
+                (delta8_loop (-1) (-2) *** delta8_loop (-2) (-1)));
 
           "H->ggg f" >::
 	    (fun () ->
@@ -1013,6 +1060,34 @@ module Test =
               let trace a b c =
                 t a (-3) (-2) *** commutator t (-1) b c (-2) (-3) in
 	      equal (trace 1 2 3) (trace 2 3 1)) ]
+
+    let equal_evoke t =
+      equal t (evoke (exorcise t))
+
+    let suite_evoke =
+      "evoke" >:::
+
+        [ "delta8" >:: (fun () -> equal (delta8_loop 1 2) (evoke (delta8 1 2)));
+          "delta8'" >:: (fun () -> equal_evoke (delta8_loop 1 2));
+          "d" >:: (fun () -> equal_evoke (d 1 2 3));
+          "f" >:: (fun () -> equal_evoke (f 1 2 3));
+          "f'" >:: (fun () -> equal (f 1 2 3) (evoke (f 1 2 3)));
+          "f''" >:: (fun () -> equal (f 1 2 3) (exorcise (f 1 2 3)));
+          "tr(ttt)" >:: (fun () -> equal_evoke (trace3 t 1 2 3));
+          "tr(t6t6t6)" >:: (fun () -> equal_evoke (trace3 t6 1 2 3));
+          "eps8" >:: (fun () -> equal_evoke (epsilon0_bar [1;2;-1] *** t 4 (-1) 3));
+          "eps88" >:: (fun () -> equal_evoke (epsilon0_bar [1;-1;-2] *** t 4 (-1) 2 *** t 5 (-2) 3));
+          "eps888" >:: (fun () -> equal_evoke (epsilon0_bar [-1;-2;-3] *** t 4 (-1) 1 ***
+                                                 t 5 (-2) 2 *** t 6 (-3) 3));
+          "epsbar8" >:: (fun () -> equal_evoke (epsilon0 [1;2;-1] *** t 4 3 (-1)));
+          "epsbar88" >:: (fun () -> equal_evoke (epsilon0 [1;-1;-2] *** t 4 2 (-1) *** t 5 3 (-2)));
+          "epsbar888" >:: (fun () -> equal_evoke (epsilon0 [-1;-2;-3] *** t 4 1 (-1) ***
+                                                    t 5 2 (-2) *** t 6 3 (-3)));
+          "epseps88" >:: (fun () -> equal_evoke (epsilon0_bar [1;2;-1] *** t 4 (-1) 3 ***
+                                                   epsilon0_bar [5;6;-2] *** t 8 (-2) 9));
+          "epsbarepsbar88" >:: (fun () -> equal_evoke (epsilon0 [1;2;-1] *** t 4 3 (-1) ***
+                                                         epsilon0 [5;6;-2] *** t 8 9 (-2))) ]
+
 
     let ff a1 a2 a3 a4 =
       [ Arrows { coeff = L.int (-1); arrows = A.cycle [a1; a2; a3; a4] };
@@ -1098,7 +1173,7 @@ module Test =
 
     (* $ \delta^{il}\delta^{kj} - \delta^{ij}\delta^{kl}/N_C$ *)
     let tt_expected i j k l =
-      [ Arrows { coeff = L.int 1; arrows = [l => i; j => k] };
+      [ Arrows { coeff = L.unit; arrows = [l => i; j => k] };
         Arrows { coeff = L.over_nc (-1); arrows = [j => i; l => k] }]
 
     let suite_tt =
@@ -1110,7 +1185,7 @@ module Test =
 
     (* Check the commutation relations $[T_a,T_b]=\ii f_{abc} T_c$
        in various representations. *)
-    let lie_algebra_id rep_t =
+    let lie_algebra_id _rep_t =
       let lhs = imag *** f 1 2 (-1) *** t (-1) 3 4
       and rhs = commutator t (-1) 1 2 3 4 in
       equal lhs rhs
@@ -1284,8 +1359,8 @@ module Test =
     (* $C_2(\text{adj})=2N_C$ *)
     let ca = L.ints [(2, 1)]
     let casimir_ff a b =
-      [ Arrows { coeff = ca; arrows = 1 <=> 2 };
-        Arrows { coeff = L.int (-2); arrows = [1=>1; 2=>2] }]
+      [ Arrows { coeff = ca; arrows = a <=> b };
+        Arrows { coeff = L.int (-2); arrows = [a=>a; b=>b] }]
 
     (* $C_3(S_1)=N_C^2-5+4/N_C^2$ *)
     let c3f = L.ints [(1, 2); (-5, 0); (4, -2)]
@@ -1411,6 +1486,16 @@ module Test =
               and expected = ints [(1, 2); (-1, 0)] in
 	      equal expected sum_hgg) ]
 
+    (* \thocwmodulesubsection{Sextet Clebsh-Gordans} *)
+
+    let suite_k6 =
+      "k6/k6bar" >:::
+
+        [ "k6bar*k6" >:: (fun () -> equal (delta6 2 1) (k6bar 1 (-1) (-2) *** k6 2 (-1) (-2)));
+          "k6*k6bar" >:: (fun () -> equal
+                                      ((delta3 3 1 *** delta3 4 2 +++ delta3 4 1 *** delta3 3 2))
+                                      (two *** k6 (-1) 1 2 *** k6bar (-1) 3 4)) ]
+
     let suite =
       "SU3" >:::
 	[suite_sum;
@@ -1419,6 +1504,7 @@ module Test =
          suite_normalization;
          suite_symmetrization;
 	 suite_ghosts;
+         suite_evoke;
 	 suite_propagators;
 	 suite_trace;
 	 suite_ff;
@@ -1428,7 +1514,8 @@ module Test =
          suite_ward;
          suite_jacobi;
 	 suite_casimir;
-         suite_colorsums]
+         suite_colorsums;
+         suite_k6]
 
     let suite_long =
       "SU3 long" >:::

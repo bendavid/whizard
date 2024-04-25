@@ -125,7 +125,7 @@ module Tree  =
       match t1, t2 with
       | Empty, t -> t
       | t, Empty -> t
-      | Node (l1, v1, d1, r1, h1), Node (l2, v2, d2, r2, h2) ->
+      | Node (l1, v1, d1, r1, _), Node (l2, v2, d2, r2, _) ->
           bal l1 v1 d1 (bal (merge r1 l2) v2 d2 r2)
 
 (* Same as merge, but does not assume anything about [t1] and [t2]. *)
@@ -134,7 +134,7 @@ module Tree  =
       match t1, t2 with
       | Empty, t -> t
       | t, Empty -> t
-      | Node (l1, v1, d1, r1, h1), Node (l2, v2, d2, r2, h2) ->
+      | Node (l1, v1, d1, r1, _), Node (l2, v2, d2, r2, _) ->
           join l1 v1 d1 (join (concat r1 l2) v2 d2 r2)
  
 (* Splitting *)
@@ -176,7 +176,7 @@ module Tree  =
 
     let rec mem cmp x = function
       | Empty -> false
-      | Node (l, v, d, r, _) ->
+      | Node (l, v, _, r, _) ->
           let c = cmp x v in
           if c = 0 then
             true
@@ -187,23 +187,23 @@ module Tree  =
 
     let choose = function
       | Empty -> raise Not_found
-      | Node (l, v, d, r, _) -> (v, d)
+      | Node (_, v, d, _, _) -> (v, d)
 
     let choose_opt = function
       | Empty -> None
-      | Node (l, v, d, r, _) -> Some (v, d)
+      | Node (_, v, d, _, _) -> Some (v, d)
 
     let uncons = function
       | Empty -> raise Not_found
-      | Node (l, v, d, r, h) -> (v, d, merge l r)
+      | Node (l, v, d, r, _) -> (v, d, merge l r)
 
     let uncons_opt = function
       | Empty -> None
-      | Node (l, v, d, r, h) -> Some (v, d, merge l r)
+      | Node (l, v, d, r, _) -> Some (v, d, merge l r)
 
     let rec remove cmp x = function
       | Empty -> Empty
-      | Node (l, v, d, r, h) ->
+      | Node (l, v, d, r, _) ->
           let c = cmp x v in
           if c = 0 then
             merge l r
@@ -236,7 +236,7 @@ module Tree  =
           else (* [if c > 0] *)
             bal l v data (update cmp resolve x data' r)
 
-    let add cmp x data = update cmp (fun n o -> n) x data
+    let add cmp x data = update cmp (fun n _ -> n) x data
 
     let rec compose cmp resolve s1 s2 =
       match s1, s2 with
@@ -402,7 +402,7 @@ module List  =
             kd :: update cmp resolve k' d' rest
 
     let add cmp k' d' list =
-      update cmp (fun n o -> n) k' d' list
+      update cmp (fun n _ -> n) k' d' list
 
     let rec find cmp k' = function
       | [] -> raise Not_found
@@ -430,7 +430,7 @@ module List  =
       | [] -> raise Not_found
       | kd :: _ -> kd
 
-    let rec choose_opt = function
+    let choose_opt = function
       | [] -> None
       | kd :: _ -> Some kd
 
@@ -446,7 +446,7 @@ module List  =
 
     let rec mem cmp k' = function
       | [] -> false
-      | (k, d) :: rest ->
+      | (k, _) :: rest ->
           let c = cmp k' k in
           if c = 0 then
             true
@@ -457,7 +457,7 @@ module List  =
 
     let rec remove cmp k' = function
       | [] -> []
-      | ((k, d) as kd :: rest) as list ->
+      | ((k, _) as kd :: rest) as list ->
           let c = cmp k' k in
           if c = 0 then
             rest
@@ -529,14 +529,6 @@ module List  =
           else (* [if c > 0], i.\,e.~[k2 < k1] *)
             kd2 :: union cmp resolve m1 rest2
 
-    let canonicalize cmp x = x
+    let canonicalize _ x = x
       
   end
-
-(*i
-   Local Variables:
-   mode:caml
-   indent-tabs-mode:nil
-   page-delimiter:"^(\\* .*\n"
-   End:
-i*)

@@ -161,7 +161,7 @@ module Files : Files =
 
   end
 
-let dump_file pfx f =
+let _dump_file pfx f =
   List.iter
     (fun s -> print_endline (pfx ^ ": " ^ s))
     (UFO_syntax.to_strings f)
@@ -176,7 +176,7 @@ let charge_to_string = function
 
 module S = UFO_syntax
 
-let find_attrib name attribs =
+let _find_attrib name attribs =
   try
     (List.find (fun a -> name = a.S.a_name) attribs).S.a_value
   with
@@ -252,7 +252,7 @@ let map_expr f default = function
   | Expr e -> f e
 
 let variables = map_expr UFOx.Expr.variables CSet.empty
-let functions = map_expr UFOx.Expr.functions CSet.empty
+let _functions = map_expr UFOx.Expr.functions CSet.empty
 
 let add_to_set_in_map key element map =
   let set = try CMap.find key map with Not_found -> CSet.empty in
@@ -278,7 +278,7 @@ let dependency_to_string (variable, appearences) =
     "%s -> {%s}"
     variable (String.concat ", " (CSet.elements appearences))
 
-let dependencies_to_strings map =
+let _dependencies_to_strings map =
   List.map dependency_to_string (CMap.bindings map)
 
 let expr_to_string =
@@ -304,7 +304,7 @@ let value_to_coupling substitutions atom = function
   | Float x -> Coupling.Float x
   | Expr e ->
      UFOx.Value.to_coupling atom (UFOx.Value.of_expr (substitutions e))
-  | Name n -> failwith "UFO.value_to_coupling: Name not supported yet!"
+  | Name _ -> failwith "UFO.value_to_coupling: Name not supported yet!"
 
 let value_to_numeric = function
   | Integer i -> Printf.sprintf "%d" i
@@ -420,7 +420,7 @@ let valid_fortran_id kind name =
          "fatal UFO error: the %s `%s' is not a valid fortran id!"
          kind name)
 
-let map_to_alist map =
+let _map_to_alist map =
   SMap.fold (fun key value acc -> (key, value) :: acc) map []
 
 let keys map =
@@ -471,8 +471,8 @@ module type Particle =
     val force_conjspinor : t -> t
     val force_majorana : t -> t
     val is_majorana : t -> bool
-    val is_ghost : t -> bool
-    val is_goldstone : t -> bool
+(*[ val is_ghost : t -> bool ]*)
+(*[ val is_goldstone : t -> bool ]*)
     val is_physical : t -> bool
     val filter : (t -> bool) -> t SMap.t -> t SMap.t
 
@@ -654,7 +654,7 @@ module Particle : Particle =
       not (is_ghost p || is_goldstone p)
 
     let filter predicate map =
-      SMap.filter (fun symbol p -> predicate p) map
+      SMap.filter (fun _symbol p -> predicate p) map
 
   end
 
@@ -864,7 +864,7 @@ module Vertex : Vertex =
                   (UFOx.Color.to_string lcc.color))
               c.lcc))
         
-    let to_string_expanded lorentz couplings c =
+    let to_string_expanded lorentz _couplings c =
       let expand_lorentz s =
         try
           UFOx.Lorentz.to_string (SMap.find s lorentz).Lorentz_UFO.structure
@@ -904,10 +904,10 @@ module Vertex : Vertex =
          end
       | atom -> atom
 
-    let force_adj_identity adj_indices tensor =
+    let _force_adj_identity adj_indices tensor =
       UFOx.Color.map_atoms (force_adj_identity1 adj_indices) tensor
 
-    let find_adj_indices map particles =
+    let _find_adj_indices map particles =
       let adj_indices = ref [] in
       Array.iteri
         (fun i p ->
@@ -952,19 +952,19 @@ module Vertex : Vertex =
              if List.mem b conj_indices then
                UFOx.Color_Atom.Identity (b, a)
              else
-               invalid_arg "force_adj_identity: mixed representations!"
+               invalid_arg "force_identity1: mixed representations!"
            end
          else if List.mem a conj_indices then
            begin
              if List.mem b fund_indices then
                UFOx.Color_Atom.Identity (a, b)
              else
-               invalid_arg "force_adj_identity: mixed representations!"
+               invalid_arg "force_identity1: mixed representations!"
            end else if List.mem a adj_indices then begin
              if List.mem b adj_indices then
                UFOx.Color_Atom.Identity8 (a, b)
              else
-               invalid_arg "force_adj_identity: mixed representations!"
+               invalid_arg "force_identity1: mixed representations!"
            end
          else
            atom
@@ -1010,7 +1010,7 @@ module Vertex : Vertex =
       List.fold_left (of_file1 particles) SMap.empty vertices
 
     let filter predicate map =
-      SMap.filter (fun symbol p -> predicate p) map
+      SMap.filter (fun _symbol p -> predicate p) map
 
   end
 
@@ -1158,7 +1158,7 @@ module type Macro =
     val expand_expr : t -> S.string_atom list -> string
 
     (* Only for documentation: *)
-    val expand_atom : t -> S.string_atom -> string
+    val _expand_atom : t -> S.string_atom -> string
   end
 
 module Macro : Macro =
@@ -1174,7 +1174,7 @@ module Macro : Macro =
     let expand_string macros name =
       SMap.find name macros
 
-    let rec expand_atom macros = function
+    let rec _expand_atom macros = function
       | S.Literal s -> s
       | S.Macro [name] ->
          begin
@@ -1192,7 +1192,7 @@ module Macro : Macro =
          invalid_arg ("expand_atom: compound name: " ^ String.concat "." name)
 
     and expand_expr macros expr =
-      String.concat "" (List.map (expand_atom macros) expr)
+      String.concat "" (List.map (_expand_atom macros) expr)
 
   end
 
@@ -1362,7 +1362,7 @@ module Decay : Decay =
      Note that we have to conjugate the representations!
    \end{dubious} *)
 
-let collect_spinor_reps_of_vertex particles lorentz v sets =
+let collect_spinor_reps_of_vertex _particles lorentz v sets =
   List.fold_left
     (fun sets' lcc ->
       let l = (SMap.find lcc.Vertex.lorentz lorentz).Lorentz_UFO.structure in
@@ -1942,12 +1942,12 @@ let dump model =
   SMap.iter (print_endline <**> Propagator.to_string) model.propagators;
   SMap.iter (print_endline <**> Decay.to_string) model.decays;
   SMap.iter
-    (fun symbol d ->
+    (fun _symbol d ->
       List.iter (fun (_, w) -> ignore (UFOx.Expr.of_string w)) d.Decay.widths)
     model.decays
 
 exception Unhandled of string
-let unhandled s = raise (Unhandled s)
+let _unhandled s = raise (Unhandled s)
 
 module Model =
   struct
@@ -2009,19 +2009,19 @@ module Model =
     module Q = Algebra.Q
     module QC = Algebra.QC
 
-    let dummy_tensor3 = Coupling.Scalar_Scalar_Scalar 1
-    let dummy_tensor4 = Coupling.Scalar4 1
+    let _dummy_tensor3 = Coupling.Scalar_Scalar_Scalar 1
+    let _dummy_tensor4 = Coupling.Scalar4 1
 
-    let triplet p = (p.(0), p.(1), p.(2))
-    let quartet p = (p.(0), p.(1), p.(2), p.(3))
+    let _triplet p = (p.(0), p.(1), p.(2))
+    let _quartet p = (p.(0), p.(1), p.(2), p.(3))
 
-    let half_times q1 q2 =
+    let _half_times q1 q2 =
       Q.mul (Q.make 1 2) (Q.mul q1 q2)
 
     let name g =
       g.UFO_Coupling.name
 
-    let fractional_coupling g r =
+    let _fractional_coupling g r =
       let g = name g in
       match Q.to_ratio r with
       |  0, _ -> "0.0_default"
@@ -2038,7 +2038,7 @@ module Model =
       with
       | Not_found -> invalid_arg ("lorentz_of_symbol: " ^ symbol)
 
-    let lorentz_UFO_of_symbol model symbol =
+    let _lorentz_UFO_of_symbol model symbol =
       try
 	SMap.find symbol model.lorentz_UFO
       with
@@ -2050,14 +2050,14 @@ module Model =
       with
       | Not_found -> invalid_arg ("coupling_of_symbol: " ^ symbol)
 
-    let spin_triplet model name =
+    let _spin_triplet model name =
       match (lorentz_of_symbol model name).Lorentz.spins with
       | Lorentz.Unique [|s0; s1; s2|] -> (s0, s1, s2)
       | Lorentz.Unique _ -> invalid_arg "spin_triplet: wrong number of spins"
       | Lorentz.Unused -> invalid_arg "spin_triplet: Unused"
       | Lorentz.Ambiguous _ -> invalid_arg "spin_triplet: Ambiguous"
         
-    let spin_quartet model name =
+    let _spin_quartet model name =
       match (lorentz_of_symbol model name).Lorentz.spins with
       | Lorentz.Unique [|s0; s1; s2; s3|] -> (s0, s1, s2, s3)
       | Lorentz.Unique _ -> invalid_arg "spin_quartet: wrong number of spins"
@@ -2138,8 +2138,8 @@ module Model =
       | UFOx.Color_Atom.TY (y, a, i, j) -> Color.Vertex.t_of_tableau (yt_to_omega y) a i j
       | UFOx.Color_Atom.F (a, b, c) -> Color.Vertex.f a b c
       | UFOx.Color_Atom.D (a, b, c) -> Color.Vertex.d a b c
-      | UFOx.Color_Atom.Epsilon (i, j, k) -> Color.Vertex.epsilon [i; j; k]
-      | UFOx.Color_Atom.EpsilonBar (i, j, k) -> Color.Vertex.epsilon_bar [i; j; k]
+      | UFOx.Color_Atom.Epsilon (i, j, k) -> Color.Vertex.epsilon0 [i; j; k]
+      | UFOx.Color_Atom.EpsilonBar (i, j, k) -> Color.Vertex.epsilon0_bar [i; j; k]
       | UFOx.Color_Atom.T6 (a, i, j) -> Color.Vertex.t6 a i j
       | UFOx.Color_Atom.K6 (i, j, k) -> Color.Vertex.k6 i j k
       | UFOx.Color_Atom.K6Bar (i, j, k) -> Color.Vertex.k6bar i j k
@@ -2175,7 +2175,7 @@ module Model =
     let translate_coupling model p lcc =
       List.map (translate_coupling_1 model p) lcc
 
-    let long_flavors = ref false
+    let _long_flavors = ref false
 
     module type Lookup =
       sig
@@ -2354,12 +2354,12 @@ i*)
              (values couplings)) in
       let missing_input =
         CMap.filter
-          (fun parameter derived_parameters ->
+          (fun parameter _derived_parameters ->
             not (CSet.mem parameter all_parameters))
           derived_dependencies
       and missing =
         CMap.filter
-          (fun parameter couplings ->
+          (fun parameter _couplings ->
             not (CSet.mem parameter all_parameters))
           coupling_dependencies in
       CMap.iter
@@ -2577,8 +2577,8 @@ i*)
         ~pdg:(fun f -> (particle f).Particle.pdg_code)
         ~lorentz
         ~propagator
-        ~width:(fun f -> Coupling.Constant)
-        ~goldstone:(fun f -> None)
+        ~width:(fun _ -> Coupling.Constant)
+        ~goldstone:(fun _ -> None)
         ~conjugate:tables.Lookup.conjugate
         ~fermion:(fun f -> fermion_of_lorentz (lorentz f))
         ~vertices
@@ -2630,7 +2630,7 @@ i*)
       let include_fusion =
         match !include_all_fusions, only with
         | true, _
-        | false, None -> (fun name -> true)
+        | false, None -> (fun _ -> true)
         | false, Some names -> (fun name -> SSet.mem name names)
       in
       SMap.fold
@@ -2658,13 +2658,13 @@ i*)
     let fusions ?only () =
       match !initialized with
       | None -> []
-      | Some { model = model } -> fusions_of_model ?only model
+      | Some { model = model; _ } -> fusions_of_model ?only model
 
     let propagators_of_model ?only model =
       let include_propagator =
         match !include_all_fusions, only with
         | true, _
-        | false, None -> (fun name -> true)
+        | false, None -> (fun _ -> true)
         | false, Some names -> (fun name -> SSet.mem name names)
       in
       SMap.fold
@@ -2678,7 +2678,7 @@ i*)
     let propagators ?only () =
       match !initialized with
       | None -> []
-      | Some { model = model } -> propagators_of_model ?only model
+      | Some { model = model; _ } -> propagators_of_model ?only model
 
     let include_hadrons = ref true
 
@@ -2874,13 +2874,13 @@ i*)
            flush stderr (*; [M.set_coupling_order co n] *) ),
        Printf.sprintf "n set %s coupling order n [>=0] (still ignored)" s)
 
-    let coupling_order_options () =
+    let _coupling_order_options () =
       Arg.align (List.map coupling_order_option (all_coupling_orders ()))
 
-    let flavor_list_to_string f_list =
+    let _flavor_list_to_string f_list =
       String.concat "|" (List.map flavor_to_string f_list)
 
-    let all_flavors () =
+    let _all_flavors () =
       try
         ThoList.flatmap snd (external_flavors ())
       with

@@ -229,7 +229,7 @@ module Fusions (F : Flavor) : Fusions with type f = F.f and type c = F.c =
 
     module Fn' = Set.Make (Fn)
 
-    let permuten = function
+    let _permuten = function
       | [] -> invalid_arg "Modeltools.permuten"
       | f ->
          List.map
@@ -242,7 +242,7 @@ module Fusions (F : Flavor) : Fusions with type f = F.f and type c = F.c =
 
     (* This is for debugging: it provides the same permutations
        than the legacy version. *)
-    let permutations = function
+    let _permutations = function
       | [f1; f2; f3] ->
          [ [f1; f2; f3];
            [f2; f1; f3];
@@ -548,6 +548,29 @@ module Static (M : Model.T) =
         ~flavor_to_TeX ~flavor_symbol
         ~gauge_symbol ~mass_symbol ~width_symbol ~constant_symbol
         ~all_coupling_orders ~coupling_order_to_string ~coupling_orders =
+      ignore color;
+      ignore nc;
+      ignore pdg;
+      ignore lorentz;
+      ignore propagator;
+      ignore width;
+      ignore goldstone;
+      ignore conjugate;
+      ignore fermion;
+      ignore vertices;
+      ignore flavors;
+      ignore parameters;
+      ignore flavor_of_string;
+      ignore flavor_to_string;
+      ignore flavor_to_TeX;
+      ignore flavor_symbol;
+      ignore gauge_symbol;
+      ignore mass_symbol;
+      ignore width_symbol;
+      ignore constant_symbol;
+      ignore all_coupling_orders;
+      ignore coupling_order_to_string;
+      ignore coupling_orders;
       ()
   end
 
@@ -652,7 +675,7 @@ module Topology3 (M : Model.T) =
        filter_couplings_triples
          (List.filter (fun (f, _, _) -> List.length f < 3) vn))
     let fuse2 f1 f2 = filter_couplings (M.fuse2 f1 f2)
-    let fuse3 f1 f2 f3 = []
+    let fuse3 _f1 _f2 _f3 = []
     let fuse = function
       | [_; _] as f_list -> filter_couplings (M.fuse f_list)
       | _ -> []

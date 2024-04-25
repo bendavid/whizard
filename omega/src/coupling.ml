@@ -1,4 +1,4 @@
-(* coupling.mli --
+(* coupling.ml --
 
    Copyright (C) 1999-2024 by
 

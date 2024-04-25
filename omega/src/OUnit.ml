@@ -299,7 +299,7 @@ let assert_command
 
 let raises f =
   try
-    f ();
+    ignore (f ());
     None
   with e -> 
     Some e
@@ -515,7 +515,7 @@ type test_result =
   | RSkip of path * string
   | RTodo of path * string
 
-let is_success = 
+let _is_success = 
   function
     | RSuccess _  -> true 
     | RFailure _ | RError _  | RSkip _ | RTodo _ -> false 
@@ -595,7 +595,7 @@ let perform_test report test =
       f ();
       RSuccess path
     with
-      | Failure s -> 
+      | Stdlib.Failure s -> 
           RFailure (path, s ^ maybe_backtrace ())
 
       | Skip s -> 
@@ -612,11 +612,11 @@ let perform_test report test =
       | TestCase(f) -> 
           begin
             let result = 
-              report (EStart path);
-              run_test_case f path 
+              report (EStart path) |> ignore;
+              run_test_case f path
             in
-              report (EResult result);
-              report (EEnd path);
+              report (EResult result) |> ignore;
+              report (EEnd path) |> ignore;
               result::results
           end
 

@@ -213,11 +213,3 @@ module Nary (B: Bound) : Nary
      \end{itemize}
    \end{dubious}
    but only if we ever have too much time on our hand \ldots *)
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

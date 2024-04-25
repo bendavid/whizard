@@ -32,8 +32,8 @@
 
 (* If there are no $\epsilon$s or $\bar\epsilon$s, a term is simply
    a list of arrows with a coefficient that is a polynomial,
-   allowing negative powers, in $N_C$.  The the type of arrows
-   is not fixed, because [Arrow] has both [free] arrows without
+   allowing negative powers, in $N_C$.  Here the type ['a] of arrows
+   is polymorphic, because [Arrow] has both [free] arrows without
    summation indices and [factor] arrows that contain summation
    indices. *)
 type 'a aterm = { coeff : Algebra.Laurent.t; arrows : 'a list }
@@ -61,6 +61,23 @@ type t = free list
 
 (* \thocwmodulesection{Functions} *)
 
+(* Reverse all arrows and exchange $\epsilon$s and $\bar\epsilon$. *)
+val rev : t -> t
+
+(* Map the ['a aterm] component and leave the epsilons alone. *)
+val map_term : ('a aterm -> 'c aterm) -> ('a, 'e, 'b) term -> ('c, 'e, 'b) term
+val map_term_opt : ('a aterm -> 'c aterm option) -> ('a, 'e, 'b) term -> ('c, 'e, 'b) term option
+
+(* Return the list of all positions of endpoints corresponding to
+   adjoint representations (cf.~[Arrow.adjoints]). *)
+val adjoints : t -> int list
+
+(* Test for ghosts in an expression. *)
+val haunted : t -> bool
+
+(* Filter out all terms containing a ghost. *)
+val exorcise : t -> t
+
 (* Strip out redundancies. *)
 val canonicalize : t -> t
 
@@ -79,6 +96,10 @@ val is_unit : t -> bool
 
 (* Test for vanishing coefficients. *)
 val is_null : t -> bool
+
+(* [is_multiple x y] returns [Some (cx, cy)] iff [const cy *** x = const cx *** y]
+   and [None] otherwise. *)
+val is_multiple : t -> t -> (Algebra.Laurent.t * Algebra.Laurent.t) option
 
 (* Purely numeric factors, implemented as Laurent polynomials
    (cf.~[Algebra.Laurent] in~$N_C$ with complex rational
@@ -136,9 +157,6 @@ val d_of_rep : (int -> int -> int -> t) -> int -> int -> int -> t
    by our application in [Colorize.It] to match the permutations
    of lines at a vertex. *)
 val relocate : (int -> int) -> t -> t
-
-(* Revert the direction of all lines in a birdtrack. *)
-val rev : t -> t
 
 (* Pretty printer for the toplevel. *)
 val pp : Format.formatter -> t -> unit

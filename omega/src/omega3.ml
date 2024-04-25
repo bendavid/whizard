@@ -201,7 +201,7 @@ module Legacy =
     let adjoin_target ?force_majorana ?force_vintage_majorana (module M : Model.Mutable) name =
       match String.lowercase_ascii name with
       | "fortran" -> fortran ?force_majorana ?force_vintage_majorana (module M)
-      | "vm" -> vm ?force_majorana ?force_vintage_majorana (module M)
+      | "ovm" -> vm ?force_majorana ?force_vintage_majorana (module M)
       | _ -> invalid_arg (Printf.sprintf "omega: target '%s' not found!" name)
 
     let load_omega ?flags ?force_majorana ?force_vintage_majorana target model =
@@ -326,7 +326,7 @@ module V3 =
            fortran_helac ?force_majorana ?force_vintage_majorana (module M)
          else
            fortran ?force_majorana ?force_vintage_majorana (module M)
-      | "vm" ->
+      | "ovm" ->
          if helac then
            vm_helac ?force_majorana ?force_vintage_majorana (module M)
          else

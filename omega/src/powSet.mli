@@ -73,12 +73,3 @@ module type T =
   end
 
 module Make (E : Ordered_Type) : T with type elt = E.t
-
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

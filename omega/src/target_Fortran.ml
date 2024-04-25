@@ -671,17 +671,17 @@ i*)
 
     let flavors a = F.incoming a @ F.outgoing a
 
-    let declare_brakets_chunk = function
+    let declare_brakets_chunk ?orders = function
       | [] -> ()
       | amplitudes ->
           printf "    @[<2>complex(kind=%s) :: " !kind;
-          print_list (List.map (fun a -> flavors_symbol ~decl:true (flavors a)) amplitudes); nl ()
+          print_list (List.map (fun a -> flavors_symbol ~decl:true ?orders (flavors a)) amplitudes); nl ()
 
-    let declare_brakets = function
+    let declare_brakets ?orders = function
       | [] -> ()
       | amplitudes ->
           List.iter
-            declare_brakets_chunk
+            (declare_brakets_chunk ?orders)
             (ThoList.chopn declaration_chunk_size amplitudes)
 
     let print_variable_declarations amplitudes =
@@ -1047,11 +1047,8 @@ i*)
     let print_brakets dictionary amplitude =
       match F.brakets amplitude with
       |[([], brakets)] -> print_braket_slice dictionary amplitude brakets
-      |[(orders, brakets)] ->
-        Printf.eprintf "omega: implementation of coupling order slices not complete yet!\n";
-        print_braket_slice ~orders dictionary amplitude brakets
+      |[(orders, brakets)] -> print_braket_slice ~orders dictionary amplitude brakets
       | slices ->
-         Printf.eprintf "omega: implementation of coupling order slices not complete yet!\n";
          List.iter
            (fun (orders, brakets) -> print_braket_slice ~orders dictionary amplitude brakets)
            slices
@@ -1126,33 +1123,37 @@ i*)
           (F.externals amplitude)
           (List.map (fun _ -> true) (F.incoming amplitude) @
            List.map (fun _ -> false) (F.outgoing amplitude)) in
-      List.iter (fun (wf, incoming) ->
-        if incoming then
-          printf "    %s = - k(:,%d) ! incoming"
-            (momentum wf) (ext_momentum wf)
-        else
-          printf "    %s =   k(:,%d) ! outgoing"
-            (momentum wf) (ext_momentum wf); nl ()) externals
+      List.iter
+        (fun (wf, incoming) ->
+          if incoming then
+            printf "    %s = - k(:,%d) ! incoming"
+              (momentum wf) (ext_momentum wf)
+          else
+            printf "    %s =   k(:,%d) ! outgoing"
+              (momentum wf) (ext_momentum wf); nl ())
+        externals
 
     let print_externals seen_wfs amplitude =
       let externals =
         List.combine
           (F.externals amplitude)
-          (List.map (fun _ -> true) (F.incoming amplitude) @
-           List.map (fun _ -> false) (F.outgoing amplitude)) in
-      List.fold_left (fun seen (wf, incoming) ->
-        if not (WFSet.mem wf seen) then begin
-          printf "      @[<2>%s =@, " (variable wf);
-          (if incoming then print_incoming else print_outgoing) wf; nl ()
-        end;
-        WFSet.add wf seen) seen_wfs externals
+          (List.map (fun _ -> print_incoming) (F.incoming amplitude) @
+           List.map (fun _ -> print_outgoing) (F.outgoing amplitude)) in
+      List.fold_left
+        (fun seen (wf, print_wf) ->
+          if not (WFSet.mem wf seen) then
+            begin
+              printf "      @[<2>%s =@, " (variable wf);
+              print_wf wf; nl ()
+            end;
+          WFSet.add wf seen)
+        seen_wfs externals
 
     let flavors_to_string flavors =
       String.concat " " (List.map (fun f -> CM.flavor_to_string (SCM.flavor_all_orders f)) flavors)
 
     let process_to_string amplitude =
-      flavors_to_string (F.incoming amplitude) ^ " -> " ^
-      flavors_to_string (F.outgoing amplitude)
+      flavors_to_string (F.incoming amplitude) ^ " -> " ^ flavors_to_string (F.outgoing amplitude)
 
     let flavors_sans_color_to_string flavors =
       String.concat " " (List.map M.flavor_to_string flavors)
@@ -1161,35 +1162,41 @@ i*)
       flavors_sans_color_to_string fin ^ " -> " ^
       flavors_sans_color_to_string fout
 
-    let print_fudge_factor amplitude =
-      let name = flavors_symbol (flavors amplitude) in
-      List.iter (fun wf ->
-        let p = momentum wf
-        and f = F.flavor wf in
-        match SCM.width f with
-        | Fudged ->
-            let m = SCM.mass_symbol f
-            and w = SCM.width_symbol f in
-            printf "      if (%s > 0.0_%s) then" w !kind; nl ();
-            printf "        @[<2>%s = %s@ * (%s*%s - %s**2)"
-              name name p p m;
-            printf "@ / cmplx (%s*%s - %s**2, %s*%s, kind=%s)"
-              p p m m w !kind; nl ();
-            printf "      end if"; nl ()
-        | _ -> ()) (F.s_channel amplitude)
+    let print_fudge_factor ?orders amplitude =
+      let name = flavors_symbol ?orders (flavors amplitude) in
+      List.iter
+        (fun wf ->
+          let p = momentum wf
+          and f = F.flavor wf in
+          match SCM.width f with
+          | Fudged ->
+             let m = SCM.mass_symbol f
+             and w = SCM.width_symbol f in
+             printf "      if (%s > 0.0_%s) then" w !kind; nl ();
+             printf "        @[<2>%s = %s@ * (%s*%s - %s**2)" name name p p m;
+             printf "@ / cmplx (%s*%s - %s**2, %s*%s, kind=%s)" p p m m w !kind; nl ();
+             printf "      end if"; nl ()
+          | _ -> ())
+        (F.s_channel amplitude)
 
     let num_helicities amplitudes =
       List.length (CF.helicities amplitudes)
 
-    let num_coupling_orders amplitudes =
+    let coupling_orders amplitudes =
       match CF.coupling_orders amplitudes with
-      | None -> 0
-      | Some (co_list, _) -> List.length co_list
+      | None -> []
+      | Some (co_list, _) -> co_list
 
-    let num_coupling_order_powers amplitudes =
+    let num_coupling_orders amplitudes =
+      List.length (coupling_orders amplitudes)
+
+    let len_coupling_orders amplitudes =
+      ThoString.max_length (List.map CM.coupling_order_to_string (coupling_orders amplitudes))
+
+    let num_coupling_powers amplitudes =
       match CF.coupling_orders amplitudes with
-      | None -> 0
-      | Some (_, powers) -> List.length powers
+      | None -> 1
+      | Some (_, powers) -> max 1 (List.length powers)
 
 (* \thocwmodulesubsection{Spin, Flavor \&\ Color Tables} *)
 
@@ -1258,13 +1265,27 @@ i*)
     let protected = ", protected" (* Fortran 2003! *)
 
     let print_coupling_orders_table amplitudes =
-      printf "  @[<2>integer, dimension(n_co,n_cop), save%s :: table_coupling_orders" protected; nl ();
+      begin match List.map CM.coupling_order_to_string (coupling_orders amplitudes) with
+      | [] ->
+         printf "  @[<2>character(len=0), dimension(n_co), save%s :: table_coupling_orders" protected; nl ();
+      | co_head :: co_tail ->
+         printf "  @[<2>character(len=n_co_len), dimension(n_co), save%s :: table_coupling_orders" protected;
+         nl ();
+         printf "  @[<2>data table_coupling_orders / \"%s\"" co_head;
+         List.iter (fun co -> printf ",@  \"%s\"" co) co_tail;
+         printf "  /";
+         nl ()
+      end;
+      nl ()
+
+    let print_coupling_powers_table amplitudes =
+      printf "  @[<2>integer, dimension(n_co,n_cp), save%s :: table_coupling_powers" protected; nl ();
       begin match CF.coupling_orders amplitudes with
       | None | Some (_, []) -> ()
       | Some (_, powers) ->
          List.iteri
            (fun i powers ->
-             printf "  @[<2>data table_coupling_orders(:,%4d) / %s /" (succ i)
+             printf "  @[<2>data table_coupling_powers(:,%4d) / %s /" (succ i)
                (String.concat ", " (List.map (Printf.sprintf "%2d") powers));
              nl ())
            powers
@@ -1412,42 +1433,6 @@ i*)
       | [] -> "zero"
       | powers -> String.concat "" (List.map (format_power_of x) powers)
 
-    (*i unused value
-    let print_color_factor_table_old table =
-      let n_cflow = Array.length table in
-      let n_cfactors = ref 0 in
-      for c1 = 0 to pred n_cflow do
-        for c2 = 0 to pred n_cflow do
-          match table.(c1).(c2) with
-          | [] -> ()
-          | _ -> incr n_cfactors
-        done
-      done;
-      print_integer_parameter "n_cfactors"  !n_cfactors;
-      if n_cflow <= 0 then begin
-        printf "  @[<2>type(%s), dimension(n_cfactors) ::"
-          omega_color_factor_abbrev;
-        printf "@ table_color_factors"; nl ()
-      end else begin
-        printf
-          "  @[<2>type(%s), dimension(n_cfactors), parameter ::"
-          omega_color_factor_abbrev;
-        printf "@ table_color_factors = (/@ ";
-        let comma = ref "" in
-        for c1 = 0 to pred n_cflow do
-          for c2 = 0 to pred n_cflow do
-            match table.(c1).(c2) with
-            | [] -> ()
-            | cf ->
-                printf "%s@ %s(%d,%d,%s)" !comma omega_color_factor_abbrev
-                  (succ c1) (succ c2) (format_powers_of nc_parameter cf);
-                comma := ","
-          done
-        done;
-        printf "@ /)"; nl ()
-      end
-    i*)
-
 (* \begin{dubious}
      We can optimize the following slightly by reusing common color factor [parameter]s.
    \end{dubious} *)
@@ -1489,51 +1474,23 @@ i*)
     let print_color_tables amplitudes =
       let cflows =  CF.color_flows amplitudes
       and cfactors = CF.color_factors amplitudes in
-      (* [print_color_flows_table_old "c" cflows; nl ();] *)
       print_color_flows_table cflows; nl ();
-      (* [print_ghost_flags_table_old "g" cflows; nl ();] *)
       print_ghost_flags_table cflows; nl ();
-      (* [print_color_factor_table_old cfactors; nl ();] *)
       print_color_factor_table cfactors; nl ()
 
     let option_to_logical = function
       | Some _ -> "T"
       | None -> "F"
 
-    (*i unused value
-    let print_flavor_color_table_old abbrev n_flv n_cflow table =
-      if n_flv <= 0 || n_cflow <= 0 then begin
-        printf "  @[<2>logical, dimension(n_flv, n_cflow) ::";
-        printf "@ flv_col_is_allowed"; nl ()
-      end else begin
-        for c = 0 to pred n_cflow do
-          printf
-            "  @[<2>logical, dimension(n_flv), parameter, private ::";
-          printf "@ %s%04d = (/@ %s" abbrev (succ c) (option_to_logical table.(0).(c));
-          for f = 1 to pred n_flv do
-            printf ",@ %s" (option_to_logical table.(f).(c))
-          done;
-          printf "@ /)"; nl ()
-        done;
-        printf
-          "  @[<2>logical, dimension(n_flv, n_cflow), parameter ::";
-        printf "@ flv_col_is_allowed_old =@ reshape ( (/@ %s%04d" abbrev 1;
-        for c = 1 to pred n_cflow do
-          printf ",@ %s%04d" abbrev (succ c)
-        done;
-        printf "@ /),@ (/ n_flv, n_cflow /) )"; nl ()
-      end
-    i*)
-
     let print_flavor_color_table n_flv n_cflow table =
       if !amp_triv then begin
         printf
-          "  @[<2>logical, dimension(n_flv, n_cflow), save%s :: @ flv_col_is_allowed = T"
+          "  @[<2>logical, dimension(n_flv,n_cflow), save%s :: @ flv_col_is_allowed = T"
         protected; nl ();
 	end
       else begin
         printf
-          "  @[<2>logical, dimension(n_flv, n_cflow), save%s :: @ flv_col_is_allowed"
+          "  @[<2>logical, dimension(n_flv,n_cflow), save%s :: @ flv_col_is_allowed"
         protected; nl ();
         if n_flv > 0 then begin
           for c = 0 to pred n_cflow do
@@ -1548,15 +1505,47 @@ i*)
 	end;
       end
 
+    let print_orders_flavor_color_table n_orders n_flv n_cflow table =
+      if !amp_triv then begin
+        printf
+          "  @[<2>logical, dimension(n_cp,n_flv,n_cflow), save%s :: @ co_flv_col_is_allowed = T"
+        protected; nl ();
+	end
+      else begin
+        printf
+          "  @[<2>logical, dimension(n_cp,n_flv,n_cflow), save%s :: @ co_flv_col_is_allowed"
+        protected; nl ();
+        if n_flv > 0 then begin
+          for c = 0 to pred n_cflow do
+            for f = 0 to pred n_flv do
+              printf
+                "  @[<2>data co_flv_col_is_allowed(:,%4d,%4d) /" (succ f) (succ c);
+              printf "@ %s" (option_to_logical table.(0).(f).(c));
+              for co = 1 to pred n_orders do
+                printf ",@ %s" (option_to_logical table.(co).(f).(c))
+              done;
+              printf "@ /"; nl ()
+            done
+          done
+	end
+      end
+
+    let _print_orders_flavor_color_table n_orders n_flv n_cflow table =
+      ()
+
     let print_amplitude_table a =
-      (* [print_flavor_color_table_old "a"
-        (num_flavors a) (List.length (CF.color_flows a)) (CF.process_table a);
-      nl ();] *)
       print_flavor_color_table
         (num_flavors a) (List.length (CF.color_flows a)) (CF.process_table a);
       nl ();
+      print_orders_flavor_color_table
+        (match CF.coupling_orders a with None -> 1 | Some (_, co) -> List.length co)
+        (num_flavors a) (List.length (CF.color_flows a)) (CF.process_table_new a);
+      nl ();
       printf
-        "  @[<2>complex(kind=%s), dimension(n_flv, n_cflow, n_hel), save :: amp" !kind;
+        "  @[<2>complex(kind=%s), dimension(n_flv,n_cflow,n_hel), save :: amp_all_orders" !kind;
+      nl ();
+      printf
+        "  @[<2>complex(kind=%s), dimension(n_cp,n_flv,n_cflow,n_hel), save :: amp_by_orders" !kind;
       nl ();
       nl ()
 
@@ -1619,28 +1608,6 @@ i*)
       nl ()
     end
 
-    (*i unused value
-    let print_inquiry_function_declarations name =
-      printf "  @[<2>public :: number_%s,@ %s" name name;
-      nl ()
-    i*)
-
-    (*i unused value
-    let print_numeric_inquiry_functions () =
-      printf "  @[<5>"; if !fortran95 then printf "pure ";
-      printf "function number_particles_in () result (n)"; nl ();
-      printf "    integer :: n"; nl ();
-      printf "    n = n_in"; nl ();
-      printf "  end function number_particles_in"; nl ();
-      nl ();
-      printf "  @[<5>"; if !fortran95 then printf "pure ";
-      printf "function number_particles_out () result (n)"; nl ();
-      printf "    integer :: n"; nl ();
-      printf "    n = n_out"; nl ();
-      printf "  end function number_particles_out"; nl ();
-      nl ()
-    i*)
-
     let print_external_mass_case flv (fin, fout) =
       printf "    case (%3d)" (succ flv); nl ();
       List.iteri
@@ -1681,6 +1648,68 @@ i*)
       printf "  end subroutine %s" name; nl ();
       nl ()
 
+    (* Fortran doesn't allow subroutines
+\begin{verbatim}
+  subroutine copy_allocatable_1 (exported, local)
+    dimension(:), allocatable, intent(inout) :: exported
+    dimension(:), intent(in) :: local
+    ...
+  end subroutine copy_allocatable_1
+\end{verbatim}
+      with assumed shape arguments that are not \texttt{allocatable}.
+      Therefore we have to generate a separate function for each table. *)
+
+    (* We return allocated arrays.  The subroutines can be used safely multiple times
+       on the same array, without generating memory leaks. If the shape of the array
+       to be returned has not changed, we just copy the contents, otherwise we
+       reallocate.   Of course, if the caller calls the subroutines for many
+       different arrays, he is responsible for deallocating them after use. *)
+
+    let dimension rank =
+      if rank > 0 then
+        "dimension(" ^ String.concat "," (ThoList.clone ":" rank) ^ ")"
+      else
+        invalid_arg "dimension: rank <= 0"
+
+    type fortran_array =
+      | Integer of int
+      | Real of int
+      | Character of int
+
+    let fortran_array_to_string = function
+      | Integer rank -> "integer, " ^ dimension rank
+      | Real rank -> "real(kind=default), " ^ dimension rank
+      | Character rank -> "character(len=:), " ^ dimension rank
+
+    let print_table_inquiry_function name ?(table = "table_" ^ name) fortran_array =
+      printf "  @[<5>"; if !fortran95 then printf "pure ";
+      printf "subroutine %s (exported)" name; nl ();
+      printf "    %s, allocatable, intent(inout) :: exported" (fortran_array_to_string fortran_array); nl ();
+      printf "        exported = %s" table; nl ();
+      printf "  end subroutine %s" name; nl ();
+      nl ()
+      
+    let _print_table_inquiry_function_explicit_allocation name ?(table = "table_" ^ name) fortran_array =
+      printf "  @[<5>"; if !fortran95 then printf "pure ";
+      printf "subroutine %s (exported)" name; nl ();
+      printf "    %s, allocatable, intent(inout) :: exported" (fortran_array_to_string fortran_array); nl ();
+      printf "    if (allocated (exported)) then"; nl ();
+      printf "      if (all (shape (exported) == shape (%s))) then" table; nl ();
+      printf "        exported = %s" table; nl ();
+      printf "      else"; nl ();
+      printf "        deallocate (exported)"; nl ();
+      printf "        allocate (exported, source=%s)" table; nl ();
+      printf "      end if"; nl ();
+      printf "    else"; nl ();
+      printf "      allocate (exported, source=%s)" table; nl ();
+      printf "    end if"; nl ();
+      printf "  end subroutine %s" name; nl ();
+      nl ()
+      
+    let print_coupling_orders_inquiry_functions () =
+      print_table_inquiry_function "coupling_orders" (Character 1);
+      print_table_inquiry_function "coupling_powers" (Integer 2)
+     
     let print_color_flows () =
       printf "  @[<5>"; if !fortran95 then printf "pure ";
       printf "function number_color_indices () result (n)"; nl ();
@@ -1731,7 +1760,7 @@ i*)
       printf "function color_sum (flv, hel) result (amp2)"; nl ();
       printf "    integer, intent(in) :: flv, hel"; nl ();
       printf "    real(kind=%s) :: amp2" !kind; nl ();
-      printf "    amp2 = real (omega_color_sum (flv, hel, amp, table_color_factors))"; nl ();
+      printf "    amp2 = real (omega_color_sum (flv, hel, amp_all_orders, table_color_factors))"; nl ();
       printf "  end function color_sum"; nl ();
       nl ()
 
@@ -1741,9 +1770,10 @@ i*)
       printf "    real(kind=%s), dimension(0:3,*), intent(in) :: p" !kind; nl ();
       printf "    logical :: mask_dirty"; nl ();
       printf "    integer :: hel"; nl ();
-      printf "    call calculate_amplitudes (amp, p, hel_is_allowed)"; nl ();
+      printf "    call calculate_amplitudes (amp_by_orders, p, hel_is_allowed)"; nl ();
+      printf "    amp_all_orders = sum (amp_by_orders, dim=1)"; nl ();
       printf "    if ((hel_threshold .gt. 0) .and. (hel_count .le. hel_cutoff)) then"; nl ();
-      printf "      call @[<3>omega_update_helicity_selection@ (hel_count,@ amp,@ ";
+      printf "      call @[<3>omega_update_helicity_selection@ (hel_count,@ amp_all_orders,@ ";
       printf "hel_max_abs,@ hel_sum_abs,@ hel_is_allowed,@ hel_threshold,@ hel_cutoff,@ mask_dirty)"; nl ();
       printf "      if (mask_dirty) then"; nl ();
       printf "        hel_finite = 0"; nl ();
@@ -1789,10 +1819,10 @@ i*)
       printf "  end function is_allowed"; nl ();
       nl ();
       printf "  @[<5>"; if !fortran95 then printf "pure ";
-      printf "function get_amplitude (flv, hel, col) result (amp_result)"; nl ();
-      printf "    complex(kind=%s) :: amp_result" !kind; nl ();
+      printf "function get_amplitude (flv, hel, col) result (amp)"; nl ();
+      printf "    complex(kind=%s) :: amp" !kind; nl ();
       printf "    integer, intent(in) :: flv, hel, col"; nl ();
-      printf "    amp_result = amp(flv, col, hel)"; nl ();
+      printf "    amp = amp_all_orders(flv, col, hel)"; nl ();
       printf "  end function get_amplitude"; nl ();
       nl ()
 
@@ -1843,27 +1873,16 @@ i*)
       match CF.coupling_orders amplitudes with
       | None -> ()
       | Some (co_list, cop_list) ->
-         printf "!   coupling orders:"; nl ();
+         printf "!   coupling orders appearing:"; nl ();
          printf "!"; nl ();
-         printf "!      %s" (String.concat ", " (List.map CM.coupling_order_to_string co_list)); nl ();
          List.iter
            (fun cop_list ->
-             printf "!      %s" (String.concat ", " (List.map string_of_int cop_list)); nl ())
+             printf "!     ";
+             List.iter2
+               (fun co cp -> printf " %s=%d" (CM.coupling_order_to_string co) cp)
+               co_list cop_list;
+             nl ())
            cop_list;
-         printf "!"; nl ();
-         List.iter
-           (fun amplitude ->
-             printf "!     %s" (process_to_string amplitude); nl ();
-             match F.brakets amplitude with
-             | [] -> ()
-             | lines ->
-                let order_to_string (order, n) =
-                  Printf.sprintf "%s = %d" (CM.coupling_order_to_string order) n in
-                let orders_to_string orders =
-                  String.concat ", " (List.map order_to_string orders) in
-                List.iter (fun (orders, _) -> printf "!     %s" (orders_to_string orders); nl ()) lines;
-                printf "!"; nl ())
-           (CF.processes amplitudes);
          printf "!"; nl ()
 
     let print_description cmdline amplitudes () =
@@ -1967,6 +1986,9 @@ i*)
       | Full_Aliased of string * (string * string) list
       | Subset of string * used_symbol list
 
+    let subset_of name symbols =
+      Subset (name, List.map (fun s -> As_Is s) symbols)
+
     let print_used_module = function
       | Full name
       | Full_Aliased (name, [])
@@ -1982,16 +2004,17 @@ i*)
       | Subset (name, used_symbol :: used_symbols) ->
           printf "  @[<5>use %s, only: " name;
           print_used_symbol used_symbol;
-          List.iter (fun s -> printf ", "; print_used_symbol s) used_symbols;
+          List.iter (fun s -> printf ",@ "; print_used_symbol s) used_symbols;
           nl ()
 
     type fortran_module =
-        { module_name : string;
-          default_accessibility : accessibility;
-          used_modules : used_module list;
-          public_symbols : string list;
-          print_declarations : (unit -> unit) list;
-          print_implementations : (unit -> unit) list }
+      { description : string list;
+        module_name : string;
+        default_accessibility : accessibility;
+        used_modules : used_module list;
+        public_symbols : string list;
+        print_declarations : (unit -> unit) list;
+        print_implementations : (unit -> unit) list }
 
     let print_public = function
       | name1 :: names ->
@@ -1999,26 +2022,19 @@ i*)
           List.iter (fun n -> printf ",@ %s" n) names; nl ()
       | [] -> ()
 
-    (*i unused value
-    let print_public_interface generic procedures =
-      printf "  public :: %s" generic; nl ();
-      begin match procedures with
-      | name1 :: names ->
-          printf "  interface %s" generic; nl ();
-          printf "     @[<2>module procedure %s" name1;
-          List.iter (fun n -> printf ",@ %s" n) names; nl ();
-          printf "  end interface"; nl ();
-          print_public procedures
-      | [] -> ()
-      end
-    i*)
-
     let print_module m =
+      begin match m.description with
+      | [] -> ()
+      | lines ->
+         printf "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"; nl ();
+         List.iter (fun l -> printf "! %s" l; nl ()) lines;
+         printf "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"; nl ()
+      end;
       printf "module %s" m.module_name; nl ();
       List.iter print_used_module m.used_modules;
       printf "  implicit none"; nl ();
       printf "  %s" (accessibility_to_string m.default_accessibility); nl ();
-      print_public m.public_symbols; nl ();
+      print_public m.public_symbols;
       begin match m.print_declarations with
       | [] -> ()
       | print_declarations ->
@@ -2103,11 +2119,12 @@ i*)
 (* \thocwmodulesubsection{Common Stuff} *)
 
     let omega_public_symbols =
-      ["number_particles_in"; "number_particles_out";
-       "number_color_indices";
+      ["number_particles_in"; "number_particles_out"; "number_color_indices";
        "reset_helicity_selection"; "new_event";
        "is_allowed"; "get_amplitude"; "color_sum";
-       "external_masses"; "openmp_supported"] @
+       "external_masses"; "openmp_supported";
+       "table_coupling_orders"; "table_coupling_powers";
+       "amp_by_orders"; "table_spin_states"; "table_flavor_states"] @
       ThoList.flatmap
         (fun n -> ["number_" ^ n; n])
         ["spin_states"; "flavor_states"; "color_flows"; "color_factors"]
@@ -2156,7 +2173,8 @@ i*)
           ("n_flv", num_flavors); (* Number of different flavor amplitudes. *)
           ("n_hel", num_helicities); (* Number of different helicity amplitudes. *)
           ("n_co", num_coupling_orders); (* Number of different coupling orders. *)
-          ("n_cop", num_coupling_order_powers)  (* Number of different powers of coupling orders. *) ];
+          ("n_co_len", len_coupling_orders); (* Number of different coupling orders. *)
+          ("n_cp", num_coupling_powers)  (* Number of different powers of coupling orders. *) ];
       nl ();
 
       (* Abbreviations.  *)
@@ -2170,6 +2188,7 @@ i*)
         [ ("F", false); ("T", true) ]; nl ();
 
       print_coupling_orders_table amplitudes;
+      print_coupling_powers_table amplitudes;
       print_spin_tables amplitudes;
       print_flavor_tables amplitudes;
       print_color_tables amplitudes;
@@ -2192,6 +2211,12 @@ i*)
       nl ();
       (* Is this really necessary? *)
       Format_Fortran.switch_line_continuation false;
+
+      (* \begin{dubious}
+           The following is \emph{not} part of the interface, but a set of
+           functions to be called during the evaluation of the amplitudes.
+           Find a better place for it.
+         \end{dubious} *)
       if !km_write || !km_pure then (Targets_Kmatrix.Fortran.print !km_pure);
       if !km_2_write || !km_2_pure then (Targets_Kmatrix_2.Fortran.print !km_2_pure);
       Format_Fortran.switch_line_continuation true;
@@ -2199,57 +2224,58 @@ i*)
 
     let print_calculate_amplitudes declarations computations amplitudes =
       printf "  @[<5>subroutine calculate_amplitudes (amp, k, mask)"; nl ();
-      printf "    complex(kind=%s), dimension(:,:,:), intent(out) :: amp" !kind; nl ();
+      printf "    complex(kind=%s), dimension(:,:,:,:), intent(out) :: amp" !kind; nl ();
       printf "    real(kind=%s), dimension(0:3,*), intent(in) :: k" !kind; nl ();
       printf "    logical, dimension(:), intent(in) :: mask"; nl ();
       printf "    integer, dimension(n_prt) :: s"; nl ();
       printf "    integer :: h, hi"; nl ();
       declarations ();
-      if not !amp_triv then begin
-	begin match CF.processes amplitudes with
-	| p :: _ -> print_external_momenta p
-	|  _ -> ()
-	end;
-	ignore (List.fold_left print_momenta PSet.empty (CF.processes amplitudes));
-      end;
+      if not !amp_triv then
+        begin
+	  begin match CF.processes amplitudes with
+	  | p :: _ -> print_external_momenta p
+	  |  _ -> ()
+	  end;
+          List.fold_left print_momenta PSet.empty (CF.processes amplitudes) |> ignore;
+        end;
       printf "    amp = 0"; nl ();
-      if not !amp_triv then begin
-	if num_helicities amplitudes > 0 then begin
-          printf "    if (hel_finite == 0) return"; nl ();
-          if !openmp then begin
-            printf "!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(s, h, %s) SCHEDULE(STATIC)" openmp_tld; nl ();
-          end;
-          printf "    do hi = 1, hel_finite"; nl ();
-          printf "      h = hel_map(hi)"; nl ();
-          printf "      s = table_spin_states(:,h)"; nl ();
-          ignore (List.fold_left print_externals WFSet.empty (CF.processes amplitudes));
-          computations ();
-          List.iter print_fudge_factor (CF.processes amplitudes);
-        (* This sorting should slightly improve cache locality. *)
-          let triple_snd = fun (_,  x, _) -> x
-          in let triple_fst = fun (x, _, _) -> x
-             in let rec builder1 flvi flowi flows = match flows with
-             | (Some a) :: tl -> (flvi, flowi, flavors_symbol (flavors a)) :: (builder1 flvi (flowi + 1) tl)
-             | None :: tl -> builder1 flvi (flowi + 1) tl
-             | [] -> []
-		in let rec builder2 flvi flvs = match flvs with
-		| flv :: tl -> (builder1 flvi 1 flv) @ (builder2 (flvi + 1) tl)
-		| [] -> []
-		   in let unsorted = builder2 1 (List.map Array.to_list (Array.to_list (CF.process_table amplitudes)))
-		      in let sorted = List.sort (fun a b ->
-			if (triple_snd a != triple_snd b) then triple_snd a - triple_snd b else (triple_fst a - triple_fst b))
-			   unsorted
-			 in List.iter (fun (flvi, flowi, flv) ->
-			   (printf "      amp(%d,%d,h) = %s" flvi flowi flv; nl ();)) sorted;
+      if not !amp_triv then
+        begin
+	  if num_helicities amplitudes > 0 then
+            begin
+              printf "    if (hel_finite == 0) return"; nl ();
+              if !openmp then begin
+                  printf "!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(s, h, %s) SCHEDULE(STATIC)" openmp_tld; nl ();
+                end;
+              printf "    do hi = 1, hel_finite"; nl ();
+              printf "      h = hel_map(hi)"; nl ();
+              printf "      s = table_spin_states(:,h)"; nl ();
+              List.fold_left print_externals WFSet.empty (CF.processes amplitudes) |> ignore;
+              computations ();
 
-	(*i     printf "     else"; nl ();
-          printf "      amp(:,h,:) = 0"; nl (); i*)
-			 printf "    end do"; nl ();
-			 if !openmp then begin
-			   printf "!$OMP END PARALLEL DO"; nl ();
-			 end;
-	end;
-      end;
+              (* \begin{dubious}
+                   TODO: add fudge factors for processes exclusive in coupling orders.
+                 \end{dubious} *)
+              List.iter print_fudge_factor (CF.processes amplitudes);
+
+              (* Write in column-major order to improve cache locality (not that it matters much). *)
+              let a = CF.process_table_new amplitudes in
+              for flow = 1 to num_color_flows amplitudes do
+                for flv = 1 to num_flavors amplitudes do
+                  for co = 1 to num_coupling_powers amplitudes do
+                    match a.(pred co).(pred flv).(pred flow) with
+                    | Some (orders, a) -> printf "      amp(%d,%d,%d,h) = %s" co flv flow (flavors_symbol ~orders (flavors a)); nl ()
+                    | None -> ()
+                  done
+                done
+              done;
+	      printf "    end do"; nl ();
+	      if !openmp then
+                begin
+	          printf "!$OMP END PARALLEL DO"; nl ()
+	        end;
+	    end;
+        end;
       printf "  end subroutine calculate_amplitudes"; nl ()
 
     let print_compute_chops chopped_fusions chopped_brakets () =
@@ -2285,6 +2311,67 @@ i*)
           | _ -> acc)
         couplings Sets.String.empty
 
+(* \thocwmodulesubsection{Versioned API} *)
+
+      let api_module_v1 computation_module =
+        { description = ["O'Mega API Version 1"];
+          module_name = !module_name ^ "_api_v1";
+          used_modules = [subset_of computation_module.module_name (public_symbols ())];
+          default_accessibility = Public;
+          public_symbols = [];
+          print_declarations = [];
+          print_implementations = [] }
+
+      let api_module_v1_alias api_module =
+        { description = ["Backward compatible alias for O'Mega API Version 1"];
+          module_name = !module_name;
+          used_modules = [Full (api_module_v1 api_module).module_name];
+          default_accessibility = Public;
+          public_symbols = [];
+          print_declarations = [];
+          print_implementations = [] }
+
+      let print_declarations_api_v3 () =
+        printf "! DUMMY DECLARATIONS FOR TESTING!"; nl ();
+        printf "  integer, parameter, public :: n_incoming = 2"; nl ();
+        printf "  integer, parameter, public :: n_outgoing = 2"; nl ();
+        printf "  integer, parameter, public :: n_particles = 4"; nl ();
+        printf "  integer, parameter, public :: n_colorflows = 2"; nl ();
+        printf "  integer, parameter :: max_rank_inflowing = 1"; nl ();
+        printf "  integer, parameter :: max_rank_outflowing = 1"; nl ();
+        printf "  integer, parameter :: max_n_eps = 0"; nl ();
+        printf "  integer, parameter :: max_n_eps_bar = 0"; nl ();
+        printf "  integer, dimension(n_particles,n_colorflows), save :: rank_inflowing, rank_outflowing"; nl ();
+        printf "  integer, dimension(n_colorflows), save :: n_eps, n_eps_bar"; nl ();
+        printf "  integer, dimension(max_rank_inflowing,n_particles,n_colorflows), save :: inflowing, outflowing"; nl ();
+        printf "  logical, dimension(n_particles,n_colorflows), save :: is_ghost"; nl ();
+        printf "  integer, dimension(3,max_n_eps,n_colorflows), save :: eps"; nl ();
+        printf "  integer, dimension(3,max_n_eps_bar,n_colorflows), save :: eps_bar"; nl ()
+
+      let print_implementations_api_v3 () =
+        printf "  @[<5>"; if !fortran95 then printf "pure ";
+        printf "subroutine load_amplidude (a)"; nl ();
+        printf "   type(amplitude), intent(inout) :: a"; nl ();
+        printf "   call copy_amplitude &"; nl ();
+        printf "      (a, n_incoming, table_flavor_states, table_spin_states, &"; nl ();
+        printf "       rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &"; nl ();
+        printf "       n_eps, eps, n_eps_bar, eps_bar, &"; nl ();
+        printf "       table_coupling_orders, table_coupling_powers, amp_by_orders)"; nl ();
+        printf "  end subroutine load_amplidude"; nl ()
+
+      let api_module_v3 computation_module =
+        { description = ["O'Mega API Version 3";
+                         "WORK IN PROCESS !!!!";
+                         "NOT FOR PRODUCTION !" ];
+          module_name = !module_name ^ "_api_v3";
+          used_modules = [Full "omega_birdtracks";
+                          Full "omega_api_v3";
+                          Full computation_module.module_name];
+          default_accessibility = Private;
+          public_symbols = ["load_amplidude"];
+          print_declarations = [print_declarations_api_v3];
+          print_implementations = [print_implementations_api_v3] }
+
 (* \thocwmodulesubsection{Single Function} *)
 
     let amplitudes_to_channel_single_function cmdline oc amplitudes =
@@ -2304,7 +2391,8 @@ i*)
           amplitudes in
 
       let fortran_module =
-        { module_name = !module_name;
+        { description = ["Amplitude computation module"; "NOT to be USEd by application programs"];
+          module_name = !module_name ^ "_computation";
           used_modules = used_modules ();
           default_accessibility = Private;
           public_symbols = public_symbols ();
@@ -2313,7 +2401,8 @@ i*)
 
       Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       print_description cmdline amplitudes ();
-      print_modules [fortran_module]
+      print_modules [fortran_module; api_module_v1 fortran_module;
+                     api_module_v1_alias fortran_module; api_module_v3 fortran_module]
 
 (* \thocwmodulesubsection{Single Module} *)
 
@@ -2344,7 +2433,8 @@ i*)
         List.iter (print_compute_brakets1 dictionary) chopped_brakets in
 
       let fortran_module =
-        { module_name = !module_name;
+        { description = ["Amplitude computation module"; "NOT to be USEd by application programs"];
+          module_name = !module_name ^ "_computation";
           used_modules = used_modules ();
           default_accessibility = Private;
           public_symbols = public_symbols ();
@@ -2356,7 +2446,8 @@ i*)
 
       Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       print_description cmdline amplitudes ();
-      print_modules [fortran_module]
+      print_modules [fortran_module; api_module_v1 fortran_module;
+                     api_module_v1_alias fortran_module; api_module_v3 fortran_module]
 
 (* \thocwmodulesubsection{Multiple Modules} *)
 
@@ -2370,7 +2461,8 @@ i*)
         print_variable_declarations amplitudes in
 
       let constants_module =
-        { module_name = name ^ "_constants";
+        { description = ["Constants shared among splitted computation modules"];
+          module_name = name ^ "_constants";
           used_modules = used_modules ();
           default_accessibility = Public;
           public_symbols = [];
@@ -2378,7 +2470,8 @@ i*)
           print_implementations = [] } in
 
       let variables_module =
-        { module_name = name ^ "_variables";
+        { description = ["Variables shared among splitted computation modules"];
+          module_name = name ^ "_variables";
           used_modules = used_modules ();
           default_accessibility = Public;
           public_symbols = [];
@@ -2413,7 +2506,8 @@ i*)
 
       let fusions_module (n, _ as fusions) =
         let tag = Printf.sprintf "_fusions_%04d" n in
-        { module_name = name ^ tag;
+        { description = [];
+          module_name = name ^ tag;
           used_modules = (used_modules () @
                           [Full constants_module.module_name;
                            Full variables_module.module_name]);
@@ -2424,7 +2518,8 @@ i*)
 
       let brakets_module (n, _ as processes) =
         let tag = Printf.sprintf "_brakets_%04d" n in
-        { module_name = name ^ tag;
+        { description = [];
+          module_name = name ^ tag;
           used_modules = (used_modules () @
                           [Full constants_module.module_name;
                            Full variables_module.module_name]);
@@ -2449,36 +2544,40 @@ i*)
           (print_compute_chops chopped_fusions chopped_brakets)
           amplitudes in
 
-      let public_module =
-        { module_name = name;
-           used_modules = (used_modules () @
-                           [Full constants_module.module_name;
-                            Full variables_module.module_name ] @
-                           List.map
-                             (fun m -> Full m.module_name)
-                             (fusions_modules @ brakets_modules));
-          default_accessibility = Private;
-          public_symbols = public_symbols ();
-          print_declarations = [];
-          print_implementations = [print_implementations] }
+      let public_modules =
+        let computation_module =
+          { description = ["Amplitude computation module"; "NOT to be USEd by application programs"];
+            module_name = name ^ "_computation";
+            used_modules = (used_modules () @
+                              [Full constants_module.module_name;
+                               Full variables_module.module_name ] @
+                                List.map
+                                  (fun m -> Full m.module_name)
+                                  (fusions_modules @ brakets_modules));
+            default_accessibility = Private;
+            public_symbols = public_symbols ();
+            print_declarations = [];
+            print_implementations = [print_implementations] } in
+        [computation_module; api_module_v1 computation_module;
+         api_module_v1_alias computation_module; api_module_v3 computation_module]
       and private_modules =
         [constants_module; variables_module] @
           fusions_modules @ brakets_modules in
-      (public_module, private_modules)
+      (public_modules, private_modules)
 
     let amplitudes_to_channel_single_file cmdline oc size amplitudes =
-      let public_module, private_modules =
+      let public_modules, private_modules =
         modules_of_amplitudes cmdline oc size amplitudes in
       Format_Fortran.set_formatter_out_channel ~width:!line_length oc;
       print_description cmdline amplitudes ();
-      print_modules (private_modules @ [public_module])
+      print_modules (private_modules @ public_modules)
 
     let amplitudes_to_channel_multi_file cmdline oc size amplitudes =
-      let public_module, private_modules =
+      let public_modules, private_modules =
         modules_of_amplitudes cmdline oc size amplitudes in
       modules_to_file !line_length oc
         (print_description cmdline amplitudes)
-        (public_module :: private_modules)
+        (public_modules @ private_modules)
 
 (* \thocwmodulesubsection{Dispatch} *)
 

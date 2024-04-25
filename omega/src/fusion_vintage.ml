@@ -1333,7 +1333,7 @@ i*)
         module Nodes =
           struct
             type t = A.wf
-            module G = struct type t = int let compare = compare end
+            module G = Int
             let compare = A.order_wf
             let rank wf = P.rank wf.A.momentum
           end

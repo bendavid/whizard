@@ -41,11 +41,3 @@ module type Maker =
     functor (F : Fusion.Maker) ->
       functor (P : Momentum.T) -> functor (M : Model.T) ->
         T with type amplitudes = Fusion.Multi(F)(P)(M).amplitudes
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

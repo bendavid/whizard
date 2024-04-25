@@ -187,7 +187,7 @@ let iteri2 f start_outer star_inner lists =
   iteri (fun j -> iteri (f j) star_inner) start_outer lists
 
 let mapi f start list =
-  let next, list' =
+  let _, list' =
     List.fold_left (fun (i, acc) a -> (succ i, f i a :: acc)) (start, []) list in
   List.rev list'
 
@@ -252,7 +252,7 @@ let rec homogeneous = function
           
 let rec pairs' acc = function
   | [] -> acc
-  | [x] -> invalid_arg "pairs: odd number of elements"
+  | [_] -> invalid_arg "pairs: odd number of elements"
   | x :: y :: indices ->
      if x <> y then
        invalid_arg "pairs: not in pairs"
@@ -287,7 +287,7 @@ let classify l =
   in
   classify' [] l
 
-let rec factorize l =
+let factorize l =
   let rec add_to_class x y = function
     | [] -> [(x, [y])]
     | (x', ys) :: rest ->
@@ -387,13 +387,13 @@ let partitioned_sort cmp index_sets list =
 
 let ariadne_sort ?(cmp=Stdlib.compare) list =
   let sorted =
-    List.sort (fun (n1, a1) (n2, a2) -> cmp a1 a2) (enumerate 0 list) in
+    List.sort (fun (_, a1) (_, a2) -> cmp a1 a2) (enumerate 0 list) in
   (List.map snd sorted, List.map fst sorted)
 
 let ariadne_unsort (sorted, indices) =
   List.map snd
     (List.sort
-       (fun (n1, a1) (n2, a2) -> Stdlib.compare n1 n2)
+       (fun (n1, _) (n2, _) -> Stdlib.compare n1 n2)
        (List.map2 (fun n a -> (n, a)) indices sorted))
 
 let lexicographic ?(cmp=Stdlib.compare) l1 l2 =
@@ -505,7 +505,7 @@ module Test =
           "filtermap None []" >::
             (fun () ->
               assert_equal ~printer:(to_string string_of_int)
-                [] (filtermap (fun x -> None) []));
+                [] (filtermap (fun _ -> None) []));
 
           "filtermap even_neg []" >::
             (fun () ->

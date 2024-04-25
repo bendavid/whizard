@@ -48,7 +48,7 @@ module Make (E : Ordered_Type) =
     type elt = E.t
 
     module ESet = Set.Make (E)
-    type set = ESet.t
+    type _set = ESet.t
 
     module EPowSet = Set.Make (ESet)
     type t = EPowSet.t
@@ -66,7 +66,7 @@ module Make (E : Ordered_Type) =
     let to_string powset =
       "{" ^ String.concat "," (List.map set_to_string (EPowSet.elements powset)) ^ "}"
 
-    let set_of_list = ESet.of_list
+    let _set_of_list = ESet.of_list
 
     let of_lists lists =
       List.fold_right
@@ -173,8 +173,7 @@ module Make (E : Ordered_Type) =
 
 (*i
 
-module EPowSet =
-  Make (struct type t = int let compare = compare let to_string = string_of_int end)
+module EPowSet = Make (Int)
 
 let test lists =
   let ps = EPowSet.of_lists lists in
@@ -190,12 +189,4 @@ let _ = List.iter test
       [[1;3;4];[1;3;4];[1;3;4]]
     ]
 
-i*)
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
 i*)

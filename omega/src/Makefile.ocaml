@@ -41,12 +41,12 @@ SUFFIXES = .mll .mly .ml .mli .cmi .cmo .cmx .bin .opt
 .cmx$(OCAML_NATIVE_EXT):
 	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
 	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o $@ \
-	  unix.cmxa $(OMEGA_CMXA) $<
+	  -I +unix unix.cmxa $(OMEGA_CMXA) $<
 
 .cmo$(OCAML_BYTECODE_EXT):
 	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
 	$(AM_V_at)$(OCAMLC) $(OCAMLDEBUGFLAGS) $(OCAMLFLAGS) -o $@ \
-	  unix.cma $(OMEGA_CMA) $<
+	  -I +unix unix.cma $(OMEGA_CMA) $<
 
 .ml.cmx:
 	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi

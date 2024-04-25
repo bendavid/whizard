@@ -338,7 +338,7 @@ module Make (M : Momentum.T) =
       | Leaf p -> "(" ^ p_to_string p ^ ")"
       | Branch (_, d1, d2) -> "(" ^ to_string1 d1 ^ to_string1 d2 ^ ")"
 
-    let to_string ps =
+    let _to_string ps =
       String.concat "/"
         (List.map (fun (p1, d, p2) ->
           p_to_string p1 ^ to_string1 d ^ p_to_string p2) ps)
@@ -348,7 +348,7 @@ module Make (M : Momentum.T) =
     let try_thread_unfinished_decays p c =
       thread_unfinished_decays' p [] c.t_channel c.decays
 
-    let try_of_momenta f  = function
+    let _try_of_momenta f  = function
       | (p, _) :: _ as l ->
           let n = M.dim p in
           try_thread_unfinished_decays
@@ -371,12 +371,4 @@ module Make (M : Momentum.T) =
    let four_s' = f (of_momenta () () four_s)
    let six_mp_1' = f (of_momenta () () six_mp_1)
    let six_mp_2' = f (of_momenta () () six_mp_2)
-i*)
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
 i*)

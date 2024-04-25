@@ -198,7 +198,6 @@ module Ternary =
     let fold_left_internal f (x, y, z) = f (f x y) z
     let fold_right_internal f (x, y, z) = f x (f y z)
 
-    exception Mismatched_arity
     let map2 f (x1, y1, z1) (x2, y2, z2) = (f x1 x2, f y1 y2, f z1 z2)
 
     let split ((x1, x2), (y1, y2), (z1, z2)) = ((x1, y1, z1), (x2, y2, z2))
@@ -490,7 +489,7 @@ module Nary (A : sig val max_arity : unit -> int end) =
 
     type 'a graded = 'a list array
 
-    let fuse_n f set partition acc =
+    let _fuse_n f set partition acc =
       let choose (n, r) = 
         Printf.printf "chose: n=%d r=%d len=%d\n"
           n r (List.length set.(pred r));
@@ -528,11 +527,3 @@ module Nary (A : sig val max_arity : unit -> int end) =
 
 module type Bound = sig val max_arity : unit -> int end
 module Unbounded_Nary = Nary (struct let max_arity () = -1 end)
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

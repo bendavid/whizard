@@ -25,13 +25,13 @@ V_3 = Vertex(name = 'V_3',
 
 V_4 = Vertex(name = 'V_4',
              particles = [ P.s3, P.s3, P.s6__tilde__ ],
-             color = [ 'K6(3,2,1)' ],
+             color = [ 'K6Bar(3,2,1)' ],
              lorentz = [ L.SSS1 ],
              couplings = {(0,0):C.GC_1})
 
 V_5 = Vertex(name = 'V_5',
              particles = [ P.s3__tilde__, P.s3__tilde__, P.s6 ],
-             color = [ 'K6Bar(3,2,1)' ],
+             color = [ 'K6(3,2,1)' ],
              lorentz = [ L.SSS1 ],
              couplings = {(0,0):C.GC_1})
 

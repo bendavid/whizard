@@ -107,9 +107,6 @@
   \clearpage\global\@topnum\z@\@afterindentfalse
   \secdef\@chapter\@schapter}
 \makeatother
-\newcommand{\signature}[1]{%
-  \InputIfFileExists{#1.interface}{}%
-    {\begin{dubious}\textit{Interface \ttfilename{#1.mli} unavailable!}\end{dubious}}}
 \newcommand{\interface}[1]{%
   \label{mod:#1}%
   \InputIfFileExists{#1.implementation}{}%
@@ -818,11 +815,11 @@ gives
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Lorentz Representations, Couplings, Models and Targets}
 \label{sec:coupling}
-\signature{coupling}
-\signature{model}
+\interface{coupling}
+\interface{model}
 \module{dirac}
 %%% \module{vertex}
-\signature{target}
+\interface{target}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conserved Quantum Numbers}
@@ -1018,6 +1015,11 @@ Phys.{} Rev.{} \textbf{D14} (1976) 1536.
   [arXiv:1206.3700 [hep-ph]].
   %%CITATION = doi:10.1007/JHEP10(2012)022;%%
   %37 citations counted in INSPIRE as of 23 Apr 2019
+  %\cite{Ohl:2024fpq}
+\bibitem{Ohl:2024fpq}
+T.~Ohl,
+%``Birdtracks of Exotic SU(N) Color Structures,''
+[arXiv:2403.04685 [hep-ph]].
   %\cite{Degrande:2011ua}
 \bibitem{Degrande:2011ua}
 C.~Degrande, C.~Duhr, B.~Fuks, D.~Grellscheid, O.~Mattelaer and T.~Reiter,
@@ -1025,6 +1027,13 @@ C.~Degrande, C.~Duhr, B.~Fuks, D.~Grellscheid, O.~Mattelaer and T.~Reiter,
 Comput.{} Phys.{} Commun.{} \textbf{183} (2012), 1201-1214
 doi:10.1016/j.cpc.2012.01.022
 [arXiv:1108.2040 [hep-ph]].
+%\cite{Darme:2023jdn}
+\bibitem{Darme:2023jdn}
+L.~Darm\'e, C.~Degrande, C.~Duhr, B.~Fuks, M.~Goodsell, G.~Heinrich, V.~Hirschi, S.~H\"oche, M.~H\"ofer and J.~Isaacson, \textit{et al.}
+%``UFO 2.0: the \textquoteleft{}Universal Feynman Output\textquoteright{} format,''
+Eur.{} Phys.{} J.{} C \textbf{83} (2023) no.7, 631
+[arXiv:2304.09883 [hep-ph]].
+%32 citations counted in INSPIRE as of 21 Mar 2024
 \bibitem{TAOCP2}
 Donald E.~Knuth,
 \textit{The Art of Computer Programming. 2: Seminumerical algorithms}

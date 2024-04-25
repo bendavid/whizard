@@ -37,7 +37,7 @@ let invalid s =
 let impossible s =
   invalid_arg ("Colorize." ^ s ^ " can't happen! (but just did ...)")
 
-let mismatch s =
+let _mismatch s =
   invalid_arg ("Colorize." ^ s ^ " mismatch of representations!")
 
 let su0 s =
@@ -325,7 +325,7 @@ let cmult_vertex4 z v =
   | None -> invalid_arg "cmult_vertex4"
   | Some x -> mult_vertex4 x v
 
-let mult_vertexn x = function
+let mult_vertexn _x = function
   | _ -> incomplete "mult_vertexn"
 
 let cmult_vertexn z v =
@@ -514,73 +514,73 @@ module Legacy_Implementation (M : Model.T) =
           DScalar2_Vector2_m_7_K_Matrix_cf (c, permute_contract4_list perm ic4_list)    
       | DScalar4_K_Matrix_ms (c, ic4_list) ->
           DScalar4_K_Matrix_ms (c, permute_contract4_list perm ic4_list)
-      | Scalar2_Vector2 c ->
+      | Scalar2_Vector2 _c ->
           incomplete "permute_vertex4' Scalar2_Vector2"
-      | DScalar4 ic4_list ->
+      | DScalar4 _ic4_list ->
           incomplete "permute_vertex4' DScalar4"
-      | DScalar2_Vector2 ic4_list ->
+      | DScalar2_Vector2 _ic4_list ->
           incomplete "permute_vertex4' DScalar2_Vector2"
-      | GBBG (c, fb, b2, f) ->
+      | GBBG (_c, _fb, _b2, _f) ->
           incomplete "permute_vertex4' GBBG"
-      | Vector4_K_Matrix_tho (c, ch2_list) ->
+      | Vector4_K_Matrix_tho (_c, _ch2_list) ->
           incomplete "permute_vertex4' Vector4_K_Matrix_tho"
-      | Dim8_Scalar2_Vector2_1 ic4_list ->
+      | Dim8_Scalar2_Vector2_1 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_1"
-      | Dim8_Scalar2_Vector2_2 ic4_list ->
+      | Dim8_Scalar2_Vector2_2 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_2"
-      | Dim8_Scalar2_Vector2_m_0 ic4_list ->
+      | Dim8_Scalar2_Vector2_m_0 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_m_0"   
-      | Dim8_Scalar2_Vector2_m_1 ic4_list ->
+      | Dim8_Scalar2_Vector2_m_1 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_m_1" 
-      | Dim8_Scalar2_Vector2_m_7 ic4_list ->
+      | Dim8_Scalar2_Vector2_m_7 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar2_Vector2_m_7"    
-      | Dim8_Scalar4 ic4_list ->
+      | Dim8_Scalar4 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Scalar4"
-      | Dim8_Vector4_t_0  ic4_list ->
+      | Dim8_Vector4_t_0 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Vector4_t_0"
-      | Dim8_Vector4_t_1  ic4_list ->
+      | Dim8_Vector4_t_1 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Vector4_t_1"          
-      | Dim8_Vector4_t_2  ic4_list ->
+      | Dim8_Vector4_t_2 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Vector4_t_2"     
-      | Dim8_Vector4_m_0  ic4_list ->
+      | Dim8_Vector4_m_0 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Vector4_m_0"  
-      | Dim8_Vector4_m_1  ic4_list ->
+      | Dim8_Vector4_m_1 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Vector4_m_1" 
-      | Dim8_Vector4_m_7  ic4_list ->
+      | Dim8_Vector4_m_7 _ic4_list ->
           incomplete "permute_vertex4' Dim8_Vector4_m_7"    
-      | Dim6_H4_P2 ic4_list ->
+      | Dim6_H4_P2 _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_H4_P2"
-      | Dim6_AHWW_DPB ic4_list ->
+      | Dim6_AHWW_DPB _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_AHWW_DPB"
-      | Dim6_AHWW_DPW ic4_list ->
+      | Dim6_AHWW_DPW _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_AHWW_DPW"
-      | Dim6_AHWW_DW ic4_list ->
+      | Dim6_AHWW_DW _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_AHWW_DW"
-      | Dim6_Vector4_DW ic4_list ->
+      | Dim6_Vector4_DW _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_Vector4_DW"
-      | Dim6_Vector4_W ic4_list ->
+      | Dim6_Vector4_W _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_Vector4_W"
-      | Dim6_Scalar2_Vector2_D ic4_list ->
+      | Dim6_Scalar2_Vector2_D _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_Scalar2_Vector2_D"
-      | Dim6_Scalar2_Vector2_DP ic4_list ->
+      | Dim6_Scalar2_Vector2_DP _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_Scalar2_Vector2_DP"
-      | Dim6_Scalar2_Vector2_PB ic4_list ->
+      | Dim6_Scalar2_Vector2_PB _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_Scalar2_Vector2_PB"
-      | Dim6_HHZZ_T ic4_list ->
+      | Dim6_HHZZ_T _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_HHZZ_T"
-      | Dim6_HWWZ_DW ic4_list ->
+      | Dim6_HWWZ_DW _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_HWWZ_DW"
-      | Dim6_HWWZ_DPB ic4_list ->
+      | Dim6_HWWZ_DPB _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_HWWZ_DPB"
-      | Dim6_HWWZ_DDPW ic4_list ->
+      | Dim6_HWWZ_DDPW _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_HWWZ_DDPW"
-      | Dim6_HWWZ_DPW ic4_list ->
+      | Dim6_HWWZ_DPW _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_HWWZ_DPW"
-      | Dim6_AHHZ_D ic4_list ->
+      | Dim6_AHHZ_D _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_AHHZ_D"
-      | Dim6_AHHZ_DP ic4_list ->
+      | Dim6_AHHZ_DP _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_AHHZ_DP"
-      | Dim6_AHHZ_PB ic4_list ->
+      | Dim6_AHHZ_PB _ic4_list ->
 	  incomplete "permute_vertex4' Dim6_AHHZ_PB"
 
     let permute_vertex4 perm = function
@@ -612,13 +612,13 @@ module Legacy_Implementation (M : Model.T) =
               else
                 []
 
-          | CF_io (f1, c1, c1'), CF_io (f2, c2, c2') ->
+          | CF_io (_, c1, c1'), CF_io (_, c2, c2') ->
               if c1 = c2' && c2 = c1' then
                 [White f, v]
               else
                 []
 
-          | CF_aux f1, CF_aux f2 ->
+          | CF_aux _, CF_aux _ ->
               [White f, mult_vertex (- (nc ())) v]
 
           | CF_aux _, CF_io _ | CF_io _, CF_aux _ ->
@@ -815,7 +815,7 @@ module Legacy_Implementation (M : Model.T) =
      gaugino-gaugino-gaugeboson couplings!!! 
    \end{dubious} *)
 
-          | CF_io (f1, c1, c1'), CF_io (f2, c2, c2') ->
+          | CF_io (_, c1, c1'), CF_io (_, c2, c2') ->
               let phase =
                 begin match v with
                 | V3 (Gauge_Gauge_Gauge _, _, _)
@@ -1133,7 +1133,7 @@ module Legacy_Implementation (M : Model.T) =
              non_legacy_color "colorize_fusion3" c
           end
 
-      | C.AdjSUN nc ->
+      | C.AdjSUN _ ->
           begin match f1, f2, f3 with
 
           | CF_in (_, c1), CF_out (_, c1'), White _
@@ -1302,12 +1302,12 @@ module Legacy_Implementation (M : Model.T) =
               else
                 []
 
-          | CF_io (_, c1, c1'), CF_aux _, White _
-          | CF_aux _, CF_io (_, c1, c1'), White _
-          | CF_io (_, c1, c1'), White _, CF_aux _
-          | CF_aux _, White _, CF_io (_, c1, c1')
-          | White _, CF_io (_, c1, c1'), CF_aux _
-          | White _, CF_aux _, CF_io (_, c1, c1') ->
+          | CF_io (_, _, _), CF_aux _, White _
+          | CF_aux _, CF_io (_, _, _), White _
+          | CF_io (_, _, _), White _, CF_aux _
+          | CF_aux _, White _, CF_io (_, _, _)
+          | White _, CF_io (_, _, _), CF_aux _
+          | White _, CF_aux _, CF_io (_, _, _) ->
               []
 
           | CF_aux _, CF_aux _, White _
@@ -1362,7 +1362,7 @@ module Legacy_Implementation (M : Model.T) =
       | White _ -> true
       | _ -> false
 
-    let colorize_fusionn flist (f, v) =
+    let _colorize_fusionn flist (f, v) =
       let incomplete_match () =
         incomplete
           ("colorize_fusionn { " ^
@@ -1505,7 +1505,7 @@ module It (M : Model.T) =
 
     let fermion = pullback M.fermion
 
-    let max_degree = M.max_degree
+    let _max_degree = M.max_degree
 
     let flavors () =
       invalid "flavors"
@@ -1631,14 +1631,13 @@ module It (M : Model.T) =
    in the vertices, we have to undo the permutation effected by
    the fusion according to [Coupling.fusen]. *)
 
-    module PosMap =
-      Partial.Make (struct type t = int let compare = compare end)
+    module PosMap = Partial.Make (Int)
 
     (* Note that due to the [inverse], the list [l'] can be
        interpreted here as a map reshuffling the indices.
        E.\,g., [inverse (Permutation.Default.list [2;0;1])]
        applied to [[1;2;3]] gives [[3;1;2]]. *)
-    let partial_map_redoing_permutation l l' =
+    let _partial_map_redoing_permutation l l' =
       let module P = Permutation.Default in
       let p = P.inverse (P.of_list (List.map pred l')) in
       PosMap.of_lists l (P.list p l)
@@ -1659,7 +1658,7 @@ module It (M : Model.T) =
       | CF_out (_, cfo) -> CP.of_lists [] [cfo]
       | CF_io (_, cfi, cfo) -> CP.of_lists [cfi] [cfo]
       | CF_aux _ -> CP.Ghost
-      | CF (f, cp) -> cp
+      | CF (_, cp) -> cp
 
     (* \begin{dubious}
          Should we continue to translate the flows back and forth?
@@ -1834,7 +1833,7 @@ module It (M : Model.T) =
         | C.Singlet, C.AdjSUN _, C.Singlet, C.AdjSUN _
         | C.Singlet, C.Singlet, C.AdjSUN _, C.AdjSUN _ -> true
         | _ -> false) vertices4 ||
-      List.exists (fun (flist, _, g) -> true) verticesn
+      List.exists (fun (_, _, _) -> true) verticesn
 
     (* [colorize_crossed_amplitude_opt ghosts flavors (cfi, cfo)] attempts to join the
        [flavors] with the external color flow [(cfi, cfo)].
@@ -1908,7 +1907,7 @@ module It (M : Model.T) =
           | Some ca -> ca :: ca_list)
         [] (external_color_flows f_list)
 
-    let colorize_crossed_amplitude_logging f_list =
+    let _colorize_crossed_amplitude_logging f_list =
       let amplitudes = colorize_crossed_amplitude f_list in
       List.iter (fun a -> Printf.eprintf "%s\n" (ThoList.to_string flavor_to_string a)) amplitudes;
       amplitudes
@@ -1939,7 +1938,7 @@ module It (M : Model.T) =
       | CF_out (_, c) -> Color.Flow.of_list [0; -c]
       | CF_io (_, c1, c2) -> Color.Flow.of_list [c1; -c2]
       | CF_aux _ -> Color.Flow.ghost ()
-      | CF (f, cp) ->
+      | CF (_, cp) ->
          Printf.eprintf
            "Colorize.indices: color flow `%s' not handled yet\n"
            (CP.to_string cp);
@@ -2010,16 +2009,16 @@ module Gauge (M : Model.Gauge) =
       | Gauge of gauge_boson
       | Other of other
 
-    let field f = 
+    let field _f = 
       incomplete "field"
 
-    let matter_field f =
+    let matter_field _f =
       incomplete "matter_field"
 
-    let gauge_boson f =
+    let gauge_boson _f =
       incomplete "gauge_boson"
 
-    let other f =
+    let other _f =
       incomplete "other"
 
     let amplitude = CM.amplitude

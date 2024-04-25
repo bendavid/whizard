@@ -382,10 +382,11 @@ module type Multi =
     val process_table : amplitudes -> amplitude option array array
 
     (* [(process_table a).(co).(f).(c)] returns the amplitude for
-       the [o]th set of coupling orders, the [f]th
+       the [co]th set of coupling orders, the [f]th
        allowed flavor combination and the [c]th allowed color flow
        as an [amplitude option]. *)
-    val process_table_new : amplitudes -> amplitude option array array array
+    val process_table_new :
+      amplitudes -> ((coupling_order * int) list * amplitude) option array array array
 
     (* The list of all non redundant fusions together with the amplitudes
        they came from. *)

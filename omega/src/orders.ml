@@ -254,7 +254,7 @@ module Conditions (M : Model_CO (* $\subset$ [Model.T] *)) : Conditions
       | Sum, Sum -> Sum
       | Slice, Sum | Sum, Slice | Slice, Slice -> Slice
 
-    let and_range co (r1, m1) (r2, m2) =
+    let and_range _co (r1, m1) (r2, m2) =
       match and_range_opt r1 r2 with
       | None -> None
       | Some r -> Some (r, prefer_slice m1 m2)
@@ -289,7 +289,7 @@ module Conditions (M : Model_CO (* $\subset$ [Model.T] *)) : Conditions
            gap co
       | IN (i, j), GE k | GE k, IN (i, j) ->
          if k <= succ j then Some (GE i) else gap co
-      | GE i, EQ j | EQ j, GE i ->
+      | GE _, EQ j | EQ j, GE _ ->
          if j >= pred j then Some (GE j) else gap co
       | IN (i, j), EQ k | EQ k, IN (i, j) ->
          if i <= k && k <= j then
@@ -503,6 +503,7 @@ module type Coupling_Orders =
        relation. *)
     val incr : orders -> orders -> orders
 
+(*i
     (* [square_root condition orders_list] returns a triple [(used, squares, interferences)]
        where [used] is a list of are all combinations of powers of coupling orders that appear
        at least once in [squares] or [interferences].  [squares] are the terms
@@ -510,6 +511,7 @@ module type Coupling_Orders =
        [interferences] satisfy [condition] when  multiplied. *)
     val square_root : (orders -> bool) -> orders list ->
                       orders list * orders list * (orders * orders) list
+i*)
 
     (* Debugging: *)
     val to_string : orders -> string
@@ -547,13 +549,13 @@ module Coupling_Orders (M : sig type coupling_order val coupling_order_to_string
     let to_list o = o
 
     (* Here's a dedicated version, but \ldots *)
-    let rec add ol1 ol2 =
+    let rec _add ol1 ol2 =
       match ol1, ol2 with
       | [], [] -> []
-      | [], tail | tail, [] -> invalid_arg "Orders.Coupling_Orders.add: length mismatch"
+      | [], _ | _, [] -> invalid_arg "Orders.Coupling_Orders.add: length mismatch"
       | (o1, n1) :: tail1, (o2, n2) :: tail2 ->
          if o1 = o2 then
-           (o1, n1 + n2) :: add tail1 tail2
+           (o1, n1 + n2) :: _add tail1 tail2
          else
            invalid_arg
              (Printf.sprintf "Orders.Coupling_Orders.add: mismatch '%s' <> '%s'"
@@ -565,7 +567,7 @@ module Coupling_Orders (M : sig type coupling_order val coupling_order_to_string
       let rec add' acc ol1 ol2 =
         match ol1, ol2 with
         | [], [] -> List.rev acc
-        | [], tail | tail, [] -> invalid_arg "Orders.Coupling_Orders.add: length mismatch"
+        | [], _ | _, [] -> invalid_arg "Orders.Coupling_Orders.add: length mismatch"
         | (o1, n1) :: tail1, (o2, n2) :: tail2 ->
            if o1 = o2 then
              add' ((o1, n1 + n2) :: acc) tail1 tail2
@@ -577,7 +579,7 @@ module Coupling_Orders (M : sig type coupling_order val coupling_order_to_string
 
     (* This is very similar to [add], but coupling orders that appear only in
        the first, but not the second argument are ignored. *)
-    let rec incr ol1 ol2 =
+    let rec _incr ol1 ol2 =
       match ol1, ol2 with
       | _, [] -> (* we're done with the second argument, ignore the rest of the first *)
          []
@@ -585,11 +587,11 @@ module Coupling_Orders (M : sig type coupling_order val coupling_order_to_string
          tail
       | (o1, n1) :: tail1, (o2, n2 as on2) :: tail2 ->
          if o1 = o2 then (* coupling orders match, add the powers *)
-           (o1, n1 + n2) :: incr tail1 tail2
+           (o1, n1 + n2) :: _incr tail1 tail2
          else if o1 < o2 then (* [o1] does not appear in the second argument, ignore it *)
-           incr tail1 ol2
+           _incr tail1 ol2
          else  (* [o2] does not appear in the first argument, keep it unchanged *)
-           on2 :: incr ol1 tail2
+           on2 :: _incr ol1 tail2
 
     (* Here's again a tail recursive version. *)
     let incr ol1 ol2 =
@@ -622,7 +624,7 @@ module Coupling_Orders (M : sig type coupling_order val coupling_order_to_string
        [List.fold_left add null olist],
        because then [add] would need to accept orders
        of different lengths. *)
-    let sum = function
+    let _sum = function
       | [] -> null
       | o :: rest -> List.fold_left add o rest
 
@@ -641,7 +643,7 @@ module Coupling_Orders (M : sig type coupling_order val coupling_order_to_string
       | [] -> []
       | a1 :: a2_list -> List.map (fun a2 -> (a1, a2)) a2_list @ ordered_pairs a2_list
 
-    let square_root condition orders =
+    let _square_root condition orders =
       let used = OSet.empty in
       let squares, used =
         List.fold_right
@@ -765,7 +767,6 @@ module Slice (CM : Model.Colorized) =
     let conjugate_all_orders = CM.conjugate
     let fermion = OCF.pullback CM.fermion
     let max_degree = CM.max_degree
-    let max_degree = CM.max_degree
 
     let vertices () =
       incomplete "vertices"
@@ -855,7 +856,7 @@ module Test =
 
     module M (* [: Model_CO] *) =
       struct
-        type constant = E | G | G2 | L
+        type constant = unit (*[ E | G | G2 | L ]*)
         type coupling_order = EW | QCD | BSM
         let all_coupling_orders () = [EW; QCD; BSM]
         let coupling_order_to_string = function
@@ -863,10 +864,11 @@ module Test =
           | QCD -> "QCD"
           | BSM -> "BSM"
         let coupling_orders = function
-          | E -> [(EW,1)]
-          | G -> [(QCD,1)]
-          | G2 -> [(QCD,2)]
-          | L -> [(BSM,1)]
+          | () -> []
+      (*[ | E -> [(EW,1)] ]*)
+      (*[ | G -> [(QCD,1)] ]*)
+      (*[ | G2 -> [(QCD,2)] ]*)
+      (*[ | L -> [(BSM,1)] ]*)
       end
 
     module C = Conditions (M)
@@ -908,7 +910,7 @@ module Test =
       let conditions = C.of_strings conditions in
       assert_equal ~printer:string_of_bool expected (C.fusion conditions (sort orders))
 
-    let suite_fusion =
+    let _suite_fusion =
       let open M in
       "fusion" >:::
         [ "BSM;EW=2;QCD=1: QCD=1" >::

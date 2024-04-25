@@ -285,7 +285,7 @@ module Test (P : T) : sig val suite : OUnit.test val time : unit -> unit end =
       "of_lists" >:::
 	[ "ok" >::
 	    (fun () ->
-              for i = 1 to 10 do
+              for _ = 1 to 10 do
 	        let l = random_int_list 1000000 100 in
                 let l' = shuffle l in
 	        assert_equal
@@ -361,7 +361,7 @@ module Test (P : T) : sig val suite : OUnit.test val time : unit -> unit end =
       and l = shuffle (List.map string_of_int id) in
       print_time (Printf.sprintf "reps=%d, len=%d" repetitions size)
 	(fun () ->
-	  for i = 1 to repetitions do
+	  for _ = 1 to repetitions do
 	    ignore (P.list p l)
 	  done)
 	()

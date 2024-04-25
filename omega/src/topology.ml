@@ -534,7 +534,7 @@ module type Count =
 
 module Count (I : Integer) =
   struct
-    let description = ["(still inoperational) phi^n topology"]
+    let _description = ["(still inoperational) phi^n topology"]
 
     type integer = I.t
     open I
@@ -545,7 +545,7 @@ module Count (I : Integer) =
    can fail.  Provide our own version using the specific comparison
    ``[(<=)]''. *)
 
-    let min x y =
+    let _min x y =
       if x <= y then
         x
       else

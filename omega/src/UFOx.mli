@@ -184,6 +184,31 @@ module type Atom =
     val omega : r -> r_omega
   end
 
+(* Copied verbatim from~\cite{Darme:2023jdn}:
+   \begin{quote}
+     \textit{Elementary spin tensors that can be used to construct
+     the elements of the spin basis relevant to a given UFO vertex.
+     Spin and Lorentz indices are respectively denoted as $s$ and $\mu$.}
+   \end{quote}
+   \begin{center}
+     \begin{tabular}{rl}
+     \label{pg:UFO-Lorentz}
+     UFO spin tensor  & Description\\
+     \hline
+      \verb+Identity(1,2)+    & (Spinorial) Kronecker delta $\delta_{s_1s_2}$\\
+      \verb+IdentityL(1,2)+   & (Lorentz) Kronecker delta $\delta^{\mu_1}_{\mu_2}$\\
+      \verb+Gamma(1,2,3)+     & Dirac matrix $(\gamma^{\mu_1})_{s_2s_3}$\\
+      \verb+Gamma5(1,2)+      & Fifth Dirac matrix $(\gamma^5)_{s_1s_2}$\\
+      \verb+ProjM(1,2)+       & Left chirality projector $(\frac{1-\gamma_5}{2})_{s_1s_2}$\\
+      \verb+ProjP(1,2)+       & Right chirality projector $(\frac{1+\gamma_5}{2})_{s_1s_2}$\\
+      \verb+Sigma(1,2,3,4)+   & Sigma matrix $(\sigma^{\mu_1\mu_2})_{s_1s_2}$\\
+      \verb+C(1,2)+           & Charge conjugation matrix $C_{s_1s_2}$\\
+      \verb+Metric(1,2)+      & Minkowski metric $\eta^{\mu_1\mu_2}$\\
+      \verb+P(1,i)+           & Incoming momentum of the $i^{\rm th}$ particle $p_i^{\mu_1}$\\
+      \verb+Epsilon(1,2,3,4)+ & Levi-Civita tensor $\epsilon^{\mu_1\mu_2\mu_3\mu_4}$ (with $\epsilon_{0123}=-\epsilon^{0123}=1$)
+     \end{tabular}
+   \end{center} *)
+
 module type Lorentz_Atom =
   sig
 
@@ -225,6 +250,46 @@ module Lorentz_Atom : Lorentz_Atom
 
 module Lorentz : Tensor
   with type atom = Lorentz_Atom.t and type r_omega = Coupling.lorentz
+
+(* Copied verbatim from~\cite{Darme:2023jdn} to explain the notation
+   \begin{quote}
+     \textit{Elementary colour tensors that can be used to construct the elements of the
+     colour basis relevant for a given UFO vertex. Fundamental, sextet, antifundamental
+     and antisextet colour indices are denoted as $i$, $\alpha$, $\bar \imath$ and
+     $\bar\alpha$, whilst $a$ denotes an adjoint colour index.}
+   \end{quote}
+   Note that~\cite{Ohl:2024fpq} has a different mnemonic for~$\epsilon$: there~$\epsilon_{ijk}$
+   is written~$\overline{\epsilon}_{ijk}$, while~$\epsilon^{{\bar i}{\bar j}{\bar k}}$
+   is written~$\epsilon^{ijk}$.  In other words, in~\cite{Ohl:2024fpq} all barred objects
+   have the triplet indices on the bottom.  Here, as described in sections~\ref{sec:arrow},
+   \ref{sec:birdtracks} and~\ref{sec:su3}, the mnemonic is as in~\cite{Darme:2023jdn}.
+   \begin{dubious}
+     But cross-check with [classify_indices] on page~\pageref{pg:classify-indices}
+     again!
+   \end{dubious}
+   \begin{center}
+     \begin{tabular}{rl}
+     \label{pg:UFO-Color}
+     UFO colour tensor & Description\\
+     \hline
+      \verb+1+                 & Trivial tensor (for non-coloured particles)\\
+      \verb+Identity(2,1)+     & Kronecker delta $\delta^{\bar \imath_2}{}_{i_1}$, $\delta^{a_2a_1}$, or $\delta^{\bar \alpha_2}{}_{\alpha_1}$\\
+      \verb+T(1,2,3)+          & Fundamental representation matrix
+                                   $(T^{a_1})^{\bar \imath_3}{}_{i_2}$\\
+      \verb+f(1,2,3)+          & Antisymmetric structure constant $f^{a_1a_2a_3}$\\
+      \verb+d(1,2,3)+          & Symmetric structure constant $d^{a_1a_2a_3}$\\
+      \verb+Epsilon(1,2,3)+    & Fundamental Levi-Civita tensor
+                                   $\epsilon_{i_1i_2i_3}$\\
+      \verb+EpsilonBar(1,2,3)+ & Antifundamental Levi-Civita tensor
+                                   $\epsilon^{{\bar \imath_1}{\bar \imath_2}{\bar \imath_3}}$\\
+      \verb+T6(1,2,3)+         & Sextet representation matrix
+                                   $(T_6^{a_1})^{\bar \alpha_3}{}_{\alpha_2}$\\
+      \verb+K6(1,2,3)+         & Sextet Clebsch-Gordan coefficient
+                                   $(K_6)^{{\bar \imath_2}{\bar \imath_3}}{}_{\alpha_1}$\\
+      \verb+K6Bar(1,2,3)+      & Antisextet Clebsch-Gordan coefficient
+                                   $(\overline K_6)^{\bar \alpha_1}{}_{i_2i_3}$
+     \end{tabular}
+   \end{center} *)
 
 module type Color_Atom =
   sig

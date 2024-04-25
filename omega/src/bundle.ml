@@ -71,7 +71,7 @@ module Dyn (P : Elt_Base) =
       InvPi.fold (fun base fiber acc -> (base, Fiber.elements fiber) :: acc) bundle []
 
     let base bundle =
-      InvPi.fold (fun base fiber acc -> base :: acc) bundle []
+      InvPi.fold (fun base _fiber acc -> base :: acc) bundle []
       
     let inv_pi bundle base =
       try

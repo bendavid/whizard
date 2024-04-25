@@ -64,9 +64,9 @@ type ('a, 'e, 'b) term =
      but it is not obvious that this produces a real performance benefit.
    \end{dubious} *)
 
-type afree = A.free aterm
-type efree = (A.free, A.free_eps) eterm
-type bfree = (A.free, A.free_eps_bar) bterm
+type _afree = A.free aterm
+type _efree = (A.free, A.free_eps) eterm
+type _bfree = (A.free, A.free_eps_bar) bterm
 type free = (A.free, A.free_eps, A.free_eps_bar) term
 
 type afactor = A.factor aterm
@@ -77,6 +77,44 @@ type factor = (A.factor, A.factor_eps, A.factor_eps_bar) term
 type t = free list
 
 (* \thocwmodulesection{Functions} *)
+
+let rev_aterm aterm =
+  { aterm with arrows = List.map A.rev aterm.arrows }
+
+let _rev1 = function
+  | Arrows a -> Arrows (rev_aterm a)
+  | Epsilons (a, e) -> Epsilon_Bars (rev_aterm a, NEList.map A.rev_eps e)
+  | Epsilon_Bars (a, b) -> Epsilons (rev_aterm a, NEList.map A.rev_eps_bar b)
+
+let aterm = function
+  | Arrows a | Epsilons (a, _) | Epsilon_Bars (a, _) -> a
+
+module ISet = Set.Make(Int)
+
+let adjoints1 = function
+  | Arrows a -> A.adjoints a.arrows
+  | Epsilons (a, e) -> A.adjoints_eps a.arrows e
+  | Epsilon_Bars (a, b) -> A.adjoints_eps_bar a.arrows b
+    
+let adjoints term =
+  match List.map adjoints1 term with
+  | [] -> []
+  | a :: _ as all ->
+     if ThoList.homogeneous all then
+       a
+     else
+       invalid_arg
+         ("Birdtracks.adjoints: inconsistent: " ^
+            (ThoList.to_string (ThoList.to_string string_of_int) all))
+
+let term_haunted term =
+  List.exists A.is_ghost (aterm term).arrows
+
+let haunted terms =
+  List.exists term_haunted terms
+
+let exorcise vertex =
+  List.filter (Fun.negate term_haunted) vertex
 
 let tips_and_tails_of_aterm aterm =
   List.fold_left
@@ -94,7 +132,7 @@ let tips_and_tails_raw : free -> A.tip list * A.tail list = function
      let tips, tails = tips_and_tails_of_aterm aterm in
      (tips, List.concat (tails :: NEList.to_list epsilon_bars))
 
-let tips_and_tails term =
+let _tips_and_tails term =
   let tips, tails = tips_and_tails_raw term in
   (List.sort compare tips, List.sort compare tails)
 
@@ -103,7 +141,7 @@ let const coeff = [ Arrows { coeff; arrows = [] } ]
 let ints pairs = const (L.ints pairs)
 let null = const L.null
 let fraction n = const (L.fraction n)
-let one = const (L.int 1)
+let one = const L.unit
 let two = const (L.int 2)
 let minus = const (L.int (-1))
 let int n = const (L.int n)
@@ -122,15 +160,37 @@ let find_term_opt term map =
 let map_aterm fc fa aterm =
   { coeff = fc aterm.coeff; arrows = fa aterm.arrows }
 
-let map_term fc fa fe fb = function
+let map_term_full fc fa fe fb = function
   | Arrows aterm -> Arrows (map_aterm fc fa aterm)
   | Epsilons (aterm, elist) -> Epsilons (map_aterm fc fa aterm, fe elist)
   | Epsilon_Bars (aterm, blist) -> Epsilon_Bars (map_aterm fc fa aterm, fb blist)
 
 let map_term_deep fc fa fe fb term =
-  map_term fc (List.map fa) (NEList.map fe) (NEList.map fb) term
+  map_term_full fc (List.map fa) (NEList.map fe) (NEList.map fb) term
 
-let canonicalize_aterm term =
+let map_term f = function
+  | Arrows a -> Arrows (f a)
+  | Epsilons (a, e) -> Epsilons (f a, e)
+  | Epsilon_Bars (a, b) -> Epsilon_Bars (f a, b)
+
+let map_term_opt f = function
+  | Arrows a ->
+     begin match f a with
+     | None -> None
+     | Some arrows -> Some (Arrows arrows)
+     end
+  | Epsilons (a, e) ->
+     begin match f a with
+     | None -> None
+     | Some arrows -> Some (Epsilons (arrows, e))
+     end
+  | Epsilon_Bars (a, b) ->
+     begin match f a with
+     | None -> None
+     | Some arrows -> Some (Epsilon_Bars (arrows, b))
+     end
+
+let _canonicalize_aterm term =
   map_aterm Fun.id psort term
 
 (* \begin{dubious}
@@ -143,17 +203,17 @@ let canonicalize_aterm term =
 
 let canonicalize_term : type a e b. (a, e, b) term -> (a, e, b) term =
   fun term ->
-  map_term Fun.id psort ne_psort ne_psort term
+  map_term_full Fun.id psort ne_psort ne_psort term
 
 let split_coeff : type a e b. (a, e, b) term -> L.t * (a, e, b) term  = function
-  | Arrows aterm -> (aterm.coeff, Arrows { aterm with coeff = L.int 1 })
+  | Arrows aterm -> (aterm.coeff, Arrows { aterm with coeff = L.unit })
   | Epsilons (aterm, epsilons) ->
-     (aterm.coeff, Epsilons ({ aterm with coeff = L.int 1 }, epsilons))
+     (aterm.coeff, Epsilons ({ aterm with coeff = L.unit }, epsilons))
   | Epsilon_Bars (aterm, epsilon_bars) ->
-     (aterm.coeff, Epsilon_Bars ({ aterm with coeff = L.int 1 }, epsilon_bars))
+     (aterm.coeff, Epsilon_Bars ({ aterm with coeff = L.unit }, epsilon_bars))
 
 let inject_coeff : type a e b. L.t -> (a, e, b) term -> (a, e, b) term =
-  fun coeff -> map_term (fun _ -> coeff) Fun.id Fun.id Fun.id
+  fun coeff -> map_term_full (fun _ -> coeff) Fun.id Fun.id Fun.id
 
 (* \begin{dubious}
      Note that the final result
@@ -206,7 +266,7 @@ let is_unit v =
 
 let with_nc nc t =
   let substitute c = L.const (L.eval (QC.int nc) c) in
-  canonicalize (List.map (map_term substitute Fun.id Fun.id Fun.id) t)
+  canonicalize (List.map (map_term_full substitute Fun.id Fun.id Fun.id) t)
 
 let aterm_to_string f term =
   match term.arrows with
@@ -260,7 +320,7 @@ let rev1 = function
 
 let rev = List.map rev1
 
-let of_afactor aterm =
+let _of_afactor aterm =
   map_aterm Fun.id (List.map A.of_factor) aterm
       
 let of_factor term =
@@ -683,7 +743,7 @@ let multiply = function
 
 let scale1 : type a e b. L.c -> (a, e, b) term -> (a, e, b) term =
   fun q term ->
-  map_term (L.scale q) Fun.id Fun.id Fun.id term
+  map_term_full (L.scale q) Fun.id Fun.id Fun.id term
 
 let scale q = List.map (scale1 q)
 
@@ -698,6 +758,77 @@ module Infix =
   end
 
 open Infix
+
+let is_multiple1 x y =
+  match x, y with
+  | Arrows x, Arrows y ->
+     if x.arrows = y.arrows then
+       Some (x.coeff, y.coeff)
+     else
+       None
+  | Epsilons (x, xe), Epsilons (y, ye) ->
+     if x.arrows = y.arrows && xe = ye then
+       Some (x.coeff, y.coeff)
+     else
+       None
+  | Epsilon_Bars (x, xb), Epsilon_Bars (y, yb) ->
+     if x.arrows = y.arrows && xb = yb then
+       Some (x.coeff, y.coeff)
+     else
+       None
+  | Arrows _, (Epsilons _ | Epsilon_Bars _) | (Epsilons _ | Epsilon_Bars _), Arrows _
+  | Epsilons _, Epsilon_Bars _ | Epsilon_Bars _, Epsilons _ -> None
+
+(* \begin{dubious}
+     The following is not the most efficient way to implement [is_multiple].
+     Multiplying all terms by the coefficients avoids having to compute
+     a gcd in [is_multiple1], but gives up the opportunity of an early exit
+     at the first mismatch.
+   \end{dubious} *)
+
+let _is_multiple x y =
+  match canonicalize x, canonicalize y with
+  | [], [] -> Some (L.unit, L.unit)
+  | [], _ | _, [] -> None
+  | x1 :: xtail, y1 :: ytail ->
+     begin match is_multiple1 x1 y1 with
+     | None -> None
+     | Some (xc, yc) as result ->
+        if const yc *** xtail = const xc *** ytail then
+          result
+        else
+          None
+     end
+
+(* This should be more efficient: *)
+
+let rec tail_is_multiple xc yc x y =
+  match x, y with
+  | [], [] -> true
+  | [], _ | _, [] -> false
+  | x1 :: xtail, y1 :: ytail ->
+     begin match is_multiple1 x1 y1 with
+     | None -> false
+     | Some (x1c, y1c) ->
+        if L.equal (L.product [yc; x1c]) (L.product [xc; y1c]) then
+          tail_is_multiple xc yc xtail ytail
+        else
+          false
+     end
+
+let is_multiple x y =
+  match canonicalize x, canonicalize y with
+  | [], [] -> Some (L.unit, L.unit)
+  | [], _ | _, [] -> None
+  | x1 :: xtail, y1 :: ytail ->
+     begin match is_multiple1 x1 y1 with
+     | None -> None
+     | Some (xc, yc) as result ->
+        if tail_is_multiple xc yc xtail ytail then
+          result
+        else
+          None
+     end
 
 (* Compute $ \tr(r(T_a) r(T_b) r(T_c)) $.  NB: this uses the
    summation indices $-1$, $-2$ and $-3$.  Therefore
@@ -783,10 +914,48 @@ module Test =
 
         [ ]
 
+    let multiple_to_string = function
+      | None -> "None"
+      | Some (x, y) -> Printf.sprintf "Some (%s, %s)" (L.to_string "N" x) (L.to_string "N" y)
+
+    let assert_equal_multiple x y =
+      assert_equal ~printer:multiple_to_string x y
+
+    let suite_is_multiple =
+      "is_multiple" >:::
+
+        [ "1 // 2" >::
+            (fun () ->
+              assert_equal_multiple (Some (L.unit, L.int 2)) (is_multiple one two));
+
+          "1 => 2 // 2 (1 => 2)" >::
+            (fun () ->
+              assert_equal_multiple (Some (L.unit, L.int 2))
+                (is_multiple
+                   [Arrows { coeff = L.unit;  arrows = [ 1 => 2 ] }]
+                   [Arrows { coeff = L.int 2; arrows = [ 1 => 2 ] }] ));
+
+          "1 => 2 // 2 (3 => 4)" >::
+            (fun () ->
+              assert_equal_multiple None
+                (is_multiple
+                   [Arrows { coeff = L.unit;  arrows = [ 1 => 2 ] }]
+                   [Arrows { coeff = L.int 2; arrows = [ 3 => 4 ] }] ));
+
+          "1 / 2 N" >::
+            (fun () ->
+              assert_equal_multiple (Some (L.unit, L.nc 2))
+                (is_multiple
+                   [Arrows { coeff = L.unit;         arrows = [ 1 => 2; 3 => 4 ] };
+                    Arrows { coeff = L.over_nc (-1); arrows = [ 1 => 4; 3 => 2 ] }]
+                   [Arrows { coeff = L.nc 2;         arrows = [ 1 => 2; 3 => 4 ] };
+                    Arrows { coeff = L.int (-2);     arrows = [ 1 => 4; 3 => 2 ] }] )) ]
+
     let suite =
       "Birdtracks" >:::
 	[suite_times1;
-         suite_canonicalize]
+         suite_canonicalize;
+         suite_is_multiple]
 
     let suite_long =
       "Birdtracks long" >:::

@@ -157,6 +157,17 @@ type endpoint =
   | I of int
   | M of int * int
 
+let compare_endpoints x x' =
+  match x, x' with
+  | I i, I i' | I i, M (i', _) | M (i, _), I i' ->
+     Int.compare i i'
+  | M (i, j), M (i', j') ->
+     let c = Int.compare i i' in
+     if c <> 0 then
+       c
+     else
+       Int.compare j j'
+
 let position_endpoint = function
   | I i -> i
   | M (i, _) -> i
@@ -168,6 +179,10 @@ let relocate_endpoint f = function
 type tip = endpoint
 type tail = endpoint
 type ghost = endpoint
+
+let compare_tips = compare_endpoints
+let compare_tails = compare_endpoints
+let compare_ghosts = compare_endpoints
 
 let position_tip = position_endpoint
 let position_tail = position_endpoint
@@ -210,6 +225,9 @@ type factor = (tail index, tip index, ghost index) t
 type free_eps_bar = tail eps_bar
 type factor_eps_bar = tail index eps_bar
 
+let epsilon tips = tips
+let epsilon_bar tails = tails
+
 let relocate f = function
   | Arrow (tail, tip) -> Arrow (relocate_tail f tail, relocate_tip f tip)
   | Ghost ghost -> Ghost (relocate_ghost f ghost)
@@ -229,6 +247,43 @@ let tails = function
 let tips_eps tips = tips
 let tails_eps_bar tails = tails
 
+module ISet = Set.Make(Int)
+
+let adjoint_tips arrows =
+  List.fold_left
+    (fun acc -> function Arrow (_, I i) -> ISet.add i acc | _ -> acc)
+    ISet.empty arrows
+
+let adjoint_tails arrows =
+  List.fold_left
+    (fun acc -> function Arrow (I i, _) -> ISet.add i acc | _ -> acc)
+    ISet.empty arrows
+
+let single_endpoints endpoints =
+  List.fold_left (fun acc -> function I i -> ISet.add i acc | _ -> acc) ISet.empty endpoints
+
+let adjoint_tips_eps eps =
+  NEList.fold_right
+    (fun eps -> ISet.union (single_endpoints (tips_eps eps)))
+    eps ISet.empty
+
+let adjoint_tails_eps_bar eps_bar =
+  NEList.fold_right
+    (fun eps_bar -> ISet.union (single_endpoints (tails_eps_bar eps_bar)))
+    eps_bar ISet.empty
+
+let common set1 set2 =
+  ISet.elements (ISet.inter set1 set2)
+
+let adjoints arrows =
+  common (adjoint_tips arrows) (adjoint_tails arrows)
+
+let adjoints_eps arrows eps =
+  common (ISet.union (adjoint_tips arrows) (adjoint_tips_eps eps)) (adjoint_tails arrows)
+
+let adjoints_eps_bar arrows eps_bar =
+  common (adjoint_tips arrows) (ISet.union (adjoint_tails arrows) (adjoint_tails_eps_bar eps_bar))
+
 let endpoint_to_string = function
   | I i -> string_of_int i
   | M (i, n) -> Printf.sprintf "%d.%d" i n
@@ -242,7 +297,7 @@ let to_string i2s = function
   | Arrow (tail, tip) -> Printf.sprintf "%s>%s" (i2s tail) (i2s tip)
   | Ghost ghost -> Printf.sprintf "{%s}" (i2s ghost)
 let to_string_eps i2s tips = Printf.sprintf ">>>%s" (ThoList.to_string i2s tips)
-let to_string_eps_bar i2s tails = Printf.sprintf "<<<%s" (ThoList.to_string i2s tails)
+let to_string_eps_bar i2s tails = Printf.sprintf "%s>>>" (ThoList.to_string i2s tails)
 
 let free_to_string = to_string endpoint_to_string
 let free_eps_to_string = to_string_eps endpoint_to_string
@@ -265,8 +320,8 @@ let map_eps_bar = List.map
 
 let free_index = function
   | Free i -> i
-  | SumL i -> invalid_arg "Arrow.free_index: leftover LHS summation"
-  | SumR i -> invalid_arg "Arrow.free_index: leftover RHS summation"
+  | SumL i -> invalid_arg ("Arrow.free_index: leftover LHS summation: " ^ endpoint_to_string i)
+  | SumR i -> invalid_arg ("Arrow.free_index: leftover RHS summation: " ^ endpoint_to_string i)
 
 let to_left_index is_sum i =
   if is_sum i then
@@ -973,12 +1028,69 @@ let is_tadpole = function
   | Arrow (tail, tip) -> matching_summation tail tip
   | Ghost _ -> false
 
-let epsilon = function
+module IMap = Map.Make(Int)
+
+(* Check if we have seen the position [pos] already and increase the
+   index or return [None]. *)
+let new_max_tips max_tips = function
+  | I _ -> Some max_tips
+  | M (pos, idx) ->
+     begin match IMap.find_opt pos max_tips with
+     | None -> Some (IMap.add pos idx max_tips)
+     | Some max_idx ->
+        if idx > max_idx then
+          Some (IMap.add pos idx max_tips)
+        else
+          None
+     end
+
+(* Check if we have seen the position [pos] already and increase the
+   corresponding [max_tip] or return [None]. *)
+let new_max_tails max_tails tip = function
+  | I _ -> Some max_tails
+  | M (pos, _) ->
+     begin match IMap.find_opt pos max_tails with
+     | None -> Some (IMap.add pos tip max_tails)
+     | Some max_tip ->
+        if compare_tips tip max_tip > 0 then
+          Some (IMap.add pos tip max_tails)
+        else
+          None
+     end
+
+let rec in_canonical_order' max_tails max_tips = function
+  | [] -> true
+  | Ghost _ :: arrows -> in_canonical_order' max_tails max_tips arrows
+  | Arrow (tail, tip) :: arrows ->
+     if position_tail tail = position_tip tip then
+       false
+     else
+       match new_max_tips max_tips tip with
+       | None -> false
+       | Some max_tips ->
+          begin match new_max_tails max_tails tip tail with
+          | None -> false
+          | Some max_tails -> in_canonical_order' max_tails max_tips arrows
+          end
+
+let in_canonical_order arrows =
+  in_canonical_order' IMap.empty IMap.empty arrows
+
+let endpoints (pos, rank) =
+  if rank <= 1 then
+    [I pos]
+  else
+    List.map (fun idx -> M (pos, idx)) (ThoList.range 0 (pred rank))
+
+let make_tips = endpoints
+let make_tails = endpoints
+
+let epsilon0 = function
   | [] -> invalid_arg "Arrow.epsilon: rank 0"
   | [_] -> invalid_arg "Arrow.epsilon: rank 1"
   | tips -> List.map (fun tip -> I tip) tips
 
-let epsilon_bar = function
+let epsilon0_bar = function
   | [] -> invalid_arg "Arrow.epsilon_bar: rank 0"
   | [_] -> invalid_arg "Arrow.epsilon_bar: rank 1"
   | tails -> List.map (fun tail -> I tail) tails
@@ -999,6 +1111,93 @@ let rec cycle' a = function
 let cycle = function
   | [] -> []
   | a :: _ as a_list -> cycle' a a_list
+
+(* \thocwmodulesubsection{Functions for Tangara}
+   \label{sec:tangara-support} *)
+
+type matching_adjoint_arrows = Tee | Reflex
+
+let rec adjoint_arrows a tails tips reflex seen = function
+  | [] -> (tails, tips, reflex, List.rev seen)
+  | arrow :: arrows ->
+     begin match arrow with
+     | Arrow (I tail, I tip) ->
+        if tail = a then
+          if tip = a then
+            adjoint_arrows a tails tips (succ reflex) seen arrows
+          else
+            adjoint_arrows a tails (I tip :: tips) reflex seen arrows
+        else
+          if tip = a then
+            adjoint_arrows a (I tail :: tails) tips reflex seen arrows
+          else
+            adjoint_arrows a tails tips reflex (arrow :: seen) arrows
+     | Arrow (I tail, (M _ as tip)) ->
+        if tail = a then
+          adjoint_arrows a tails (tip :: tips) reflex seen arrows
+        else
+          adjoint_arrows a tails tips reflex (arrow :: seen) arrows
+     | Arrow ((M _ as tail), I tip) ->
+        if tip = a then
+          adjoint_arrows a (tail :: tails) tips reflex seen arrows
+        else
+          adjoint_arrows a tails tips reflex (arrow :: seen) arrows
+     | Arrow (M _, M _) | Ghost _ as arrow ->
+        adjoint_arrows a tails tips reflex (arrow :: seen) arrows
+     end
+
+let adjoint_arrows_opt a arrows =
+  match adjoint_arrows a [] [] 0 [] arrows with
+  | [], [], 0, _ -> None
+  | [tail], [tip], 0, other -> Some (Tee, single tail tip :: other)
+  | [], [], 1, other -> Some (Reflex, other)
+  | tails, tips, n, other ->
+     invalid_arg
+       (Printf.sprintf
+          "Arrow.adjoint_arrows_opt: bad match for %d in %s: tails=%s, tips=%s, reflex=%d, other=%s"
+          a (ThoList.to_string free_to_string arrows)
+          (ThoList.to_string endpoint_to_string tails)
+          (ThoList.to_string endpoint_to_string tips)
+          n (ThoList.to_string free_to_string other))
+
+let replace_adjoint_eps tip a eps =
+  map_eps (function I b when a = b -> tip | tip -> tip) eps
+
+let replace_adjoint_eps_bar tail a eps_bar =
+  map_eps_bar (function I b when a = b -> tail | tail -> tail) eps_bar
+
+let adjoint_eps_opt a arrows eps =
+  match adjoint_arrows a [] [] 0 [] arrows with
+  | [], [], 0, _ -> None
+  | [tail], [tip], 0, other -> Some (Tee, single tail tip :: other, eps)
+  | [], [tip], 0, other ->
+     Some (Tee, other, NEList.map (replace_adjoint_eps tip a) eps)
+  | [], [], 1, other -> Some (Reflex, other, eps)
+  | tails, tips, n, other ->
+     invalid_arg
+       (Printf.sprintf
+          "Arrow.adjoint_eps_opt: bad match for %d in %s: tails=%s, tips=%s, reflex=%d, other=%s"
+          a (ThoList.to_string free_to_string arrows)
+          (ThoList.to_string endpoint_to_string tails)
+          (ThoList.to_string endpoint_to_string tips)
+          n (ThoList.to_string free_to_string other))
+
+
+let adjoint_eps_bar_opt a arrows eps_bar =
+  match adjoint_arrows a [] [] 0 [] arrows with
+  | [], [], 0, _ -> None
+  | [tail], [tip], 0, other -> Some (Tee, single tail tip :: other, eps_bar)
+  | [tail], [], 0, other ->
+     Some (Tee, other, NEList.map (replace_adjoint_eps_bar tail a) eps_bar)
+  | [], [], 1, other -> Some (Reflex, other, eps_bar)
+  | tails, tips, n, other ->
+     invalid_arg
+       (Printf.sprintf
+          "Arrow.adjoint_eps_bar_opt: bad match for %d in %s: tails=%s, tips=%s, reflex=%d, other=%s"
+          a (ThoList.to_string free_to_string arrows)
+          (ThoList.to_string endpoint_to_string tails)
+          (ThoList.to_string endpoint_to_string tips)
+          n (ThoList.to_string free_to_string other))
 
 module Test =
   struct

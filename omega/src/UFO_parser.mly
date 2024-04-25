@@ -34,7 +34,7 @@ let parse_error msg =
   raise (UFO_syntax.Syntax_Error
 	   (msg, symbol_start_pos (), symbol_end_pos ()))
 
-let invalid_parameter_attr () =
+let _invalid_parameter_attr () =
   parse_error "invalid parameter attribute"
 
 %}

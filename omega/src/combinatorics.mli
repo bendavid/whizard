@@ -160,6 +160,27 @@ val sign : ?cmp:('a -> 'a -> int) -> 'a seq -> int
 
 val sort_signed : ?cmp:('a -> 'a -> int) -> 'a seq -> int * 'a seq
 
+(* \thocwmodulesubsection{Subsets} *)
+
+(* The function $A\mapsto2^A$, where the set and the subsets are represented
+   as lists of elements in unspecified sequence.  In order to be able to optimize
+   for stack space, we make no guarantee about ordering of the lists. *)
+val subsets : 'a list -> 'a list list
+
+(* If we write $f_b:A\to A: a\mapsto f(a,b)$, then the elements of the resulting list
+   are $(f_{b_1}\circ f_{b_2}\circ\cdots\circ f_{b_n})(a)$ for all
+   subsets $\{b_1,b_2,\ldots,b_n\} \in 2^B$.
+   In order to be able to optimize for stack space, we make again no
+   guarantee about ordering of the lists. Therefore the function only
+   makes sense for~$\forall b,b': f_{b}\circ f_{b'}=f_{b'}\circ f_{b}$. *)
+val subfolds : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a list
+
+(* We could even try to generalize this to a function of the type
+   [('c -> 'a -> 'c) -> ('a -> 'b -> 'a) -> 'a -> 'b list -> 'c -> 'c],
+   in order the replace ['a list] by a more general type ['c] for the
+   result.  But at the moment, there doesn't appear to be a pressing need
+   for this and the interface is then too complex. *)
+
 (* \thocwmodulesubsection{Unit Tests} *)
 
 module Test : sig val suite : OUnit.test end

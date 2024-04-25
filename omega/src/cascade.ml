@@ -177,7 +177,7 @@ module Make (M : Model.T) (P : Momentum.T) :
               (Gauss (List.map M.flavor_of_string f, P.of_ints dim p))
         | CS.Gauss_not (f, p) ->
             only_wf
-              (Gauss (List.map M.flavor_of_string f, P.of_ints dim p))
+              (Gauss_not (List.map M.flavor_of_string f, P.of_ints dim p))
         | CS.Any_flavor p ->
             only_wf (Any_flavor (P.of_ints dim p))
         | CS.And cs ->
@@ -437,7 +437,7 @@ i*)
       match cascades.vertices with
       | [] ->
           (* No vertex constraints means that we always accept. *)
-          (fun c f fs -> true)
+          (fun _ _ _ -> true)
       | vertices ->
           match translate_vertices vertices with
           | [], ([],[],[]) ->
@@ -447,7 +447,7 @@ i*)
           | couplings, ([],[],[]) ->
               (* No constraints on the fields.  Just make sure that the
 		 coupling [c] doesn't appear in the vetoed [couplings]. *)
-              (fun c f fs ->
+              (fun c _f _fs ->
                 let c = unpack_constant c in
                 not (match_coupling c couplings))
           | couplings, vertices ->

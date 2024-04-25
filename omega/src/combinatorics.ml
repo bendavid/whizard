@@ -77,13 +77,13 @@ let binomial n k =
      \binom{n}{k} = \binom{n-1}{k} + \binom{n-1}{k-1}
    \end{equation} *)
 
-let rec slow_binomial n k =
+let rec _slow_binomial n k =
   if n < 0 || k < 0 then
     invalid_arg "Combinatorics.binomial"
   else if k = 0 || k = n then
     1
   else
-    slow_binomial (pred n) k + slow_binomial (pred n) (pred k)
+    _slow_binomial (pred n) k + _slow_binomial (pred n) (pred k)
 
 let multinomial n_list =
   List.fold_left (fun acc n -> acc / (factorial n))
@@ -137,7 +137,7 @@ let rec split' n rev_part rev_head = function
 (* Kick off the recursion for $0<n<|l|$ and handle the cases $n\in\{0,|l|\}$
    explicitely.  Use reflection symmetry for a small optimization. *)
 
-let ordered_split_unsafe n abs_l l =
+let ordered_split_unsafe n _abs_l l =
   let abs_l = List.length l in
   if n = 0 then
     [[], l]
@@ -443,6 +443,27 @@ let sign2 ?(cmp=Stdlib.compare) l =
   done;
   !eps
 
+(* \thocwmodulesubsection{Subsets} *)
+
+(*i
+let rec subsets = function
+  | [] -> [[]]
+  | head :: tail ->
+     let subsets_of_tail = subsets tail in
+     List.fold_left (fun subset_list subset -> (head :: subset) :: subset_list) subsets_of_tail subsets_of_tail
+i*)
+
+let rec subfolds f acc = function
+  | [] -> [acc]
+  | head :: tail ->
+     let subfolds_of_tail = subfolds f acc tail in
+     List.fold_left (fun subfold_list subfold -> f subfold head :: subfold_list) subfolds_of_tail subfolds_of_tail
+
+let subsets list =
+  subfolds (Fun.flip List.cons) [] list
+
+(* \thocwmodulesubsection{Unit Tests} *)
+
 module Test =
   struct
 
@@ -575,10 +596,34 @@ module Test =
          sort_signed_all;
          sign_sign2]
 
+    let canonicalize_subsets l =
+      List.sort (ThoList.compare ~cmp:Stdlib.compare) (List.map (List.sort Stdlib.compare) l)
+
+    let assert_equal_subsets l1 l2 =
+      assert_equal (canonicalize_subsets l1) (canonicalize_subsets l2)
+
+    let suite_subsets =
+      "subsets" >:::
+	[ "[]" >::
+            (fun () -> assert_equal_subsets [[]] (subsets []));
+
+          "[1]" >::
+            (fun () -> assert_equal_subsets [[]; [1]] (subsets [1]));
+
+          "[1;2]" >::
+            (fun () -> assert_equal_subsets [[]; [1]; [2]; [1;2]] (subsets [1;2]));
+
+          "[1;2;3]" >::
+            (fun () ->
+              assert_equal_subsets
+                [[]; [1]; [2]; [3]; [1;2]; [1;3]; [2;3]; [1;2;3]]
+                (subsets [1;2;3])) ]
+
     let suite =
       "Combinatorics" >:::
 	[suite_permute;
-         suite_sort_signed]
+         suite_sort_signed;
+         suite_subsets]
 
   end
 

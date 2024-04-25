@@ -73,7 +73,7 @@ let map_indices_dirac f d =
 let toggle_conjugated ds =
   { ds with conjugated = not ds.conjugated }
 
-let flip_bra_ket ds =
+let _flip_bra_ket ds =
   { ds with bra = ds.ket; ket = ds.bra }
 
 (* The implementation of couplings for Dirac spinors in
@@ -701,7 +701,7 @@ type redundancy =
 
 let rec redundant_metric' rev_atoms = function
   | [] -> (None, List.rev rev_atoms)
-  | { atom = A.Metric (mu, nu) } as atom :: atoms ->
+  | { atom = A.Metric (mu, nu); _ } as atom :: atoms ->
      if mu < 1 then
        if nu = mu then
          (Some (Trace mu), List.rev_append rev_atoms atoms)
@@ -711,7 +711,7 @@ let rec redundant_metric' rev_atoms = function
        (Some (Replace (nu, mu)), List.rev_append rev_atoms atoms)
      else
        redundant_metric' (atom :: rev_atoms) atoms
-  | { atom = (A.Epsilon (_, _, _, _ ) | A.P (_, _) ) } as atom :: atoms ->
+  | { atom = (A.Epsilon (_, _, _, _ ) | A.P (_, _) ); _ } as atom :: atoms ->
      redundant_metric' (atom :: rev_atoms) atoms
 
 let redundant_metric atoms =
@@ -743,7 +743,7 @@ let substitute_index_vector1 mu nu = function
      else
        p
 
-let remove a alist =
+let _remove a alist =
   List.filter ((<>) a) alist
 
 let substitute_index1 mu nu mu1 =
@@ -800,7 +800,7 @@ let trace_metric = QC.make (Q.make 4 1) Q.null
 let rec compress_metrics c =
   match redundant_metric c.vector with
   | None, _ -> c
-  | Some (Trace mu), vector' ->
+  | Some (Trace _mu), vector' ->
      compress_metrics
        { coeff = QC.mul trace_metric c.coeff;
          dirac = c.dirac;
@@ -821,7 +821,7 @@ let compress_denominator = function
   | [([], q)] as denominator -> if QC.is_unit q then [] else denominator
   | denominator -> denominator
 
-let parse1 spins denominator atom =
+let parse1 _spins denominator atom =
   compress_metrics (contraction_of_lorentz_atoms denominator atom)
 
 let parse ?(allow_denominator=false) spins = function

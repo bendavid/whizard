@@ -215,6 +215,11 @@ module type Laurent =
     (* $k\mapsto k / x = k x^{-1}$ *)
     val over_nc : int -> t
 
+    (* Extract a prefactor such that the remaining polynomial has no fractional
+       coefficients.  The sign is chosen so that the coefficient of the leading
+       power is positive. *)
+    val prefactor : t list -> c
+
     (* Tracing, debugging, toplevel and unit testing *)
     val to_string : string -> t -> string
     val pp : Format.formatter -> t -> unit

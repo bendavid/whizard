@@ -83,10 +83,10 @@ OMEGA_DERIVED_CAML = \
     $(OMEGA_MLL:.mll=.mli) $(OMEGA_MLL:.mll=.ml) \
     $(OMEGA_MLY:.mly=.mli) $(OMEGA_MLY:.mly=.ml)
 
-OMEGA_INTERFACES_MLI = \
-    coupling.mli \
-    model.mli \
-    target.mli
+OMEGA_INTERFACES_ML = \
+    coupling.ml \
+    model.ml \
+    target.ml
 
 ########################################################################
 # We need lists of all modules including and excluding derived
@@ -133,9 +133,8 @@ OMEGA_CORE_ML_PRIMARY = \
 OMEGA_CORE_ML = \
     $(OMEGA_CORE_ML_PART1) $(OMEGA_CORE_ML_PART2) $(OMEGA_CORE_ML_PART3)
 
-OMEGA_CORE_MLI_PRIMARY = $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML_PRIMARY:.ml=.mli)
-OMEGA_CORE_MLI = \
-    $(OMEGA_CONFIG_MLI) $(OMEGA_INTERFACES_MLI) $(OMEGA_CORE_ML:.ml=.mli)
+OMEGA_CORE_MLI_PRIMARY = $(OMEGA_CORE_ML_PRIMARY:.ml=.mli)
+OMEGA_CORE_MLI = $(OMEGA_CONFIG_MLI) $(OMEGA_CORE_ML:.ml=.mli)
 
 OMEGA_MODELLIB_ML = \
     modellib_SM.ml \
@@ -231,7 +230,7 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_Majorana.ml \
     omega_SM_Majorana_legacy.ml
 
-OMEGA_CORE_CMO = $(OMEGA_CONFIG_ML:.ml=.cmo) $(OMEGA_CORE_ML:.ml=.cmo)
+OMEGA_CORE_CMO = $(OMEGA_CONFIG_ML:.ml=.cmo) $(OMEGA_INTERFACES_ML:.ml=.cmo) $(OMEGA_CORE_ML:.ml=.cmo)
 OMEGA_CORE_CMX = $(OMEGA_CORE_CMO:.cmo=.cmx)
 OMEGA_TARGETS_CMO = $(OMEGA_TARGETLIB_ML:.ml=.cmo)
 OMEGA_TARGETS_CMX = $(OMEGA_TARGETLIB_ML:.ml=.cmx)
@@ -251,6 +250,7 @@ OMEGA_MINIMAL_CACHES = $(OMEGA_MINIMAL_APPLICATIONS_ML:.ml=.$(OMEGA_CACHE_SUFFIX
 # Only primary sources, excluding generated parsers and lexers
 # (used for dependency generation)
 OMEGA_ML_PRIMARY = \
+    $(OMEGA_INTERFACES_ML) \
     $(OMEGA_CORE_ML_PRIMARY) \
     $(OMEGA_MODELLIB_ML) \
     $(OMEGA_TARGETLIB_ML) \
@@ -266,6 +266,7 @@ OMEGA_CAML_PRIMARY = $(OMEGA_ML_PRIMARY) $(OMEGA_MLI_PRIMARY) $(OMEGA_MLL) $(OME
 # All sources, including generated parsers and lexers
 # (used for linking and distribution)
 OMEGA_ML = \
+    $(OMEGA_INTERFACES_ML) \
     $(OMEGA_CORE_ML) \
     $(OMEGA_MODELLIB_ML) \
     $(OMEGA_TARGETLIB_ML) \
@@ -308,7 +309,7 @@ OMEGALIB_DERIVED_F90 = \
     omega_couplings.f90 omega_spinor_couplings.f90 omega_bispinor_couplings.f90 \
     omega_polarizations.f90 omega_polarizations_madgraph.f90 \
     omega_tensor_polarizations.f90 omega_vspinor_polarizations.f90 \
-    omega_color.f90 omega_utils.f90 \
+    omega_color.f90 omega_birdtracks.f90 omega_api_v3.f90 omega_utils.f90 \
     omega95.f90 omega95_bispinors.f90 omegavm95.f90
 
 OMEGALIB_F90 = \

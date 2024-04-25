@@ -95,13 +95,13 @@ module Flow : Flow =
       | Flow cf -> Color_Propagator.Flow cf
       | Ghost -> Color_Propagator.Ghost
 
-    let color_to_string c =
+    let _color_to_string c =
       Color_Propagator.to_string (to_cp c)
 
     (* Incoming and outgoing, since we need to cross the incoming states. *)
     type t = color list * color list
 
-    let rank cflow =
+    let rank _cflow =
       2
 
 (* \thocwmodulesubsection{Constructors} *)
@@ -155,7 +155,7 @@ module Flow : Flow =
     type factor = power list
     let zero = []
 
-    let factor_to_string = function
+    let _factor_to_string = function
       | [] -> "0"
       | factor ->
          String.concat "+"
@@ -175,7 +175,7 @@ module Flow : Flow =
       | Flow (cfi, cfo) -> Flow (cfo, cfi)
       | Ghost -> Ghost
 
-    let cross_in (cin, cout) =
+    let _cross_in (cin, cout) =
       cin @ (List.map conjugate cout)
 
     let cross_out (cin, cout) =
@@ -696,7 +696,7 @@ i*)
            | Some gluons ->
               begin match Algebra.Laurent.log gluons with
               | None -> failwith "factor_birdtracks log"
-              | Some (coeff, 0) -> result
+              | Some (_, 0) -> result
               | Some (coeff, n) ->
                  if not (Algebra.QC.is_unit coeff) then
                    failwith "factor_birdtracks log is_unit";

@@ -87,7 +87,7 @@ module Test : sig val suite : OUnit.test end =
 
     open OUnit
 
-    module P = Make (struct type t = int let compare = compare end)
+    module P = Make (Int)
 
     let apply_ok =
       "apply/ok" >::
@@ -160,8 +160,5 @@ module Test : sig val suite : OUnit.test end =
 	[suite_apply;
 	 suite_auto;
 	 suite_apply_with_fallback]
-
-    let time () =
-      ()
 
   end

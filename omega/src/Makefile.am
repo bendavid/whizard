@@ -54,8 +54,7 @@ endif
 if OCAML_AVAILABLE
 camllibdir = $(libdir)/omega/caml
 nodist_camllib_DATA = \
-	omega.cmi fusion.cmi targets.cmi coupling.cmi modeltools.cmi color.cmi \
-	options.cmi model.cmi \
+	omega.cmi fusion.cmi targets.cmi modeltools.cmi color.cmi options.cmi \
 	omega_core.cmxa omega_core.a omega_targets.cmxa omega_targets.a \
 	charges.cmi
 endif

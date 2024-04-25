@@ -27,7 +27,7 @@ let error_in_string text start_pos end_pos =
   let j = min (String.length text) (max (i + 1) end_pos.Lexing.pos_cnum) in
   String.sub text i (j - i)
 
-let error_in_file name start_pos end_pos =
+let _error_in_file name start_pos end_pos =
   Printf.sprintf
     "%s:%d.%d-%d.%d"
     name
@@ -94,7 +94,7 @@ module Expr =
           SMap.empty alist_names in
       map (rename1 name_map) value
 
-    let map_name1 f name =
+    let _map_name1 f name =
       Some (Variable (f name))
 
     let map_names f value =
@@ -141,7 +141,7 @@ let prepend_binary_minus s =
    assume that a leading minus sign always applies to the
    \emph{whole} term! *)
 
-let prepend_binary_minus s =
+let _prepend_binary_minus s =
   if starts_with_a_plus s then
     "-" ^ String.sub s 1 (String.length s - 1)
   else if starts_with_a_minus s then
@@ -236,7 +236,7 @@ module Value =
        to produce readable output that is not cluttered by too many
        parentheses. *)
 
-    let signed_string_of_float x =
+    let _signed_string_of_float x =
       (if x < 0.0 then "-" else "+") ^ string_of_float (abs_float x)
 
     (* Collect the numerical factors in a [Product] in order to
@@ -468,7 +468,7 @@ module Value =
 	 end
       | S.Quotient (e1, e2) ->
          begin match of_expr e1, of_expr e2 with
-         | e1, (Integer 0 | Real 0.) ->
+         | _, (Integer 0 | Real 0.) ->
             invalid_arg "UFOx.Value: divide by 0"
          | e1, (Integer 1 | Real 1.) -> e1
          | Integer i1, Integer i2 -> Rational (Q.make i1 i2)
@@ -594,7 +594,7 @@ module Index : Index =
       else
         Printf.sprintf "%d.%d" pos fac
 
-    let to_string' = string_of_int
+    let _to_string = string_of_int
 
     let list_to_string is =
       "[" ^ String.concat ", " (List.map to_string is) ^ "]"
@@ -900,7 +900,7 @@ module Tensor (A : Atom) : Tensor
       | S.Product (e1, e2) -> multiply (of_expr e1) (of_expr e2)
       | S.Quotient (n, d) ->
 	 begin match of_expr n, of_expr d with
-	 | n, Linear [] ->
+	 | _, Linear [] ->
             invalid_arg "UFOx.Tensor.of_expr: zero denominator"
 	 | n, Linear [([], q)] -> map_coeff (fun c -> QC.div c q) n
 	 | n, Linear ([(invertibles, q)] as d) ->
@@ -915,7 +915,7 @@ module Tensor (A : Atom) : Tensor
             else
               invalid_arg ("UFOx.Tensor.of_expr: non scalar denominator: " ^
                              to_string d')
-         | n, (Ratios _ as d) ->
+         | _, (Ratios _ as d) ->
             invalid_arg ("UFOx.Tensor.of_expr: illegal denominator: " ^
                            to_string d)
 	 end
@@ -930,7 +930,7 @@ module Tensor (A : Atom) : Tensor
 	        invalid_arg "UFOx.Tensor.of_expr: rational power of number"
             else
 	      invalid_arg "UFOx.Tensor.of_expr: complex power of number"
-	 | Linear [([], q)], _ ->
+	 | Linear [([], _)], _ ->
 	    invalid_arg "UFOx.Tensor.of_expr: non-numeric power of number"
 	 | t, Linear [([], p)] ->
             if QC.is_integer p then
@@ -956,7 +956,7 @@ module Tensor (A : Atom) : Tensor
          ThoList.uniq
 	   (List.sort compare
 	      (List.map
-                 (fun (t, c) -> filter (A.classify_indices t))
+                 (fun (t, _) -> filter (A.classify_indices t))
                  (numerators tensors)))
 
     (* NB: the number of summation indices is not guarateed to be
@@ -1369,7 +1369,7 @@ module Lorentz_Atom' : Atom
     let classify_vector_indices1 = function
       | Epsilon (mu, nu, ka, la) -> [(mu, V); (nu, V); (ka, V); (la, V)]
       | Metric (mu, nu) -> [(mu, V); (nu, V)]
-      | P (mu, n) ->  [(mu, V)]
+      | P (mu, _) ->  [(mu, V)]
 
     let classify_dirac_indices1 = function
       | C (i, j) -> [(i, CSp); (j, Sp)] (* ??? *)
@@ -1642,7 +1642,7 @@ module Color_Atom' : Atom
       | A -> "8"
       | YT y -> young_to_string y
 
-    let rep_of_int neutral = function
+    let rep_of_int _neutral = function
       | 1 -> S
       | 3 -> F
       | -3 -> C
@@ -1700,7 +1700,8 @@ module Color_Atom' : Atom
 
     (* \begin{dubious}
          Check the particle/anti-particle assignments for
-         the sextets!
+         the sextets with the table on page~\pageref{pg:UFO-Color}!
+         \label{pg:classify-indices}
        \end{dubious} *)
 
     let classify_indices1 = function
@@ -1713,8 +1714,8 @@ module Color_Atom' : Atom
       | Epsilon (i, j, k) -> [(i, F); (j, F); (k, F)]
       | EpsilonBar (i, j, k) -> [(i, C); (j, C); (k, C)]
       | T6 (a, i, j) -> [(a, A); (i, YT [[1;2]]); (j, YT [[-1;-2]])]
-      | K6 (i, j, k) -> [(i, YT [[-1;-2]]); (j, F); (k, F)]
-      | K6Bar (i, j, k) ->  [(i, YT [[1;2]]); (j, C); (k, C)]
+      | K6Bar (i, j, k) -> [(i, YT [[-1;-2]]); (j, F); (k, F)]
+      | K6 (i, j, k) ->  [(i, YT [[1;2]]); (j, C); (k, C)]
 
     let classify_indices tensors =
       List.sort compare

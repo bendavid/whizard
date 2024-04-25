@@ -22,6 +22,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+let max_length = List.fold_left (fun acc s -> max acc (String.length s)) 0
+
 let strip_prefix p s =
   let lp = String.length p
   and ls = String.length s in

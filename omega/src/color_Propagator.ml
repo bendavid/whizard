@@ -110,11 +110,11 @@ let conjugate = function
   | Ghost_with_Epsilons eps -> Ghost_with_Epsilon_Bars eps
   | Ghost_with_Epsilon_Bars eps -> Ghost_with_Epsilons eps
 
-let cf_in_or_eps_to_string = function
+let _cf_in_or_eps_to_string = function
   | CF_in i -> string_of_int i
   | Epsilon cfos -> Printf.sprintf "E(%s)" (ThoList.to_string string_of_int cfos)
 
-let cf_out_or_eps_bar_to_string = function
+let _cf_out_or_eps_bar_to_string = function
   | CF_out i -> string_of_int i
   | Epsilon_Bar cfis -> Printf.sprintf "B(%s)" (ThoList.to_string string_of_int cfis)
 
@@ -131,13 +131,13 @@ let cf_in_out_to_string cfi cfo =
 let to_string = function
   | Ghost -> "G"
   | Flow (cfi, cfo) -> cf_in_out_to_string cfi cfo
-  | Ghost_with_Epsilons epsilons ->
+  | Ghost_with_Epsilons _epsilons ->
      failwith "Color_Propagator.to_string: incomplete"
-  | Ghost_with_Epsilon_Bars epsilon_bars ->
+  | Ghost_with_Epsilon_Bars _epsilon_bars ->
      failwith "Color_Propagator.to_string: incomplete"
-  | Flow_with_Epsilons ((cfi, cfo), epsilons) ->
+  | Flow_with_Epsilons ((_cfi, _cfo), _epsilons) ->
      failwith "Color_Propagator.to_string: incomplete"
-  | Flow_with_Epsilon_Bars ((cfi, cfo), epsilon_bars) ->
+  | Flow_with_Epsilon_Bars ((_cfi, _cfo), _epsilon_bars) ->
      failwith "Color_Propagator.to_string: incomplete"
 
 let digit_option_to_symbol = function
@@ -165,13 +165,13 @@ let cf_in_cf_out_to_symbol cfi cfo =
 let to_symbol = function
   | Ghost -> "g"
   | Flow (cfi, cfo) -> cf_in_cf_out_to_symbol cfi cfo
-  | Ghost_with_Epsilons epsilons ->
+  | Ghost_with_Epsilons _epsilons ->
      failwith "Color_Propagator.to_string: incomplete"
-  | Ghost_with_Epsilon_Bars epsilon_bars ->
+  | Ghost_with_Epsilon_Bars _epsilon_bars ->
      failwith "Color_Propagator.to_string: incomplete"
-  | Flow_with_Epsilons ((cfi, cfo), epsilons) ->
+  | Flow_with_Epsilons ((_cfi, _cfo), _epsilons) ->
      failwith "Color_Propagator.to_string: incomplete"
-  | Flow_with_Epsilon_Bars ((cfi, cfo), epsilon_bars) ->
+  | Flow_with_Epsilon_Bars ((_cfi, _cfo), _epsilon_bars) ->
      failwith "Color_Propagator.to_string: incomplete"
 
 let pp fmt p =
@@ -215,7 +215,7 @@ let compare p1 p2 =
   | (Ghost_with_Epsilons _ | Ghost_with_Epsilon_Bars _), Ghost
   | Ghost_with_Epsilon_Bars _, Ghost_with_Epsilons _ -> 1
 
-let equal p1 p2 =
+let _equal p1 p2 =
   compare p1 p2 = 0
 
 (* Since [PArray.Alist.t] has a unique physical representation, we can fall back

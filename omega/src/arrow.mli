@@ -34,6 +34,9 @@ type endpoint = private
   | I of int
   | M of int * int
 
+(* Provide a canonical ordering of endpoints: *)
+val compare_endpoints : endpoint -> endpoint -> int
+
 (* Endpoints can be the the tip or tail of an arrow or a ghost.
    Using incompatible types for each forces us to export three
    identical copies of some functions, but should help to avoid
@@ -41,6 +44,11 @@ type endpoint = private
 type tip = private endpoint
 type tail = private endpoint
 type ghost = private endpoint
+
+(* Type safe aliases for [compare_endpoints]. *)
+val compare_tips : tip -> tip -> int
+val compare_tails : tail -> tail -> int
+val compare_ghosts : ghost -> ghost -> int
 
 (* The position of the endpoint is encoded as an integer, which
    can be mapped, if necessary. *)
@@ -64,7 +72,7 @@ type ('tail, 'tip, 'ghost) t =
 type 'tip eps = 'tip list
 type 'tail eps_bar = 'tail list
 
-(* We distuish [free] arrows, $\epsilon$s and $\bar\epsilon$s
+(* We distinguish [free] arrows, $\epsilon$s and $\bar\epsilon$s
    that must not contain
    summation indices from [factor]s that may.  Indices are
    opaque.  [('tail, 'tip, 'ghost) t] has been defined polymorphic
@@ -81,6 +89,9 @@ type free_eps_bar = tail eps_bar
 type factor
 type factor_eps
 type factor_eps_bar
+
+val epsilon : tip list -> free_eps
+val epsilon_bar : tail list -> free_eps_bar
 
 val relocate : (int -> int) -> free -> free
 val rev : free -> free
@@ -133,11 +144,35 @@ val negatives : free -> endpoint list
 val negatives_eps : free_eps -> endpoint list
 val negatives_eps_bar : free_eps_bar -> endpoint list
 
+(* Return the list of all positions of endpoints corresponding to
+   adjoint representations.  To be precise, it's the list of
+   integers~[i] in endpoints [I i] that appear at least once as tip
+   and as tail.  While it is an error to appear \emph{more}
+   than once as either, this is not checked in the current implementation. *)
+val adjoints : free list -> int list
+val adjoints_eps : free list -> free_eps NEList.t -> int list
+val adjoints_eps_bar : free list -> free_eps_bar NEList.t -> int list
+
 (* We will need to test whether an arrow represents a ghost. *)
 val is_ghost : free -> bool
 
 (* An arrow looping back to itself. *)
 val is_tadpole : factor -> bool
+
+(* Check if the [tip]s and [tail]s of a list of arrows that
+   belong to the same positions are in a canonical order.
+   This can be used to weed out color flows that are equivalent
+   after applying the symmetrizations and antisymmetrizations
+   in irreps described by Young tableaux. *)
+val in_canonical_order : free list -> bool
+
+(* [endpoints (position, n)] construct a list of [n] endpoints at
+   [position] that can be concatenated with other such lists and
+   then permuted.  Examples: [endpoints (42,1) = [I 42] ] and
+   [endpoints (42,2) = [M (42,0); M (42,1)] ]. *)
+val endpoints : int * int -> endpoint list
+val make_tips : int * int -> tip list
+val make_tails : int * int -> tail list
 
 (* Merging an arrow with another arrow, $\epsilon$ or $\bar\epsilon$
    can give a variety of results: *)
@@ -194,7 +229,7 @@ val tee : int -> free -> free list
 val dir : int -> int -> free -> int
 
 (* It's intuitive to use infix operators to construct the lines. *)
-val single : endpoint -> endpoint -> free
+val single : tail -> tip -> free
 val double : endpoint -> endpoint -> free list
 val ghost : endpoint -> free
 
@@ -221,14 +256,32 @@ module Infix : sig
 
 end
 
-val epsilon : int list -> free_eps
-val epsilon_bar : int list -> free_eps_bar
+(* These used to be called [epsilon] and [epsilon_bar], but they are
+   not general enough! *)
+val epsilon0 : int list -> free_eps
+val epsilon0_bar : int list -> free_eps_bar
 
 (* [chain [1;2;3]] is a shorthand for [[1 => 2; 2 => 3]] and
    [cycle [1;2;3]] for [[1 => 2; 2 => 3; 3 => 1]].  Other lists
    and edge cases are handled in the natural way. *)
 val chain : int list -> free list
 val cycle : int list -> free list
+
+type matching_adjoint_arrows = Tee | Reflex
+
+(* [adjoint_arrows_opt a arrows] searches for arrows starting and ending
+   at [I a]. If a matching pair is found, the arrows are connected and
+   the resulting [arrow] is returned together with the remaining arrows
+   [other] as [Some (Tee, arrow :: other)].  If both tip and tail belong
+   to the same arrow, [Some (Reflex, other)] is returned instead.
+   If there is no match [None] is returned.  In the case of multiple
+   matches, the exception [Invalid_Arg] is raised. *)
+  
+val adjoint_arrows_opt : int -> free list -> (matching_adjoint_arrows * free list) option
+val adjoint_eps_opt : int -> free list -> free_eps NEList.t ->
+                      (matching_adjoint_arrows * free list * free_eps NEList.t) option
+val adjoint_eps_bar_opt : int -> free list -> free_eps_bar NEList.t ->
+                      (matching_adjoint_arrows * free list * free_eps_bar NEList.t) option
 
 module Test : sig val suite : OUnit.test val suite_long : OUnit.test end
 

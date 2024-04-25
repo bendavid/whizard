@@ -10214,6 +10214,1133 @@ function ovm_color_sum (flv, hel, amp, cf) result (amp2)
   end do
   !$omp end parallel do
 end function ovm_color_sum
+@ \section{Birdtracks}
+This module is part of the interface to WHIZARD, describing the color flows.
+Wolfgang wants short identifiers \ldots
+<<[[omega_birdtracks.f90]]>>=
+<<Copyleft>>
+module omega_birdtracks
+  use kinds
+  implicit none
+  private
+  <<[[omega_birdtracks]] declarations>>
+contains
+  <<Implementations of birdtrack functions>>
+end module omega_birdtracks
+@ Application programs can assume that all arrays are allocated
+and may test for empy array using the [[size]] intrinsic without
+using [[allocated]] first.
+@ \subsection{External Particles}
+[[color_state]] describes the color flow lines for one external particle.
+Its components are
+\begin{itemize}
+  \item the arrays [[i]] and [[o]] contain the numbers denoting the lines
+    starting and ending here
+  \item since we must distinguish color states without inflowing
+    and outflowing lines representing a color scalar from those
+    representing a ghost, we need the [[g]] flag
+  \item if [[i(n) < 0]], the line in slot [[n]] in the array [[i]] is not
+    connected to the slot containg the same number in the array [[o]] of
+    another [[color_state]]. Instead, this slot is connected to an $\epsilon_{ijk}$.
+    Analogously, if [[o(n) < 0]], the slot [[n]] in the array [[o]]
+    is connected to an $\bar\epsilon^{ijk}$.
+\end{itemize}
+<<[[omega_birdtracks]] declarations>>=
+public :: color_state
+type :: color_state
+   integer, dimension(:), allocatable :: i, o
+   logical :: g = .false.
+contains
+   procedure :: check => color_state_check
+   procedure :: to_string => color_state_to_string
+   procedure :: conjugate => color_state_conjugate
+   procedure :: rank_inflowing, rank_outflowing
+   procedure :: contains_epsilons => color_state_contains_epsilons
+end type color_state
+@ Test the invariants of [[color_state]] and return [[CS_OK]] (ie.~0)
+if they are satisfied.  If not, return a negative error code (see below).
+<<Implementations of birdtrack functions>>=
+impure elemental function color_state_check (cs) result (rc)
+  class(color_state), intent(in) :: cs
+  integer :: rc
+  character(*), parameter :: my_name = "omega_birdtracks%color_state_check"
+  type(color_state) :: cs_tmp    
+  if (cs%g .and. (size (cs%i) > 0 .or. size (cs%o) > 0)) then
+    cs_tmp = cs
+    cs_tmp%g = .false.
+    print *, my_name, ": ghost with open lines ", cs_tmp%to_string ()
+    rc = CS_GHOST
+  else
+    rc = CS_OK
+  end if
+end function color_state_check
+@ These are the return codes
+<<[[omega_birdtracks]] declarations>>=
+integer, parameter, public :: CS_OK = 0
+integer, parameter, public :: CS_GHOST = -1
+@ Find the minimum number of characters for representing the integer [[i]].
+This algorithm is inefficient for large [[abs(i)]], but we're only using it
+for small numbers.  In fact, we even require the modulus of [[i]] to be less
+than 1000000, to avoid overflows in [[abs]].
+<<Alternative implementations of birdtrack functions>>=
+elemental function integer_width (i) result (w)
+  integer, intent(in) :: i
+  integer :: ii, w
+  if (i < 1000000 .and. i > -1000000) then
+    if (i < 0) then
+       w = 2
+    else
+       w = 1
+    end if
+    ii = abs (i)
+    do while (ii >= 10)
+       w = w + 1
+       ii = ii / 10
+    end do
+  else
+    w = 0
+  end if
+end function integer_width
+@ More concise and completely portable, but probably less efficient:
+<<Implementations of birdtrack functions>>=
+elemental function integer_width (i) result (w)
+  integer, intent(in) :: i
+  integer :: w
+  character(IO_BUFFER_SIZE) :: buffer
+  write (unit = buffer, fmt = "(I0)") i
+  w = len_trim (buffer)
+end function integer_width
+@ Find the minimum number of characters for representing the integer in the
+array [[a]] that requires the most.
+<<Implementations of birdtrack functions>>=
+pure function max_integer_width (a) result (w)
+  integer, dimension(:), intent(in) :: a
+  integer :: w
+  w = max (integer_width (minval (a)), integer_width (maxval (a)))
+end function max_integer_width
+@
+Construct a composable format substring for arrays of small integers with the
+same width for each member.  Note that the resulting
+format strings are \emph{not} complete: the initial [['(']] and final [[')']]
+are missing in order to make them composable.  By default, the element will be
+enclosed by square brackets [['[']] and [[']']].  These can be changed by
+[[prefix]] and [[postfix]], for writing lists as function arguments.
+
+Note that it is not strictly necessary to  to calculate the exact size of [[fmt]]
+and to [[allocate]] it by hand.  Instead, a stack allocated
+[[character(IO_BUFFER_SIZE) :: buffer]] suffices for all practical purposes and
+we can then use allocate-on-assignment in [[fmt = trim (buffer)]] at the end.
+<<[[omega_birdtracks]] declarations>>=
+integer, parameter :: IO_BUFFER_SIZE = 1000
+@
+\begin{dubious}
+  Also note that below there is a different approach that first constructs an array
+  of characters representing the integers and concatenates the members subsequently.
+  This approach needs less wizardry with unreadable and potentially overflowing format
+  strings, but GNU Fortran produces (spurious?) warnings about my implementation.
+\end{dubious}
+<<Implementations of birdtrack functions>>=
+pure function integer_array_format (a, min_width, prefix, postfix) result (fmt)
+  integer, dimension(:), intent(in) :: a
+  integer, intent(in), optional :: min_width
+  character(*), intent(in), optional :: prefix, postfix
+  character(:), allocatable :: fmt
+  character(:), allocatable :: pre, post
+  character(IO_BUFFER_SIZE) :: buffer
+  integer :: w
+  w = max_integer_width (a)
+  if (present (min_width)) then
+     w = max (w, min_width)
+  end if
+  if (present (prefix)) then
+    pre = prefix
+  else
+    pre = "["
+  endif
+  if (present (postfix)) then
+    post = postfix
+  else
+    post = "]"
+  endif
+  select case (size (a))
+  case (0)
+     fmt = "'" // pre // post // "'"
+  case (1)
+     write (buffer, "(3A,I0,3A)") "'", pre, "', I", w, ", '", post, "'"
+     fmt = trim (buffer)
+  case default
+     write (buffer, "(3A,3(I0,A),2A)") "'", pre, "',", size(a) - 1, "(I", w, ", ','), I", w, ", '", post, "'"
+     fmt = trim (buffer)
+  end select
+end function integer_array_format
+@
+<<Alternative implementations of birdtrack functions>>=
+pure function integer_array_format (a, min_width, prefix, postfix) result (fmt)
+  integer, dimension(:), intent(in) :: a
+  integer, intent(in), optional :: min_width
+  character(*), intent(in), optional :: prefix, postfix
+  character(:), allocatable :: fmt, pre, post
+  integer :: w
+  w = max_integer_width (a)
+  if (present (min_width)) then
+     w = max (w, min_width)
+  end if
+  if (present (prefix)) then
+    pre = prefix
+  else
+    pre = "["
+  endif
+  if (present (postfix)) then
+    post = postfix
+  else
+    post = "]"
+  endif
+  select case (size (a))
+  case (0)
+     allocate (character(len = 4) :: fmt)
+     fmt = "'" // pre // post // "'"
+  case (1)
+     allocate (character(len = 11 + integer_width (w)) :: fmt)
+     write (fmt, "(3A,I0,3A)") "'", pre, "', I", w, ", '", post, "'"
+  case default
+     allocate (character(len = 20 + integer_width (size(a) - 1) + 2*integer_width (w)) :: fmt)
+     write (fmt, "(3A,3(I0,A),2A)") "'", pre, "',", size(a) - 1, "(I", w, ", ','), I", w, ", '", post, "'"
+  end select
+end function integer_array_format
+@
+<<Implementations of birdtrack functions>>=
+pure function color_state_to_string (cs) result (s)
+  class(color_state), intent(in) :: cs
+  character(:), allocatable :: s
+  character(IO_BUFFER_SIZE) :: buffer
+  integer :: iostat
+  if (cs%g) then
+    s = "g"
+  else
+    write (unit = buffer, fmt = &
+             "('(', " // integer_array_format (cs%i) // ", ', ', " &
+                      // integer_array_format (cs%o) // ", ')')",  &
+           iostat = iostat) cs%i, cs%o
+    if (is_iostat_eor (iostat) .or. is_iostat_end (iostat)) then
+      s = "color_state_to_string: too long"
+    else
+      s = trim (buffer)
+    endif
+  end if
+end function color_state_to_string
+@
+<<Implementations of birdtrack functions>>=
+pure function color_state_conjugate (cs) result (csc)
+  class(color_state), intent(in) :: cs
+  type(color_state) :: csc
+  csc = color_state (i = cs%o, o = cs%i, g = cs%g)
+end function color_state_conjugate
+@
+<<Alternative implementations of birdtrack functions>>=
+pure subroutine color_state_conjugate (cs)
+  class(color_state), intent(inout) :: cs
+  integer, dimension(:), allocatable :: tmpo
+  tmpo = cs%o
+  cs%o = cs%i
+  cs%i = tmpo
+end subroutine color_state_conjugate
+@
+<<Alternative implementations of birdtrack functions>>=
+pure subroutine color_state_conjugate (cs, csc)
+  class(color_state), intent(in) :: cs
+  type(color_state), intent(inout) :: csc
+  csc%g = cs%g
+  csc%i = cs%o
+  csc%o = cs%i
+end subroutine color_state_conjugate
+@
+<<Implementations of birdtrack functions>>=
+elemental function rank_inflowing (cs) result (n)
+  class(color_state), intent(in) :: cs
+  integer :: n
+  n = size (cs%i)
+end function rank_inflowing
+elemental function rank_outflowing (cs) result (n)
+  class(color_state), intent(in) :: cs
+  integer :: n
+  n = size (cs%o)
+end function rank_outflowing
+@
+<<Implementations of birdtrack functions>>=
+elemental function color_state_contains_epsilons (cs) result (yorn)
+  class(color_state), intent(in) :: cs
+  logical :: yorn
+  yorn = min (minval (cs%i), minval (cs%o)) < 0
+end function color_state_contains_epsilons
+@ \subsection{Color Flows}
+In sections~\ref{sec:arrow}, \ref{sec:birdtracks} and~\ref{sec:su3} we
+carefully distinguish~$\epsilon_{ijk}$ from~$\bar\epsilon^{ijk}$.
+In the interface to Whizard, we give up this distinction, since the
+color flows contain both incoming and outgoing particles.  This will
+result in $\epsilon$ tensors with mixed upper and lower indices.
+Trying to keep track of them with Fortran types would cause more confusion
+than clarity.  In any case, all variants are \emph{numerically}
+identical anyway and upper and lower indices can be distinguished from the
+the external lines they are connected to.
+<<[[omega_birdtracks]] declarations>>=
+public :: epsilon3
+type :: epsilon3
+   integer, dimension(3) :: j
+contains
+   procedure :: check => epsilon3_check
+   procedure :: to_string => epsilon3_to_string
+end type epsilon3
+@
+<<Implementations of birdtrack functions>>=
+impure elemental function epsilon3_check (e) result (rc)
+  class(epsilon3), intent(in) :: e
+  integer :: rc, n
+  character(*), parameter :: my_name = "omega_birdtracks%epsilon3_check"    
+  rc = E3_OK
+  if (any (e%j >= 0)) then
+    print *, my_name, ": index not negative in ", e%to_string ()
+    rc = E3_NON_NEGATIVE
+    return
+  end if
+  do n = 1, size (e%j)
+    if (count (e%j == e%j(n)) /= 1) then
+      print *, my_name, ": duplicate index in ", e%to_string ()
+      rc = E3_DUPLICATE
+      return
+    end if
+  end do
+end function epsilon3_check
+@ These are the return codes
+<<[[omega_birdtracks]] declarations>>=
+integer, parameter, public :: E3_OK = 0
+integer, parameter, public :: E3_NON_NEGATIVE = -1
+integer, parameter, public :: E3_DUPLICATE = -2
+@
+<<Implementations of birdtrack functions>>=
+pure function epsilon3_to_string (e) result (s)
+  class(epsilon3), intent(in) :: e
+  character(:), allocatable :: s
+  character(IO_BUFFER_SIZE) :: buffer
+  integer :: iostat
+  write (unit = buffer, fmt = &
+             "('eps'," // integer_array_format (e%j, prefix = "(", postfix = ")") // ")",  &
+         iostat = iostat) e%j
+  if (is_iostat_eor (iostat) .or. is_iostat_end (iostat)) then
+    s = "epsilon3_to_string: too long"
+  else
+    s = trim (buffer)
+  endif
+end function epsilon3_to_string
+@
+<<[[omega_birdtracks]] declarations>>=
+public :: color_flow
+type :: color_flow
+   type(color_state), dimension(:), allocatable :: cs
+   type(epsilon3), dimension(:), allocatable :: e
+contains
+   procedure :: check => color_flow_check     
+   procedure :: to_string => color_flow_to_string
+   procedure :: max_rank, max_rank_inflowing, max_rank_outflowing
+   procedure :: contains_epsilons => color_flow_contains_epsilons
+end type color_flow
+@ Test the invariants of [[color_flow]] and return [[CF_OK]] (ie.~0)
+if they are satisfied.  If not, return a negative error code (see below)
+The application program can inspect the array [[cf%cs%check ()]] for more details
+@ Utility function concatenating arrays.
+<<Implementations of birdtrack functions>>=
+pure function inflowing_lines (cf, n_incoming) result (inflowing)
+  class(color_flow), intent(in) :: cf
+  integer, intent(in) :: n_incoming
+  integer, dimension(:), allocatable :: inflowing
+  integer :: i, j, n, num_lines
+  num_lines = 0
+  do n = 1, min (n_incoming, size (cf%cs))
+    num_lines = num_lines + size (cf%cs(n)%o)
+  end do
+  do n = n_incoming + 1, size (cf%cs)
+    num_lines = num_lines + size (cf%cs(n)%i)
+  end do
+  allocate (inflowing(num_lines))
+  j = 0
+  do n = 1, min (n_incoming, size (cf%cs))
+    i = j + 1
+    j = i + size (cf%cs(n)%o) - 1
+    inflowing(i:j) = cf%cs(n)%o
+  end do
+  do n = n_incoming + 1, size (cf%cs)
+    i = j + 1
+    j = i + size (cf%cs(n)%i) - 1
+    inflowing(i:j) = cf%cs(n)%i
+  end do
+end function inflowing_lines
+@ This code duplication could only be avoided by replacing [[cs%i]] and [[cs%o]]
+by an array or by using accessor functions.  A more aggressively object oriented
+approach could also work.    
+<<Implementations of birdtrack functions>>=
+pure function outflowing_lines (cf, n_incoming) result (outflowing)
+  class(color_flow), intent(in) :: cf
+  integer, intent(in) :: n_incoming
+  integer, dimension(:), allocatable :: outflowing
+  integer :: i, j, n, num_lines
+  num_lines = 0
+  do n = 1, min (n_incoming, size (cf%cs))
+    num_lines = num_lines + size (cf%cs(n)%i)
+  end do
+  do n = n_incoming + 1, size (cf%cs)
+    num_lines = num_lines + size (cf%cs(n)%o)
+  end do
+  allocate (outflowing(num_lines))
+  j = 0
+  do n = 1, min (n_incoming, size (cf%cs))
+    i = j + 1
+    j = i + size (cf%cs(n)%i) - 1
+    outflowing(i:j) = cf%cs(n)%i
+  end do
+  do n = n_incoming + 1, size (cf%cs)
+    i = j + 1
+    j = i + size (cf%cs(n)%o) - 1
+    outflowing(i:j) = cf%cs(n)%o
+  end do
+end function outflowing_lines
+@
+<<Implementations of birdtrack functions>>=
+pure function epsilon_lines (cf) result (eps)
+  class(color_flow), intent(in) :: cf
+  integer, dimension(:), allocatable :: eps
+  integer :: i, j, n, num_lines
+  num_lines = 0
+  do n = 1, size (cf%e)
+    num_lines = num_lines + size (cf%e(n)%j)
+  end do
+  allocate (eps(num_lines))
+  j = 0
+  do n = 1, size (cf%e)
+    i = j + 1
+    j = i + size (cf%e(n)%j) - 1
+    eps(i:j) = cf%e(n)%j
+  end do
+end function epsilon_lines
+@
+<<[[omega_birdtracks]] declarations>>=
+public :: inflowing_lines, outflowing_lines, epsilon_lines
+@ Collect everything.
+<<Implementations of birdtrack functions>>=
+impure elemental function color_flow_check (cf) result (rc)
+  class(color_flow), intent(in) :: cf
+  integer :: rc, n
+  integer, dimension(:), allocatable :: i, o, e
+  integer :: n_incoming = 0    
+  character(*), parameter :: my_name = "omega_birdtracks%color_flow_check"
+  if (size (cf%cs) > 0) then
+    rc = minval (cf%cs%check ())
+    if (rc /= 0) then
+      print *, my_name, ": inconsistent color_state in ", cf%to_string ()
+    end if
+  end if
+  if (size (cf%e) > 0) then    
+    rc = minval (cf%e%check ())
+    if (rc /= 0) then
+      print *, my_name, ": inconsistent epsilon in ", cf%to_string ()
+      return
+    end if
+  end if
+  i = inflowing_lines (cf, n_incoming)
+  o = outflowing_lines (cf, n_incoming)
+  e = epsilon_lines (cf)
+  do n = 1, size (i)
+    if (count (i == i(n)) /= 1) then
+      print *, my_name, ": duplicate inflowing line ", i(n), " in ", cf%to_string ()
+      rc = CF_DUPLICATE
+      return
+    end if
+    if (i(n) > 0) then
+      if (count (o == i(n)) /= 1) then
+        print *, my_name, ": inflowing line ", i(n), " not uniquely connected in ", cf%to_string ()
+        rc = CF_LINK
+        return
+      end if
+    else if (i(n) < 0) then
+      if (count (e == i(n)) /= 1) then
+        print *, my_name, ": epsilon line ", i(n), " not uniquely connected in ", cf%to_string ()
+        rc = CF_LINK
+        return
+      end if
+    else
+      print *, my_name, ": line zero in ", cf%to_string ()
+      rc = CF_ZERO
+      return
+    end if
+  end do
+  do n = 1, size (o)
+    if (count (o == o(n)) /= 1) then
+      print *, my_name, ": duplicate outflowing line ", o(n), " in ", cf%to_string ()
+      rc = CF_DUPLICATE
+      return
+    end if
+    if (o(n) > 0) then
+      if (count (i == o(n)) /= 1) then
+        print *, my_name, ": outflowing line ", o(n), " not uniquely connected in ", cf%to_string ()
+        rc = CF_LINK
+        return
+      end if
+    else if (o(n) < 0) then
+      if (count (e == o(n)) /= 1) then
+        print *, my_name, ": epsilon line ", o(n), " not uniquely connected in ", cf%to_string ()
+        rc = CF_LINK
+        return
+      end if
+    else
+      print *, my_name, ": line zero in ", cf%to_string ()
+      rc = CF_ZERO
+      return
+    end if
+  end do
+  do n = 1, size (e)
+    if (count (i == e(n)) + count (o == e(n)) /= 1) then
+      print *, my_name, ": epsilon line ", e(n), " not uniquely connected in ", cf%to_string ()
+      rc = CF_LINK
+      return
+    end if
+  end do
+end function color_flow_check
+@ These are the return codes
+<<[[omega_birdtracks]] declarations>>=
+integer, parameter, public :: CF_OK = 0
+integer, parameter, public :: CF_GHOST = -1
+integer, parameter, public :: CF_EPS = -2
+integer, parameter, public :: CF_SIZE_EPS = -3
+integer, parameter, public :: CF_DUPLICATE = -4
+integer, parameter, public :: CF_LINK = -5
+integer, parameter, public :: CF_ZERO = -6
+@
+<<Implementations of birdtrack functions>>=
+pure function color_flow_to_string (cf) result (s)
+  class(color_flow), intent(in) :: cf
+  character(:), allocatable :: s
+  character(IO_BUFFER_SIZE) :: buffer
+  integer :: n, from, to
+  buffer = ""    
+  if (size (cf%cs) > 0) then
+    call initial (buffer, from, to, cf%cs(1)%to_string ())
+    do n = 2, size (cf%cs)
+      call append (buffer, from, to, ", ")
+      call append (buffer, from, to, cf%cs(n)%to_string ())
+    end do
+    if (size (cf%e) > 0) then
+      call append (buffer, from, to, "; ")
+      call append (buffer, from, to, cf%e(1)%to_string ())
+      do n = 2, size (cf%e)
+        call append (buffer, from, to, ", ")
+        call append (buffer, from, to, cf%e(n)%to_string ())
+      end do
+    end if
+  end if
+  s = "{" // trim (buffer) // "}"
+contains
+  <<Auxilliary functions for [[color_flow_to_string]]>>
+end function color_flow_to_string
+@
+<<Auxilliary functions for [[color_flow_to_string]]>>=
+pure subroutine append (buffer, from, to, s)
+  character(*), intent(inout) :: buffer
+  integer, intent(inout) :: from, to
+  character(*), intent(in) :: s
+  from = to + 1
+  to = from + len (s) - 1
+  buffer(from:to) = s    
+end subroutine append
+@
+<<Auxilliary functions for [[color_flow_to_string]]>>=
+pure subroutine initial (buffer, from, to, s)
+  character(*), intent(inout) :: buffer
+  integer, intent(inout) :: from
+  integer, intent(out) :: to
+  character(*), intent(in) :: s
+  to = 0
+  call append (buffer, from, to, s)
+end subroutine initial
+@
+<<Implementations of birdtrack functions>>=
+pure function max_rank_inflowing (cf) result (n)
+  class(color_flow), intent(in) :: cf
+  integer :: n
+  n = maxval (cf%cs%rank_inflowing ())
+end function max_rank_inflowing
+pure function max_rank_outflowing (cf) result (n)
+  class(color_flow), intent(in) :: cf
+  integer :: n
+  n = maxval (cf%cs%rank_outflowing ())
+end function max_rank_outflowing
+pure function max_rank (cf) result (n)
+  class(color_flow), intent(in) :: cf
+  integer :: n
+  n = max (cf%max_rank_inflowing (), cf%max_rank_outflowing ())
+end function max_rank
+@
+<<Implementations of birdtrack functions>>=
+pure function color_flow_contains_epsilons (cf) result (yorn)
+  class(color_flow), intent(in) :: cf
+  logical :: yorn
+  yorn = any (cf%cs%contains_epsilons ())
+end function color_flow_contains_epsilons
+@ \subsubsection{Implementation of DTIO}
+\begin{dubious}
+  This has been shelved for portability, because the Intel Fortran compiler
+  appears to have problems in this area.
+\end{dubious}
+Fortran DTIO (i.\,e.~Defined Type IO) is actually quite powerful
+and allows for concise implementations.  Unfortunately, there is
+absolutely no type checking for the format string and one needs
+to do a lot of testing.  In addition, the required nesting of
+quotes can be hard to read.
+@
+<<Implementations of birdtrack DTIO functions>>=
+subroutine color_state_write (cs, unit, iotype, vlist, iostat, iomsg)
+  class(color_state), intent(in) :: cs
+  integer, intent(in) :: unit
+  character(*), intent(in) :: iotype
+  integer, dimension(:), intent(in) :: vlist
+  integer, intent(out) :: iostat
+  character(*), intent(inout) :: iomsg
+  integer :: integer_width
+  if (size (vlist) >= 1) then
+    integer_width = vlist(1)
+  else
+    integer_width = 1
+  end if
+  if (cs%g) then
+    write (unit = unit, fmt = "(A)", iostat = iostat) "g"
+  else
+    write (unit = unit, fmt = &
+             "('(', " // integer_array_format (cs%i, min_width = integer_width) // ", ', ', " &
+                      // integer_array_format (cs%o, min_width = integer_width) // ", ')')",  &
+           iostat = iostat) cs%i, cs%o
+  end if
+end subroutine color_state_write
+@
+<<Implementations of birdtrack DTIO functions>>=
+subroutine epsilon3_write (e, unit, iotype, vlist, iostat, iomsg)
+  class(epsilon3), intent(in) :: e
+  integer, intent(in) :: unit
+  character(*), intent(in) :: iotype
+  integer, dimension(:), intent(in) :: vlist
+  integer, intent(out) :: iostat
+  character(*), intent(inout) :: iomsg
+  integer :: integer_width
+  if (size (vlist) >= 1) then
+    integer_width = vlist(1)
+  else
+    integer_width = 1
+  end if
+  write (unit = unit, fmt = &
+             "('eps'," // integer_array_format (e%j, min_width = integer_width, &
+                                                prefix = "(", postfix = ")") // ")",  &
+         iostat = iostat) e%j
+end subroutine epsilon3_write
+@
+\begin{dubious}
+  For the time being, I'm ignoring [[vlist]].  We don't need it
+  and passing it on to the formats would add too much complexity.
+\end{dubious}
+<<Implementations of birdtrack DTIO functions>>=
+subroutine color_flow_write (cf, unit, iotype, vlist, iostat, iomsg)
+  class(color_flow), intent(in) :: cf
+  integer, intent(in) :: unit
+  character(*), intent(in) :: iotype
+  integer, dimension(:), intent(in) :: vlist
+  integer, intent(out) :: iostat
+  character(*), intent(inout) :: iomsg
+  character(len=34) :: fmt
+  integer :: n_cs, n_eps
+  n_cs = size (cf%cs)
+  select case (n_cs)
+  case (0)
+    fmt = "X"
+  case (1)
+    fmt = "DT"
+  case default
+    n_eps = size (cf%e)
+    select case (n_eps)
+    case (0)
+      write (fmt, fmt = "(A,I2,A)") "DT,", n_cs - 1, "(', ',DT)"
+    case (1)
+      write (fmt, fmt = "(A,I2,A)") "DT,", n_cs - 1, "(', ',DT),'; ',DT"
+    case default
+      write (fmt, fmt = "(A,2(I2,A))") "DT,", n_cs - 1, "(', ',DT),'; ',DT,", n_eps - 1, "(', ',DT)"
+    end select
+  end select
+  write (unit = unit, fmt = "('{'," // trim (fmt) // ",'}')", iostat = iostat) cf%cs, cf%e
+end subroutine color_flow_write
+@ \subsubsection{Earlier (shelved) Implementations}
+Take the elements of the [[character]] array [[sarray]] and concatenate
+them, putting a copy of [[padding]] between each pair.  Do this by allocating
+the result string and copy the source strings to the appropriate substrings.
+The case of a zero-length [[sarray]] is treated specially to avoid a spurious
+negative padding.
+<<Alternative implementations of birdtrack functions>>=
+pure function concat (sarray, padding) result (s)
+  character(*), dimension(:), intent(in) :: sarray
+  character(*), intent(in), optional :: padding
+  character(:), allocatable :: s
+  integer :: len_s, from, to, n
+  if (size (sarray) == 0) then
+     s = ""
+  else
+     if (present (padding)) then
+        len_s = size (sarray) * len (sarray) + (size (sarray) - 1) * len (padding)
+     else
+        len_s = size (sarray) * len (sarray)
+     end if
+     allocate (character(len=len_s) :: s)
+     call first (from, to, len (sarray))
+     s(from:to) = sarray(1)
+     do n = 2, size (sarray)
+        if (present (padding)) then
+           call next (from, to, len (padding))
+           s(from:to) = padding
+        end if
+        call next (from, to, len (sarray))
+        s(from:to) = sarray(n)
+     end do
+  end if
+contains
+  <<Auxilliary functions for [[concat]]>>  
+end function concat
+@ Move [[from:to]] to the immediately following substring of length [[length]]
+<<Auxilliary functions for [[concat]]>>=
+pure subroutine next (from, to, length)
+  integer, intent(inout) :: from, to
+  integer, intent(in) :: length
+  from = to + 1
+  to = from + length - 1
+end subroutine next
+@ Set [[from:to]] to the first substring of length [[length]]
+<<Auxilliary functions for [[concat]]>>= 
+pure subroutine first (from, to, length)
+  integer, intent(out) :: from, to
+  integer, intent(in) :: length
+  to = 0
+  call next (from, to, length)
+end subroutine first
+@ Here we assume that the integers need at most 99 digits.
+That should be a safe assumption.
+<<Alternative implementations of birdtrack functions>>=
+pure function integer_array_to_string (a, min_width) result (s)
+  integer, dimension(:), intent(in) :: a
+  integer, intent(in), optional :: min_width
+  character(:), allocatable :: s
+  character(:), dimension(:), allocatable :: buffers
+  character(len=5) :: fmt
+  integer :: len_s, width, n
+  width = max_integer_width (a)
+  if (present (min_width)) then
+     width = max (width, min_width)
+  end if
+  allocate (character(len=width) :: buffers(size(a)))
+  write (fmt, "(A,I2,A)") "(I", width, ")"
+  do n = 1, size (a)
+     write (buffers(n), fmt = fmt) a(n)
+  end do
+  s = "[" // concat (buffers, ",") // "]"
+end function integer_array_to_string
+@
+\begin{dubious}
+  Iff this is used in another implementation of the [[color_state_write]] procedure,
+  GNU Fortran version~12.2 complains
+\begin{verbatim}
+    omega_birdtracks.f90:140:54:
+
+      138 |     character(:), dimension(:), allocatable :: buffers
+          |                                                      ^
+    Warning: ‘.buffers’ is used uninitialized [-Wuninitialized]
+    omega_birdtracks.f90:170:34:
+
+      169 |   end subroutine color_state_write
+          |                                  ^
+    note: ‘.buffers’ was declared here
+\end{verbatim}
+which I don't understand, since [[integer_array_to_string]] compiles
+without any warning if it is not referenced in [[color_state_write]].
+\end{dubious}
+@ \section{API}
+@ \subsection{Version 3}
+This module defines the interface to WHIZARD.
+<<[[omega_api_v3.f90]]>>=
+<<Copyleft>>
+module omega_api_v3
+  use kinds
+  <<Modules [[use]]d by [[omega_api_v3]]>>
+  implicit none
+  private
+  <<[[omega_api_v3]] declarations>>
+contains
+  <<Implementations of API functions (Version 3)>>
+end module omega_api_v3
+@
+<<Modules [[use]]d by [[omega_api_v3]]>>=
+use omega_birdtracks
+@ \subsection{Scattering Amplitude}
+It is crucial to define a common [[type]] for the amplitudes here
+so that WHIZARD can form arrays of them.
+
+The type [[amplitude]] contains the scattering amplitude evaluated
+for the most recent set of momenta.  In particular, the component
+[[amp]] containes the complex values indexed by
+\begin{enumerate}
+  \item the combination of powers of coupling orders,
+  \item the combination of external flavors,
+  \item the color flow, and
+  \item the combination of external helicities.
+These are all represented by indices into the corresponding arrays.
+\end{enumerate}
+\begin{dubious}
+  TODO
+  \begin{enumerate}
+    \item decide whether to cross the initial or final state.  If so,
+      add the required information  
+    \item add the table of color factors required for computing color sums
+    \item make sure that the [[amp]] component does not need to be copied
+      every time the amplitude is evaluated for a new set of momenta.
+  \end{enumerate}
+\end{dubious}
+<<[[omega_api_v3]] declarations>>=
+public :: amplitude
+type :: amplitude
+   complex(kind=default), dimension(:,:,:,:), allocatable :: amp
+   character(:), dimension(:), allocatable :: coupling_orders
+   integer, dimension(:,:), allocatable :: coupling_powers
+   integer, dimension(:,:), allocatable :: spin_states
+   integer, dimension(:,:), allocatable :: flavor_states
+   integer :: n_incoming
+   type(color_flow), dimension(:), allocatable :: color_flows
+contains
+   ! procedure :: copy => copy_amplitude
+end type amplitude
+@ \subsection{Moving Data Around}
+\begin{dubious}
+  Note that if I turn this into a function, GNU Fortran complains about uninitialized
+  internal variables.  That's probably a harmless bug, but I decide to avoid the
+  warning messages.
+\end{dubious}
+Here we can use allocate-on-assignment for the allocatable components of [[cs]]
+<<Implementations of API functions (Version 3)>>=
+pure subroutine copy_color_state &
+       (cs, i_prt, i_cf, rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost)
+   type(color_state), intent(inout) :: cs
+   integer, intent(in) :: i_prt, i_cf
+   integer, dimension(:,:), intent(in) :: rank_inflowing, rank_outflowing
+   integer, dimension(:,:,:), intent(in) :: inflowing, outflowing
+   logical, dimension(:,:), intent(in) :: is_ghost
+   cs%g = is_ghost(i_prt,i_cf)
+   cs%i = inflowing(1:rank_inflowing(i_prt,i_cf),i_prt,i_cf)
+   cs%o = outflowing(1:rank_outflowing(i_prt,i_cf),i_prt,i_cf)
+end subroutine copy_color_state
+@
+It would be nice to be able to use only allocate-on-assignment here as well.
+Unfortunately, this requires arrays of compatible shapes, not derived
+types.  Therefore, we can allocate-on-assignment the [[i]], [[o]] and [[g]] of
+one [[color_state]] of [[epsilon3]], but not complete
+arrays of them.
+<<Implementations of API functions (Version 3)>>=
+pure subroutine copy_color_flow &
+       (cf, n_cf, n_incoming, rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &
+        n_eps, eps, n_eps_bar, eps_bar)
+   type(color_flow), intent(inout) :: cf
+   integer, intent(in) :: n_cf, n_incoming
+   integer, dimension(:,:), intent(in) :: rank_inflowing, rank_outflowing
+   integer, dimension(:), intent(in) :: n_eps, n_eps_bar
+   integer, dimension(:,:,:), intent(in) :: inflowing, outflowing, eps, eps_bar
+   logical, dimension(:,:), intent(in) :: is_ghost
+   integer :: n, n_particles
+   n_particles = size (inflowing, dim=2)
+   <<Make sure that [[cf%cs]] is allocated for [[n_particles]] particles>>
+   do n = 1, n_particles
+      call copy_color_state (cf%cs(n), n, n_cf, &
+        rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost)
+   end do
+   <<Make sure that [[cf%e]] is allocated for [[n_eps(n_cf) + n_eps_bar(n_cf)]] $\epsilon_{ijk}$ or $\bar\epsilon^{ijk}$>>
+   do n = 1, n_eps(n_cf)
+      cf%e(n)%j = eps(:,n,n_cf)
+   end do
+   do n = 1, n_eps_bar(n_cf)
+      cf%e(n+n_eps(n_cf))%j = eps_bar(:,n,n_cf)
+   end do
+end subroutine copy_color_flow
+@ 
+<<Make sure that [[cf%cs]] is allocated for [[n_particles]] particles>>=
+if (.not. allocated (cf%cs)) then
+   allocate (cf%cs(n_particles))
+else if (size (cf%cs) /= n_particles) then
+   deallocate (cf%cs)
+   allocate (cf%cs(n_particles))
+end if
+@
+<<Make sure that [[cf%e]] is allocated for [[n_eps(n_cf) + n_eps_bar(n_cf)]] $\epsilon_{ijk}$ or $\bar\epsilon^{ijk}$>>=
+if (.not. allocated (cf%e)) then
+   allocate (cf%e(n_eps(n_cf)+n_eps_bar(n_cf)))
+else if (size (cf%e) /= n_eps(n_cf) + n_eps_bar(n_cf)) then
+   deallocate (cf%e)
+   allocate (cf%e(n_eps(n_cf)+n_eps_bar(n_cf)))
+end if
+@
+<<Implementations of API functions (Version 3)>>=
+pure subroutine copy_color_flows &
+       (cf, n_incoming, rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &
+        n_eps, eps, n_eps_bar, eps_bar)
+   type(color_flow), dimension(:), allocatable, intent(inout) :: cf
+   integer, intent(in) :: n_incoming
+   integer, dimension(:,:), intent(in) :: rank_inflowing, rank_outflowing
+   integer, dimension(:), intent(in) :: n_eps, n_eps_bar
+   integer, dimension(:,:,:), intent(in) :: inflowing, outflowing, eps, eps_bar
+   logical, dimension(:,:), intent(in) :: is_ghost
+   integer :: n, n_colorflows
+   n_colorflows = size (inflowing, dim = 3)
+   if (.not. allocated (cf)) then
+      allocate (cf(n_colorflows))
+   else if (size (cf) /= n_colorflows) then
+      deallocate (cf)
+      allocate (cf(n_colorflows))
+   end if
+   do n = 1, n_colorflows
+      call copy_color_flow &
+         (cf(n), n, n_incoming, rank_inflowing, inflowing, rank_outflowing, outflowing, &
+          is_ghost, n_eps, eps, n_eps_bar, eps_bar)
+   end do
+end subroutine copy_color_flows
+@
+<<Implementations of API functions (Version 3)>>=
+pure subroutine copy_amplitude &
+      (a, n_incoming, flavor_states, spin_states, &
+       rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &
+       n_eps, eps, n_eps_bar, eps_bar, &
+       coupling_orders, coupling_powers, amp)
+   type(amplitude), intent(inout) :: a
+   integer, intent(in) :: n_incoming
+   integer, dimension(:,:), intent(in) :: flavor_states, spin_states
+   integer, dimension(:,:), intent(in) :: rank_inflowing, rank_outflowing
+   integer, dimension(:), intent(in) :: n_eps, n_eps_bar
+   integer, dimension(:,:,:), intent(in) :: inflowing, outflowing, eps, eps_bar
+   logical, dimension(:,:), intent(in) :: is_ghost
+   character(*), dimension(:), intent(in) :: coupling_orders
+   integer, dimension(:,:), intent(in) :: coupling_powers
+   complex(kind=default), dimension(:,:,:,:), intent(in) :: amp
+   a%amp = amp
+   a%coupling_orders = coupling_orders
+   a%coupling_powers = coupling_powers
+   a%spin_states = spin_states
+   a%flavor_states = flavor_states
+   a%n_incoming = n_incoming
+   call copy_color_flows &
+      (a%color_flows, n_incoming, rank_inflowing, inflowing, rank_outflowing, outflowing, &
+       is_ghost, n_eps, eps, n_eps_bar, eps_bar)
+end subroutine copy_amplitude
+@ In principle we can export pointers to the static arrays, except for the color flows,
+which have to be computed from the static arrays.  This would save us from having to copy
+the complete [[amp]] array every time it is evaluated for a new set of momenta.
+We have to see whether this really makes a difference. For all other components there will
+be no difference, because they never change.
+\begin{dubious}
+  We could declare them immutable, but the initialization of big [[parameter]] arrays
+  requires [[reshape]] and wastes space for intermediate lower rank arrays if we want
+  to avoid continuation line limitations.  Note that [[target]] and [[parameter]]
+  conflict, so we wouldn't gain anything.  Therefore, we will stick with the more
+  readable [[data]] statements, for the time being.
+\end{dubious}
+<<[[omega_api_v3]] declarations>>=
+public :: amplitude_pointer
+type :: amplitude_pointer
+   complex(kind=default), dimension(:,:,:,:), pointer :: amp
+   character(:), dimension(:), pointer :: coupling_orders
+   integer, dimension(:,:), pointer :: coupling_powers
+   integer, dimension(:,:), pointer :: spin_states
+   integer, dimension(:,:), pointer :: flavor_states
+   integer :: n_incoming
+   type(color_flow), dimension(:), allocatable :: color_flows
+end type amplitude_pointer
+@
+<<Implementations of API functions (Version 3)>>=
+subroutine init_amplitude_pointer &
+      (a, n_incoming, flavor_states, spin_states, &
+       rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &
+       n_eps, eps, n_eps_bar, eps_bar, &
+       coupling_orders, coupling_powers, amp)
+   type(amplitude_pointer), intent(inout) :: a
+   integer, intent(in) :: n_incoming
+   integer, dimension(:,:), target :: flavor_states, spin_states
+   integer, dimension(:,:), intent(in) :: rank_inflowing, rank_outflowing
+   integer, dimension(:), intent(in) :: n_eps, n_eps_bar
+   integer, dimension(:,:,:), intent(in) :: inflowing, outflowing, eps, eps_bar
+   logical, dimension(:,:), intent(in) :: is_ghost
+   character(*), dimension(:), target :: coupling_orders
+   integer, dimension(:,:), target :: coupling_powers
+   complex(kind=default), dimension(:,:,:,:), target :: amp
+   a%amp => amp
+   a%coupling_orders => coupling_orders
+   a%coupling_powers => coupling_powers
+   a%spin_states => spin_states
+   a%flavor_states => flavor_states
+   a%n_incoming = n_incoming
+   call copy_color_flows &
+         (a%color_flows, n_incoming, rank_inflowing, inflowing, rank_outflowing, outflowing, &
+          is_ghost, n_eps, eps, n_eps_bar, eps_bar)
+end subroutine init_amplitude_pointer
+@
+<<[[omega_api_v3]] declarations>>=
+public :: copy_amplitude
+@ \subsection{Tests}
+\label{sec:API-tests}
+<<[[test_omega_api.f90]]>>=
+module omega_api_v3_example
+  use kinds
+  use omega_birdtracks
+  use omega_api_v3
+  implicit none
+  private
+  <<Declarations for examples using the API functions (Version 3)>>
+contains
+  <<Examples using the API functions (Version 3)>>
+end module omega_api_v3_example
+@ Of course, [[n_incoming + n_outgoing == n_particles]]:
+<<Declarations for examples using the API functions (Version 3)>>=
+integer, parameter, public :: n_incoming = 2
+integer, parameter, public :: n_outgoing = 2
+integer, parameter, public :: n_particles = 4
+integer, parameter, public :: n_colorflows = 4
+integer, parameter, public :: n_flavor_states = 1
+integer, parameter, public :: n_spin_states = 1
+integer, parameter, public :: len_coupling_orders = 3
+integer, parameter, public :: n_coupling_orders = 2
+integer, parameter, public :: n_coupling_powers = 1
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+complex(kind=default), dimension(n_coupling_powers,n_flavor_states,n_spin_states,n_colorflows), save :: amp = 0
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+integer, dimension(n_particles,n_flavor_states), save :: flavor_states
+integer, dimension(n_particles,n_spin_states), save :: spin_states
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data flavor_states(:,1) / 21, 21,  2, -2 /
+data spin_states(:,1) / -1, -1, -1, -1 /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+character(len_coupling_orders), dimension(n_coupling_orders), save :: coupling_orders
+integer, dimension(n_coupling_orders,n_coupling_powers), save :: coupling_powers
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data coupling_orders / "QCD", "EW" /
+data coupling_powers(:,1) / 2, 0 /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+integer, parameter :: max_rank_inflowing = 1
+integer, parameter :: max_rank_outflowing = 1
+integer, parameter :: max_n_eps = 1
+integer, parameter :: max_n_eps_bar = 1
+integer, dimension(n_particles,n_colorflows), save :: rank_inflowing, rank_outflowing
+integer, dimension(n_colorflows), save :: n_eps, n_eps_bar
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+integer, dimension(max_rank_inflowing,n_particles,n_colorflows), save :: inflowing, outflowing
+logical, dimension(n_particles,n_colorflows), save :: is_ghost
+integer, dimension(3,max_n_eps,n_colorflows), save :: eps
+integer, dimension(3,max_n_eps_bar,n_colorflows), save :: eps_bar
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+character(1000), dimension(n_colorflows), public, save :: color_flows
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data rank_inflowing(:,1) / 0, 1, 0, 1 /
+data rank_outflowing(:,1) / 0, 1, 1, 0 /
+data n_eps(1) / 0 /, n_eps_bar(1) / 0 /
+data inflowing(:,1,1) / 0 /, outflowing(:,1,1) / 0 /, is_ghost(1,1) / .true. /
+data inflowing(:,2,1) / 1 /, outflowing(:,2,1) / 2 /, is_ghost(2,1) / .false. /
+data inflowing(:,3,1) / 0 /, outflowing(:,3,1) / 1 /, is_ghost(3,1) / .false. /
+data inflowing(:,4,1) / 2 /, outflowing(:,4,1) / 0 /, is_ghost(4,1) / .false. /
+data eps(:,1,1) / 0, 0, 0 /, eps_bar(:,1,1) / 0, 0, 0 /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data color_flows(1) / "{g, ([1], [2]), ([], [1]), ([2], [])}" /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data rank_inflowing(:,2) / 0, 1, 1, 1  /
+data rank_outflowing(:,2) / 0, 0, 0, 0 /
+data n_eps(2) / 1 /, n_eps_bar(2) / 0 /
+data inflowing(:,1,2) /  0 /, outflowing(:,1,2) / 0 /, is_ghost(1,2) / .false. /
+data inflowing(:,2,2) / -1 /, outflowing(:,2,2) / 0 /, is_ghost(2,2) / .false. /
+data inflowing(:,3,2) / -2 /, outflowing(:,3,2) / 0 /, is_ghost(3,2) / .false. /
+data inflowing(:,4,2) / -3 /, outflowing(:,4,2) / 0 /, is_ghost(4,2) / .false. /
+data eps(:,1,2) / -1, -2, -3 /, eps_bar(:,1,2) / 0, 0, 0 /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data color_flows(2) / "{([], []), ([-1], []), ([-2], []), ([-3], []); eps(-1,-2,-3)}" /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data rank_inflowing(:,3) / 0, 0, 0, 0  /
+data rank_outflowing(:,3) / 0, 1, 1, 1 /
+data n_eps(3) / 0 /, n_eps_bar(3) / 1 /
+data inflowing(:,1,3) / 0 /, outflowing(:,1,3) /  0 /, is_ghost(1,3) / .false. /
+data inflowing(:,2,3) / 0 /, outflowing(:,2,3) / -1 /, is_ghost(2,3) / .false. /
+data inflowing(:,3,3) / 0 /, outflowing(:,3,3) / -2 /, is_ghost(3,3) / .false. /
+data inflowing(:,4,3) / 0 /, outflowing(:,4,3) / -3 /, is_ghost(4,3) / .false. /
+data eps(:,1,3) / 0, 0, 0 /, eps_bar(:,1,3) / -1, -2, -3 /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data color_flows(3) / "{([], []), ([], [-1]), ([], [-2]), ([], [-3]); eps(-1,-2,-3)}" /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data rank_inflowing(:,4) / 0, 1, 1, 1  /
+data rank_outflowing(:,4) / 0, 1, 1, 1 /
+data n_eps(4) / 1 /, n_eps_bar(4) / 1 /
+data inflowing(:,1,4) /  0 /, outflowing(:,1,4) /  0 /, is_ghost(1,4) / .false. /
+data inflowing(:,2,4) / -1 /, outflowing(:,2,4) / -4 /, is_ghost(2,4) / .false. /
+data inflowing(:,3,4) / -2 /, outflowing(:,3,4) / -5 /, is_ghost(3,4) / .false. /
+data inflowing(:,4,4) / -3 /, outflowing(:,4,4) / -6 /, is_ghost(4,4) / .false. /
+data eps(:,1,4) / -1, -2, -3 /, eps_bar(:,1,4) / -4, -5, -6 /
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+data color_flows(4) / "{([], []), ([-1], [-4]), ([-2], [-5]), ([-3], [-6]); eps(-1,-2,-3), eps(-4,-5,-6)}" /
+@
+<<Examples using the API functions (Version 3)>>=
+pure subroutine load_amplitude (a)
+   type(amplitude), intent(inout) :: a
+   call copy_amplitude &
+      (a, n_incoming, flavor_states, spin_states, &
+       rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &
+       n_eps, eps, n_eps_bar, eps_bar, &
+       coupling_orders, coupling_powers, amp)
+end subroutine load_amplitude
+@
+<<Declarations for examples using the API functions (Version 3)>>=
+public :: load_amplitude
+@
+<<[[test_omega_api.f90]]>>=
+program test_omega_api
+  use kinds
+  use omega_birdtracks
+  use omega_api_v3
+  use omega_api_v3_example
+  implicit none
+  integer :: rc
+  character(:), allocatable :: buffer    
+  type(amplitude) :: a
+  integer :: n
+  call load_amplitude (a)
+  do n = 1, n_colorflows
+    rc = a%color_flows(n)%check ()
+    if (rc /= 0) then
+       print *, 'color_flow_check returned ', rc
+       stop 1
+    end if
+    buffer = ""
+    buffer = a%color_flows(n)%to_string ()
+    if (trim (buffer) /= trim (color_flows(n))) then
+      print *, 'color_flow%to_string failed:'
+      print *, '  expected "', trim (color_flows(n)), '"'
+      print *, '       got "', trim (buffer), '"'
+      stop 1
+    end if
+  end do
+end program test_omega_api
 @ \section{Utilities}
 <<[[omega_utils.f90]]>>=
 <<Copyleft>>
@@ -14237,9 +15364,9 @@ end function vm_get_amplitude
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
-!      with contributions from                                                                                                                                    
-!      Fabian Bach <fabian.bach@t-online.de>                                                                                                                 
-!      Bijan Chokoufe Nejad <bijan.chokoufe@desy.de>                                                                                                              
+!      with contributions from
+!      Fabian Bach <fabian.bach@t-online.de>
+!      Bijan Chokoufe Nejad <bijan.chokoufe@desy.de>
 !      Christian Speckner <cnspeckn@googlemail.com>     
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it

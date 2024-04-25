@@ -42,10 +42,10 @@ module Maps =
 
     type 'a t = 'a IMap.t
 
-    let empty = IMap.empty
+    let _empty = IMap.empty
     let is_empty = IMap.is_empty
-    let map = IMap.map
-    let add = IMap.add
+    let _map = IMap.map
+    let _add = IMap.add
     let remove = IMap.remove
     let get_opt = IMap.find_opt
 
@@ -67,14 +67,14 @@ module Maps =
             to_option_list' (get_opt n map :: acc) (pred n) in
         to_option_list' [] (max_key map)
 
-    let to_string a2s map =
+    let _to_string a2s map =
       match to_option_list map with
       | [] -> "[]"
       | [None] -> "?"
       | [Some a] -> a2s a
       | pairs -> ThoList.to_string (function None -> "?" | Some a -> a2s a) pairs
 
-    let of_pairs pairs =
+    let _of_pairs pairs =
       List.fold_right
         (fun (k, v) map ->
           if k < index_base then
@@ -83,17 +83,17 @@ module Maps =
             IMap.add k v map)
         pairs IMap.empty
 
-    let to_pairs = IMap.bindings
+    let _to_pairs = IMap.bindings
 
-    let compare = IMap.compare
-    let equal = IMap.equal
+    let _compare = IMap.compare
+    let _equal = IMap.equal
 
     type ('a, 'b) taken =
       | Nothing of 'b t
       | Single of int * 'a * 'b t
       | Multiple of int * 'a * 'a t
 
-    let take_one project_opt parray =
+    let _take_one project_opt parray =
       let select k v =
         match project_opt k v with
         | Some _ -> false
@@ -135,7 +135,7 @@ module Alists =
 
     let rec add i a = function
       | [] -> [(i, a)]
-      | (i', a' as ia') :: tail as alist ->
+      | (i', _ as ia') :: tail as alist ->
          if i' = i then
            (i, a) :: tail
          else if  i' > i then
@@ -161,14 +161,14 @@ module Alists =
          else
            get_opt i tail
 
-    let min_key = function
+    let _min_key = function
       | [] -> invalid_arg "PArray.Alists.min_key"
       | (i, _) :: _ -> i
 
-    let rec max_key = function
+    let rec _max_key = function
       | [] -> invalid_arg "PArray.Alists.max_key"
       | [(i, _)] -> i
-      | _ :: tail -> max_key tail
+      | _ :: tail -> _max_key tail
 
     let index_base = 0
 

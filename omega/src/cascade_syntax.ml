@@ -57,7 +57,7 @@ let mk_any_flavor p = Any_flavor p
 let mk_and c1 c2 =
   match c1, c2 with
   | c, True | True, c -> c
-  | c, False | False, c -> False
+  | _, False | False, _ -> False
   | And cs, And cs' -> And (cs @ cs')
   | And cs, c | c, And cs -> And (c::cs)
   | c, c' -> And [c; c']
@@ -97,16 +97,7 @@ let to_string flavor_to_string momentum_to_string coupling_to_string cascades =
   in
   to_string' cascades
 
-let int_list_to_string p =
+let _int_list_to_string p =
   String.concat "+" (List.map string_of_int (List.sort compare p))
 
 exception Syntax_Error of string * int * int
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-

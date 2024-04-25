@@ -87,9 +87,9 @@ module Lists =
 
     let rec check d = function
       | p1 :: p2 :: _ when p2 <= p1 -> raise (Duplicate p1)
-      | p1 :: (p2 :: _ as rest) -> check d rest
+      | _ :: (_ :: _ as rest) -> check d rest
       | [p] when p < 1 || p > d -> raise (Range p)
-      | [p] -> ()
+      | [_] -> ()
       | [] -> ()
 
     let of_ints d p =
@@ -110,7 +110,7 @@ module Lists =
     exception Mismatch of string * t * t
     let mismatch s p1 p2 = raise (Mismatch (s, p1, p2))
 
-    let matching f s p1 p2 =
+    let _matching f s p1 p2 =
       if p1.d = p2.d then
         f p1 p2
       else
@@ -234,9 +234,9 @@ module Lists =
       match p1, p2 with
       | [], [] -> not equal
       | [], _ -> true
-      | x1 :: _ , [] -> false
+      | _ :: _ , [] -> false
       | x1 :: p1', x2 :: p2' when x1 = x2 -> less' equal p1' p2'
-      | x1 :: p1', x2 :: p2' -> less' false p1 p2'
+      | _ :: _, _ :: p2' -> less' false p1 p2'
 
     let less p1 p2 =
       if p1.d = p2.d then
@@ -247,9 +247,9 @@ module Lists =
     let rec lesseq' p1 p2 =
       match p1, p2 with
       | [], _ -> true
-      | x1 :: _ , [] -> false
+      | _ :: _ , [] -> false
       | x1 :: p1', x2 :: p2' when x1 = x2 -> lesseq' p1' p2'
-      | x1 :: p1', x2 :: p2' -> lesseq' p1 p2'
+      | _ :: _, _ :: p2' -> lesseq' p1 p2'
             
     let lesseq p1 p2 =
       if p1.d = p2.d then
@@ -401,7 +401,7 @@ module Bits =
    numbers of bits set in bits $1\ldots21$ and bits $27\ldots31$
    denote the maximum number of momenta.  *)
     let mask n = (1 lsl n) - 1
-    let mask2 = mask 2
+    let _mask2 = mask 2
     let mask5 = mask 5
     let mask21 = mask 21
 
@@ -722,11 +722,3 @@ module ListsW =
 
 module Default = Bits
 module DefaultW = BitsW
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -225,11 +225,3 @@ module type Whizard =
 module ListsW : Whizard with type t = Lists.t
 module BitsW : Whizard with type t = Bits.t
 module DefaultW : Whizard with type t = Default.t
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

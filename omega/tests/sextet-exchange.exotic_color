@@ -32,7 +32,11 @@ s3 s3 -> s3 s3
 !     3+4 ~ ?  grouping {{3,4}}
 !
 !
-module omega_amplitude
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Amplitude computation module
+! NOT to be USEd by application programs
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+module omega_amplitude_computation
   use kinds
   use omega95
   use omega_color, OCF => omega_color_factor
@@ -41,10 +45,11 @@ module omega_amplitude
   private
   public :: number_particles_in, number_particles_out, number_color_indices, &
     reset_helicity_selection, new_event, is_allowed, get_amplitude, &
-    color_sum, external_masses, openmp_supported, number_spin_states, &
-    spin_states, number_flavor_states, flavor_states, number_color_flows, &
-    color_flows, number_color_factors, color_factors
-
+    color_sum, external_masses, openmp_supported, table_coupling_orders, &
+    table_coupling_powers, amp_by_orders, table_spin_states, &
+    table_flavor_states, number_spin_states, spin_states, &
+    number_flavor_states, flavor_states, number_color_flows, color_flows, &
+    number_color_factors, color_factors
   ! DON'T EVEN THINK of removing the following!
   ! If the compiler complains about undeclared
   ! or undefined variables, you are compiling
@@ -63,7 +68,8 @@ module omega_amplitude
   integer, parameter :: n_flv = 1
   integer, parameter :: n_hel = 1
   integer, parameter :: n_co = 0
-  integer, parameter :: n_cop = 0
+  integer, parameter :: n_co_len = 0
+  integer, parameter :: n_cp = 1
 
   ! NB: you MUST NOT change the value of N_ here!!!
   !     It is defined here for convenience only and must be
@@ -72,7 +78,9 @@ module omega_amplitude
   logical, parameter :: F = .false.
   logical, parameter :: T = .true.
 
-  integer, dimension(n_co,n_cop), save, protected :: table_coupling_orders
+  character(len=0), dimension(n_co), save, protected :: table_coupling_orders
+
+  integer, dimension(n_co,n_cp), save, protected :: table_coupling_powers
 
   integer, dimension(n_prt,n_hel), save, protected :: table_spin_states
   data table_spin_states(:,   1) /  0,  0,  0,  0 /
@@ -99,11 +107,17 @@ module omega_amplitude
   real(kind=default), parameter, private :: color_factor_000004 = +N_**2
   data table_color_factors(     4) / OCF(2,2,color_factor_000004) /
 
-  logical, dimension(n_flv, n_cflow), save, protected ::  flv_col_is_allowed
+  logical, dimension(n_flv,n_cflow), save, protected ::  flv_col_is_allowed
   data flv_col_is_allowed(:,   1) / T /
   data flv_col_is_allowed(:,   2) / T /
 
-  complex(kind=default), dimension(n_flv, n_cflow, n_hel), save :: amp
+  logical, dimension(n_cp,n_flv,n_cflow), save, protected ::  &
+    co_flv_col_is_allowed
+  data co_flv_col_is_allowed(:,   1,   1) / T /
+  data co_flv_col_is_allowed(:,   1,   2) / T /
+
+  complex(kind=default), dimension(n_flv,n_cflow,n_hel), save :: amp_all_orders
+  complex(kind=default), dimension(n_cp,n_flv,n_cflow,n_hel), save :: amp_by_orders
 
   logical, dimension(n_hel), save :: hel_is_allowed = T
   real(kind=default), dimension(n_hel), save :: hel_max_abs = 0
@@ -201,18 +215,19 @@ contains
   function color_sum (flv, hel) result (amp2)
     integer, intent(in) :: flv, hel
     real(kind=default) :: amp2
-    amp2 = real (omega_color_sum (flv, hel, amp, table_color_factors))
+    amp2 = real (omega_color_sum (flv, hel, amp_all_orders, table_color_factors))
   end function color_sum
 
   subroutine new_event (p)
     real(kind=default), dimension(0:3,*), intent(in) :: p
     logical :: mask_dirty
     integer :: hel
-    call calculate_amplitudes (amp, p, hel_is_allowed)
+    call calculate_amplitudes (amp_by_orders, p, hel_is_allowed)
+    amp_all_orders = sum (amp_by_orders, dim=1)
     if ((hel_threshold .gt. 0) .and. (hel_count .le. hel_cutoff)) then
-      call omega_update_helicity_selection (hel_count, amp, hel_max_abs, &
-              hel_sum_abs, hel_is_allowed, hel_threshold, hel_cutoff, &
-              mask_dirty)
+      call omega_update_helicity_selection (hel_count, amp_all_orders, &
+              hel_max_abs, hel_sum_abs, hel_is_allowed, hel_threshold, &
+              hel_cutoff, mask_dirty)
       if (mask_dirty) then
         hel_finite = 0
         do hel = 1, n_hel
@@ -245,16 +260,16 @@ contains
     yorn = hel_is_allowed(hel) .and. flv_col_is_allowed(flv,col)
   end function is_allowed
 
-  pure function get_amplitude (flv, hel, col) result (amp_result)
-    complex(kind=default) :: amp_result
+  pure function get_amplitude (flv, hel, col) result (amp)
+    complex(kind=default) :: amp
     integer, intent(in) :: flv, hel, col
-    amp_result = amp(flv, col, hel)
+    amp = amp_all_orders(flv, col, hel)
   end function get_amplitude
 
 
 
   subroutine calculate_amplitudes (amp, k, mask)
-    complex(kind=default), dimension(:,:,:), intent(out) :: amp
+    complex(kind=default), dimension(:,:,:,:), intent(out) :: amp
     real(kind=default), dimension(0:3,*), intent(in) :: k
     logical, dimension(:), intent(in) :: mask
     integer, dimension(n_prt) :: s
@@ -277,28 +292,28 @@ contains
       owf_f6_i2_p2 = 1
       call compute_fusions_0001 ()
       call compute_brakets_0001 ()
-      amp(1,1,h) = oks_f6_i1_f6_i2_f6_i1_f6_i2
-      amp(1,2,h) = oks_f6_i2_f6_i1_f6_i1_f6_i2
+      amp(1,1,1,h) = oks_f6_i1_f6_i2_f6_i1_f6_i2
+      amp(1,1,2,h) = oks_f6_i2_f6_i1_f6_i1_f6_i2
     end do
   end subroutine calculate_amplitudes
   subroutine compute_fusions_0001 ()
       owf_f4_i12_p12_X2 = pr_phi(p12,ZERO,ZERO, &
-         + SSS1_p201(+ GC_1,owf_f6_i1_p2,p2,owf_f6_i2_p1,p1))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f6_i1_p2,p2,owf_f6_i2_p1,p1))
       owf_f4_i21_p12_X2 = pr_phi(p12,ZERO,ZERO, &
-         + SSS1_p201(+ GC_1,owf_f6_i1_p2,p2,owf_f6_i2_p1,p1))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f6_i1_p2,p2,owf_f6_i2_p1,p1))
       owf_f4_i12_p12_X1 = pr_phi(p12,ZERO,ZERO, &
-         + SSS1_p201(+ GC_1,owf_f6_i2_p2,p2,owf_f6_i1_p1,p1))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f6_i2_p2,p2,owf_f6_i1_p1,p1))
       owf_f4_i21_p12_X1 = pr_phi(p12,ZERO,ZERO, &
-         + SSS1_p201(+ GC_1,owf_f6_i2_p2,p2,owf_f6_i1_p1,p1))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f6_i2_p2,p2,owf_f6_i1_p1,p1))
   end subroutine compute_fusions_0001
   subroutine compute_brakets_0001 ()
       oks_f6_i2_f6_i1_f6_i1_f6_i2 = 0
       oks_f6_i2_f6_i1_f6_i1_f6_i2 = oks_f6_i2_f6_i1_f6_i1_f6_i2 &
          + owf_f4_i12_p12_X2*( &
-         + SSS1_p201(+ GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
       oks_f6_i2_f6_i1_f6_i1_f6_i2 = oks_f6_i2_f6_i1_f6_i1_f6_i2 &
          + owf_f4_i21_p12_X2*( &
-         + SSS1_p201(+ GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
       oks_f6_i2_f6_i1_f6_i1_f6_i2 = &
          - oks_f6_i2_f6_i1_f6_i1_f6_i2 ! 2 vertices, 1 propagators
       oks_f6_i2_f6_i1_f6_i1_f6_i2 = oks_f6_i2_f6_i1_f6_i1_f6_i2 &
@@ -306,14 +321,76 @@ contains
       oks_f6_i1_f6_i2_f6_i1_f6_i2 = 0
       oks_f6_i1_f6_i2_f6_i1_f6_i2 = oks_f6_i1_f6_i2_f6_i1_f6_i2 &
          + owf_f4_i12_p12_X1*( &
-         + SSS1_p201(+ GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
       oks_f6_i1_f6_i2_f6_i1_f6_i2 = oks_f6_i1_f6_i2_f6_i1_f6_i2 &
          + owf_f4_i21_p12_X1*( &
-         + SSS1_p201(+ GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
+         + SSS1_p201(+ 1.0_default/2*GC_1,owf_f5_o2_p4,p4,owf_f5_o1_p3,p3))
       oks_f6_i1_f6_i2_f6_i1_f6_i2 = &
          - oks_f6_i1_f6_i2_f6_i1_f6_i2 ! 2 vertices, 1 propagators
       oks_f6_i1_f6_i2_f6_i1_f6_i2 = oks_f6_i1_f6_i2_f6_i1_f6_i2 &
          / sqrt(2.0_default) ! symmetry factor
   end subroutine compute_brakets_0001
 
+end module omega_amplitude_computation
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! O'Mega API Version 1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+module omega_amplitude_api_v1
+  use omega_amplitude_computation, only: number_particles_in, &
+       number_particles_out, number_color_indices, reset_helicity_selection, &
+       new_event, is_allowed, get_amplitude, color_sum, external_masses, &
+       openmp_supported, table_coupling_orders, table_coupling_powers, &
+       amp_by_orders, table_spin_states, table_flavor_states, &
+       number_spin_states, spin_states, number_flavor_states, flavor_states, &
+       number_color_flows, color_flows, number_color_factors, color_factors
+  implicit none
+  public
+end module omega_amplitude_api_v1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Backward compatible alias for O'Mega API Version 1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+module omega_amplitude
+  use omega_amplitude_api_v1
+  implicit none
+  public
 end module omega_amplitude
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! O'Mega API Version 3
+! WORK IN PROCESS !!!!
+! NOT FOR PRODUCTION !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+module omega_amplitude_api_v3
+  use omega_birdtracks
+  use omega_api_v3
+  use omega_amplitude_computation
+  implicit none
+  private
+  public :: load_amplidude
+! DUMMY DECLARATIONS FOR TESTING!
+  integer, parameter, public :: n_incoming = 2
+  integer, parameter, public :: n_outgoing = 2
+  integer, parameter, public :: n_particles = 4
+  integer, parameter, public :: n_colorflows = 2
+  integer, parameter :: max_rank_inflowing = 1
+  integer, parameter :: max_rank_outflowing = 1
+  integer, parameter :: max_n_eps = 0
+  integer, parameter :: max_n_eps_bar = 0
+  integer, dimension(n_particles,n_colorflows), save :: rank_inflowing, rank_outflowing
+  integer, dimension(n_colorflows), save :: n_eps, n_eps_bar
+  integer, dimension(max_rank_inflowing,n_particles,n_colorflows), save :: inflowing, outflowing
+  logical, dimension(n_particles,n_colorflows), save :: is_ghost
+  integer, dimension(3,max_n_eps,n_colorflows), save :: eps
+  integer, dimension(3,max_n_eps_bar,n_colorflows), save :: eps_bar
+
+contains
+
+  pure subroutine load_amplidude (a)
+   type(amplitude), intent(inout) :: a
+   call copy_amplitude &
+      (a, n_incoming, table_flavor_states, table_spin_states, &
+       rank_inflowing, inflowing, rank_outflowing, outflowing, is_ghost, &
+       n_eps, eps, n_eps_bar, eps_bar, &
+       table_coupling_orders, table_coupling_powers, amp_by_orders)
+  end subroutine load_amplidude
+
+end module omega_amplitude_api_v3

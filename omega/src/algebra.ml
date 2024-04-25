@@ -86,7 +86,7 @@ let rec gcd i1 i2 =
   else
     gcd i2 (i1 mod i2)
 
-let lcm i1 i2 = (i1 / gcd i1 i2) * i2
+let _lcm i1 i2 = (i1 / gcd i1 i2) * i2
 
 let abs_int = abs
 
@@ -291,21 +291,33 @@ module QComplex (Q : Rational) : QComplex with type q = Q.t =
     let equal c1 c2 =
       compare c1 c2 = 0
 
-    let q_to_string q =
-      (if Q.is_negative q then "-" else " ") ^ Q.to_string (Q.abs q)
+    let q_to_string ?(leading_plus=false) q =
+      (if Q.is_positive q then
+         if leading_plus then
+           "+"
+         else
+           ""
+       else
+         "-") ^ Q.to_string (Q.abs q)
+
+    let im_to_string ?(leading_plus=false) im =
+      if Q.is_unit im then
+        if leading_plus then
+          "+I"
+        else
+          "I"
+      else if Q.is_unit (Q.neg im) then
+        "-I"
+      else
+        q_to_string ~leading_plus im ^ "*I"
 
     let to_string z =
       if Q.is_null z.im then
         q_to_string z.re
       else if Q.is_null z.re then
-        if Q.is_unit z.im then
-          " I"
-        else if Q.is_unit (Q.neg z.im) then
-          "-I"
-        else
-          q_to_string z.im ^ "*I"
+        im_to_string z.im
       else
-        Printf.sprintf "(%s%s*I)" (Q.to_string z.re) (q_to_string z.im)
+        Printf.sprintf "(%s%s)" (Q.to_string z.re) (im_to_string ~leading_plus:true z.im)
 
     let pp fmt qc =
       Format.fprintf fmt "%s" (to_string qc)
@@ -357,6 +369,7 @@ module type Laurent =
     val imag : int -> t
     val nc : int -> t
     val over_nc : int -> t
+    val prefactor : t list -> c
     val to_string : string -> t -> string
     val pp : Format.formatter -> t -> unit
     module Test : Test
@@ -366,6 +379,9 @@ module type Laurent =
 module Laurent : Laurent with type c = QC.t =
   struct
 
+    (* For the function [to_string] below, it would be convenient to order
+       in decreasing order of powers, but [to_string] is slow anyway,
+       so we can simply revert the result of [IMap.bindings]. *)
     module IMap = Map.Make(Int)
 
     type c = QC.t
@@ -464,19 +480,67 @@ module Laurent : Laurent with type c = QC.t =
       | _ -> None
 
     let to_list l =
-      List.map (fun (p, c) -> (c, p)) (IMap.bindings l)
+      List.map (fun (p, c) -> (c, p)) (List.rev (IMap.bindings l))
 
-    let q_to_string q =
-      (if Q.is_positive q then "+" else "-") ^ Q.to_string (Q.abs q)
+    let q_compare_abs q1 q2 =
+      Q.compare (Q.abs q1) (Q.abs q2)
 
-    let qc_to_string z =
+    let closer_to_null c1 c2 =
+      let r1 = QC.re c1 and r2 = QC.re c2 in
+      if Q.is_null r1 then
+        if Q.is_null r2 then
+          if q_compare_abs (QC.im c1) (QC.im c2) <= 0 then
+            c1
+          else
+            c2
+        else
+          c2
+      else
+        if Q.is_null r2 then
+          c1
+        else if q_compare_abs r1 r2 <= 0 then
+          c1
+        else
+          c2
+
+    let transfer_sign c1 c2 =
+      if Q.compare (QC.re c1) Q.null = Q.compare (QC.re c2) Q.null then
+        c2
+      else
+        QC.neg c2
+
+    let prefactor1 l =
+      match IMap.max_binding_opt l with
+      | None -> QC.unit
+      | Some (_, c1) -> transfer_sign c1 (IMap.fold (fun _ -> closer_to_null) l c1)
+
+    let prefactor = function
+      | [] -> QC.unit
+      | l1 :: ls ->
+         List.fold_left
+           (fun acc l -> closer_to_null acc (prefactor1 l))
+           (prefactor1 l1) ls
+
+    let q_to_string ?(leading_plus=true) q =
+      (if Q.is_positive q then
+         if leading_plus then
+           "+"
+         else
+           ""
+       else
+         "-") ^ Q.to_string (Q.abs q)
+
+    let qc_to_string ?(leading_plus=true) z =
       let r = QC.re z
       and i = QC.im z in
       if Q.is_null i then
-        q_to_string r
+        q_to_string ~leading_plus r
       else if Q.is_null r then
         if Q.is_unit i then
-          "+I"
+          if leading_plus then
+            "+I"
+          else
+            "I"
         else if Q.is_unit (Q.neg i) then
           "-I"
         else
@@ -484,32 +548,35 @@ module Laurent : Laurent with type c = QC.t =
       else
         Printf.sprintf "(%s%s*I)" (Q.to_string r) (q_to_string i)
 
-    let to_string1 name (n, qc) =
+    let to_string1 ?(leading_plus=true) name (n, qc) =
       if n = 0 then
-        qc_to_string qc
+        qc_to_string ~leading_plus qc
       else if n = 1 then
         if QC.is_unit qc then
-          name
+          if leading_plus then
+            "+" ^ name
+          else
+            name
         else if qc = qc_minus_one then
           "-" ^ name
         else
-          Printf.sprintf "%s*%s" (qc_to_string qc) name
+          Printf.sprintf "%s*%s" (qc_to_string ~leading_plus qc) name
       else if n = -1 then
-        Printf.sprintf "%s/%s" (qc_to_string qc) name
+        Printf.sprintf "%s/%s" (qc_to_string ~leading_plus qc) name
       else if n > 1 then
         if QC.is_unit qc then
-          Printf.sprintf "%s^%d" name n
+          Printf.sprintf "%s%s^%d" (if leading_plus then "+" else "") name n
         else if qc = qc_minus_one then
           Printf.sprintf "-%s^%d" name n
         else
-          Printf.sprintf "%s*%s^%d" (qc_to_string qc) name n
+          Printf.sprintf "%s*%s^%d" (qc_to_string ~leading_plus qc) name n
       else
-        Printf.sprintf "%s/%s^%d" (qc_to_string qc) name (-n)
+        Printf.sprintf "%s/%s^%d" (qc_to_string ~leading_plus qc) name (-n)
 
     let to_string name l =
-      match IMap.bindings l with
+      match List.rev (IMap.bindings l) with
       | [] -> "0"
-      | l -> String.concat "" (List.map (to_string1 name) l)
+      | t::l -> to_string1 ~leading_plus:false name t ^ String.concat "" (List.map (to_string1 name) l)
 
     let pp fmt l =
       Format.fprintf fmt "%s" (to_string "N" l)
@@ -543,8 +610,38 @@ module Laurent : Laurent with type c = QC.t =
       struct
         open OUnit
 
+        let assert_equal_string s l =
+          assert_equal ~printer:Fun.id s (to_string "N" l)
+
         let assert_equal_laurent l1 l2 =
           assert_equal ~printer:(to_string "N") ~cmp:equal l1 l2
+
+        let assert_equal_coeff c1 c2 =
+          assert_equal ~printer:QC.to_string ~cmp:QC.equal c1 c2
+
+        let suite_to_string =
+          "to_string" >:::
+
+	    [ "N" >:: (fun () -> assert_equal_string "N" (ints [(1,1)]));
+              "-N" >:: (fun () -> assert_equal_string "-N" (ints [(-1,1)]));
+              "2N" >:: (fun () -> assert_equal_string "2*N" (ints [(2,1)]));
+              "-2N" >:: (fun () -> assert_equal_string "-2*N" (ints [(-2,1)]));
+              "1" >:: (fun () -> assert_equal_string "1" (ints [(1,0)]));
+              "-1" >:: (fun () -> assert_equal_string "-1" (ints [(-1,0)]));
+              "2" >:: (fun () -> assert_equal_string "2" (ints [(2,0)]));
+              "-2" >:: (fun () -> assert_equal_string "-2" (ints [(-2,0)]));
+              "1/N" >:: (fun () -> assert_equal_string "1/N" (ints [(1,-1)]));
+              "-1/N" >:: (fun () -> assert_equal_string "-1/N" (ints [(-1,-1)]));
+              "2/N" >:: (fun () -> assert_equal_string "2/N" (ints [(2,-1)]));
+              "-2/N" >:: (fun () -> assert_equal_string "-2/N" (ints [(-2,-1)]));
+              "N^2+N+1" >:: (fun () -> assert_equal_string "N^2+N+1" (ints [(1,2); (1,1); (1,0)]));
+              "N^2-N+1" >:: (fun () -> assert_equal_string "N^2-N+1" (ints [(1,2); (-1,1); (1,0)]));
+              "N^2+2N+1" >:: (fun () -> assert_equal_string "N^2+2*N+1" (ints [(1,2); (2,1); (1,0)]));
+              "N^2-2N+1" >:: (fun () -> assert_equal_string "N^2-2*N+1" (ints [(1,2); (-2,1); (1,0)]));
+              "N^2+N-1" >:: (fun () -> assert_equal_string "N^2+N-1" (ints [(1,2); (1,1); (-1,0)]));
+              "N^2-N-1" >:: (fun () -> assert_equal_string "N^2-N-1" (ints [(1,2); (-1,1); (-1,0)]));
+              "N^2+2N-1" >:: (fun () -> assert_equal_string "N^2+2*N-1" (ints [(1,2); (2,1); (-1,0)]));
+              "N^2-2N-1" >:: (fun () -> assert_equal_string "N^2-2*N-1" (ints [(1,2); (-2,1); (-1,0)])) ]
 
         let suite_mul =
           "mul" >:::
@@ -563,9 +660,24 @@ module Laurent : Laurent with type c = QC.t =
                     (product [sum [unit; atom QC.unit 1];
                               sum [unit; atom (QC.neg QC.unit) (-1)]])); ]
 
+        let suite_prefactor =
+          "prefactor" >:::
+
+	    [ "0" >:: (fun () -> assert_equal_coeff QC.unit (prefactor []));
+              "1" >:: (fun () -> assert_equal_coeff QC.unit (prefactor [unit]));
+              "2" >:: (fun () -> assert_equal_coeff (QC.int 2 ) (prefactor [int 2]));
+              "1/2" >:: (fun () -> assert_equal_coeff (QC.fraction 2) (prefactor [fraction 2]));
+
+              "1/2-2N" >::
+                (fun () -> assert_equal_coeff
+                             (QC.neg (QC.fraction 2))
+                             (prefactor [sum [fraction 2; nc (-2)]])) ]
+
         let suite =
           "Algebra.Laurent" >:::
-	    [suite_mul]
+	    [suite_to_string;
+             suite_mul;
+             suite_prefactor]
       end
 
   end
@@ -705,7 +817,7 @@ module Make_Ring (C : Rational) (T : Term) : Ring =
      The following should be correct too, but produces to many false
      positives instead!  What's going on?
    \end{dubious} *)
-    let broken__is_unit t =
+    let _broken__is_unit t =
       match M.elements t with
       | [(t, p)] -> T.is_unit t || C.is_null p
       | _ -> false
@@ -735,7 +847,7 @@ module Make_Ring (C : Rational) (T : Term) : Ring =
       fold2 (fun tx cx ty cy -> insert1 C.add (T.mul tx ty) (C.mul cx cy))
         x y (null ())
 
-    let neg x =
+    let _neg x =
       sub (null ()) x
 
     let neg x =

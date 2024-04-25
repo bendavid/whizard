@@ -4,6 +4,10 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.4.1
 
+2024-04-24
+	O'Mega: merge versioned API (API v3 work in progress)
+	O'Mega: birdtrack library improvements
+
 ##################################################################
 
 2023-11-08

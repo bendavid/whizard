@@ -214,7 +214,7 @@ module Make (R : R) : T =
     open OUnit
 
     let two = QC.make (Q.make 2 1) Q.null
-    let half = QC.make (Q.make 1 2) Q.null
+    let _half = QC.make (Q.make 1 2) Q.null
     let two_unit = times two unit
 
     let ac_lhs mu nu =
@@ -229,7 +229,7 @@ module Make (R : R) : T =
       else
         null
 
-    let test_ac mu nu =
+    let _test_ac mu nu =
       (ac_lhs mu nu) = (ac_rhs mu nu)
 
     let ac_lhs_all =

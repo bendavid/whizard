@@ -55,8 +55,10 @@ val t : int -> int -> int -> t
 val f : int -> int -> int -> t
 val d : int -> int -> int -> t
 
-val epsilon : int list -> t
-val epsilon_bar : int list -> t
+(* These used to be called [epsilon] and [epsilon_bar], but they are
+   not general enough! *)
+val epsilon0 : int list -> t
+val epsilon0_bar : int list -> t
 
 val t8 : int -> int -> int -> t
 val t6 : int -> int -> int -> t
@@ -65,8 +67,29 @@ val t10 : int -> int -> int -> t
 val k6 : int -> int -> int -> t
 val k6bar : int -> int -> int -> t
 
+(* Note that [delta_of_tableau [[0]] i j] produces [(i, 0) >==>> (j, 0)]
+   and not [i => j] (analogously for [t_of_tableau [[0]]], of course).
+   \begin{dubious}
+     This is consistent, but maybe unexpected and can trip up applications.
+     I might decide to change this behaviour in the future.
+   \end{dubious} *)
+
 val delta_of_tableau : int Young.tableau -> int -> int -> t
 val t_of_tableau : int Young.tableau -> int -> int -> int -> t
+
+(* Construct a preimage of [Birdtracks.exorcise].
+   [evoke_some gluons term] adds all terms corresponding to the
+   addition of $\mathrm{U}(1)$ ghosts for the gluons at the
+   positions [gluons].  [evoke term] adds the ghosts for all
+   gluons.  This is group specific
+   and can therefore not go into [Birdtracks]. *)
+
+val evoke_some : int list -> t -> t
+val evoke : t -> t
+
+(* This exception is raised by [evoke] and [evoke_some] if the expression
+   already contains ghosts. *)
+exception Haunted
 
 (* The Unit tests are in fact the largest part of this module. *)
 module Test : sig val suite : OUnit.test val suite_long : OUnit.test end

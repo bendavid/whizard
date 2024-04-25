@@ -88,6 +88,15 @@ val num_standard_tableaux : diagram -> int
    because it is not guaranteed to be integer. *)
 val normalization : diagram -> int * int
 
+(* Dimension of the representation of $\mathrm{GL(N)}$
+   described by the diagram
+   \begin{equation}
+     d = \frac{\prod_{i=1}^n(N-k_i)}{\prod_{i=1}^n h_i} = \prod_{i=1}^n \frac{N-k_i}{h_i}
+   \end{equation}
+   where~$k_i$ starts with~$0$ in the upper left corner, grows towards the right and
+   shrinks towards the bottom. *)
+val dimension : diagram -> Algebra.Laurent.t
+
 (* \thocwmodulesection{Young Tableaux} *)
 (* There is an obvious representation as a list of lists:
    \begin{equation}
@@ -128,6 +137,10 @@ val standard_tableau : ?offset:int -> int tableau -> bool
 (* The contents of the cells and their number. *)
 val cells_tableau : 'a tableau -> 'a list
 val num_cells_tableau : 'a tableau -> int
+
+(* Return [Some cells] with [cells] in increasing order, if the tableau
+   semistandard and all cells are different.  [None] otherwise. *)
+val quasi_standard_tableau : 'a tableau -> 'a list option
 
 (* Conjugate a Young tableau
    \begin{equation}

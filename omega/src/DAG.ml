@@ -250,10 +250,10 @@ module Graded_Map (O : Graded_Ord) :
       M2.mem key (map2_of_rank (O.rank key) map1)
 
     let iter f map1 =
-      M1.iter (fun rank -> M2.iter f) map1
+      M1.iter (fun _rank -> M2.iter f) map1
 
     let fold f map1 acc1 =
-      M1.fold (fun rank -> M2.fold f) map1 acc1
+      M1.fold (fun _rank -> M2.fold f) map1 acc1
 
 (* \begin{dubious}
      The set of ranks and its minimum and maximum should be maintained
@@ -262,10 +262,10 @@ module Graded_Map (O : Graded_Ord) :
     module S1 = Set.Make(O.G)
 
     let ranks map =
-      M1.fold (fun key data acc -> key :: acc) map []
+      M1.fold (fun key _data acc -> key :: acc) map []
 
     let rank_set map =
-      M1.fold (fun key data -> S1.add key) map S1.empty
+      M1.fold (fun key _data -> S1.add key) map S1.empty
 
     let min_max_rank map =
       let s = rank_set map in
@@ -274,10 +274,10 @@ module Graded_Map (O : Graded_Ord) :
     module S2 = Set.Make(O)
 
     let keys map =
-      M2.fold (fun key data acc -> key :: acc) map []
+      M2.fold (fun key _data acc -> key :: acc) map []
 
-    let sorted_keys map =
-      S2.elements (M2.fold (fun key data -> S2.add key) map S2.empty)
+    let _sorted_keys map =
+      S2.elements (M2.fold (fun key _data -> S2.add key) map S2.empty)
 
     let ranked rank map1 =
       keys (map2_of_rank rank map1)
@@ -475,7 +475,7 @@ i*)
     let eval_memoized' f mule muln add null unit dag =
       let result, _ =
         List.fold_left
-          (fun (v, values) -> eval_offspring f mule muln add null unit dag values)
+          (fun (_v, values) -> eval_offspring f mule muln add null unit dag values)
           (null, Parents.empty)
           (List.sort (fun (n1, _) (n2, _) -> F.Nodes.compare n1 n2)
              (Parents.fold
@@ -555,11 +555,12 @@ module Test =
       let imax_plus = succ imax in
       Array.to_list (Array.init n (fun _ -> Random.int imax_plus))
 
-    module OInts =
+(*i module OInts =
       struct
         type t = int
         let compare = compare
       end
+i*)
 
     module GOInts =
       struct
@@ -578,7 +579,7 @@ module Test =
     let int_list_to_string l =
       ThoList.to_string string_of_int l
 
-    let int_list2_to_string l =
+    let _int_list2_to_string l =
       ThoList.to_string int_list_to_string l
 
     let int_pair_to_string (i1, i2) =
@@ -597,7 +598,7 @@ module Test =
         (List.sort compare l1)
         (List.sort compare l2)
 
-    let assert_equal_unsorted_int_list_ignore_duplicates l1 l2 =
+    let _assert_equal_unsorted_int_list_ignore_duplicates l1 l2 =
       assert_equal ~printer:int_list_to_string (uniq l1) (uniq l2)
 
     let squares n =

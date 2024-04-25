@@ -64,5 +64,5 @@ let macro name expansion =
     kind = ["$"];
     attribs = [ { a_name = name; a_value = expansion } ] }
 
-let to_strings declarations =
+let to_strings _declarations =
   []

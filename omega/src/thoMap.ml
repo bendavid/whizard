@@ -73,7 +73,7 @@ module Buckets (Key : Map.OrderedType) (Element : Set.OrderedType) : Buckets
 
   end
 
-let random_int_list imax n =
+let _random_int_list imax n =
   let imax = succ imax in
   let rec random_int_list' acc i =
     if i = 0 then
@@ -92,8 +92,7 @@ module Test =
 
     open OUnit
 
-    module Integers = struct type t = int let compare = compare end
-    module II = Buckets(Integers)(Integers)
+    module II = Buckets(Int)(Int)
 
     let compare_pair (a1, b1) (a2, b2) =
       let c = compare a1 a2 in
@@ -152,7 +151,7 @@ module Test =
     let suite_buckets =
       "Buckets" >:::
 
-	[ suite_factorize;
+	[ suite_factorize_batches;
           suite_factorize ]
 
     let suite =

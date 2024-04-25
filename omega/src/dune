@@ -1,0 +1,50 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; This is NOT an offical dune file for O'Mega
+;;; It is for internal development only!
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(library
+  (name omega)
+  (public_name omega)
+  (modules ;;; Interfaces
+           Coupling Model Target
+	   ;;; O'Mega main physiscs modules
+ 	   Color Color_Propagator Color_Fusion Colorize
+ 	   DAG Topology Fusion Modeltools Charges Momentum Phasespace Process
+	   ;;; diagram selection
+	   Orders Orders_syntax Orders_lexer Orders_parser
+	   Cascade Cascade_syntax cascade_lexer Cascade_parser
+	   ;;; UFO
+	   UFO Config ;;; UFO depends on Config, which needs preprocessing ...
+	   UFO_syntax UFO_lexer UFO_parser
+	   UFOx UFOx_syntax UFOx_lexer UFOx_parser
+ 	   UFO_targets UFO_Lorentz UFO_tools Dirac
+	   ;;; more libraries
+	   Bundle Tuple Partition PowSet Tree Tree2 Linalg
+	   PArray Options Sets Trie
+	   Format_Fortran
+	   ThoMap ThoFilename Progress
+           ;;; beneath this line is enough for tangara:
+	   Arrow Birdtracks SU3
+  	   Algebra Combinatorics Permutation Young
+	   NEList Partial Product
+	   ThoArray ThoList ThoString Pmap Sets
+	   OUnit)
+  (private_modules)
+  (wrapped false)
+  (flags (:standard -I +unix))
+  (ocamlc_flags (:standard))
+  (ocamlopt_flags (:standard -inline 32))
+  (libraries))
+
+(rule
+ (target config.ml)
+ (deps config.ml.in)
+ (action
+  (run cp %{deps} %{target})))
+
+(ocamllex UFOx_lexer UFO_lexer orders_lexer cascade_lexer)
+(ocamlyacc UFOx_parser UFO_parser orders_parser cascade_parser)
+
+; (documentation
+;  (mld_files index))

@@ -69,9 +69,9 @@ module Make (M : Model.T) =
       | Scattering of scattering
 
     let unique_flavors f_bags =
-      List.for_all (function [f] -> true | _ -> false) f_bags
+      List.for_all (function [_] -> true | _ -> false) f_bags
 
-    let unique_final_state = function 
+    let _unique_final_state = function 
       | Any fs -> unique_flavors fs
       | Decay (_, fs) -> unique_flavors fs
       | Scattering (_, _, fs) -> unique_flavors fs
@@ -93,7 +93,7 @@ module Make (M : Model.T) =
           match process.[n] with
           | ' ' | '\n' -> scan_list so_far n'
           | '-' -> scan_gtr so_far n'
-          | c -> scan_flavors so_far [] n n'
+          | _ -> scan_flavors so_far [] n n'
 
       and scan_flavors so_far flavors w n =
         if n > last then
@@ -219,7 +219,7 @@ module Make (M : Model.T) =
       (to_string base) ^ " -> [" ^
       (String.concat ", " (List.map to_string fiber)) ^ "]"
                                                             
-    let bundle_to_strings list =
+    let _bundle_to_strings list =
       List.map fiber_to_string list
 
 (* Subtract $n+1$ from each element in [index_set] and drop
@@ -300,8 +300,7 @@ module Make (M : Model.T) =
                  (List.concat overlaps) (integer_range 0 (pred (List.length fs)))) in
           List.map (fun n -> [n]) singletons @ overlaps
 
-    module IPowSet =
-      PowSet.Make (struct type t = int let compare = compare let to_string = string_of_int end)
+    module IPowSet = PowSet.Make (Int)
 
     let merge_partitions p_list =
       IPowSet.to_lists (IPowSet.basis (IPowSet.union (List.map IPowSet.of_lists p_list)))
@@ -391,11 +390,3 @@ i*)
         processes
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

@@ -250,12 +250,12 @@ let style prop =
 let species prop = fst (style prop)
 let tex_lbl prop = snd (style prop)
 
-let leaf_label tex io leaf lab = function
+let _leaf_label tex io leaf lab = function
   | None -> fprintf tex "    \\fmflabel{${%s}$}{%s%s}\n" lab io leaf 
   | Some s ->
       fprintf tex "    \\fmflabel{${%s{}^{(%s)}}$}{%s%s}\n" s lab io leaf
 
-let leaf_label tex io leaf lab label =
+let leaf_label _tex _io _leaf _lab _label =
   ()
 
 (* We try to draw diagrams more symmetrically by reducing the tension
@@ -435,7 +435,7 @@ let latex_section = function
   | 4 -> "paragraph"
   | _ -> "subparagraph"
 
-let rec feynmf_set tex sections level to_TeX to_label set =
+let feynmf_set tex sections level to_TeX to_label set =
   fprintf tex "%s\\%s{%s}\n"
     (if sections then "" else "%%% ")
     (latex_section level)
@@ -553,7 +553,7 @@ let feynmf_levels_wrapped file to_TeX to_label sets =
    \end{subequations} *)
 type 'a node_with_tension = { node : 'a; tension : float }
 
-let unit_tension t =
+let _unit_tension t =
   map (fun n -> { node = n; tension = 1.0 }) (fun l -> l) t
 
 let leafs_and_nodes i2 t =
@@ -594,7 +594,7 @@ module M = Pmap.Tree
    into a set. The result is a map from the set to the integers:
    [val invert_array : 'a array -> ('a, int) M.t] *)
 
-let invert_array_unsafe a =
+let _invert_array_unsafe a =
   fst (Array.fold_left (fun (m, i) a_i ->
     (M.add compare a_i i m, succ i)) (M.empty, 0) a)
 
@@ -743,7 +743,7 @@ let iter_edges f g =
     f edge (x1, y1) (x2, y2)) g.ext_edges
   
 let iter_internal f g =
-  Array.iter (fun (node, x, y) -> f (x, y)) g.int_nodes
+  Array.iter (fun (_, x, y) -> f (x, y)) g.int_nodes
   
 let iter_incoming f g =
   f g.ext_nodes.(0);

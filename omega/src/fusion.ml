@@ -152,8 +152,7 @@ module type Stat_Maker = functor (M : Model.T) ->
 
 (* \thocwmodulesection{Dirac Fermions} *)
 
-let dirac_log silent logging = logging
-let dirac_log silent logging = silent
+let dirac_log silent _logging = silent
 
 exception Majorana
 
@@ -219,7 +218,7 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     exception Impossible
 
-    let stat_fuse_pair_legacy f s1 s2 =
+    let stat_fuse_pair_legacy _f s1 s2 =
       match s1, s2 with
       | Boson l1, Boson l2 -> Boson (l1 @ l2)
       | Boson l1, Fermion (p, l2) -> Fermion (p, l1 @ l2)
@@ -340,7 +339,7 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
       let p = partial_of_slist (s1 :: s23__n) in
       List.fold_left match_fermion_line p flines
 
-    let stat_fuse_new flines s1 s23__n f =
+    let stat_fuse_new flines s1 s23__n _f =
       (match_fermion_lines flines s1 s23__n).stat
 
     let stat_fuse_new_checking flines s1 s23__n f =
@@ -408,7 +407,7 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
     let stat_keystone flines_opt slist f =
       match slist with
       | [] -> invalid_arg "Fusion.Stat_Dirac.stat_keystone: empty"
-      | [s] -> invalid_arg "Fusion.Stat_Dirac.stat_keystone: singleton"
+      | [_] -> invalid_arg "Fusion.Stat_Dirac.stat_keystone: singleton"
       | s1 :: (s2 :: s34__n as s23__n) ->
          begin match flines_opt with
          | None -> stat_keystone_legacy s1 s23__n f
@@ -625,7 +624,7 @@ module type Amplitude =
     val externals : t -> wf list
 
     (* All off-shell wave functions.  The [Target] must declare variables for them. *)
-    val variables : t -> wf list
+    val _variables : t -> wf list
 
     (* All fusions.  The [Target] uses them to recursively compute the off-shell wavefunctions. *)
     val fusions : t -> fusion list
@@ -650,7 +649,7 @@ module type Amplitude =
     val symmetry : t -> int
 
     (* The DAG that will be transformed by colorization and slicing. *)
-    val fusion_dag : t -> D.t
+    val _fusion_dag : t -> D.t
 
     (* This is used for diagnostics. *)
     val dependencies : t -> wf -> (wf, coupling) Tree2.t
@@ -807,9 +806,9 @@ module Amplitude (PT : Tuple.Poly) (P : Momentum.T) (M : Model.T) (S : Slicer) :
     let is_gauss a = a.is_gauss
     let constraints a = a.constraints
     let slicings a = a.slicings
-    let variables a = List.map lhs a.fusions
+    let _variables a = List.map lhs a.fusions
     let dependencies a = a.dependencies
-    let fusion_dag a = a.fusion_dag
+    let _fusion_dag a = a.fusion_dag
 
   end
 
@@ -845,8 +844,7 @@ module Make (PT : Tuple.Poly)
          the permutations in [Modeltools.add_vertexn]!
        \end{dubious} *)
 
-    module PosMap =
-      Partial.Make (struct type t = int let compare = compare end)
+    module PosMap = Partial.Make (Int)
 
     let partial_map_undoing_permutation l l' =
       let module P = Permutation.Default in
@@ -882,7 +880,7 @@ module Make (PT : Tuple.Poly)
 
 (* [is_goldstone_of g v] is [true] if and only if [g] is the Goldstone boson
    corresponding to the gauge particle [v]. *)
-    let is_goldstone_of g v =
+    let _is_goldstone_of g v =
       match M.goldstone v with
       | None -> false
       | Some (g', _) -> g = g'
@@ -938,7 +936,7 @@ module Make (PT : Tuple.Poly)
 
 (* Performance hack: *)
 
-    type vertex_table =
+    type _vertex_table =
             ((A.flavor * A.flavor * A.flavor) * constant Coupling.vertex3 * constant) list
           * ((A.flavor * A.flavor * A.flavor * A.flavor)
                * constant Coupling.vertex4 * constant) list
@@ -946,7 +944,7 @@ module Make (PT : Tuple.Poly)
 
     let vertices = vertices_nocache
 
-    let vertices' max_degree flavors =
+    let _vertices max_degree flavors =
       Printf.eprintf ">>> vertices %d ..." max_degree;
       flush stderr;
       let v = vertices max_degree flavors in
@@ -1219,7 +1217,7 @@ i*)
         module Nodes =
           struct
             type t = A.wf
-            module G = struct type t = int let compare = compare end
+            module G = Int
             let compare = A.order_wf
             let rank wf = P.rank wf.A.momentum
           end
@@ -1236,7 +1234,7 @@ i*)
 
     module D' = DAG.Graded(GF)
 
-    let tower_of_dag dag =
+    let _tower_of_dag dag =
       let _, max_rank = D'.min_max_rank dag in
       Array.init max_rank (fun n -> D'.ranked n dag)
 
@@ -1335,7 +1333,7 @@ i*)
    to gauge bosons in [dag].  This is only required for checking
    Slavnov-Taylor identities in unitarity gauge.  Currently, it is not used,
    because we use the complete tower for gauge checking. *)
-    let harvest_goldstones tower dag =
+    let _harvest_goldstones tower dag =
       A.D.fold_nodes (fun wf dag' ->
         match M.goldstone wf.A.flavor with
         | Some (g, _) ->
@@ -1350,9 +1348,9 @@ i*)
 (* Calculate the sign from Fermi statistics that is not already included
    in the children. *)
 
-    let strip_fermion_lines = function
+    let _strip_fermion_lines = function
       | (Coupling.V3 _ | Coupling.V4 _ as v) -> v
-      | Coupling.Vn (Coupling.UFO (c, l, s, fl, col), f, x) ->
+      | Coupling.Vn (Coupling.UFO (c, l, s, _, col), f, x) ->
          Coupling.Vn (Coupling.UFO (c, l, s, [], col), f, x)
 
     let num_fermion_lines_v3 = function
@@ -1360,7 +1358,7 @@ i*)
       | _ -> 0
 
     let num_fermion_lines = function
-      | Coupling.Vn (Coupling.UFO (c, l, s, fl, col), f, x) -> List.length fl
+      | Coupling.Vn (Coupling.UFO (_, _, _, fl, _), _, _) -> List.length fl
       | Coupling.V3 (v3, _, _) -> num_fermion_lines_v3 v3
       | Coupling.V4 _ -> 0
 
@@ -1396,7 +1394,7 @@ i*)
       stat_sign stat
         * PT.fold_left (fun acc wf -> acc * stat_sign wf) (stat_sign wf1') wfs'
 
-    let stat_keystone_logging v stats wf1 wfs =
+    let _stat_keystone_logging v stats wf1 wfs =
       let sign = stat_keystone v stats wf1 wfs in
       Printf.eprintf
         "Fusion.stat_keystone: %s * %s -> %d\n"
@@ -1656,7 +1654,7 @@ i*)
           CM.flavor_sans_color f = wf.A.flavor && kmatrix_cuts c momenta)
         (CM.fuse (List.map (fun wf -> wf.CA.flavor) (PT.to_list rhs)))
 
-    let fuse_c_wf_logging wf rhs =
+    let _fuse_c_wf_logging wf rhs =
       let fusion = fuse_c_wf wf rhs in
       Printf.eprintf
         "fuse_c_wf %s(%s) %s => %s\n"
@@ -1696,7 +1694,7 @@ i*)
    with the updated [fibered_dag], including the new colored wave
    functions. *)
 
-    let match_flavor f' (f, _) =
+    let _match_flavor f' (f, _) =
       CM.flavor_sans_color f = f'
 
     let colorize_fusion : node_colorizer =
@@ -2199,7 +2197,7 @@ i*)
         String.concat "*"
           (List.map (fun wf -> SCM.flavor_to_string (SCA.flavor wf)) children) ^ ")"
 
-    let dump_sliced_amplitudes slicings sliced =
+    let dump_sliced_amplitudes _slicings sliced =
       List.iter
         (fun amplitude ->
           Printf.eprintf "amplitude %s -> %s\n"
@@ -2296,8 +2294,6 @@ i*)
               n'' * SCA.D.count_trees wf a.SCA.fusion_dag) 1 wfs) 0 wf23))
         0 (all_brakets a)
 
-    exception Impossible
-
     let forest' a =
       let below wf = SCA.D.forest_memoized wf a.SCA.fusion_dag in
       ThoList.flatmap
@@ -2357,7 +2353,7 @@ i*)
    \end{dubious} *)
 
     let poles_beneath wf dag =
-      SCA.D.eval_memoized (fun wf' -> [[]])
+      SCA.D.eval_memoized (fun _wf -> [[]])
         (fun wf' _ p -> List.map (fun p' -> wf' :: p') p)
         (fun wf1 wf2 ->
           Product.fold2 (fun wf' wfs' wfs'' -> (wf' @ wfs') :: wfs'') wf1 wf2 [])
@@ -2373,7 +2369,7 @@ i*)
            wf23))
         (all_brakets a)
 
-    let s_channel a =
+    let _s_channel a =
       SCWFSet.elements
         (ThoList.fold_right2
            (fun wf wfs ->
@@ -2457,14 +2453,14 @@ i*)
 
     let below_to_channel transform ch dag wf =
       let n2s wf = variable (transform wf)
-      and e2s c = "" in
+      and e2s _ = "" in
       Tree2.to_channel ch n2s e2s (A.D.dependencies dag wf)
 
     let bra_to_channel transform ch dag wf =
       let tree = A.D.dependencies dag wf in
       if Tree2.is_singleton tree then
         let n2s wf = variable (transform wf)
-        and e2s c = "" in
+        and e2s _ = "" in
         Tree2.to_channel ch n2s e2s tree
       else
         failwith "Fusion.phase_space_channels: wrong topology!"
@@ -2554,9 +2550,7 @@ module Binary = Make(Tuple.Binary)(Stat_Dirac)(Topology.Binary)
 
 (* \thocwmodulesection{Fusions with Majorana Fermions} *)
 
-let majorana_log silent logging = logging
-let majorana_log silent logging = silent
-let force_legacy = true
+let majorana_log silent _logging = silent
 let force_legacy = false
 
 module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
@@ -2679,7 +2673,7 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
            (Printf.sprintf
               "Fusion.stat_fuse_pair_constrained: expected boson, got %s"
               (stat_to_string s))
-      | Boson l as s,
+      | Boson _ as s,
         (Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost
          | Coupling.Spinor | Coupling.ConjSpinor) ->
          invalid_arg
@@ -2691,7 +2685,7 @@ module Stat_Majorana (M : Model.T) : (Stat with type flavor = M.flavor) =
          | Coupling.Tensor_1 | Coupling.Tensor_2 | Coupling.BRS _) ->
          Boson l
 
-    let stat_fuse_pair_legacy f s1 s2 =
+    let stat_fuse_pair_legacy _f s1 s2 =
       stat_fuse_pair_unconstrained s1 s2
 
     let stat_fuse_pair_legacy_logging f s1 s2 =
@@ -2798,18 +2792,14 @@ i*)
          { fermions = IMap.add n f p.fermions;
            stat = add_lines l p.stat;
            n }
-      | Fermion (p, l) ->
-         invalid_arg
-           "add_lines_to_partial: unexpected Fermion"
-      | AntiFermion (p, l) ->
-         invalid_arg
-           "add_lines_to_partial: unexpected AntiFermion"
+      | Fermion (_, _) -> invalid_arg "add_lines_to_partial: unexpected Fermion"
+      | AntiFermion (_, _) -> invalid_arg "add_lines_to_partial: unexpected AntiFermion"
 
     (* Do it for all lines: *)
     let partial_of_slist stat_list =
       List.fold_left add_lines_to_partial empty_partial stat_list
 
-    let partial_of_rev_slist stat_list =
+    let _partial_of_rev_slist stat_list =
       List.fold_left add_lines_to_partial empty_partial (List.rev stat_list)
 
     (* The building blocks for a single step of the second pass:
@@ -2962,7 +2952,7 @@ i*)
     let stat_keystone_new flines slist f =
       match slist with
       | [] -> invalid_arg "stat_keystone: empty"
-      | [s] -> invalid_arg "stat_keystone: singleton"
+      | [_] -> invalid_arg "stat_keystone: singleton"
       | s1 :: s2 :: s34__n ->
          let stat =
            stat_fuse_pair_unconstrained s1 (stat_fuse_new flines s2 s34__n f) in
@@ -3094,8 +3084,10 @@ module type Multi =
     val coupling_orders : amplitudes -> (coupling_order list * int list list) option
     val helicities : amplitudes -> (int list * int list) list
     val processes : amplitudes -> amplitude list
-    val process_table : amplitudes -> amplitude option array array
-    val process_table_new : amplitudes -> amplitude option array array array
+    val process_table :
+      amplitudes -> amplitude option array array
+    val process_table_new :
+      amplitudes -> ((coupling_order * int) list * amplitude) option array array array
     val fusions : amplitudes -> (fusion * amplitude) list
     val multiplicity : amplitudes -> wf -> int
     val dictionary : amplitudes -> amplitude -> wf -> int
@@ -3145,7 +3137,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
           "file write progress report to file" ]
 
     type flavor = M.flavor
-    type p = F.p
+    type _p = F.p
     type process = flavor list * flavor list
     type amplitude = F.amplitude
     type fusion = F.fusion
@@ -3154,9 +3146,9 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     type slicings = COC.t
     type coupling_order = SCM.coupling_order
 
-    type flavors = flavor list array
-    type helicities = int list array
-    type colors = Color.Flow.t array
+    type _flavors = flavor list array
+    type _helicities = int list array
+    type _colors = Color.Flow.t array
 
     type amplitudes =
         { flavors : process list;
@@ -3166,7 +3158,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
           coupling_orders : (coupling_order list * int list list) option;
           processes : amplitude list;
           process_table : amplitude option array array;
-          process_table_new : amplitude option array array array;
+          process_table_new : ((coupling_order * int) list * amplitude) option array array array;
           fusions : (fusion * amplitude) list;
           multiplicity : (wf -> int);
           dictionary : (amplitude -> wf -> int);
@@ -3192,7 +3184,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     let sans_colors f =
       List.map CM.flavor_sans_color (List.map SCM.flavor_all_orders f)
 
-    let colors (fin, fout) =
+    let _colors (fin, fout) =
       List.map M.color (fin @ fout)
 
     let process_sans_color a =
@@ -3264,7 +3256,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     let hs_of_flavors (fin, fout) =
       (List.map hs_of_flavor fin, List.map hs_of_flavor fout)
 
-    let rec unphysical_of_lorentz = function
+    let unphysical_of_lorentz = function
       | Coupling.Vector -> [4]
       | Coupling.Massive_Vector -> [4]
       | _ -> invalid_arg "unphysical_of_lorentz: not a vector particle"
@@ -3377,6 +3369,9 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
         processes
 i*)
 
+    (* NB: [let compare = ThoList.compare] doesn't typecheck, due to the optional
+       argument~[cmp].  The alternative [let compare = (ThoList.compare : t -> t -> int)]
+       is even more verbose. *)
     module COPMap = Map.Make(struct type t = int list let compare = ThoList.compare ~cmp:Stdlib.compare end)
 
     module COBundle = Bundle.Make
@@ -3473,14 +3468,23 @@ i*)
           table.(f).(c) <- Some (a))
         allowed;
 
+      let num_coupling_orders = COPMap.cardinal co_index in
+
       let table_new =
-        ThoArray.rank3 1 (List.length flavors) (List.length color_flows) None in
+        ThoArray.rank3 (max num_coupling_orders 1) (List.length flavors) (List.length color_flows) None in
       List.iter
         (fun a ->
-          let co = 0
-          and f = FMap.find (process_sans_color a) f_index
+          let f = FMap.find (process_sans_color a) f_index
           and c = CMap.find (color_flow a) c_index in
-          table_new.(co).(f).(c) <- Some (a))
+          if num_coupling_orders < 1 then
+            table_new.(0).(f).(c) <- Some (([], a))
+          else
+            List.iter
+              (fun (orders, _) ->
+                match COPMap.find_opt (List.map snd orders) co_index with
+                | Some co -> table_new.(co).(f).(c) <- Some (orders, a)
+                | None -> failwith "table_new")
+              (F.brakets a))
         allowed;
 
       let color_factor_table = Color.Flow.factor_table color_flows in

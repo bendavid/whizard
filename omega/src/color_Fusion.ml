@@ -213,26 +213,26 @@ let rec connect_in_contract_epsilons_opt sign :
      else
        connect_in_contract_epsilons_opt (relative_sign * sign)
          n' cf_n epsilon_bars_n i' cf_i epsilons_i i lines
-  | epsilon_bar :: _, [] ->
+  | _epsilon_bar :: _, [] ->
      begin match take_epsilon cfi_i with
      | Nothing cfi ->
         let flow_n = CP.Flow_with_Epsilon_Bars (cf_n, epsilon_bars_n)
         and pi = CP.Flow (cfi, cfo_i) in
         Some (sign, flow_n, add_or_remove_if_white i pi lines)
-     | Single (_, _, cfi_i) ->
+     | Single (_, _, _cfi_i) ->
         failwith "Color_Fusion.connect_in_contract_epsilons_opt: incomplete"
-     | Multiple (_, _, cfi_i) ->
+     | Multiple (_, _, _cfi_i) ->
         failwith "Color_Fusion.connect_in_contract_epsilons_opt: incomplete"
      end
-  | [], epsilon :: _ ->
+  | [], _epsilon :: _ ->
      begin match take_epsilon_bar cfo_n with
      | Nothing cfo ->
         let flow_n = CP.Flow (cfi_n, cfo)
         and pi = CP.Flow_with_Epsilons (cf_i, epsilons_i) in
         Some (sign, flow_n, add_or_remove_if_white i pi lines)
-     | Single (_, _, cfo_n) ->
+     | Single (_, _, _cfo_n) ->
         failwith "Color_Fusion.connect_in_contract_epsilons_opt: incomplete"
-     | Multiple (_, _, cfo_n) ->
+     | Multiple (_, _, _cfo_n) ->
         failwith "Color_Fusion.connect_in_contract_epsilons_opt: incomplete"
      end
   | [], [] ->
@@ -323,7 +323,7 @@ let connect_in_opt n' (i, i') (sign, flow_n, lines) =
               and pi = CP.Flow_with_Epsilon_Bars ((remove i' cfi_i, cfo_i), []) in
               Some (sign, flow_n, add_or_remove_if_white i pi lines)
 
-           | CP.Flow_with_Epsilons ((cfi_n, cfo_n), epsilons_n) ->
+           | CP.Flow_with_Epsilons ((_cfi_n, _cfo_n), _epsilons_n) ->
               failwith "Color_Fusion.connect_in_opt: no epsilon contractions yet"
            end
         end
@@ -380,7 +380,7 @@ let connect_out_opt n' (o, o') (sign, flow_n, lines) =
               let flow_n = CP.Flow_with_Epsilons ((cfi_n, add n' cfo cfo_n), epsilons_o @ epsilons_n)
               and po = CP.Flow_with_Epsilons ((cfi_o, remove o' cfo_o), []) in
               Some (sign, flow_n, add_or_remove_if_white o po lines)
-           | CP.Flow_with_Epsilon_Bars ((cfi_n, cfo_n), epsilon_bars_n) ->
+           | CP.Flow_with_Epsilon_Bars ((_cfi_n, _cfo_n), _epsilon_bars_n) ->
               failwith "Color_Fusion.connect_out_opt: no epsilon contractions yet"
            end
         end
@@ -404,7 +404,7 @@ let connect_out_opt n' (o, o') (sign, flow_n, lines) =
               and po = CP.Flow_with_Epsilon_Bars ((cfi_o, remove o' cfo_o), []) in
               Some (sign, flow_n, add_or_remove_if_white o po lines)
 
-           | CP.Flow_with_Epsilons ((cfi_n, cfo_n), epsilons_n) ->
+           | CP.Flow_with_Epsilons ((_cfi_n, _cfo_n), _epsilons_n) ->
               failwith "Color_Fusion.connect_out_opt: no epsilon contractions yet"
            end
         end
@@ -466,7 +466,7 @@ let connect_in_out_opt (i, i') (o, o') (sign, flow_n, lines) =
                 CP.Flow_with_Epsilons ((cfi, cfo), [epsilon_n])
              | CP.Flow_with_Epsilons (flow, epsilons_n) ->
                 CP.Flow_with_Epsilons (flow, epsilon_n :: epsilons_n)
-             | CP.Flow_with_Epsilon_Bars (flow, epsilon_bars_n) ->
+             | CP.Flow_with_Epsilon_Bars (_flow, _epsilon_bars_n) ->
                 failwith "Color_Fusion.connect_in_out_opt: no epsilon contractions yet" in
            let pi = CP.Flow_with_Epsilons ((remove i' cfi_i, cfo_i), epsilons_i)
            and po = CP.Flow (cfi_o, remove o' cfo_o) in
@@ -493,7 +493,7 @@ let connect_in_out_opt (i, i') (o, o') (sign, flow_n, lines) =
                 CP.Flow_with_Epsilon_Bars ((cfi, cfo), [epsilon_bar_n])
              | CP.Flow_with_Epsilon_Bars (flow, epsilon_bars_n) ->
                 CP.Flow_with_Epsilon_Bars (flow, epsilon_bar_n :: epsilon_bars_n)
-             | CP.Flow_with_Epsilons (flow, epsilons_n) ->
+             | CP.Flow_with_Epsilons (_flow, _epsilons_n) ->
                 failwith "Color_Fusion.connect_in_out_opt: no epsilon contractions yet" in
            let pi = CP.Flow (remove i' cfi_i, cfo_i)
            and po = CP.Flow_with_Epsilon_Bars ((cfi_o, remove o' cfo_o), epsilon_bars_o) in
@@ -513,7 +513,7 @@ let decode_endpoint = function
 
 let decode_tail t = decode_endpoint (t : A.tail :> A.endpoint)
 let decode_tip t = decode_endpoint (t : A.tip :> A.endpoint)
-let decode_ghost g = decode_endpoint (g : A.ghost :> A.endpoint)
+let _decode_ghost g = decode_endpoint (g : A.ghost :> A.endpoint)
 
 let endpoint_to_string = function
   | A.I n -> string_of_int n
@@ -521,7 +521,7 @@ let endpoint_to_string = function
 
 let tail_to_string t = endpoint_to_string (t : A.tail :> A.endpoint)
 let tip_to_string t = endpoint_to_string (t : A.tip :> A.endpoint)
-let ghost_to_string g = endpoint_to_string (g : A.ghost :> A.endpoint)
+let _ghost_to_string g = endpoint_to_string (g : A.ghost :> A.endpoint)
 
 let connect_arrow_opt n i o lines =
   let i, i' as ii' = decode_tail i
@@ -541,7 +541,7 @@ let lines_to_string (sign, flow_n, lines) =
        (fun (i, p) -> Printf.sprintf "%s@%d" (CP.to_string p) i)
        (PArray.to_pairs lines))
 
-let connect_arrow_opt_logging n i o lines =
+let _connect_arrow_opt_logging n i o lines =
   let result = connect_arrow_opt n i o lines in
   Printf.eprintf
     "  (%s,%s) %s >>> %s\n"
@@ -591,7 +591,7 @@ let connect_arrows_opt : A.free list -> CP.t list -> (int * CP.t) option =
   | Some acc -> all_lines_consumed_opt acc
   | None -> None
 
-let extract_lines_opt endpoints lines =
+let _extract_lines_opt endpoints lines =
   let rec extract_lines' acc lines = function
     | [] -> Some (List.rev acc, lines)
     | A.I i :: rest ->
@@ -661,7 +661,7 @@ let flow_to_string flow =
         Printf.sprintf "%s*%s" (QC.to_string c) p)
     flow
 
-let fuse_logging n_c vertex lines =
+let _fuse_logging n_c vertex lines =
   let flow_n = fuse n_c vertex lines in
   Printf.eprintf
     "%s >>> %s\n"
@@ -682,7 +682,7 @@ module Test =
     let vertices_equal v1 v2 =
       (Birdtracks.canonicalize v1) = (Birdtracks.canonicalize v2)
 
-    let eq v1 v2 =
+    let _eq v1 v2 =
       assert_equal ~printer:Birdtracks.to_string_raw ~cmp:vertices_equal v1 v2
 
     let suite_open_contract =
@@ -717,7 +717,7 @@ module Test =
         (signed_flow_option_to_string expected)
         (signed_flow_option_to_string result)
 
-    let test_connect_arrows expected lines vertex =
+    let _test_connect_arrows expected lines vertex =
       assert_equal ~printer:signed_flow_option_to_string
         expected (connect_arrows_opt vertex lines)
 
@@ -792,9 +792,9 @@ module Test =
     let (=>) (vertex, lines) expected = test_fuse expected vertex lines
 
     (* Abbreviations *)
-    let tf = test_fuse
+    let _tf = test_fuse
     let e = QC.unit
-    let half = QC.fraction 2
+    let h = QC.fraction 2
     let w = CP.white
 
     (* Quarks and anti quarks: *)
@@ -829,8 +829,8 @@ module Test =
 
     let suite_binary_qed6 =
       "sextet" >:::
-        [ "1 2  " >:: (fun () -> d6 2 1 // [dq 1 2; adq 1 2] => [(half, w)]);
-          "1 2' " >:: (fun () -> d6 2 1 // [dq 1 2; adq 2 1] => [(half, w)]);
+        [ "1 2  " >:: (fun () -> d6 2 1 // [dq 1 2; adq 1 2] => [(h, w)]);
+          "1 2' " >:: (fun () -> d6 2 1 // [dq 1 2; adq 2 1] => [(h, w)]);
           "1 2''" >:: (fun () -> d6 2 1 // [dq 1 2; adq 1 3] => []) ]
 
     let suite_binary_qcd3 =
@@ -840,28 +840,28 @@ module Test =
 
     let suite_binary_qcd6 =
       "sextet" >:::
-        [ "1 2" >:: (fun () -> t6 3 2 1 // [dq 1 2; adq 2 3] => [(half, g 1 3)]) ]
+        [ "1 2" >:: (fun () -> t6 3 2 1 // [dq 1 2; adq 2 3] => [(h, g 1 3)]) ]
 
     let suite_binary_k6 =
       "k6(bar)" >:::
-        [ "321  " >:: (fun () -> k6b 3 2 1 // [q 1;  q 2 ] => [(e, dq 2 1); (e, dq 1 2)]);
-          "321* " >:: (fun () -> k6  3 2 1 // [aq 1; aq 2] => [(e, adq 2 1); (e, adq 1 2)]);
-          "123  " >:: (fun () -> k6b 1 2 3 // [adq 1 2; q 1] => [(e, aq 2)]);
-          "132  " >:: (fun () -> k6b 1 3 2 // [adq 1 2; q 1] => [(e, aq 2)]);
-          "123' " >:: (fun () -> k6b 1 2 3 // [adq 1 2; q 2] => [(e, aq 1)]);
-          "132' " >:: (fun () -> k6b 1 3 2 // [adq 1 2; q 2] => [(e, aq 1)]);
-          "213  " >:: (fun () -> k6b 2 1 3 // [q 1; adq 1 2] => [(e, aq 2)]);
-          "231  " >:: (fun () -> k6b 2 3 1 // [q 1; adq 1 2] => [(e, aq 2)]);
-          "213' " >:: (fun () -> k6b 2 1 3 // [q 2; adq 1 2] => [(e, aq 1)]);
-          "231' " >:: (fun () -> k6b 2 3 1 // [q 2; adq 1 2] => [(e, aq 1)]);
-          "123 *" >:: (fun () -> k6  1 2 3 // [dq 1 2; aq 1] => [(e, q 2)]);
-          "132 *" >:: (fun () -> k6  1 3 2 // [dq 1 2; aq 1] => [(e, q 2)]);
-          "123'*" >:: (fun () -> k6  1 2 3 // [dq 1 2; aq 2] => [(e, q 1)]);
-          "132'*" >:: (fun () -> k6  1 3 2 // [dq 1 2; aq 2] => [(e, q 1)]);
-          "213 *" >:: (fun () -> k6  2 1 3 // [aq 1; dq 1 2] => [(e, q 2)]);
-          "231 *" >:: (fun () -> k6  2 3 1 // [aq 1; dq 1 2] => [(e, q 2)]);
-          "213'*" >:: (fun () -> k6  2 1 3 // [aq 2; dq 1 2] => [(e, q 1)]);
-          "231'*" >:: (fun () -> k6  2 3 1 // [aq 2; dq 1 2] => [(e, q 1)]) ]
+        [ "321  " >:: (fun () -> k6 3 2 1 // [q 1;  q 2 ] => [(h, dq 2 1); (h, dq 1 2)]);
+          "321* " >:: (fun () -> k6b  3 2 1 // [aq 1; aq 2] => [(h, adq 2 1); (h, adq 1 2)]);
+          "123  " >:: (fun () -> k6 1 2 3 // [adq 1 2; q 1] => [(h, aq 2)]);
+          "132  " >:: (fun () -> k6 1 3 2 // [adq 1 2; q 1] => [(h, aq 2)]);
+          "123' " >:: (fun () -> k6 1 2 3 // [adq 1 2; q 2] => [(h, aq 1)]);
+          "132' " >:: (fun () -> k6 1 3 2 // [adq 1 2; q 2] => [(h, aq 1)]);
+          "213  " >:: (fun () -> k6 2 1 3 // [q 1; adq 1 2] => [(h, aq 2)]);
+          "231  " >:: (fun () -> k6 2 3 1 // [q 1; adq 1 2] => [(h, aq 2)]);
+          "213' " >:: (fun () -> k6 2 1 3 // [q 2; adq 1 2] => [(h, aq 1)]);
+          "231' " >:: (fun () -> k6 2 3 1 // [q 2; adq 1 2] => [(h, aq 1)]);
+          "123 *" >:: (fun () -> k6b  1 2 3 // [dq 1 2; aq 1] => [(h, q 2)]);
+          "132 *" >:: (fun () -> k6b  1 3 2 // [dq 1 2; aq 1] => [(h, q 2)]);
+          "123'*" >:: (fun () -> k6b  1 2 3 // [dq 1 2; aq 2] => [(h, q 1)]);
+          "132'*" >:: (fun () -> k6b  1 3 2 // [dq 1 2; aq 2] => [(h, q 1)]);
+          "213 *" >:: (fun () -> k6b  2 1 3 // [aq 1; dq 1 2] => [(h, q 2)]);
+          "231 *" >:: (fun () -> k6b  2 3 1 // [aq 1; dq 1 2] => [(h, q 2)]);
+          "213'*" >:: (fun () -> k6b  2 1 3 // [aq 2; dq 1 2] => [(h, q 1)]);
+          "231'*" >:: (fun () -> k6b  2 3 1 // [aq 2; dq 1 2] => [(h, q 1)]) ]
 
     let suite_binary =
       "binary" >:::

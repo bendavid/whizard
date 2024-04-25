@@ -108,7 +108,7 @@ let use_channel state f =
       flush oc;
       close_out oc
   
-let reset state steps msg =
+let reset state steps _msg =
   match state with
   | None -> ()
   | Some state ->
@@ -151,16 +151,3 @@ let summary state msg =
         Printf.fprintf oc "%s. [total time: %s]\n" msg
           (time_to_string (now -. state.created)));
       close_channel state
-        
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
-
-
-
-

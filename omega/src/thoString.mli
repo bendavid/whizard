@@ -25,6 +25,9 @@
 (* This is a very simple library if string manipulation functions missing
    in O'Caml's standard library. *)
 
+(* Length of the longest string in the list. *)
+val max_length : string list -> int
+
 (* [strip_prefix prefix string] returns [string] with 0 or 1
    occurences of a leading [prefix] removed. *)
 val strip_prefix : string -> string -> string

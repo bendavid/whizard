@@ -117,7 +117,7 @@ module Make (M : Map_S) : (T with type key = M.key list) =
     let rec mem key trie =
       match key, trie with
       | [], Trie (None, _) -> false
-      | [], Trie (Some data, _) -> true
+      | [], Trie (Some _, _) -> true
       | k :: rest, Trie (_, children) ->
           match find1 k children with
           | None -> false
@@ -161,7 +161,7 @@ module Make (M : Map_S) : (T with type key = M.key list) =
     let rec shortest' partial partial_rest key trie =
       match key, trie with
       | [], Trie (data, _) -> (data, [])
-      | k :: rest, Trie (Some _ as data, children) -> (data, key)
+      | _ :: _, Trie (Some _ as data, _) -> (data, key)
       | k :: rest, Trie (None, children) ->
           match find1 k children with
           | None -> (partial, partial_rest)
@@ -293,7 +293,7 @@ module MakePoly (M : Pmap.T) : Poly =
     let rec mem cmp key trie =
       match key, trie with
       | [], Trie (None, _) -> false
-      | [], Trie (Some data, _) -> true
+      | [], Trie (Some _, _) -> true
       | k :: rest, Trie (_, children) ->
           match find1 cmp k children with
           | None -> false
@@ -337,7 +337,7 @@ module MakePoly (M : Pmap.T) : Poly =
     let rec shortest' cmp partial partial_rest key trie =
       match key, trie with
       | [], Trie (data, _) -> (data, [])
-      | k :: rest, Trie (Some _ as data, children) -> (data, key)
+      | _ :: _, Trie (Some _ as data, _) -> (data, key)
       | k :: rest, Trie (None, children) ->
           match find1 cmp k children with
           | None -> (partial, partial_rest)
@@ -366,11 +366,3 @@ module MakePoly (M : Pmap.T) : Poly =
       export' 0 [] f_open f_close f_descend f_match
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

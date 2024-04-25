@@ -140,8 +140,8 @@ endif
 
 KINDS = $(top_builddir)/omega/src/kinds.lo
 
-TESTS += test_omega95 test_omega95_bispinors
-EXTRA_PROGRAMS += test_omega95 test_omega95_bispinors
+TESTS += test_omega95 test_omega95_bispinors test_omega_api
+EXTRA_PROGRAMS += test_omega95 test_omega95_bispinors test_omega_api
 
 test_omega95_SOURCES = test_omega95.f90 omega_testtools.f90
 test_omega95_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
@@ -150,6 +150,10 @@ test_omega95_bispinors_SOURCES = test_omega95_bispinors.f90 omega_testtools.f90
 test_omega95_bispinors_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 test_omega95.o test_omega95_bispinors.o: omega_testtools.o
+test_omega_api.o: $(KINDS) $(top_builddir)/omega/src/libomega_core.la
+
+test_omega_api_SOURCES = test_omega_api.f90
+test_omega_api_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 
 if NOWEB_AVAILABLE
 
@@ -158,6 +162,9 @@ test_omega95.f90: $(top_srcdir)/omega/src/omegalib.nw
 test_omega95_bispinors.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
 omega_testtools.f90: $(top_srcdir)/omega/src/omegalib.nw
+	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
+
+test_omega_api.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
 
 endif NOWEB_AVAILABLE
@@ -213,7 +220,7 @@ ects_LDADD = $(KINDS) $(top_builddir)/omega/src/libomega_core.la
 ########################################################################
 
 TESTS += exotic_color
-# if there is some debugging output ...
+# Textual comparisons will fail while we add new features ...
 # XFAIL_TESTS += exotic_color
 
 EXOTIC_COLOR_TESTS = \

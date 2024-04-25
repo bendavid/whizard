@@ -98,7 +98,7 @@ module Fortran : T =
       | Coupling.Tensor_1 ->
          invalid_arg "UFO_targets: Tensor_1"
       | Coupling.Tensor_2 -> "h"
-      | Coupling.BRS l ->
+      | Coupling.BRS _ ->
          invalid_arg "UFO_targets: BRS"
 
     let fortran_type = function
@@ -114,7 +114,7 @@ module Fortran : T =
       | Coupling.Tensor_1 ->
          invalid_arg "UFO_targets: Tensor_1"
       | Coupling.Tensor_2 -> "type(tensor)"
-      | Coupling.BRS l ->
+      | Coupling.BRS _ ->
          invalid_arg "UFO_targets: BRS"
 
     (* The \texttt{omegalib} separates time from space.  Maybe
@@ -164,7 +164,7 @@ module Fortran : T =
         let n, d = Q.to_ratio q in
         Printf.sprintf "%d.0_default/%d" n d
 
-    let format_complex_rational cq =
+    let _format_complex_rational cq =
       let real = QC.re cq
       and imag = QC.im cq in
       if Q.is_null imag then
@@ -183,7 +183,7 @@ module Fortran : T =
 
     (* Optimize the representation if used as a prefactor of
        a summand in a sum. *)
-    let format_rational_factor q =
+    let _format_rational_factor q =
       if Q.is_unit q then
         "+ "
       else if Q.is_unit (Q.neg q) then
@@ -361,7 +361,7 @@ module Fortran : T =
     let prefix_summation = "mu"
     let prefix_polarization = "nu"
     let index_spinor = "alpha"
-    let index_tensor = "nu"
+    let _index_tensor = "nu"
 
     let index_variable mu =
       if mu < 0 then
@@ -374,8 +374,7 @@ module Fortran : T =
     let format_indices indices =
       String.concat "," (List.map index_variable indices)
 
-    module IntPM =
-      Partial.Make (struct type t = int let compare = compare end)
+    module IntPM = Partial.Make (Int)
 
     type tensor =
       | DS of dsv
@@ -399,7 +398,7 @@ module Fortran : T =
        (cf.~[Coupling.FBF] in the hardcoded O'Mega models),
        then this is the version implemented by [fuse] below. *)
 
-    let tho_print_dirac_current f c wf1 wf2 fusion =
+    let _tho_print_dirac_current f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta}$ *)
       | [3; 1] -> printf "%s_ff(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta}$ *)
@@ -412,7 +411,7 @@ module Fortran : T =
     (* The corresponding UFO [fuse] exchanges the arguments in the case
        of two fermions.  This is the natural choice for cyclic permutations. *)
 
-    let tho_print_FBF_current f c wf1 wf2 fusion =
+    let _tho_print_FBF_current f c wf1 wf2 fusion =
       match fusion with
       | [3; 1] -> printf "f%sf_p120(%s,%s,%s)" f c wf1 wf2 (* $\Gamma_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha}$ *)
       | [1; 3] -> printf "f%sf_p120(%s,%s,%s)" f c wf2 wf1 (* $\Gamma_{\alpha\beta} \psi_{1,\beta} \bar\psi_{2,\alpha}$ *)
@@ -437,7 +436,7 @@ module Fortran : T =
            latter can be obtained by exchanging arguments.
        \end{itemize} *)
 
-    let jrr_print_majorana_current_S_P_A f c wf1 wf2 fusion =
+    let _jrr_print_majorana_current_S_P_A f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff(%s,%s,%s)" f c wf1 wf2 (*
         $(C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
@@ -464,7 +463,7 @@ module Fortran : T =
        i.\,e.~$\gamma_\mu$ and~$\sigma_{\mu\nu}$
        (see [Targets.Fortran_Majorana_Fermions.print_fermion_current_vector]). *)
 
-    let jrr_print_majorana_current_V f c wf1 wf2 fusion =
+    let _jrr_print_majorana_current_V f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff( %s,%s,%s)" f c wf1 wf2 (*
         $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
@@ -490,7 +489,7 @@ module Fortran : T =
        implement~$\Gamma'=C\Gamma^T C^{-1}$, but we \emph{must}
        make sure that the multiplication with~$C$ from the left
        happens \emph{after} the transformation~$\Gamma\to\Gamma'$. *)
-    let jrr_print_majorana_current f c wf1 wf2 fusion =
+    let _jrr_print_majorana_current f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff  (%s,%s,%s)" f c wf1 wf2 (*
         $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
@@ -522,7 +521,7 @@ module Fortran : T =
        \end{equation}
        instead. *)
 
-    let jrr_print_majorana_current_transposing f c wf1 wf2 fusion =
+    let _jrr_print_majorana_current_transposing f c wf1 wf2 fusion =
       match fusion with
       | [1; 3] -> printf "%s_ff  (%s,%s,%s)" f c wf1 wf2 (*
         $ (C\Gamma)_{\alpha\beta} \bar\psi_{1,\alpha} \psi_{2,\beta} \cong
@@ -566,7 +565,7 @@ module Fortran : T =
        to accomodate the cyclic permutations. Therefore we exchange the
        arguments of the [[1; 3]] and [[3; 1]] fusions. *)
 
-    let jrr_print_majorana_FBF f c wf1 wf2 fusion =
+    let _jrr_print_majorana_FBF f c wf1 wf2 fusion =
       match fusion with (* [fline = (3, 1)] *)
       | [3; 1] -> printf "f%sf_p120_c(%s,%s,%s)" f c wf1 wf2 (*
         $(C\Gamma')^T_{\alpha\beta}
@@ -591,7 +590,7 @@ module Fortran : T =
 
     (* The other two permutations: *)
 
-    let jrr_print_majorana_FFB f c wf1 wf2 fusion =
+    let _jrr_print_majorana_FFB f c wf1 wf2 fusion =
       match fusion with (* [fline = (1, 2)] *)
       | [3; 1] -> printf "ff%s_p120  (%s,%s,%s)" f c wf1 wf2 (*
         $ \Gamma_{\alpha\beta} \phi_1 \psi_{2,\beta} \cong
@@ -614,7 +613,7 @@ module Fortran : T =
          (C\Gamma')^T = - C\Gamma $ *)
       | _ -> ()
 
-    let jrr_print_majorana_BFF f c wf1 wf2 fusion =
+    let _jrr_print_majorana_BFF f c wf1 wf2 fusion =
       match fusion with (* [fline = (2, 3)] *)
       | [3; 1] -> printf "%sff_p120  (%s,%s,%s)" f c wf1 wf2 (*
         $\Gamma^{\prime\,T}_{\alpha\beta} \bar\psi_{1,\alpha} \phi_2 \cong
@@ -647,7 +646,7 @@ module Fortran : T =
       | Coupling.Majorana | Coupling.Vectorspinor | Coupling.Maj_Ghost -> true
       | _ -> false
 
-    let is_dirac = function
+    let _is_dirac = function
       | Coupling.Spinor | Coupling.ConjSpinor -> true
       | _ -> false
 
@@ -747,6 +746,7 @@ module Fortran : T =
        (which takes the number of spaces to indent as only argument)
        of the cartesian product of [indices] running from 0 to 3. *)
     let nested_sums ~decl ~eval initial_indent indices print_term =
+      ignore decl;
       let rec nested_sums' indent = function
         | [] -> print_term indent
         | index :: indices ->
@@ -766,7 +766,7 @@ module Fortran : T =
       try
         ThoList.pairs index_pairs @ ThoList.uniq (List.sort compare polarizations)
       with
-      | Invalid_argument s ->
+      | Invalid_argument _ ->
          invalid_arg
            ("indices_of_contractions: " ^
               ThoList.to_string string_of_int index_pairs)
@@ -780,11 +780,11 @@ i*)
     let format_dsv dsv indices =
       match dsv, indices with
       | Braket _, [] -> dsv_name dsv
-      | Braket _, ilist ->
+      | Braket _, _ilist ->
          Printf.sprintf "%s(%s)" (dsv_name dsv) (format_indices indices)
       | (Bra _ | Ket _), [] ->
          Printf.sprintf "%s(%s)" (dsv_name dsv) index_spinor
-      | (Bra _ | Ket _), ilist ->
+      | (Bra _ | Ket _), _ilist ->
          Printf.sprintf
            "%s(%s,%s)" (dsv_name dsv) index_spinor (format_indices indices)
 
@@ -827,7 +827,7 @@ i*)
          fprintf eval "%s@,*" (format_tensor t);
          multiply_tensors ~decl ~eval tensors
 
-    let pseudo_wfs_for_denominator =
+    let _pseudo_wfs_for_denominator =
       Array.init
         2
         (fun i ->
@@ -878,7 +878,7 @@ i*)
           printf ")";
           begin match fusion.L.denominator with
           | [] -> ()
-          | d -> printf " / %s" denominator_name
+          | _ -> printf " / %s" denominator_name
           end;
           printf "@]");
       printf "@]";
@@ -1084,7 +1084,7 @@ i*)
          fprintf decl "    @[<2>complex(kind=default) :: %s@]" denominator_name;
          pp_newline decl ()
       end;
-      let max_dsv, indices_used, contractions =
+      let _max_dsv, indices_used, contractions =
         List.fold_left
           (contractees_of_fusion ~decl ~eval wfs)
           (0, Sets.Int.empty, [])
@@ -1181,7 +1181,7 @@ i*)
          printf "@]"; nl ()
 
     let propagator ff name parameter_module variables
-          (bra_spin, ket_spin) numerator denominator =
+          (_bra_spin, ket_spin) numerator denominator =
       let printf fmt = fprintf ff fmt
       and nl = pp_newline ff in
       let width = 80 in (* get this from the default formatter instead! *)
@@ -1215,7 +1215,7 @@ i*)
       Buffer.reset eval_buf;
       ()
 
-    let scale_coupling c g =
+    let _scale_coupling c g =
       if c = 1 then
         g
       else if c = -1 then
@@ -1326,7 +1326,7 @@ i*)
     let fusion_name v perm ccs =
       Printf.sprintf "%s_p%s%s" v (P.to_string perm) (ccs_to_string ccs)
 
-    let fuse_dirac c v s fl g wfs ps fusion =
+    let fuse_dirac c v _s _fl g wfs ps fusion =
       let g = scale_coupling c g
       and cyclic, factor = factor_cyclic fusion in
       let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in
@@ -1371,7 +1371,7 @@ i*)
     let map_fermion_lines2 map_index fl =
       List.map (fun (i, f) -> ((i, f), (map_index i, map_index f))) fl
 
-    let permute_fermion_lines cyclic unit fl =
+    let _permute_fermion_lines cyclic unit fl =
       map_fermion_lines (map_indices cyclic unit) fl
 
     let permute_fermion_lines2 cyclic factor unit fl =
@@ -1383,7 +1383,7 @@ i*)
          TODO: this needs more more work for the fully
          general case with 4-fermion operators involving Majoranas.
        \end{dubious} *)
-    let charge_conjugations fl2 =
+    let _charge_conjugations fl2 =
       ThoList.filtermap
         (fun ((i, f), (i', f')) ->
           match (i, f), (i', f') with
@@ -1438,7 +1438,7 @@ i*)
           | _ -> None)
         fl2
 
-    let fuse_majorana c v s fl g wfs ps fusion =
+    let fuse_majorana c v _s fl g wfs ps fusion =
       let g = scale_coupling c g
       and cyclic, factor = factor_cyclic fusion in
       let wfs_ps = List.map2 (fun wf p -> (wf, p)) wfs ps in

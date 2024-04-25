@@ -23,9 +23,6 @@
 type diagram = int list
 type 'a tableau = 'a list list
 
-(* Not exposed.  Just for documentation. *)
-type 'a table = 'a option array array
-
 (* The following three are candidates for [ThoList]. *)
 let rec sum = function
   | [] -> 0
@@ -45,9 +42,9 @@ let rec for_all_pairs predicate = function
      else
        for_all_pairs predicate a_list
 
-let decreasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 > 0) l
+let _decreasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 > 0) l
 let increasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 < 0) l
-let non_increasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 >= 0) l
+let _non_increasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 >= 0) l
 let non_decreasing l = for_all_pairs (fun a1 a2 -> compare a1 a2 <= 0) l
 
 let non_increasing_never_zero l =
@@ -72,7 +69,7 @@ let take_column d =
          take_column' (succ len) (pred cols :: acc) rest in
   take_column' 0 [] d
 
-let conjugate_diagram_new d =
+let _conjugate_diagram_new d =
   let rec conjugate_diagram' rows =
     match take_column rows with
     | n, [] -> [n]
@@ -163,6 +160,15 @@ let standard_tableau ?offset t =
      && for_all_pairs (fun c1 c2 -> c2 = c1 + 1) cell_list
      && semistandard_tableau t
 
+let quasi_standard_tableau t =
+  match List.sort compare (cells_tableau t) with
+  | [] -> None
+  | _ :: _ as cell_list ->
+     if for_all_pairs (fun c1 c2 -> c2 > c1) cell_list && semistandard_tableau t then
+       Some cell_list
+     else
+       None
+
 let map f t =
   List.map (List.map f) t
 
@@ -172,7 +178,7 @@ let tableau_to_string to_string t =
 let pp fmt y =
   Format.fprintf fmt "%s" (tableau_to_string string_of_int y)
 
-let hook_lengths_table d =
+let _hook_lengths_table d =
   let nr = diagram_rows d
   and nc = diagram_columns d in
   if min nr nc <= 0 then
@@ -231,6 +237,32 @@ let normalization d =
   and den = hook_lengths_product d in
   (num, den)
 
+module L = Algebra.Laurent
+
+(* \begin{equation}
+     R(i_0,l) = \prod_{i=0}^{n_{\text{boxes}}-1} (N_c+i+i_0)
+   \end{equation} *)
+let row_polynomial i0 num_boxes =
+  let rec factors acc i =
+    if i >= num_boxes then
+      acc
+    else
+      factors (L.ints [(1,1); (i + i0, 0)] :: acc) (succ i) in
+  L.product (factors [] 0)
+
+(* \begin{equation}
+     \prod_{i=1}^{n_{\text{rows}}} R(1-i,n_{\text{boxes}}(i))
+   \end{equation} *)
+let diagram_polynomial rows =
+  let factors, _ =
+    List.fold_left
+      (fun (acc, i) num_boxes -> (row_polynomial i num_boxes :: acc, pred i))
+      ([], 0) rows in
+  L.product factors
+
+let dimension d =
+  L.product [diagram_polynomial d; L.fraction (hook_lengths_product d)]
+
 module type Test =
   sig
     val suite : OUnit.test
@@ -241,10 +273,13 @@ module Test =
   struct
     open OUnit
 
+    let assert_equal_laurent l1 l2 =
+      assert_equal ~printer:(L.to_string "N") l1 l2
+
     let random_int ratio =
       truncate (Random.float ratio +. 0.5)
 
-    let random_diagram ?(ratio=1.0) rows =
+    let _random_diagram ?(ratio=1.0) rows =
       let rec random_diagram' acc row cols =
         if row >= rows then
           acc
@@ -271,11 +306,40 @@ module Test =
         [ "[2;1]" >::
 	    (fun () -> assert_equal (4, 3) (normalization [2; 1])) ]
 
+    let assert_decomposition powers yd_list =
+      assert_equal_laurent (L.ints powers)
+        (L.sum (List.map (fun (n, yd) -> L.product [L.int n; dimension yd]) yd_list))
+
+      let suite_dimension =
+      "dimension" >:::
+
+        [ "[1]" >::
+	    (fun () -> assert_equal_laurent (L.ints [(1,1)]) (dimension [1]));
+
+          "[2]" >::
+	    (fun () -> assert_equal_laurent (L.product [L.ints [(1,2);(1,1)]; L.fraction 2]) (dimension [2]));
+
+          "[1;1]" >::
+	    (fun () -> assert_equal_laurent (L.product [L.ints [(1,2);(-1,1)]; L.fraction 2]) (dimension [1;1]));
+
+          "[2;1]" >::
+	    (fun () -> assert_equal_laurent (L.product [L.ints [(1,3);(-1,1)]; L.fraction 3]) (dimension [2;1]));
+
+          "N*N" >::
+	    (fun () -> assert_decomposition [(1,2)] [(1, [1;1]); (1, [2])]);
+
+          "N*N*N" >::
+	    (fun () -> assert_decomposition [(1,3)] [(1, [1;1;1]); (2, [2;1]); (1, [3])]);
+
+          "N*N*N*N" >::
+	    (fun () -> assert_decomposition [(1,4)] [(1, [1;1;1;1]); (3, [2;1;1]); (2, [2;2]); (3, [3;1]); (1, [4])]) ]
+
     let suite =
       "Young" >:::
 	[suite_hook_lengths_product;
          suite_num_standard_tableaux;
-         suite_normalization]
+         suite_normalization;
+         suite_dimension]
 
     let suite_long =
       "Young long" >:::
