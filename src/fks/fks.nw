@@ -5980,7 +5980,7 @@ reference.
     integer, intent(in), dimension(:,:) :: flv_born, flv_real
     type(string_t), intent(in) :: nlo_corr_type
     type(region_data_t), intent(out) :: reg_data
-    type(model_t), pointer :: test_model => null ()
+    class(model_t), pointer :: test_model => null ()
     call create_test_model (var_str ("SM"), test_model)
     call test_model%set_real (var_str ("me"), 0._default)
     call test_model%set_real (var_str ("mmu"), 0._default)
@@ -6077,7 +6077,7 @@ end module fks_regions_uti
   subroutine fks_regions_1 (u)
     integer, intent(in) :: u
     type(flv_structure_t) :: flv_born, flv_real
-    type(model_t), pointer :: test_model => null ()
+    class(model_t), pointer :: test_model => null ()
     write (u, "(A)") "* Test output: fks_regions_1"
     write (u, "(A)") "* Purpose: Test utilities of flavor structure manipulation"
     write (u, "(A)")

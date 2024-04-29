@@ -30983,7 +30983,7 @@ end module dispatch_phs_uti
     type(os_data_t) :: os_data
     type(process_constants_t) :: process_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     class(phs_config_t), allocatable :: phs
     integer :: u_phs
 

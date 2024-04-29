@@ -3898,7 +3898,7 @@ end module radiation_generator_uti
     type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
+    class(model_t), pointer :: model => null ()
 
     write (u, "(A)") "* Test output: radiation_generator_1"
     write (u, "(A)") "* Purpose: Create N+1-particle flavor structures &
@@ -4027,7 +4027,7 @@ end module radiation_generator_uti
     type(pdg_array_t), dimension(:), allocatable :: pdg_excluded
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
+    class(model_t), pointer :: model => null ()
     integer, parameter :: max_multiplicity = 10
     type(string_t), dimension(:), allocatable :: prt_last
 
@@ -4098,7 +4098,7 @@ end module radiation_generator_uti
     type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
+    class(model_t), pointer :: model => null ()
 
     write (u, "(A)") "* Test output: radiation_generator_3"
     write (u, "(A)") "* Purpose: Create N+1-particle flavor structures &
@@ -4246,7 +4246,7 @@ end module radiation_generator_uti
     type(pdg_array_t), dimension(:), allocatable :: pdg_excluded
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
+    class(model_t), pointer :: model => null ()
     integer, parameter :: max_multiplicity = 10
     type(string_t), dimension(:), allocatable :: prt_last
 
@@ -15772,12 +15772,12 @@ the field content.
 <<Models: sub interfaces>>=
     module subroutine create_test_model (model_name, test_model)
       type(string_t), intent(in) :: model_name
-      type(model_t), intent(out), pointer :: test_model
+      class(model_t), intent(out), pointer :: test_model
     end subroutine create_test_model
 <<Models: procedures>>=
   module subroutine create_test_model (model_name, test_model)
     type(string_t), intent(in) :: model_name
-    type(model_t), intent(out), pointer :: test_model
+    class(model_t), intent(out), pointer :: test_model
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     call syntax_model_file_init ()
@@ -15875,13 +15875,13 @@ If we provide a [[model]] argument, this returns a pointer to the new entry.
     module subroutine model_list_import (model_list, current, model)
       class(model_list_t), intent(inout) :: model_list
       type(model_entry_t), pointer, intent(inout) :: current
-      type(model_t), optional, pointer, intent(out) :: model
+      class(model_t), optional, pointer, intent(out) :: model
     end subroutine model_list_import
 <<Models: procedures>>=
   module subroutine model_list_import (model_list, current, model)
     class(model_list_t), intent(inout) :: model_list
     type(model_entry_t), pointer, intent(inout) :: current
-    type(model_t), optional, pointer, intent(out) :: model
+    class(model_t), optional, pointer, intent(out) :: model
     if (associated (current)) then
        if (associated (model_list%first)) then
           model_list%last%next => current
@@ -15889,7 +15889,7 @@ If we provide a [[model]] argument, this returns a pointer to the new entry.
           model_list%first => current
        end if
        model_list%last => current
-       if (present (model))  model => current%model_t
+       if (present (model))  model => current
        current => null ()
     end if
   end subroutine model_list_import
@@ -15908,7 +15908,7 @@ exist.  If successful, return a pointer to the new model.
       type(string_t), intent(in) :: name
       type(os_data_t), intent(in) :: os_data
       integer, intent(in) :: n_par, n_prt, n_vtx
-      type(model_t), pointer :: model
+      class(model_t), pointer :: model
     end subroutine model_list_add
 <<Models: procedures>>=
   module subroutine model_list_add (model_list, &
@@ -15917,7 +15917,7 @@ exist.  If successful, return a pointer to the new model.
     type(string_t), intent(in) :: name
     type(os_data_t), intent(in) :: os_data
     integer, intent(in) :: n_par, n_prt, n_vtx
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(model_entry_t), pointer :: current
     if (model_list%model_exists (name, follow_link=.false.)) then
        model => null ()
@@ -15947,7 +15947,7 @@ modified, we should first allocate a local copy.
       class(model_list_t), intent(inout), target :: model_list
       type(string_t), intent(in) :: name, filename
       type(os_data_t), intent(in) :: os_data
-      type(model_t), pointer, intent(inout) :: model
+      class(model_t), pointer, intent(inout) :: model
       type(string_t), intent(in), optional :: scheme
       logical, intent(in), optional :: ufo
       type(string_t), intent(in), optional :: ufo_path
@@ -15960,7 +15960,7 @@ modified, we should first allocate a local copy.
     class(model_list_t), intent(inout), target :: model_list
     type(string_t), intent(in) :: name, filename
     type(os_data_t), intent(in) :: os_data
-    type(model_t), pointer, intent(inout) :: model
+    class(model_t), pointer, intent(inout) :: model
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
     type(string_t), intent(in), optional :: ufo_path
@@ -16001,13 +16001,13 @@ pointer to the new entry.
     module subroutine model_list_append_copy (model_list, orig, model)
       class(model_list_t), intent(inout) :: model_list
       type(model_t), intent(in), target :: orig
-      type(model_t), intent(out), pointer, optional :: model
+      class(model_t), intent(out), pointer, optional :: model
     end subroutine model_list_append_copy
 <<Models: procedures>>=
   module subroutine model_list_append_copy (model_list, orig, model)
     class(model_list_t), intent(inout) :: model_list
     type(model_t), intent(in), target :: orig
-    type(model_t), intent(out), pointer, optional :: model
+    class(model_t), intent(out), pointer, optional :: model
     type(model_entry_t), pointer :: copy
     allocate (copy)
     call copy%init_instance (orig)
@@ -16067,7 +16067,7 @@ told otherwise.
     recursive module function model_list_get_model_ptr &
          (model_list, name, scheme, ufo, ufo_path, follow_link) result (model)
       class(model_list_t), intent(in) :: model_list
-      type(model_t), pointer :: model
+      class(model_t), pointer :: model
       type(string_t), intent(in) :: name
       type(string_t), intent(in), optional :: scheme
       logical, intent(in), optional :: ufo
@@ -16078,7 +16078,7 @@ told otherwise.
   recursive module function model_list_get_model_ptr &
        (model_list, name, scheme, ufo, ufo_path, follow_link) result (model)
     class(model_list_t), intent(in) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
@@ -16090,7 +16090,7 @@ told otherwise.
     current => model_list%first
     do while (associated (current))
        if (current%matches (name, scheme, ufo, ufo_path)) then
-          model => current%model_t
+          model => current
           return
        end if
        current => current%next
@@ -16265,7 +16265,7 @@ Here, we construct a toy model explicitly without referring to a file.
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(string_t) :: model_name
     type(string_t) :: x_longname
     type(string_t), dimension(2) :: parname
@@ -16338,7 +16338,7 @@ Read a predefined model from file.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(var_list_t), pointer :: var_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
 
     write (u, "(A)")  "* Test output: models_2"
     write (u, "(A)")  "*   Purpose: read a model from file"
@@ -16384,9 +16384,9 @@ Read a predefined model from file and create an instance.
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(var_list_t), pointer :: var_list
-    type(model_t), pointer :: instance
+    class(model_t), pointer :: instance
 
     write (u, "(A)")  "* Test output: models_3"
     write (u, "(A)")  "*   Purpose: create a model instance"
@@ -16438,7 +16438,7 @@ Read a predefined model from file and define decays and polarization.
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model, model_instance
+    class(model_t), pointer :: model, model_instance
     character(32) :: md5sum
 
     write (u, "(A)")  "* Test output: models_4"
@@ -16531,7 +16531,7 @@ Note that the MD5 sum is not modified by this.
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model, model_instance
+    class(model_t), pointer :: model, model_instance
     character(32) :: md5sum
 
     write (u, "(A)")  "* Test output: models_5"
@@ -16612,7 +16612,7 @@ parameters is non-canonical.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(var_list_t), pointer :: var_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
 
     write (u, "(A)")  "* Test output: models_6"
     write (u, "(A)")  "*   Purpose: read a model from file &
@@ -16677,7 +16677,7 @@ parameter list.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(var_list_t), pointer :: var_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
 
     write (u, "(A)")  "* Test output: models_7"
     write (u, "(A)")  "*   Purpose: read a model from file &
@@ -16817,7 +16817,7 @@ UFO models.  Compare this to an equivalent non-UFO model.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(string_t) :: model_name
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
 
     write (u, "(A)")  "* Test output: models_8"
     write (u, "(A)")  "*   Purpose: distinguish models marked as UFO-derived"
@@ -16948,7 +16948,7 @@ UFO model.  The model file is deleted explicitly at the end of this test.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(string_t) :: model_name, model_file_name
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
 
     write (u, "(A)")  "* Test output: models_9"
     write (u, "(A)")  "*   Purpose: enable the UFO Standard Model (test version)"
@@ -16999,7 +16999,7 @@ Read a model from file which contains [[slha_entry]] qualifiers for parameters.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(var_list_t), pointer :: var_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(string_t), dimension(:), allocatable :: slha_block_name
     integer :: i
 
@@ -18746,7 +18746,7 @@ end module slha_interface_uti
     character(80) :: buffer
     character(*), parameter :: file_slha = "slha_test.dat"
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model => null ()
+    class(model_t), pointer :: model => null ()
     type(var_list_t), pointer :: var_list
     type(string_t), dimension(0) :: empty_string_array
 

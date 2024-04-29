@@ -2668,7 +2668,7 @@ end module parton_states_uti
     complex(default), dimension(8) :: me
     complex(default) :: me_check_tot, me_check_1, me_check_2, me2
     logical :: tmp1, tmp2
-    type(model_t), pointer :: test_model => null ()
+    class(model_t), pointer :: test_model => null ()
 
     write (u, "(A)") "* Test output: parton_states_1"
     write (u, "(A)") "* Purpose: Test the standard parton states"

@@ -718,10 +718,10 @@ temporarily override defaults.  The data set is transparent.
      type(iterations_list_t) :: it_list
      type(os_data_t) :: os_data
      type(model_list_t) :: model_list
-     type(model_t), pointer :: model => null ()
+     class(model_t), pointer :: model => null ()
      logical :: model_is_copy = .false.
-     type(model_t), pointer :: preload_model => null ()
-     type(model_t), pointer :: fallback_model => null ()
+     class(model_t), pointer :: preload_model => null ()
+     class(model_t), pointer :: fallback_model => null ()
      type(prclib_stack_t) :: prclib_stack
      type(process_library_t), pointer :: prclib => null ()
      type(beam_structure_t) :: beam_structure
@@ -1498,14 +1498,14 @@ global context.
       class(rt_data_t), intent(inout) :: global
       type(string_t), intent(in) :: name
       type(string_t), intent(in), optional :: scheme
-      type(model_t), pointer, intent(out) :: model
+      class(model_t), pointer, intent(out) :: model
     end subroutine rt_data_read_model
 <<RT data: procedures>>=
   module subroutine rt_data_read_model (global, name, model, scheme)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
-    type(model_t), pointer, intent(out) :: model
+    class(model_t), pointer, intent(out) :: model
     type(string_t) :: filename
     filename = name // ".mdl"
     call global%model_list%read_model &
@@ -1520,14 +1520,14 @@ global context.
     module subroutine rt_data_read_ufo_model (global, name, model, ufo_path)
       class(rt_data_t), intent(inout) :: global
       type(string_t), intent(in) :: name
-      type(model_t), pointer, intent(out) :: model
+      class(model_t), pointer, intent(out) :: model
       type(string_t), intent(in), optional :: ufo_path
     end subroutine rt_data_read_ufo_model
 <<RT data: procedures>>=
   module subroutine rt_data_read_ufo_model (global, name, model, ufo_path)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
-    type(model_t), pointer, intent(out) :: model
+    class(model_t), pointer, intent(out) :: model
     type(string_t), intent(in), optional :: ufo_path
     type(string_t) :: filename
     filename = name // ".ufo.mdl"
@@ -3625,7 +3625,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     class(prc_core_def_t), allocatable, intent(out) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    type(model_t), pointer, intent(in) :: model
+    class(model_t), pointer, intent(in) :: model
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in), optional :: id
     integer, intent(in), optional :: nlo_type
@@ -4668,7 +4668,7 @@ particles, and the number of components.
       type(string_t), intent(in) :: prc_name
       integer, intent(in) :: n_in
       integer, intent(in) :: n_components
-      type(model_t), intent(in), pointer :: model
+      class(model_t), intent(in), pointer :: model
       type(var_list_t), intent(in) :: var_list
       logical, intent(in), optional :: nlo_process, negative_sf
     end subroutine process_configuration_init
@@ -4680,7 +4680,7 @@ particles, and the number of components.
     type(string_t), intent(in) :: prc_name
     integer, intent(in) :: n_in
     integer, intent(in) :: n_components
-    type(model_t), intent(in), pointer :: model
+    class(model_t), intent(in), pointer :: model
     type(var_list_t), intent(in) :: var_list
     logical, intent(in), optional :: nlo_process, negative_sf
     logical :: nlo_proc, neg_sf
@@ -4738,7 +4738,7 @@ polarization flag and names of decay processes, where applicable.
       integer, intent(in) :: i_component
       type(prt_spec_t), dimension(:), intent(in) :: prt_in
       type(prt_spec_t), dimension(:), intent(in) :: prt_out
-      type(model_t), pointer, intent(in) :: model
+      class(model_t), pointer, intent(in) :: model
       type(var_list_t), intent(in) :: var_list
       integer, intent(in), optional :: nlo_type
       logical, intent(in), optional :: can_be_integrated
@@ -4751,7 +4751,7 @@ polarization flag and names of decay processes, where applicable.
     integer, intent(in) :: i_component
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
     type(prt_spec_t), dimension(:), intent(in) :: prt_out
-    type(model_t), pointer, intent(in) :: model
+    class(model_t), pointer, intent(in) :: model
     type(var_list_t), intent(in) :: var_list
     integer, intent(in), optional :: nlo_type
     logical, intent(in), optional :: can_be_integrated
@@ -9238,6 +9238,10 @@ module restricted_subprocesses
 <<Restricted subprocesses: sub interfaces>>
   end interface
 
+contains
+
+<<Restricted subprocesses: main procedures>>
+
 end module restricted_subprocesses
 @ %def restricted_subprocesses
 @
@@ -9298,30 +9302,20 @@ the base type will be finalized and deallocated.
 The current implementation will generate a LO process, the optional
 [[nlo_process]] is unset.  (It is not obvious
 whether the construction makes sense beyond LO.)
+Gfortran 7/8/9 bug, has to remain in the main module:
 <<Restricted subprocesses: restricted process configuration: TBP>>=
   procedure :: init_resonant_process
-<<Restricted subprocesses: sub interfaces>>=
-    module subroutine init_resonant_process &
-         (prc_config, prc_name, prt_in, prt_out, res_history, model, var_list)
-      class(restricted_process_configuration_t), intent(out) :: prc_config
-      type(string_t), intent(in) :: prc_name
-      type(prt_spec_t), dimension(:), intent(in) :: prt_in
-      type(prt_spec_t), dimension(:), intent(in) :: prt_out
-      type(resonance_history_t), intent(in) :: res_history
-      type(model_t), intent(in), target :: model
-      type(var_list_t), intent(in), target :: var_list
-    end subroutine init_resonant_process
-<<Restricted subprocesses: procedures>>=
-  module subroutine init_resonant_process &
+<<Restricted subprocesses: main procedures>>=
+  subroutine init_resonant_process &
        (prc_config, prc_name, prt_in, prt_out, res_history, model, var_list)
     class(restricted_process_configuration_t), intent(out) :: prc_config
     type(string_t), intent(in) :: prc_name
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
     type(prt_spec_t), dimension(:), intent(in) :: prt_out
     type(resonance_history_t), intent(in) :: res_history
-    type(model_t), intent(in), target :: model
+    class(model_t), intent(in), target :: model
     type(var_list_t), intent(in), target :: var_list
-    type(model_t), pointer :: local_model
+    class(model_t), pointer :: local_model
     type(var_list_t) :: local_var_list
     allocate (local_model)
     call local_model%init_instance (model)
@@ -19281,7 +19275,7 @@ Assign the model pointer in the [[global]] record, so it can be used for
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_name, pn_arg, pn_scheme
     type(parse_node_t), pointer :: pn_ufo_arg, pn_path
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(string_t) :: scheme
     pn_name => cmd%pn%get_sub_ptr (3)
     pn_arg => pn_name%get_next_ptr ()
@@ -19327,7 +19321,7 @@ Assign the model pointer in the [[global]] record, so it can be used for
     end if
   contains
     subroutine preload_model (model, name, scheme)
-      type(model_t), pointer, intent(out) :: model
+      class(model_t), pointer, intent(out) :: model
       type(string_t), intent(in) :: name
       type(string_t), intent(in), optional :: scheme
       model => null ()
@@ -19345,7 +19339,7 @@ Assign the model pointer in the [[global]] record, so it can be used for
       end if
     end subroutine preload_model
     subroutine preload_ufo_model (model, name, ufo_path)
-      type(model_t), pointer, intent(out) :: model
+      class(model_t), pointer, intent(out) :: model
       type(string_t), intent(in) :: name
       type(string_t), intent(in), optional :: ufo_path
       model => null ()
@@ -20083,7 +20077,7 @@ which are not available there.
   function make_flavor_string (aval, model) result (prt)
     type(string_t) :: prt
     type(pdg_array_t), intent(in) :: aval
-    type(model_t), intent(in), target :: model
+    class(model_t), intent(in), target :: model
     integer, dimension(:), allocatable :: pdg
     type(flavor_t), dimension(:), allocatable :: flv
     integer :: i
@@ -20126,7 +20120,7 @@ particle-specifier expression which we can process further.
     type(prt_expr_t), intent(out) :: prt_expr
     type(parse_node_t), intent(in), target :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(model_t), intent(in), target :: model
+    class(model_t), intent(in), target :: model
     type(parse_node_t), pointer :: pn_entry, pn_term, pn_addition
     type(pdg_array_t) :: pdg
     type(string_t) :: prt_string

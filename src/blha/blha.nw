@@ -4197,7 +4197,7 @@ end module blha_uti
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(var_list_t) :: var_list
-    type(model_t), pointer :: model => null ()
+    class(model_t), pointer :: model => null ()
     integer :: openloops_phs_tolerance
 
     polrzd = .false.; if (present (polarized)) polrzd = polarized

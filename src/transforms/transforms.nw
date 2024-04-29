@@ -2791,7 +2791,7 @@ Insert a resonance (W boson) into an event with momentum assignment.
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
     type(resonance_history_set_t), dimension(1) :: res_history_set
@@ -2947,7 +2947,7 @@ because of color mismatch: W boson is color-neutral.
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
     type(resonance_history_set_t), dimension(1) :: res_history_set
@@ -3084,7 +3084,7 @@ This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
     type(resonance_history_set_t), dimension(1) :: res_history_set
@@ -3231,7 +3231,7 @@ using the selector component.
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
     type(resonance_history_set_t), dimension(1) :: res_history_set
@@ -3353,7 +3353,7 @@ resonance.
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
     type(resonance_history_set_t), dimension(1) :: res_history_set
@@ -3458,7 +3458,7 @@ particles.
     type(os_data_t) :: os_data
     type(model_list_t) :: model_list
     type(particle_set_t) :: pset
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(resonance_info_t) :: res_info
     type(resonance_history_t) :: res_history
     type(resonance_history_set_t), dimension(1) :: res_history_set
@@ -5942,7 +5942,7 @@ trivial case where the event is kept collinear.
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
     type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
@@ -6044,7 +6044,7 @@ is conserved, and all outgoing photons and partons are on-shell
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
     type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
@@ -6157,7 +6157,7 @@ are not in their c.m.\ frame (but collinear).
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
     type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
@@ -6300,7 +6300,7 @@ trivial case where the event is kept collinear.
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
     type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
@@ -6404,7 +6404,7 @@ is conserved, and all outgoing beam remnants and photons are on-shell
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
     type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
@@ -6516,7 +6516,7 @@ before EPA are not in their c.m.\ frame (but collinear).
     type(os_data_t) :: os_data
     type(particle_set_t) :: pset
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(evt_trivial_t), target :: evt_trivial
     type(evt_isr_epa_t), target :: evt_isr_epa
     type(vector4_t), dimension(8) :: p
@@ -10692,7 +10692,7 @@ This sequence sets up a two-jet process, ready for generating events.
     type(process_library_t), intent(out), target :: lib
     type(model_list_t), intent(out) :: model_list
     type(model_t), pointer :: model
-    type(model_t), pointer :: model_tmp
+    class(model_t), pointer :: model_tmp
     type(process_t), target, intent(out) :: process
     type(process_instance_t), target, intent(out) :: process_instance
     type(var_list_t), pointer :: model_vars
@@ -10810,7 +10810,7 @@ in disabled mode.
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
     class(model_data_t), pointer :: model
-    type(model_t), pointer :: model_hadrons
+    class(model_t), pointer :: model_hadrons
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
     type(pdf_data_t) :: pdf_data
@@ -10914,7 +10914,7 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     type(os_data_t) :: os_data
     type(process_library_t), target :: lib
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model_hadrons
+    class(model_t), pointer :: model_hadrons
     class(model_data_t), pointer :: model
     type(process_t), target :: process
     type(process_instance_t), target :: process_instance
@@ -15552,7 +15552,7 @@ implementation requires the handler modes of ISR and EPA to coincide.
        os_data, beam_structure, process)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
-    type(model_t), pointer, intent(in) :: model, fallback_model
+    class(model_t), pointer, intent(in) :: model, fallback_model
     type(os_data_t), intent(in) :: os_data
     type(beam_structure_t), intent(in) :: beam_structure
     type(process_t), intent(in), optional :: process
@@ -15689,7 +15689,7 @@ implementation requires the handler modes of ISR and EPA to coincide.
   subroutine dispatch_evt_hadrons (evt, var_list, fallback_model)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
-    type(model_t), pointer, intent(in) :: fallback_model
+    class(model_t), pointer, intent(in) :: fallback_model
     type(shower_settings_t) :: shower_settings
     type(hadron_settings_t) :: hadron_settings
     allocate (evt_hadrons_t :: evt)
@@ -16122,7 +16122,7 @@ end module dispatch_transforms_uti
     integer, intent(in) :: u
     type(var_list_t) :: var_list
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(os_data_t) :: os_data
     class(event_callback_t), allocatable :: event_callback
     class(eio_t), allocatable :: eio
@@ -16236,7 +16236,7 @@ This test dispatches [[evt]] (event transform) objects.
     integer, intent(in) :: u
     type(var_list_t), target :: var_list
     type(model_list_t) :: model_list
-    type(model_t), pointer :: model
+    class(model_t), pointer :: model
     type(os_data_t) :: os_data
     type(resonance_history_set_t), dimension(1) :: res_history_set
     type(beam_structure_t) :: beam_structure
