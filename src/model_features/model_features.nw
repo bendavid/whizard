@@ -13283,6 +13283,8 @@ submodule (models) models_s
   use pdg_arrays
   use ttv_formfactors, only: init_parameters
 
+<<Use mpi f08>>
+
   implicit none
 
 contains
@@ -15100,6 +15102,17 @@ contents of the file or the generated model object.
       type(string_t), intent(in), optional :: ufo_path_requested
       logical, intent(in), optional :: rebuild_mdl
     end subroutine model_read
+<<Models: model read: extra variables>>=
+<<MPI: Models: model read: extra variables>>=
+    integer :: rank, n_size
+<<Models: model read: extra if>>=
+<<MPI: Models: model read: extra if>>=
+       call mpi_get_comm_id (n_size, rank)
+       if (rank == 0) then
+<<Models: model read: extra end if>>=
+<<MPI: Models: model read: extra end if>>=
+       end if
+       call MPI_barrier (MPI_COMM_WORLD)
 <<Models: procedures>>=
   module subroutine model_read (model, filename, os_data, exist, &
        scheme, ufo, ufo_path_requested, rebuild_mdl)
@@ -15128,6 +15141,7 @@ contents of the file or the generated model object.
     type(parse_node_t), pointer :: nd_prt
     type(parse_node_t), pointer :: nd_vtx
     logical :: ufo_model, model_exist, rebuild
+<<Models: model read: extra variables>>
     ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     rebuild = .true.; if (present (rebuild_mdl))  rebuild = rebuild_mdl
     file = filename
@@ -15142,8 +15156,10 @@ contents of the file or the generated model object.
     end if
     if (ufo_model .and. rebuild) then
        file = filename
-       call model_generate_ufo (filename, os_data, model%ufo_path, &
-            ufo_path_requested=ufo_path_requested)
+<<Models: model read: extra if>>
+         call model_generate_ufo (filename, os_data, model%ufo_path, &
+               ufo_path_requested=ufo_path_requested)
+<<Models: model read: extra end if>>
        inquire (file = char (file), exist = model_exist)
     end if
     if (.not. model_exist) then

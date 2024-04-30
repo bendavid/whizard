@@ -86,6 +86,8 @@ submodule (prc_gosam) prc_gosam_s
   use prclib_interfaces
   use process_libraries
 
+<<Use mpi f08>>
+
   implicit none
 
 contains
@@ -601,7 +603,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call driver%blha_olp_set_parameter &
        (c_char_'mdl'//char(par_name)//c_null_char, &
         dble(ufo_par), 0._double, ierr)
-    if (ierr == 0) call msg_fatal ('UFO parameter cannot be set by OLP.')
+    if (ierr == 0) call msg_fatal ("UFO parameter '"//char(par_name)//"' cannot be set by OLP.")
   end subroutine gosam_driver_set_ufo_parameter
 
 @ %def gosam_driver_set_ufo_parameter
@@ -628,16 +630,29 @@ in the GoSam code are ready. This is done with a stamp mechanism.
       type(os_data_t), intent(in) :: os_data
       type(string_t), intent(in) :: libname
     end subroutine prc_gosam_prepare_library
-<<Prc gosam: procedures>>=
-  module subroutine prc_gosam_prepare_library (object, os_data, libname)
-    class(prc_gosam_t), intent(inout) :: object
-    type(os_data_t), intent(in) :: os_data
-    type(string_t), intent(in) :: libname
+<<NOMPI: Prc gosam: prc gosam prepare library: extra execute>>=
     select type (writer => object%def%writer)
     type is (gosam_writer_t)
        call writer%write_config ()
     end select
     call object%create_olp_library (libname)
+<<MPI: Prc gosam: prc gosam prepare library: extra execute>>=
+    integer :: rank, n_size
+    call mpi_get_comm_id (n_size, rank)
+    if (rank == 0) then
+       select type (writer => object%def%writer)
+       type is (gosam_writer_t)
+          call writer%write_config ()
+       end select
+       call object%create_olp_library (libname)
+    end if
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_prepare_library (object, os_data, libname)
+    class(prc_gosam_t), intent(inout) :: object
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+<<Prc gosam: prc gosam prepare library: extra variables>>
+<<Prc gosam: prc gosam prepare library: extra execute>>
     call object%load_driver (os_data)
   end subroutine prc_gosam_prepare_library
 

@@ -658,7 +658,11 @@ This types control the creation of BLHA-interface files
              blha_flavor(i_flv)%flavors = flv_born(:,i_flv)
              blha_flavor(i_flv)%flv_mult = 2
           end do
-          master%suffix(i_file) = blha_get_additional_suffix (var_str ("_LOOP"))
+	  if (master%blha_mode(i_file) /= BLHA_MODE_GOSAM) then
+             master%suffix(i_file) = blha_get_additional_suffix (var_str ("_LOOP"))
+	  else
+             master%suffix(i_file) = "_LOOP"
+          end if
           call blha_init_virtual (master%blha_cfg(i_file), blha_flavor, &
                n_in, alpha_power, alphas_power, master%ew_scheme, &
                basename, model, master%blha_mode(1), master%suffix(i_file))
@@ -705,7 +709,11 @@ This types control the creation of BLHA-interface files
              blha_flavor(i_flv)%flavors = flv_born(:,i_flv)
              blha_flavor(i_flv)%flv_mult = 3
           end do
-          master%suffix(i_file) = blha_get_additional_suffix (var_str ("_SUB"))
+	  if (master%blha_mode(i_file) /= BLHA_MODE_GOSAM) then
+             master%suffix(i_file) = blha_get_additional_suffix (var_str ("_SUB"))
+	  else
+             master%suffix(i_file) = "_SUB"
+          end if
           call blha_init_subtraction (master%blha_cfg(i_file), blha_flavor, &
                n_in, alpha_power, alphas_power, master%ew_scheme, &
                basename, model, master%blha_mode(2), master%suffix(i_file))
@@ -752,7 +760,11 @@ This types control the creation of BLHA-interface files
              blha_flavor(i_flv)%flavors = flv_real(:,i_flv)
              blha_flavor(i_flv)%flv_mult = 1
           end do
-          master%suffix(i_file) = blha_get_additional_suffix (var_str ("_REAL"))
+	  if (master%blha_mode(i_file) /= BLHA_MODE_GOSAM) then
+             master%suffix(i_file) = blha_get_additional_suffix (var_str ("_REAL"))
+	  else
+             master%suffix(i_file) = "_REAL"
+          end if
           call blha_init_real (master%blha_cfg(i_file), blha_flavor, &
                n_in, alpha_power, alphas_power, master%ew_scheme, &
                basename, model, master%blha_mode(3), master%suffix(i_file))
@@ -799,7 +811,11 @@ This types control the creation of BLHA-interface files
              blha_flavor(i_flv)%flavors = flv_born(:,i_flv)
              blha_flavor(i_flv)%flv_mult = 1
           end do
-          master%suffix(i_file) = blha_get_additional_suffix (var_str ("_BORN"))
+	  if (master%blha_mode(i_file) /= BLHA_MODE_GOSAM) then
+             master%suffix(i_file) = blha_get_additional_suffix (var_str ("_BORN"))
+	  else
+             master%suffix(i_file) = "_BORN"
+          end if
           call blha_init_born (master%blha_cfg(i_file), blha_flavor, &
                n_in, alpha_power, alphas_power, master%ew_scheme, &
                basename, model, master%blha_mode(4), master%suffix(i_file))
@@ -843,7 +859,11 @@ This types control the creation of BLHA-interface files
              blha_flavor(i_flv)%flavors = flv_born(:,i_flv)
              blha_flavor(i_flv)%flv_mult = 2
           end do
-          master%suffix(i_file) = blha_get_additional_suffix (var_str ("_DGLAP"))
+	  if (master%blha_mode(i_file) /= BLHA_MODE_GOSAM) then
+             master%suffix(i_file) = blha_get_additional_suffix (var_str ("_DGLAP"))
+	  else
+             master%suffix(i_file) = "_DGLAP"
+          end if
           call blha_init_dglap (master%blha_cfg(i_file), blha_flavor, &
                n_in, alpha_power, alphas_power, master%ew_scheme, &
                basename, model, master%blha_mode(5), master%suffix(i_file))
@@ -1202,17 +1222,30 @@ This types control the creation of BLHA-interface files
     integer :: unit
     type(string_t) :: filename
     integer :: i_file
+  <<blha master: blha master write olp: variables>>
+  <<blha master: blha master write olp: procedure>>
     do i_file = 1, master%n_files
+     <<blha master: blha master write olp: extra if>>
        filename = basename // master%suffix(i_file) // ".olp"
        unit = free_unit ()
        open (unit, file = char (filename), status = 'replace', action = 'write')
        call blha_configuration_write &
             (master%blha_cfg(i_file), master%suffix(i_file), unit)
        close (unit)
+     <<blha master: blha master write olp: extra endif>>
     end do
   end subroutine blha_master_write_olp
 
 @ %def blha_master_write_olp
+@
+<<MPI: blha master: blha master write olp: variables>>=
+  integer :: rank
+<<MPI: blha master: blha master write olp: procedure>>=
+  call MPI_Comm_rank (MPI_COMM_WORLD, rank)
+<<MPI: blha master: blha master write olp: extra if>>=
+  if (rank == 0 .or. master%blha_mode(i_file) /= BLHA_MODE_GOSAM) then
+<<MPI: blha master: blha master write olp: extra endif>>=
+  end if
 @
 <<BLHA config: blha master: TBP>>=
   procedure :: final => blha_master_final

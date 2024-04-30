@@ -31,23 +31,42 @@
 noinst_LTLIBRARIES = libmodel_features.la
 check_LTLIBRARIES = libmodel_features_ut.la
 
-libmodel_features_la_SOURCES = \
-  $(MODEL_FEATURES_MODULES) \
-  $(MODEL_FEATURES_SUBMODULES)
-
 MODEL_FEATURES_MODULES = \
   auto_components.f90 \
   radiation_generator.f90 \
   eval_trees.f90 \
   models.f90 \
   slha_interface.f90
-
+MPI_F90 = \
+  models_sub.f90_mpi
+SERIAL_F90 = \
+  models_sub.f90_serial
 MODEL_FEATURES_SUBMODULES = \
   auto_components_sub.f90 \
   radiation_generator_sub.f90 \
   eval_trees_sub.f90 \
-  models_sub.f90 \
   slha_interface_sub.f90
+
+EXTRA_DIST = \
+  $(MODEL_FEATURES_MODULES) \
+  $(MODEL_FEATURES_SUBMODULES) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
+
+nodist_libmodel_features_la_SOURCES = \
+  $(MODEL_FEATURES_MODULES) \
+  $(MODEL_FEATURES_SUBMODULES) \
+  models_sub.f90
+
+DISTCLEANFILES = models_sub.f90
+
+if FC_USE_MPI
+models_sub.f90: models_sub.f90_mpi
+	-cp -f $< $@
+else
+models_sub.f90: models_sub.f90_serial
+	-cp -f $< $@
+endif
 
 libmodel_features_ut_la_SOURCES = \
   auto_components_uti.f90 auto_components_ut.f90 \
@@ -100,7 +119,7 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libmodel_features_la_SOURCES) \
+Module_dependencies.sed: $(nodist_libmodel_features_la_SOURCES) \
   $(libmodel_features_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
@@ -115,7 +134,7 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
 
 
 # The following line just says
@@ -124,7 +143,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libmodel_features_la_SOURCES) \
+Makefile.depend: $(nodist_libmodel_features_la_SOURCES) \
   $(libmodel_features_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
@@ -176,20 +195,29 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
+FILTER = -filter "sed 's/defn MPI:/defn/'"
+
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 
 model_features.stamp: $(PRELUDE) $(srcdir)/model_features.nw $(POSTLUDE)
 	@rm -f model_features.tmp
 	@touch model_features.tmp
-	for src in \
-          $(libmodel_features_la_SOURCES) \
-          $(libmodel_features_ut_la_SOURCES); do \
+	for src in $(MODEL_FEATURES_MODULES) $(libmodel_features_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(MODEL_FEATURES_SUBMODULES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f model_features.tmp model_features.stamp
 
-$(libmodel_features_la_SOURCES) $(libmodel_features_ut_la_SOURCES): model_features.stamp
+$(MODEL_FEATURES_MODULES) $(MODEL_FEATURES_SUBMODULES) $(SERIAL_F90) $(MPI_f90) $(libmodel_features_ut_la_SOURCES): model_features.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f model_features.stamp; \
@@ -204,14 +232,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_mpi *.f90_serial *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_mpi *.f90_serial *.c || true
 endif
 .PHONY: clean-noweb
 

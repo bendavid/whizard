@@ -4,6 +4,10 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.4.1
 
+2024-04-30
+	Bug fix: UFO models wait for MPI master worker
+	Bug fix: NLO GoSam compatiblity with MPI
+
 2024-04-29
 	Bug fix: pointer assignment of model data type
 

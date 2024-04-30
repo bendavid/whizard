@@ -30,15 +30,31 @@
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libgosam.la
 
-libgosam_la_SOURCES = \
-  $(GOSAM_MODULES) \
-  $(GOSAM_SUBMODULES)
-
 GOSAM_MODULES = \
   prc_gosam.f90
+MPI_F90 = \
+  prc_gosam_sub.f90_mpi
+SERIAL_F90 = \
+  prc_gosam_sub.f90_serial
 
-GOSAM_SUBMODULES = \
+EXTRA_DIST = \
+  $(GOSAM_MODULES) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
+
+nodist_libgosam_la_SOURCES = \
+  $(GOSAM_MODULES) \
   prc_gosam_sub.f90
+
+DISTCLEANFILES = prc_gosam_sub.f90
+
+if FC_USE_MPI
+prc_gosam_sub.f90: prc_gosam_sub.f90_mpi
+	-cp -f $< $@
+else
+prc_gosam_sub.f90: prc_gosam_sub.f90_serial
+	-cp -f $< $@
+endif
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = gosam.nw
@@ -81,7 +97,7 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libgosam_la_SOURCES)
+Module_dependencies.sed: $(nodist_libgosam_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
@@ -95,7 +111,8 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
+
 
 # The following line just says
 #    include Makefile.depend
@@ -103,7 +120,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libgosam_la_SOURCES)
+Makefile.depend: $(nodist_libgosam_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -149,18 +166,27 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
+MPI_FILTER = -filter "sed 's/defn MPI:/defn/'"
+NOMPI_FILTER = -filter "sed 's/defn NOMPI:/defn/'"
+
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 
 gosam.stamp: $(PRELUDE) $(srcdir)/gosam.nw $(POSTLUDE)
 	@rm -f gosam.tmp
 	@touch gosam.tmp
-	for src in $(libgosam_la_SOURCES); do \
+	for src in $(GOSAM_MODULES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(NOMPI_FILTER) $^ | $(CPIF) $$src'_serial'; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(MPI_FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f gosam.tmp gosam.stamp
 
-$(libgosam_la_SOURCES): gosam.stamp
+$(GOSAM_MODULES) $(SERIAL_F90) $(MPI_F90): gosam.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f gosam.stamp; \
@@ -175,14 +201,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_mpi *.f90_serial *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_mpi *.f90_serial *.c || true
 endif
 .PHONY: clean-noweb
 
