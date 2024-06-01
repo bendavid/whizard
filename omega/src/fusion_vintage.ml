@@ -162,7 +162,7 @@ module Stat_Dirac (M : Model.T) : (Stat with type flavor = M.flavor) =
 
     exception Impossible
 
-    let stat_fuse s1 s2 f =
+    let stat_fuse s1 s2 _f =
       match s1, s2 with
       | Boson l1, Boson l2 -> Boson (l1 @ l2)
       | Boson l1, Fermion (p, l2) -> Fermion (p, l1 @ l2)
@@ -246,14 +246,8 @@ module Make (PT : Tuple.Poly)
 
     let vintage = true
 
-    type cache_mode = Cache_Use | Cache_Ignore | Cache_Overwrite
-    let cache_option = ref Cache_Ignore
-    type qcd_order = 
-      | QCD_order of int
-    type ew_order = 
-      | EW_order of int
-    let qcd_order = ref (QCD_order 99)
-    let ew_order = ref (EW_order 99)
+    type cache_mode = Cache_Ignore (* [| Cache_Use | Cache_Overwrite] *)
+    let _cache_option = ref Cache_Ignore
 
     let options = Options.create
         [
@@ -265,25 +259,7 @@ module Make (PT : Tuple.Poly)
           "overwrite-cache", Arg.Unit (fun () -> cache_option := Cache_Overwrite),
           " overwrite cached model tables";
 i*)
-	  "qcd", Arg.Int (fun n -> qcd_order := QCD_order n), 
-	  " set QCD order n [>= 0, default = 99] (ignored)";
-	  "ew", Arg.Int (fun n -> ew_order := EW_order n), 
-	  " set QCD order n [>=0, default = 99] (ignored)"]
-
-    exception Negative_QCD_order
-    exception Negative_EW_order
-    exception Vanishing_couplings      
-    exception Negative_QCD_EW_orders
-
-    let int_orders = 
-      match !qcd_order, !ew_order with
-	| QCD_order n, EW_order n' when n < 0 &&  n' >= 0 -> 
-	    raise Negative_QCD_order
-	| QCD_order n, EW_order n' when n >= 0 &&  n' < 0 -> 
-	    raise Negative_EW_order
-	| QCD_order n, EW_order n' when n < 0 && n' < 0 -> 
-	    raise Negative_QCD_EW_orders
-	| QCD_order n, EW_order n' -> (n, n')
+	]
 
     open Coupling
 
@@ -399,7 +375,7 @@ i*)
         val incoming : amplitude -> flavor list
         val outgoing : amplitude -> flavor list
         val externals : amplitude -> wf list
-        val variables : amplitude -> wf list
+        val _variables : amplitude -> wf list
         val fusions : amplitude -> fusion list
         val brakets : amplitude -> braket list slices
         val on_shell : amplitude -> (wf -> bool)
@@ -408,7 +384,7 @@ i*)
         val slicings : amplitude -> string list
         val symmetry : amplitude -> int
         val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
-        val fusion_dag : amplitude -> D.t
+        val _fusion_dag : amplitude -> D.t
 
       end
 
@@ -555,9 +531,9 @@ i*)
         let is_gauss a = a.is_gauss
         let constraints a = a.constraints
         let slicings a = a.slicings
-        let variables a = List.map lhs a.fusions
+        let _variables a = List.map lhs a.fusions
         let dependencies a = a.dependencies
-        let fusion_dag a = a.fusion_dag
+        let _fusion_dag a = a.fusion_dag
 
       end
 
@@ -571,7 +547,7 @@ i*)
 
 (* [is_goldstone_of g v] is [true] if and only if [g] is the Goldstone boson
    corresponding to the gauge particle [v]. *)
-    let is_goldstone_of g v =
+    let _is_goldstone_of g v =
       match M.goldstone v with
       | None -> false
       | Some (g', _) -> g = g'
@@ -609,13 +585,13 @@ i*)
 
     type vertices = (A.flavor * (constant Coupling.t * A.flavor PT.t) list) list
 
-    let vertices_nocache max_degree flavors : vertices =
+    let vertices_nocache _max_degree flavors : vertices =
       VSet.fold (fun f rhs v -> (f, rhs) :: v)
         (PT.power_fold collect_vertices flavors VSet.empty) []
 
 (* Performance hack: *)
 
-    type vertex_table =
+    type _vertex_table =
             ((A.flavor * A.flavor * A.flavor) * constant Coupling.vertex3 * constant) list
           * ((A.flavor * A.flavor * A.flavor * A.flavor)
                * constant Coupling.vertex4 * constant) list
@@ -1217,16 +1193,6 @@ i*)
       | _ -> true
 
 
-(* Counting QCD and EW orders. *)
-
-    let qcd_ew_check orders = 
-      if fst (orders) <= fst (int_orders) &&
-	 snd (orders) <= snd (int_orders) then
-	true
-      else
-	false
-
-
 (* Match a set of flavors to a set of momenta.  Form the direct product for
    the lists of momenta two and three with the list of couplings and flavors
    two and three.  *)
@@ -1350,7 +1316,7 @@ i*)
 
     module D' = DAG.Graded(GF)
 
-    let tower_of_dag dag =
+    let _tower_of_dag dag =
       let _, max_rank = D'.min_max_rank dag in
       Array.init max_rank (fun n -> D'.ranked n dag)
 
@@ -1449,7 +1415,7 @@ i*)
    to gauge bosons in [dag].  This is only required for checking
    Slavnov-Taylor identities in unitarity gauge.  Currently, it is not used,
    because we use the complete tower for gauge checking. *)
-    let harvest_goldstones tower dag =
+    let _harvest_goldstones tower dag =
       A.D.fold_nodes (fun wf dag' ->
         match M.goldstone wf.A.flavor with
         | Some (g, _) ->
@@ -1689,16 +1655,17 @@ i*)
       | [] -> failwith "colorize_external: not found"
       | _ -> failwith "colorize_external: not unique"
 
-    let fuse_c_wf rhs =
-      let momenta = PT.map (fun wf -> wf.CA.momentum) rhs in
+    let fuse_c_wf select_vtx rhs =
+      let momenta = PT.map CA.momentum rhs
+      and flavors = PT.to_list (PT.map CA.flavor rhs) in
       List.filter
-        (fun (_, c) -> kmatrix_cuts c momenta)
+        (fun (f, c) -> select_vtx c f flavors && kmatrix_cuts c momenta)
         (CM.fuse (List.map (fun wf -> wf.CA.flavor) (PT.to_list rhs)))
 
     let colorize_coupling c coupling =
         { coupling with Signed_Coupling.coupling = c }
 
-    let colorize_fusion wf (coupling, children) fibered_dag =
+    let colorize_fusion select_vtx wf (coupling, children) fibered_dag =
       let match_flavor (f, _) = (CM.flavor_sans_color f = A.flavor wf)
       and find_colored wf' = CWFBundle.inv_pi fibered_dag.bundle wf' in
       let fusions =
@@ -1707,7 +1674,7 @@ i*)
             List.map 
               (fun (f, c) ->
                 (colorize_wf f wf, (colorize_coupling c coupling, c_children)))
-              (List.filter match_flavor (fuse_c_wf c_children)))
+              (List.filter match_flavor (fuse_c_wf select_vtx c_children)))
           (PT.product (PT.map find_colored children)) in
       let bundle =
         List.fold_left
@@ -1715,7 +1682,7 @@ i*)
           fibered_dag.bundle fusions in
       (fusions, bundle)
 
-    let colorize_braket1 (wf, (coupling, children)) fibered_dag =
+    let colorize_braket1 select_vtx (wf, (coupling, children)) fibered_dag =
       let find_colored wf' = CWFBundle.inv_pi fibered_dag.bundle wf' in
       Product.fold2
         (fun bra ket acc ->
@@ -1725,7 +1692,7 @@ i*)
                 (bra, (colorize_coupling c coupling, ket)) :: brakets
               else
                 brakets)
-            acc (fuse_c_wf ket))
+            acc (fuse_c_wf select_vtx ket))
         (find_colored wf) (PT.product (PT.map find_colored children)) []
 
     module CWFMap =
@@ -1767,13 +1734,13 @@ i*)
         (List.fold_left addto_ketset_map CWFMap.empty brakets)
         []
 
-    let colorize_braket (wf, rhs_list) fibered_dag =
+    let colorize_braket select_vtx (wf, rhs_list) fibered_dag =
       factorize_brakets
         (ThoList.flatmap
-           (fun rhs -> (colorize_braket1 (wf, rhs) fibered_dag))
+           (fun rhs -> (colorize_braket1 select_vtx (wf, rhs) fibered_dag))
            rhs_list)
 
-    let colorize_amplitude a fin fout =
+    let colorize_amplitude select_vtx a fin fout =
       let f = fin @ List.map CM.conjugate fout in
       let nin, nout = List.length fin, List.length fout in
       let n = nin + nout in
@@ -1782,12 +1749,11 @@ i*)
       let wf_bundle = CWFBundle.of_list external_wfs  in
 
       let fibered_dag =
-        colorize_dag
-          colorize_fusion colorize_external a.A.fusion_dag wf_bundle in
+        colorize_dag (colorize_fusion select_vtx) colorize_external a.A.fusion_dag wf_bundle in
 
       let brakets =
         ThoList.flatmap
-          (fun braket -> colorize_braket braket fibered_dag)
+          (fun braket -> colorize_braket select_vtx braket fibered_dag)
           a.A.brakets in
 
       let dag = CA.D.harvest_list fibered_dag.dag (CA.wavefunctions brakets) in
@@ -1814,17 +1780,19 @@ i*)
         CA.is_gauss = (fun wf -> a.A.is_gauss (uncolorize_wf wf));
         CA.dependencies = (fun wf -> CWFMap.find wf dependencies_map) }
 
-    let colorize_amplitudes a =
+    let colorize_amplitudes selectors a =
+      let select_vtx c f flist =
+        C.select_vtx selectors c (CM.flavor_sans_color f) (List.map CM.flavor_sans_color flist) in
       List.fold_left
         (fun amps (fin, fout) ->
-          let amp = colorize_amplitude a fin fout in
+          let amp = colorize_amplitude select_vtx a fin fout in
           match amp.CA.brakets with
           | [] -> amps
           | _ -> amp :: amps)
         [] (CM.amplitude a.A.incoming a.A.outgoing)
 
     let amplitudes_all_orders goldstones selectors fin fout =
-      colorize_amplitudes (amplitude goldstones selectors fin fout)
+      colorize_amplitudes selectors (amplitude goldstones selectors fin fout)
 
     let amplitude_sans_color goldstones selectors fin fout =
       amplitude goldstones selectors fin fout
@@ -2053,8 +2021,6 @@ i*)
               n'' * SCA.D.count_trees wf a.SCA.fusion_dag) 1 wfs) 0 wf23))
         0 (all_brakets a)
 
-    exception Impossible
-
     let forest' a =
       let below wf = SCA.D.forest_memoized wf a.SCA.fusion_dag in
       ThoList.flatmap
@@ -2109,7 +2075,7 @@ i*)
 i*)
 
     let poles_beneath wf dag =
-      SCA.D.eval_memoized (fun wf' -> [[]])
+      SCA.D.eval_memoized (fun _wf' -> [[]])
         (fun wf' _ p -> List.map (fun p' -> wf' :: p') p)
         (fun wf1 wf2 ->
           Product.fold2 (fun wf' wfs' wfs'' -> (wf' @ wfs') :: wfs'') wf1 wf2 [])
@@ -2128,7 +2094,11 @@ i*)
     module WFSet =
       Set.Make (struct type t = SCA.wf let compare = SCA.order_wf end)
 
-    let s_channel a =
+(* \begin{dubious}
+     This one causes trouble! Why?
+   \end{dubious} *)
+
+    let _s_channel a =
       WFSet.elements
         (ThoList.fold_right2
            (fun wf wfs ->
@@ -2214,14 +2184,14 @@ i*)
 
     let below_to_channel transform ch dag wf =
       let n2s wf = variable (transform wf)
-      and e2s c = "" in
+      and e2s _c = "" in
       Tree2.to_channel ch n2s e2s (A.D.dependencies dag wf)
 
     let bra_to_channel transform ch dag wf =
       let tree = A.D.dependencies dag wf in
       if Tree2.is_singleton tree then
         let n2s wf = variable (transform wf)
-        and e2s c = "" in
+        and e2s _c = "" in
         Tree2.to_channel ch n2s e2s tree
       else
         failwith "Fusion.phase_space_channels: wrong topology!"
@@ -2579,7 +2549,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
           "report progress to a file" ]
 
     type flavor = M.flavor
-    type p = F.p
+    type _p = F.p
     type process = flavor list * flavor list
     type amplitude = F.amplitude
     type fusion = F.fusion
@@ -2587,11 +2557,11 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     type selectors = F.selectors
     type slicings = Orders.Conditions(Colorize.It(M)).t
 
-    type flavors = flavor list array
-    type helicities = int list array
-    type colors = Color.Flow.t array
+    type _flavors = flavor list array
+    type _helicities = int list array
+    type _colors = Color.Flow.t array
 
-    type amplitudes' = amplitude array array array
+    type _amplitudes' = amplitude array array array
 
     type amplitudes =
         { flavors : process list;
@@ -2623,7 +2593,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     let sans_colors f =
       List.map SCM.flavor_sans_color f
 
-    let colors (fin, fout) =
+    let _colors (fin, fout) =
       List.map M.color (fin @ fout)
 
     let process_sans_color a =
@@ -2695,7 +2665,7 @@ module Multi (Fusion_Maker : Maker) (P : Momentum.T) (M : Model.T) =
     let hs_of_flavors (fin, fout) =
       (List.map hs_of_flavor fin, List.map hs_of_flavor fout)
 
-    let rec unphysical_of_lorentz = function
+    let unphysical_of_lorentz = function
       | Coupling.Vector -> [4]
       | Coupling.Massive_Vector -> [4]
       | _ -> invalid_arg "unphysical_of_lorentz: not a vector particle"

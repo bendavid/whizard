@@ -4,6 +4,9 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.4.1
 
+2024-06-01
+	O'Mega: Bug fix: no more colored resurrections for -cascade "^c"
+
 2024-04-30
 	Bug fix: UFO models wait for MPI master worker
 	Bug fix: NLO GoSam compatiblity with MPI

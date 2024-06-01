@@ -1188,13 +1188,6 @@ module Make (PT : Tuple.Poly)
       else
         []
 
-(*i [let _ = 
-      Printf.eprintf
-        "Fusion.fuse: %s <- %s\n"
-        (M.flavor_to_string f)
-        (ThoList.to_string M.flavor_to_string (PT.to_list flavors)) in]
-i*)
-
 (* \begin{dubious}
      Eventually, the pairs of [tower] and [dag] in [fusion_tower']
      below could and should be replaced by a graded [DAG].  This will
@@ -1640,22 +1633,27 @@ i*)
 
 (* Take the wavefunctions in the [rhs] and compute all colored fusions
    according to the colored Feynman rules.  Keep only the flavors that
-   match [wf] without colors and apply the
-   [kmatrix_cuts] filter if necessary.  While this ist color
+   match [wf] without colors and apply the [select_vtx] and 
+   [kmatrix_cuts] filters if necessary.  While these are color
    independent, it must be done again, because [CM.fuse] will
    reintroduce all couplings that might have been filtered out
-   before. *)
+   before.  It will however \emph{not} reintroduce wavefunctions if they
+   have been filtered from the DAG. *)
 
-    let fuse_c_wf : A.wf -> CA.wf CA.children -> (CM.flavor * CM.constant Coupling.t) list =
-      fun wf rhs ->
-      let momenta = PT.map (fun wf -> wf.CA.momentum) rhs in
+    let fuse_c_wf : (CM.constant Coupling.t -> CM.flavor -> CM.flavor list -> bool) ->
+                    A.wf -> CA.wf CA.children -> (CM.flavor * CM.constant Coupling.t) list =
+      fun select_vtx wf rhs ->
+      let momenta = PT.map CA.momentum rhs
+      and flavors = PT.to_list (PT.map CA.flavor rhs) in
       List.filter
         (fun (f, c) ->
-          CM.flavor_sans_color f = wf.A.flavor && kmatrix_cuts c momenta)
-        (CM.fuse (List.map (fun wf -> wf.CA.flavor) (PT.to_list rhs)))
+          CM.flavor_sans_color f = A.flavor wf
+          && select_vtx c f flavors
+          && kmatrix_cuts c momenta)
+        (CM.fuse (List.map CA.flavor (PT.to_list rhs)))
 
-    let _fuse_c_wf_logging wf rhs =
-      let fusion = fuse_c_wf wf rhs in
+    let _fuse_c_wf_logging select_vtx wf rhs =
+      let fusion = fuse_c_wf select_vtx wf rhs in
       Printf.eprintf
         "fuse_c_wf %s(%s) %s => %s\n"
         (M.flavor_to_string wf.A.flavor)
@@ -1697,9 +1695,9 @@ i*)
     let _match_flavor f' (f, _) =
       CM.flavor_sans_color f = f'
 
-    let colorize_fusion : node_colorizer =
-      fun wf (coupling, children) fibered_dag ->
-      let fuse colored_children = fuse_c_wf wf colored_children
+    let colorize_fusion : (CM.constant Coupling.t -> CM.flavor -> CM.flavor list -> bool) -> node_colorizer =
+      fun select_vtx wf (coupling, children) fibered_dag ->
+      let fuse colored_children = fuse_c_wf select_vtx wf colored_children
       and colorize colored_children (f, c) =
         (colorize_wf f wf, (colorize_coupling c coupling, colored_children)) in
       let fusions =
@@ -1725,7 +1723,7 @@ i*)
          again using the approach for coupling orders slicing below.
        \end{dubious} *)
 
-    let colorize_braket1 fibered_dag wf (coupling, children) =
+    let colorize_braket1 select_vtx fibered_dag wf (coupling, children) =
       Product.fold2
         (fun bra ket acc ->
           let bra_bar = uncolorize_wf (CA.conjugate bra) in
@@ -1735,7 +1733,7 @@ i*)
                 (bra, (colorize_coupling c coupling, ket)) :: brakets
               else
                 brakets)
-            acc (fuse_c_wf bra_bar ket))
+            acc (fuse_c_wf select_vtx bra_bar ket))
         (find_colored fibered_dag wf) (PT.product (PT.map (find_colored fibered_dag) children)) []
 
 (*i
@@ -1758,23 +1756,23 @@ i*)
        but the latter keeps duplicate copies, while we keep
        only one, with equality determined by [CA.order_wf]. *)
 
-    let colorize_braket fibered_dag (wf, rhs_list) =
-      CRHSMap.factorize_batches (List.map (colorize_braket1 fibered_dag wf) rhs_list)
+    let colorize_braket select_vtx fibered_dag (wf, rhs_list) =
+      CRHSMap.factorize_batches (List.map (colorize_braket1 select_vtx fibered_dag wf) rhs_list)
 
     (* [colorize_amplitude a fin fout] takes an amplitude [a] for
        uncolored particles and colored incoming particles [fin] and
        outgoing particles [fout] and returns the corresponding
        colored amplitude. *)
 
-    let colorize_amplitude a fin fout =
+    let colorize_amplitude select_vtx a fin fout =
       let f = fin @ List.map CM.conjugate fout in
       let nin, nout = List.length fin, List.length fout in
       let n = nin + nout in
       let externals = List.combine f (ThoList.range 1 n) in
       let external_wfs = CA.external_wfs n externals in
       let wf_bundle = CWFBundle.of_list external_wfs  in
-      let fibered_dag = colorize_dag colorize_fusion colorize_external a.A.fusion_dag wf_bundle in
-      let brakets = ThoList.flatmap (colorize_braket fibered_dag) a.A.brakets in
+      let fibered_dag = colorize_dag (colorize_fusion select_vtx) colorize_external a.A.fusion_dag wf_bundle in
+      let brakets = ThoList.flatmap (colorize_braket select_vtx fibered_dag) a.A.brakets in
       let dag = CA.D.harvest_list fibered_dag.dag (CA.wavefunctions brakets) in
       let fusions = List.filter (function (_, []) -> false | _ -> true) (CA.D.lists dag) in
       let dependencies_map =
@@ -1793,17 +1791,19 @@ i*)
         CA.is_gauss = (fun wf -> a.A.is_gauss (uncolorize_wf wf));
         CA.dependencies = (fun wf -> CWFMap.find wf dependencies_map) }
 
-    let colorize_amplitudes a =
+    let colorize_amplitudes selectors a =
+      let select_vtx c f flist =
+        C.select_vtx selectors c (CM.flavor_sans_color f) (List.map CM.flavor_sans_color flist) in
       List.fold_left
         (fun amps (fin, fout) ->
-          let amp = colorize_amplitude a fin fout in
+          let amp = colorize_amplitude select_vtx a fin fout in
           match amp.CA.brakets with
           | [] -> amps
           | _ -> amp :: amps)
         [] (CM.amplitude a.A.incoming a.A.outgoing)
 
     let amplitudes_unsliced goldstones selectors fin fout =
-      colorize_amplitudes (amplitude goldstones selectors fin fout)
+      colorize_amplitudes selectors (amplitude goldstones selectors fin fout)
 
     let amplitude_sans_color goldstones selectors fin fout =
       amplitude goldstones selectors fin fout
@@ -1966,16 +1966,19 @@ i*)
          than [fuse] in [Model.T].  Let's see if this is worth the effort.
        \end{dubious} *)
 
-    let fuse_s_wf : COC.t -> CA.wf -> SCA.wf SCA.children -> (SCM.flavor * SCM.constant Coupling.t) list =
-      fun slicings wf rhs ->
-      let momenta = PT.map (fun wf -> wf.SCA.momentum) rhs in
+    let fuse_s_wf : (SCM.constant Coupling.t -> SCM.flavor -> SCM.flavor list -> bool) ->
+                    COC.t -> CA.wf -> SCA.wf SCA.children -> (SCM.flavor * SCM.constant Coupling.t) list =
+      fun select_vtx slicings wf rhs ->
+      let momenta = PT.map SCA.momentum rhs
+      and flavors = PT.to_list (PT.map SCA.flavor rhs) in
       List.filter
         (fun (f, c) ->
-          SCM.flavor_all_orders f = wf.CA.flavor
+          SCM.flavor_all_orders f = CA.flavor wf
           && COC.constant slicings (coupling_orders c)
           && COC.fusion slicings (SCM.orders f)
+          && select_vtx c f flavors
           && kmatrix_cuts c momenta)
-        (SCM.fuse (List.map (fun wf -> wf.SCA.flavor) (PT.to_list rhs)))
+        (SCM.fuse (List.map SCA.flavor (PT.to_list rhs)))
 
     let slice_coupling c coupling =
       { SCA.sign = coupling.CA.sign;
@@ -1991,9 +1994,10 @@ i*)
     let sliced_children_list fibered_dag children =
       PT.product (PT.map (find_sliced fibered_dag) children)
 
-    let slice_fusion : COC.t -> node_slicer =
-      fun slicings wf (coupling, children) fibered_dag ->
-      let fuse sliced_children = fuse_s_wf slicings wf sliced_children
+    let slice_fusion : (SCM.constant Coupling.t -> SCM.flavor -> SCM.flavor list -> bool) ->
+                       COC.t -> node_slicer =
+      fun select_vtx slicings wf (coupling, children) fibered_dag ->
+      let fuse sliced_children = fuse_s_wf select_vtx slicings wf sliced_children
       and slice sliced_children (f, c) =
         (slice_wf f wf, (slice_coupling c coupling, sliced_children)) in
       let fusions =
@@ -2056,8 +2060,9 @@ i*)
     let to_string ol =
       ThoList.to_string (fun (co, n) -> SCM.coupling_order_to_string co ^ ":" ^ string_of_int n) ol
 i*)
-    let slice_braket1 : COC.t -> sliced_fibered_dag -> CA.wf -> CA.rhs -> comap -> comap =
-      fun conditions fibered_dag wf (coupling, children) comap ->
+    let slice_braket1 : (SCM.constant Coupling.t -> SCM.flavor -> SCM.flavor list -> bool) ->
+                        COC.t -> sliced_fibered_dag -> CA.wf -> CA.rhs -> comap -> comap =
+      fun select_vtx conditions fibered_dag wf (coupling, children) comap ->
       Product.fold2
         (fun bra children comap ->
           let bra_bar = unslice_wf (SCA.conjugate bra) in
@@ -2067,18 +2072,20 @@ i*)
               match COC.braket conditions orders with
               | Some orders -> addto_orders_map comap orders bra (slice_coupling c coupling, children)
               | None -> comap)
-            comap (fuse_s_wf conditions bra_bar children))
+            comap (fuse_s_wf select_vtx conditions bra_bar children))
         (find_sliced fibered_dag wf) (PT.product (PT.map (find_sliced fibered_dag) children)) comap
 
-    let slice_braket : COC.t -> sliced_fibered_dag -> CA.braket -> comap -> comap =
-      fun slicings fibered_dag (wf, rhs_list) comap ->
-      List.fold_right (slice_braket1 slicings fibered_dag wf) rhs_list comap
+    let slice_braket : (SCM.constant Coupling.t -> SCM.flavor -> SCM.flavor list -> bool) ->
+                       COC.t -> sliced_fibered_dag -> CA.braket -> comap -> comap =
+      fun select_vtx slicings fibered_dag (wf, rhs_list) comap ->
+      List.fold_right (slice_braket1 select_vtx slicings fibered_dag wf) rhs_list comap
 
-    let slice_brakets : COC.t -> sliced_fibered_dag -> CA.braket list -> (SCM.orders * SCA.braket list) list =
-      fun slicings fibered_dag brakets ->
-      comap_to_lists (List.fold_right (slice_braket slicings fibered_dag) brakets COMap.empty)
+    let slice_brakets : (SCM.constant Coupling.t -> SCM.flavor -> SCM.flavor list -> bool) ->
+                       COC.t -> sliced_fibered_dag -> CA.braket list -> (SCM.orders * SCA.braket list) list =
+      fun select_vtx slicings fibered_dag brakets ->
+      comap_to_lists (List.fold_right (slice_braket select_vtx slicings fibered_dag) brakets COMap.empty)
 
-    let slice_amplitude slicings a =
+    let slice_amplitude select_vtx slicings a =
       let trivial = List.map (fun co -> (co, 0)) (COC.exclusive_fusion slicings) in
       let fin, fout = SCM.amplitude trivial a.CA.incoming a.CA.outgoing in
       let f = fin @ List.map SCM.conjugate fout in
@@ -2087,8 +2094,8 @@ i*)
       let externals = List.combine f (ThoList.range 1 n) in
       let external_wfs = SCA.external_wfs n externals in
       let wf_bundle = SCWFBundle.of_list external_wfs  in
-      let fibered_dag = slice_dag (slice_fusion slicings) slice_external a.CA.fusion_dag wf_bundle in
-      let sliced_brakets = slice_brakets slicings fibered_dag a.CA.brakets in
+      let fibered_dag = slice_dag (slice_fusion select_vtx slicings) slice_external a.CA.fusion_dag wf_bundle in
+      let sliced_brakets = slice_brakets select_vtx slicings fibered_dag a.CA.brakets in
       let brakets = ThoList.flatmap snd sliced_brakets in
       let dag = SCA.D.harvest_list fibered_dag.sliced_dag (SCA.wavefunctions brakets) in
       let fusions = List.filter (function (_, []) -> false | _ -> true) (SCA.D.lists dag) in
@@ -2108,8 +2115,11 @@ i*)
         SCA.is_gauss = (fun wf -> a.CA.is_gauss (unslice_wf wf));
         SCA.dependencies = (fun wf -> SCBraMap.find wf dependencies_map) }
 
-    let slice_amplitudes slicings amplitudes =
-      List.map (slice_amplitude slicings) amplitudes
+    let slice_amplitudes selectors slicings amplitudes =
+      let sans_color f = CM.flavor_sans_color (SCM.flavor_all_orders f) in
+      let select_vtx c f flist =
+        C.select_vtx selectors c (sans_color f) (List.map sans_color flist) in
+      List.map (slice_amplitude select_vtx slicings) amplitudes
 
     (* For the benefit of [Targets], we also copy the amplitudes to
        equivalent sliced amplitudes with empty coupling orders. This
@@ -2187,7 +2197,7 @@ i*)
       let a = amplitudes_unsliced goldstones selectors fin fout in
       match slicings with
       | None -> lift_amplitudes a
-      | Some slicings -> slice_amplitudes slicings a
+      | Some slicings -> slice_amplitudes selectors slicings a
 
      let amplitudes_all_orders goldstones selectors fin fout =
        lift_amplitudes (amplitudes_unsliced goldstones selectors fin fout)

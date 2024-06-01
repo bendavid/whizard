@@ -11,6 +11,7 @@
 	   ;;; O'Mega main physiscs modules
  	   Color Color_Propagator Color_Fusion Colorize
  	   DAG Topology Fusion Modeltools Charges Momentum Phasespace Process
+	   Fusion_vintage
 	   ;;; diagram selection
 	   Orders Orders_syntax Orders_lexer Orders_parser
 	   Cascade Cascade_syntax cascade_lexer Cascade_parser
