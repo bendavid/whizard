@@ -217,7 +217,7 @@ model_features.stamp: $(PRELUDE) $(srcdir)/model_features.nw $(POSTLUDE)
         done
 	@mv -f model_features.tmp model_features.stamp
 
-$(MODEL_FEATURES_MODULES) $(MODEL_FEATURES_SUBMODULES) $(SERIAL_F90) $(MPI_f90) $(libmodel_features_ut_la_SOURCES): model_features.stamp
+$(MODEL_FEATURES_MODULES) $(MODEL_FEATURES_SUBMODULES) $(SERIAL_F90) $(MPI_F90) $(libmodel_features_ut_la_SOURCES): model_features.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f model_features.stamp; \
