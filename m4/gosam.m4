@@ -125,9 +125,9 @@ AC_DEFUN([WO_PROG_GOLEM],
   unset GOLEM_DIR
   if test -n "$with_golem"; then
     echo "Checking for golem in " ${with_golem}/lib
-    WO_PATH_LIB(golem_lib, [golem], [libgolem.la], ${with_golem}/lib:${with_golem}/lib64)
+    WO_PATH_LIB(golem_lib, [golem], [libgolem.${SHRLIB_EXT}], ${with_golem}/lib:${with_golem}/lib64)
   else
-    WO_PATH_LIB(golem_lib, [golem], [libgolem.la], $LD_LIBRARY_PATH)
+    WO_PATH_LIB(golem_lib, [golem], [libgolem.${SHRLIB_EXT}], $LD_LIBRARY_PATH)
   fi
   if test "$golem_lib" != "no"; then
     golem_libdir=`dirname $golem_lib`
@@ -171,9 +171,9 @@ AC_DEFUN([WO_PROG_NINJA],
   unset NINJA_DIR
   if test -n "$with_ninja"; then
     echo "Checking for ninja in " ${with_ninja}/lib
-    WO_PATH_LIB(ninja_lib, [ninja], [libninja.la], ${with_ninja}/lib:${with_ninja}/lib64)
+    WO_PATH_LIB(ninja_lib, [ninja], [libninja.${SHRLIB_EXT}], ${with_ninja}/lib:${with_ninja}/lib64)
   else
-    WO_PATH_LIB(ninja_lib, [ninja], [libninja.la], $LD_LIBRARY_PATH)
+    WO_PATH_LIB(ninja_lib, [ninja], [libninja.${SHRLIB_EXT}], $LD_LIBRARY_PATH)
   fi
   if test "$ninja_lib" != "no"; then
     ninja_libdir=`dirname $ninja_lib`
@@ -187,9 +187,9 @@ AC_DEFUN([WO_PROG_SAMURAI],
   unset SAMURAI_DIR
   if test -n "$with_samurai"; then
     echo "Checking for samurai in " ${with_samurai}/lib
-    WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.la], ${with_samurai}/lib:${with_samurai}/lib64)
+    WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.${SHRLIB_EXT}], ${with_samurai}/lib:${with_samurai}/lib64)
   else
-    WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.la], $LD_LIBRARY_PATH)
+    WO_PATH_LIB(samurai_lib, [samurai], [libsamurai.${SHRLIB_EXT}], $LD_LIBRARY_PATH)
   fi
   if test "$samurai_lib" != "no"; then
     samurai_libdir=`dirname $samurai_lib`
