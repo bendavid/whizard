@@ -30,7 +30,7 @@
 SUBDIRS = \
   noweb-frame \
   basics \
-  hepmc lcio lhapdf lhapdf5 looptools xdr \
+  hepmc2 hepmc3 lcio lhapdf lhapdf5 looptools xdr \
   expr_base utilities \
   system \
   combinatorics testing \
@@ -114,11 +114,17 @@ libwhizard_la_LIBADD = \
   utilities/libutilities.la \
   basics/libbasics.la
 
-if HEPMC_AVAILABLE
-libwhizard_la_LIBADD += hepmc/libHepMCWrap.la
+if HEPMC2_AVAILABLE
+libwhizard_la_LIBADD += hepmc2/libHepMC2Wrap.la
 else
-libwhizard_la_LIBADD += hepmc/libHepMCWrap_dummy.la
-endif 
+libwhizard_la_LIBADD += hepmc2/libHepMC2Wrap_dummy.la
+endif
+
+if HEPMC3_AVAILABLE
+libwhizard_la_LIBADD += hepmc3/libHepMC3Wrap.la
+else
+libwhizard_la_LIBADD += hepmc3/libHepMC3Wrap_dummy.la
+endif
 
 if LCIO_AVAILABLE
 libwhizard_la_LIBADD += lcio/libLCIOWrap.la
@@ -257,7 +263,8 @@ whizard_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_LDADD += $(CXXLIBS)
 whizard_LDADD += $(RPC_CFLAGS)
 whizard_LDADD += $(LDFLAGS_LHAPDF)
-whizard_LDADD += $(LDFLAGS_HEPMC)
+whizard_LDADD += $(LDFLAGS_HEPMC2)
+whizard_LDADD += $(LDFLAGS_HEPMC3)
 whizard_LDADD += $(LDFLAGS_LCIO)
 whizard_LDADD += $(LDFLAGS_HOPPET)
 whizard_LDADD += $(FASTJET_LIBS)
@@ -280,7 +287,8 @@ whizard_ut_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_ut_LDADD += $(CXXLIBS)
 whizard_ut_LDADD += $(RPC_CFLAGS)
 whizard_ut_LDADD += $(LDFLAGS_LHAPDF)
-whizard_ut_LDADD += $(LDFLAGS_HEPMC)
+whizard_ut_LDADD += $(LDFLAGS_HEPMC2)
+whizard_ut_LDADD += $(LDFLAGS_HEPMC3)
 whizard_ut_LDADD += $(LDFLAGS_LCIO)
 whizard_ut_LDADD += $(LDFLAGS_HOPPET)
 whizard_ut_LDADD += $(FASTJET_LIBS)
@@ -299,7 +307,8 @@ whizard_ut_c_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_ut_c_LDADD += $(CXXLIBS)
 whizard_ut_c_LDADD += $(RPC_CFLAGS)
 whizard_ut_c_LDADD += $(LDFLAGS_LHAPDF)
-whizard_ut_c_LDADD += $(LDFLAGS_HEPMC)
+whizard_ut_c_LDADD += $(LDFLAGS_HEPMC2)
+whizard_ut_c_LDADD += $(LDFLAGS_HEPMC3)
 whizard_ut_c_LDADD += $(LDFLAGS_LCIO)
 whizard_ut_c_LDADD += $(LDFLAGS_HOPPET)
 whizard_ut_c_LDADD += $(FASTJET_LIBS)
@@ -321,7 +330,8 @@ whizard_ut_cc_LDADD += prebuilt/libwhizard_prebuilt.la
 whizard_ut_cc_LDADD += $(CXXLIBS)
 whizard_ut_cc_LDADD += $(RPC_CFLAGS)
 whizard_ut_cc_LDADD += $(LDFLAGS_LHAPDF)
-whizard_ut_cc_LDADD += $(LDFLAGS_HEPMC)
+whizard_ut_cc_LDADD += $(LDFLAGS_HEPMC2)
+whizard_ut_cc_LDADD += $(LDFLAGS_HEPMC3)
 whizard_ut_cc_LDADD += $(LDFLAGS_LCIO)
 whizard_ut_cc_LDADD += $(LDFLAGS_HOPPET)
 whizard_ut_cc_LDADD += $(FASTJET_LIBS)

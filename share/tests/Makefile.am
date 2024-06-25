@@ -255,6 +255,7 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/grids_4.ref \
     unit_tests/ref-output/grids_5.ref \
     unit_tests/ref-output/hep_events_1.ref \
+    unit_tests/ref-output/hep_events_2.ref \
     unit_tests/ref-output/hepmc2_interface_1.ref \
     unit_tests/ref-output/hepmc3_interface_1.ref \
     unit_tests/ref-output/integration_results_1.ref \
@@ -685,15 +686,24 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/gaussian_1.ref \
     functional_tests/ref-output/gaussian_2.ref \
     functional_tests/ref-output/hadronize_1.ref \
-    functional_tests/ref-output/hepmc_1.ref \
-    functional_tests/ref-output/hepmc_2.ref \
-    functional_tests/ref-output/hepmc_3.ref \
-    functional_tests/ref-output/hepmc_4.ref \
-    functional_tests/ref-output/hepmc_5.ref \
-    functional_tests/ref-output/hepmc_6.ref \
-    functional_tests/ref-output/hepmc_7.ref \
-    functional_tests/ref-output/hepmc_9.ref \
-    functional_tests/ref-output/hepmc_10.ref \
+    functional_tests/ref-output/hepmc2_1.ref \
+    functional_tests/ref-output/hepmc2_2.ref \
+    functional_tests/ref-output/hepmc2_3.ref \
+    functional_tests/ref-output/hepmc2_4.ref \
+    functional_tests/ref-output/hepmc2_5.ref \
+    functional_tests/ref-output/hepmc2_6.ref \
+    functional_tests/ref-output/hepmc2_7.ref \
+    functional_tests/ref-output/hepmc2_9.ref \
+    functional_tests/ref-output/hepmc2_10.ref \
+    functional_tests/ref-output/hepmc3_1.ref \
+    functional_tests/ref-output/hepmc3_2.ref \
+    functional_tests/ref-output/hepmc3_3.ref \
+    functional_tests/ref-output/hepmc3_4.ref \
+    functional_tests/ref-output/hepmc3_5.ref \
+    functional_tests/ref-output/hepmc3_6.ref \
+    functional_tests/ref-output/hepmc3_7.ref \
+    functional_tests/ref-output/hepmc3_9.ref \
+    functional_tests/ref-output/hepmc3_10.ref \
     functional_tests/ref-output/isr_1.ref \
     functional_tests/ref-output/isr_epa_1.ref \
     functional_tests/ref-output/jets_xsec.ref \
@@ -934,7 +944,8 @@ REF_OUTPUT_FILES_DOUBLE = \
     functional_tests/ref-output-double/fks_res_1.ref \
     functional_tests/ref-output-double/fks_res_3.ref \
     functional_tests/ref-output-double/helicity.ref \
-    functional_tests/ref-output-double/hepmc_8.ref \
+    functional_tests/ref-output-double/hepmc2_8.ref \
+    functional_tests/ref-output-double/hepmc3_8.ref \
     functional_tests/ref-output-double/ilc.ref \
     functional_tests/ref-output-double/isr_2.ref \
     functional_tests/ref-output-double/isr_3.ref \
@@ -1035,7 +1046,8 @@ REF_OUTPUT_FILES_EXT = \
     functional_tests/ref-output-ext/circe1_8.ref \
     functional_tests/ref-output-ext/ewa_2.ref \
     functional_tests/ref-output-ext/ewa_3.ref \
-    functional_tests/ref-output-ext/hepmc_8.ref \
+    functional_tests/ref-output-ext/hepmc2_8.ref \
+    functional_tests/ref-output-ext/hepmc3_8.ref \
     functional_tests/ref-output-ext/isr_2.ref \
     functional_tests/ref-output-ext/isr_3.ref \
     functional_tests/ref-output-ext/isr_4.ref \
@@ -1081,7 +1093,8 @@ REF_OUTPUT_FILES_QUAD = \
     functional_tests/ref-output-quad/circe1_8.ref \
     functional_tests/ref-output-quad/ewa_2.ref \
     functional_tests/ref-output-quad/ewa_3.ref \
-    functional_tests/ref-output-quad/hepmc_8.ref \
+    functional_tests/ref-output-quad/hepmc2_8.ref \
+    functional_tests/ref-output-quad/hepmc3_8.ref \
     functional_tests/ref-output-quad/isr_2.ref \
     functional_tests/ref-output-quad/isr_3.ref \
     functional_tests/ref-output-quad/isr_4.ref \
@@ -1217,16 +1230,26 @@ MISC_TESTS_SIN = \
     functional_tests/gaussian_2.sin \
     functional_tests/hadronize_1.sin \
     functional_tests/helicity.sin \
-    functional_tests/hepmc_1.sin \
-    functional_tests/hepmc_2.sin \
-    functional_tests/hepmc_3.sin \
-    functional_tests/hepmc_4.sin \
-    functional_tests/hepmc_5.sin \
-    functional_tests/hepmc_6.sin \
-    functional_tests/hepmc_7.sin \
-    functional_tests/hepmc_8.sin \
-    functional_tests/hepmc_9.sin \
-    functional_tests/hepmc_10.sin \
+    functional_tests/hepmc2_1.sin \
+    functional_tests/hepmc2_2.sin \
+    functional_tests/hepmc2_3.sin \
+    functional_tests/hepmc2_4.sin \
+    functional_tests/hepmc2_5.sin \
+    functional_tests/hepmc2_6.sin \
+    functional_tests/hepmc2_7.sin \
+    functional_tests/hepmc2_8.sin \
+    functional_tests/hepmc2_9.sin \
+    functional_tests/hepmc2_10.sin \
+    functional_tests/hepmc3_1.sin \
+    functional_tests/hepmc3_2.sin \
+    functional_tests/hepmc3_3.sin \
+    functional_tests/hepmc3_4.sin \
+    functional_tests/hepmc3_5.sin \
+    functional_tests/hepmc3_6.sin \
+    functional_tests/hepmc3_7.sin \
+    functional_tests/hepmc3_8.sin \
+    functional_tests/hepmc3_9.sin \
+    functional_tests/hepmc3_10.sin \
     functional_tests/ilc.sin \
     functional_tests/isr_1.sin \
     functional_tests/isr_2.sin \

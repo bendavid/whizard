@@ -1814,14 +1814,23 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call prclib_stacks_test (u, results)
 @
-\subsubsection{HepMC}
+\subsubsection{HepMC2}
 <<Main: use tests>>=
-  use hepmc_interface_ut, only: hepmc_interface_test
+  use hepmc2_interface_ut, only: hepmc2_interface_test
 <<Main: test cases>>=
-  case ("hepmc")
-     call hepmc_interface_test (u, results)
+  case ("hepmc2")
+     call hepmc2_interface_test (u, results)
 <<Main: all tests>>=
-  call hepmc_interface_test (u, results)
+  call hepmc2_interface_test (u, results)
+@
+\subsubsection{HepMC3}
+<<Main: use tests>>=
+  use hepmc3_interface_ut, only: hepmc3_interface_test
+<<Main: test cases>>=
+  case ("hepmc","hepmc3")
+     call hepmc3_interface_test (u, results)
+<<Main: all tests>>=
+  call hepmc3_interface_test (u, results)
 @
 \subsubsection{LCIO}
 <<Main: use tests>>=
@@ -2115,14 +2124,23 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call eio_lhef_test (u, results)
 @
-\subsubsection{EIO HepMC}
+\subsubsection{EIO HepMC2}
 <<Main: use tests>>=
-  use eio_hepmc_ut, only: eio_hepmc_test
+  use eio_hepmc2_ut, only: eio_hepmc2_test
 <<Main: test cases>>=
-  case ("eio_hepmc")
-     call eio_hepmc_test (u, results)
+  case ("eio_hepmc2")
+     call eio_hepmc2_test (u, results)
 <<Main: all tests>>=
-  call eio_hepmc_test (u, results)
+  call eio_hepmc2_test (u, results)
+@
+\subsubsection{EIO HepMC3}
+<<Main: use tests>>=
+  use eio_hepmc3_ut, only: eio_hepmc3_test
+<<Main: test cases>>=
+  case ("eio_hepmc3")
+     call eio_hepmc3_test (u, results)
+<<Main: all tests>>=
+  call eio_hepmc3_test (u, results)
 @
 \subsubsection{EIO LCIO}
 <<Main: use tests>>=
@@ -2339,14 +2357,23 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call api_test (u, results)
 @
-\subsubsection{API/HepMC}
+\subsubsection{API/HepMC2}
 <<Main: use tests>>=
-  use api_hepmc_ut, only: api_hepmc_test
+  use api_hepmc2_ut, only: api_hepmc2_test
 <<Main: test cases>>=
-  case ("api_hepmc")
-     call api_hepmc_test (u, results)
+  case ("api_hepmc2")
+     call api_hepmc2_test (u, results)
 <<Main: all tests>>=
-  call api_hepmc_test (u, results)
+  call api_hepmc2_test (u, results)
+@
+\subsubsection{API/HepMC3}
+<<Main: use tests>>=
+  use api_hepmc3_ut, only: api_hepmc3_test
+<<Main: test cases>>=
+  case ("api_hepmc3")
+     call api_hepmc3_test (u, results)
+<<Main: all tests>>=
+  call api_hepmc3_test (u, results)
 @
 \subsubsection{API/LCIO}
 <<Main: use tests>>=

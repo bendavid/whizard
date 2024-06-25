@@ -323,18 +323,31 @@ XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \
     hadronize_1.run
 
-TESTS_REQ_HEPMC = \
-    hepmc_1.run \
-    hepmc_2.run \
-    hepmc_3.run \
-    hepmc_4.run \
-    hepmc_5.run \
-    hepmc_6.run \
-    hepmc_7.run \
-    hepmc_8.run \
-    hepmc_9.run \
-    hepmc_10.run
-XFAIL_TESTS_REQ_HEPMC =
+TESTS_REQ_HEPMC2 = \
+    hepmc2_1.run \
+    hepmc2_2.run \
+    hepmc2_3.run \
+    hepmc2_4.run \
+    hepmc2_5.run \
+    hepmc2_6.run \
+    hepmc2_7.run \
+    hepmc2_8.run \
+    hepmc2_9.run \
+    hepmc2_10.run
+XFAIL_TESTS_REQ_HEPMC2 =
+
+TESTS_REQ_HEPMC3 = \
+    hepmc3_1.run \
+    hepmc3_2.run \
+    hepmc3_3.run \
+    hepmc3_4.run \
+    hepmc3_5.run \
+    hepmc3_6.run \
+    hepmc3_7.run \
+    hepmc3_8.run \
+    hepmc3_9.run \
+    hepmc3_10.run
+XFAIL_TESTS_REQ_HEPMC3 =
 
 TESTS_REQ_LCIO = \
     lcio_1.run \
@@ -395,7 +408,8 @@ TEST_DRIVERS_RUN = \
     $(TESTS_REQ_OCAML) \
     $(TESTS_REQ_LHAPDF5) \
     $(TESTS_REQ_LHAPDF6) \
-    $(TESTS_REQ_HEPMC) \
+    $(TESTS_REQ_HEPMC2) \
+    $(TESTS_REQ_HEPMC3) \
     $(TESTS_REQ_LCIO) \
     $(TESTS_REQ_FASTJET) \
     $(TESTS_REQ_PYTHIA6) \
@@ -417,8 +431,11 @@ XFAIL_TESTS += $(XFAIL_TESTS_DEFAULT)
 TESTS += $(TESTS_REQ_OCAML)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_OCAML)
 
-TESTS += $(TESTS_REQ_HEPMC)
-XFAIL_TESTS += $(XFAIL_TESTS_REQ_HEPMC)
+TESTS += $(TESTS_REQ_HEPMC2)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_HEPMC2)
+
+TESTS += $(TESTS_REQ_HEPMC3)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_HEPMC3)
 
 TESTS += $(TESTS_REQ_LCIO)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_LCIO)
@@ -616,17 +633,22 @@ analyze_6.run: analyze_6_check
 
 endif
 
-if HEPMC_AVAILABLE
-TESTS_SRC += $(hepmc_6_rd_SOURCES)
-noinst_PROGRAMS += hepmc_6_rd
-if HEPMC_IS_VERSION3
-hepmc_6_rd_SOURCES = hepmc3_6_rd.cpp
-else
-hepmc_6_rd_SOURCES = hepmc2_6_rd.cpp
+if HEPMC2_AVAILABLE
+TESTS_SRC += $(hepmc2_6_rd_SOURCES)
+noinst_PROGRAMS += hepmc2_6_rd
+hepmc2_6_rd_SOURCES = hepmc2_6_rd.cpp
+hepmc2_6_rd_CXXFLAGS = $(HEPMC2_INCLUDES) $(AM_CXXFLAGS)
+hepmc2_6_rd_LDADD = $(LDFLAGS_HEPMC2)
+hepmc2_6.run: hepmc2_6_rd
 endif
-hepmc_6_rd_CXXFLAGS = $(HEPMC_INCLUDES) $(AM_CXXFLAGS)
-hepmc_6_rd_LDADD = $(LDFLAGS_HEPMC)
-hepmc_6.run: hepmc_6_rd
+
+if HEPMC3_AVAILABLE
+TESTS_SRC += $(hepmc3_6_rd_SOURCES)
+noinst_PROGRAMS += hepmc3_6_rd
+hepmc3_6_rd_SOURCES = hepmc3_6_rd.cpp
+hepmc3_6_rd_CXXFLAGS = $(HEPMC3_INCLUDES) $(AM_CXXFLAGS)
+hepmc3_6_rd_LDADD = $(LDFLAGS_HEPMC3)
+hepmc3_6.run: hepmc3_6_rd
 endif
 
 if LCIO_AVAILABLE

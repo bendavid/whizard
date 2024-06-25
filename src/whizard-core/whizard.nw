@@ -5706,7 +5706,8 @@ write a subroutine which returns the names of the compiled libraries.
     write (u, "(A)") "CXXLIBSS = " // char (os_data%cxxlibs)
     write (u, "(A)") "LDFLAGS = " // char (os_data%ldflags)
     write (u, "(A)") "LDFLAGS_STATIC = " // char (os_data%ldflags_static)
-    write (u, "(A)") "LDFLAGS_HEPMC = " // char (os_data%ldflags_hepmc)
+    write (u, "(A)") "LDFLAGS_HEPMC2 = " // char (os_data%ldflags_hepmc2)
+    write (u, "(A)") "LDFLAGS_HEPMC3 = " // char (os_data%ldflags_hepmc3)
     write (u, "(A)") "LDFLAGS_LCIO = " // char (os_data%ldflags_lcio)
     write (u, "(A)") "LDFLAGS_HOPPET = " // char (os_data%ldflags_hoppet)
     write (u, "(A)") "LDFLAGS_LOOPTOOLS = " // char (os_data%ldflags_looptools)
@@ -5769,7 +5770,8 @@ write a subroutine which returns the names of the compiled libraries.
     end if
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \"
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
-    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \"
+    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC2) $(LDFLAGS_HEPMC3) \"
+    write (u, "(A)") TAB // "   $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \"
     if (OS_IS_DARWIN .and. .not. overwrite) then
        write (u, "(A)") TAB // "   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC) \"
        write (u, "(A)") TAB // "   $(CXXLIBS) $(FCLIBS)" // char (ext_tag)
@@ -6116,7 +6118,8 @@ create driver files for a static executable.
       os_data%cxxlibs = "my-cxxlibs"
       os_data%ldflags = "my-ldflags"
       os_data%ldflags_static = "my-ldflags-static"
-      os_data%ldflags_hepmc = "my-ldflags-hepmc"
+      os_data%ldflags_hepmc2 = "my-ldflags-hepmc2"
+      os_data%ldflags_hepmc3 = "my-ldflags-hepmc3"
       os_data%ldflags_lcio = "my-ldflags-lcio"
       os_data%ldflags_hoppet = "my-ldflags-hoppet"
       os_data%ldflags_looptools = "my-ldflags-looptools"
@@ -25333,7 +25336,7 @@ object and its associated methods.
        call cmd%local%set_log &
             (var_str ("?recover_beams"), .false., is_known=.true.)
     case ("lhef"); input_ext = lhef_extension
-    case ("hepmc"); input_ext = extension_hepmc
+    case ("hepmc","hepmc2","hepmc3"); input_ext = extension_hepmc
     case ("lcio"); input_ext = extension_lcio
     case default
        call msg_fatal ("rescan: input sample format '" // char (input_format) &
@@ -31784,12 +31787,23 @@ end submodule features_s
      help = "event I/O format"
 @
 <<Features: print>>=
-  call print_check ("HepMC")
+  call print_check ("HepMC2")
 <<Features: dependencies>>=
-  use hepmc_interface, only: hepmc_is_available
+  use hepmc2_interface, only: hepmc2_is_available
 <<Features: cases>>=
-  case ("hepmc")
-     if (hepmc_is_available ()) then
+  case ("hepmc2")
+     if (hepmc2_is_available ()) then
+        result = "yes"
+     end if
+     help = "event I/O format"
+@
+<<Features: print>>=
+  call print_check ("HepMC3")
+<<Features: dependencies>>=
+  use hepmc3_interface, only: hepmc3_is_available
+<<Features: cases>>=
+  case ("hepmc3")
+     if (hepmc3_is_available ()) then
         result = "yes"
      end if
      help = "event I/O format"

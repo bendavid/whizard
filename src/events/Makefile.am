@@ -47,13 +47,15 @@ EVENTS_MODULES = \
   eio_weights.f90 \
   eio_dump.f90 \
   hep_common.f90 \
-  hepmc_interface.f90 \
+  hepmc2_interface.f90 \
+  hepmc3_interface.f90 \
   lcio_interface.f90 \
   hep_events.f90 \
   eio_ascii.f90 \
   eio_lhef.f90 \
   eio_stdhep.f90 \
-  eio_hepmc.f90 \
+  eio_hepmc2.f90 \
+  eio_hepmc3.f90 \
   eio_lcio.f90
 
 EVENTS_SUBMODULES = \
@@ -66,13 +68,15 @@ EVENTS_SUBMODULES = \
   eio_weights_sub.f90 \
   eio_dump_sub.f90 \
   hep_common_sub.f90 \
-  hepmc_interface_sub.f90 \
+  hepmc2_interface_sub.f90 \
+  hepmc3_interface_sub.f90 \
   lcio_interface_sub.f90 \
   hep_events_sub.f90 \
   eio_ascii_sub.f90 \
   eio_lhef_sub.f90 \
   eio_stdhep_sub.f90 \
-  eio_hepmc_sub.f90 \
+  eio_hepmc2_sub.f90 \
+  eio_hepmc3_sub.f90 \
   eio_lcio_sub.f90
 
 libevents_ut_la_SOURCES = \
@@ -82,13 +86,15 @@ libevents_ut_la_SOURCES = \
   eio_checkpoints_uti.f90 eio_checkpoints_ut.f90 \
   eio_weights_uti.f90 eio_weights_ut.f90 \
   eio_dump_uti.f90 eio_dump_ut.f90 \
-  hepmc_interface_uti.f90 hepmc_interface_ut.f90 \
+  hepmc2_interface_uti.f90 hepmc2_interface_ut.f90 \
+  hepmc3_interface_uti.f90 hepmc3_interface_ut.f90 \
   lcio_interface_uti.f90 lcio_interface_ut.f90 \
   hep_events_uti.f90 hep_events_ut.f90 \
   eio_ascii_uti.f90 eio_ascii_ut.f90 \
   eio_lhef_uti.f90 eio_lhef_ut.f90 \
   eio_stdhep_uti.f90 eio_stdhep_ut.f90 \
-  eio_hepmc_uti.f90 eio_hepmc_ut.f90 \
+  eio_hepmc2_uti.f90 eio_hepmc2_ut.f90 \
+  eio_hepmc3_uti.f90 eio_hepmc3_ut.f90 \
   eio_lcio_uti.f90 eio_lcio_ut.f90
 
 ## Omitting this would exclude it from the distribution
@@ -188,13 +194,15 @@ eio_callback_sub.lo: eio_callback.lo
 eio_weights_sub.lo: eio_weights.lo
 eio_dump_sub.lo: eio_dump.lo
 hep_common_sub.lo: hep_common.lo
-hepmc_interface_sub.lo: hepmc_interface.lo
+hepmc2_interface_sub.lo: hepmc2_interface.lo
+hepmc3_interface_sub.lo: hepmc3_interface.lo
 lcio_interface_sub.lo: lcio_interface.lo
 hep_events_sub.lo: hep_events.lo
 eio_ascii_sub.lo: eio_ascii.lo
 eio_lhef_sub.lo: eio_lhef.lo
 eio_stdhep_sub.lo: eio_stdhep.lo
-eio_hepmc_sub.lo: eio_hepmc.lo
+eio_hepmc2_sub.lo: eio_hepmc2.lo
+eio_hepmc3_sub.lo: eio_hepmc3.lo
 eio_lcio_sub.lo: eio_lcio.lo
 
 ########################################################################

@@ -2,7 +2,7 @@
 ### Check WHIZARD command setup
 echo "Running script $0"
 if test -f HEPMC2_FLAG; then
-    exec ./run_whizard_ut.sh --check api_hepmc
+    exec ./run_whizard_ut.sh --check api_hepmc2
 else
     echo "|=============================================================================|"
     echo "No HepMC2 available, test skipped"

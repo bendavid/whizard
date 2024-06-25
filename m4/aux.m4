@@ -280,65 +280,70 @@ echo "StdHEP (event format)                      :   yes, v5.06.01"
 echo "--------------------------------------------------------------"
 echo "---      External packages      ---"
 echo "--------------------------------------------------------------"
-if test "$HEPMC_AVAILABLE_FLAG" = "yes" ; then
-   echo "HepMC (event format):   yes, v$HEPMC_VERSION"
+if test "$HEPMC2_AVAILABLE_FLAG" = ".true." ; then
+   echo "HepMC2 (event format):   yes, v$HEPMC2_VERSION"
 else
-   echo "HepMC (event format):   no"
+   echo "HepMC2 (event format):   no"
+fi
+if test "$HEPMC3_AVAILABLE_FLAG" = ".true." ; then
+   echo "HepMC3 (event format):   yes, v$HEPMC3_VERSION"
+else
+   echo "HepMC3 (event format):   no"
 fi
 if test "$HDF5_AVAILABLE_FLAG" = "yes" ; then
-   echo "HDF5 (binary format):   yes, v$HDF5_VERSION"
+   echo "HDF5 (binary format) :   yes, v$HDF5_VERSION"
 else
-   echo "HDF5 (binary format):   no"
+   echo "HDF5 (binary format) :   no"
 fi
 if test "$LCIO_AVAILABLE_FLAG" = "yes" ; then
-   echo "LCIO (event format) :   yes, v$LCIO_VERSION"
+   echo "LCIO (event format)  :   yes, v$LCIO_VERSION"
 else
-   echo "LCIO (event format) :   no"
+   echo "LCIO (event format)  :   no"
 fi
 if test "$LHAPDF5_AVAILABLE_FLAG" = ".true." ; then
-   echo "LHAPDF (PDF sets)   :   yes, v$LHAPDF_FULL_VERSION"
+   echo "LHAPDF (PDF sets)    :   yes, v$LHAPDF_FULL_VERSION"
 elif test "$LHAPDF6_AVAILABLE_FLAG" = ".true." ; then
-   echo "LHAPDF (PDF sets)   :   yes, v$LHAPDF_FULL_VERSION"
-   echo "        PDF set path:   $LHAPDF_PDFSETS_PATH"
+   echo "LHAPDF (PDF sets)    :   yes, v$LHAPDF_FULL_VERSION"
+   echo "        PDF set path :   $LHAPDF_PDFSETS_PATH"
 else
-   echo "LHAPDF (PDF sets)   :   no"
+   echo "LHAPDF (PDF sets)    :   no"
 fi
 if test "$HOPPET_AVAILABLE_FLAG" = ".true." ; then
-   echo "HOPPET (PDF match.) :   yes, v$HOPPET_VERSION"
+   echo "HOPPET (PDF match.)  :   yes, v$HOPPET_VERSION"
 else
-   echo "HOPPET (PDF match.) :   no"
+   echo "HOPPET (PDF match.)  :   no"
 fi
 if test "$FASTJET_AVAILABLE_FLAG" = "yes" ; then
-   echo "FastJet (clustering):   yes, v$FASTJET_VERSION"
+   echo "FastJet (clustering) :   yes, v$FASTJET_VERSION"
 else
-   echo "FastJet (clustering):   no"
+   echo "FastJet (clustering) :   no"
 fi
 if test "$PYTHIA8_AVAILABLE_FLAG" = ".true." ; then
-   echo "PYTHIA8 (QCD)       :   yes, v$PYTHIA8_VERSION"
+   echo "PYTHIA8 (QCD)        :   yes, v$PYTHIA8_VERSION"
 else
-   echo "PYTHIA8 (QCD)       :   no"
+   echo "PYTHIA8 (QCD)        :   no"
 fi
 if test "$GOSAM_AVAILABLE_FLAG" = ".true." ; then
-   echo "GoSam (OLP)         :   yes, v$GOSAM_VERSION"
+   echo "GoSam (OLP)          :   yes, v$GOSAM_VERSION"
 else
-   echo "GoSam (OLP)         :   no"
+   echo "GoSam (OLP)          :   no"
 fi
 if test "$OPENLOOPS_AVAILABLE_FLAG" = ".true." ; then
-   echo "OpenLoops (OLP)     :   yes, v$OPENLOOPS_VERSION"
-   echo "           path     :   $OPENLOOPS_DIR"
+   echo "OpenLoops (OLP)      :   yes, v$OPENLOOPS_VERSION"
+   echo "           path      :   $OPENLOOPS_DIR"
 else
-   echo "OpenLoops (OLP)     :   no"
+   echo "OpenLoops (OLP)      :   no"
 fi
 if test "$RECOLA_AVAILABLE_FLAG" = ".true." ; then
-   echo "RECOLA (OLP)        :   yes, v$RECOLA_VERSION"
-   echo "           path     :   $RECOLA_DIR"   
+   echo "RECOLA (OLP)         :   yes, v$RECOLA_VERSION"
+   echo "           path      :   $RECOLA_DIR"   
 else
-   echo "RECOLA (OLP)        :   no"
+   echo "RECOLA (OLP)         :   no"
 fi
 if test "$LOOPTOOLS_AVAILABLE_FLAG" = ".true." ; then
-   echo "LoopTools           :   yes"
+   echo "LoopTools            :   yes"
 else
-   echo "LoopTools           :   no"
+   echo "LoopTools            :   no"
 fi
 echo "--------------------------------------------------------------"
 if test "$SIP_ACTIVE" = "yes" ; then

@@ -4,6 +4,10 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.4.1
 
+2024-06-25
+	HepMC2 and HepMC3 can be linked simultaneously
+	Minor bug fixes and improvements for HepMC3 interface
+
 2024-06-01
 	Bug fix: typo in MPI build rules
 	Bug fix: O'Mega: no more colored resurrections for -cascade "^c"

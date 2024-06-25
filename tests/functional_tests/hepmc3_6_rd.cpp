@@ -11,12 +11,12 @@ using namespace HepMC3;
 
 void read_event_file()
 {
-    std::cout << "Reading HepMC event file:" << std::endl;
+    std::cout << "Reading HepMC3 event file:" << std::endl;
      {
        // Open input stream
-       std::ifstream stream( "hepmc_6_p.hepmc" );
+       std::ifstream stream( "hepmc3_6_p.hepmc" );
        if( !stream ) {
-	 std::cerr << "Cannot open HepMC event file" << std::endl;
+	 std::cerr << "Cannot open HepMC3 event file" << std::endl;
 	 exit(-1);
        }
        HepMC3::ReaderAscii ascii_in(stream);

@@ -15357,15 +15357,16 @@ module dispatch_transforms
   use instances, only: process_instance_t, process_instance_hook_t
 
   use event_base, only: event_callback_t, event_callback_nop_t
-  use hepmc_interface, only: HEPMC3_MODE_HEPMC2, HEPMC3_MODE_HEPMC3
-  use hepmc_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_ROOTTREE
-  use hepmc_interface, only: HEPMC3_MODE_HEPEVT
+  use hepmc3_interface, only: HEPMC3_MODE_HEPMC2, HEPMC3_MODE_HEPMC3
+  use hepmc3_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_ROOTTREE
+  use hepmc3_interface, only: HEPMC3_MODE_HEPEVT
   use eio_base
   use eio_raw
   use eio_checkpoints
   use eio_callback
   use eio_lhef
-  use eio_hepmc
+  use eio_hepmc2
+  use eio_hepmc3
   use eio_lcio
   use eio_stdhep
   use eio_ascii
@@ -15818,10 +15819,23 @@ which is defined here.
                char (lhef_version), lhef_extension, &
                write_sqme_ref, write_sqme_prc, write_sqme_alt)
        end select
-    case ("hepmc")
-       allocate (eio_hepmc_t :: eio)
+    case ("hepmc2")
+       allocate (eio_hepmc2_t :: eio)
        select type (eio)
-       type is (eio_hepmc_t)
+       type is (eio_hepmc2_t)
+          output_cross_section = &
+               var_list%get_lval (var_str ("?hepmc_output_cross_section"))
+          extension_hepmc = &
+               var_list%get_sval (var_str ("$extension_hepmc"))
+          call eio%set_parameters (recover_beams, &
+               use_alphas_from_file, use_scale_from_file, &
+               extension = extension_hepmc, &
+               output_cross_section = output_cross_section)
+       end select
+    case ("hepmc","hepmc3")
+       allocate (eio_hepmc3_t :: eio)
+       select type (eio)
+       type is (eio_hepmc3_t)
           output_cross_section = &
                var_list%get_lval (var_str ("?hepmc_output_cross_section"))
           extension_hepmc = &

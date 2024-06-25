@@ -1,4 +1,4 @@
-* Test output: api_hepmc_1
+* Test output: api_hepmc2_1
 *   Purpose:  generate events
 
 Event #1
@@ -6,4 +6,4 @@ Event #1
 Event #2
   n_particles = 4
 
-* Test output end: api_hepmc_1
+* Test output end: api_hepmc2_1

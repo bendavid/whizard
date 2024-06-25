@@ -1,18 +1,16 @@
-* Test output: eio_hepmc_1
-*   Purpose: write a HepMC file
+* Test output: eio_hepmc2_1
+*   Purpose: write a HepMC2 file
 
 * Initialize test process
 
 * Generate and write an event
 
  HepMC event stream:
-   Writing to file   = eio_hepmc_1.hepmc
+   Writing to file   = eio_hepmc2_1.hepmc
    Recover beams     = F
    Alpha_s from file = F
    Scale from file   = F
    File extension    = 'hepmc'
-   HepMC3 mode       = 2
-   HepMC3 flows      = F
    Numerical process IDs:
      1: 42
 
@@ -36,9 +34,7 @@ HepMC::IO_GenEvent-END_EVENT_LISTING
    Alpha_s from file = F
    Scale from file   = F
    File extension    = 'hepmc'
-   HepMC3 mode       = 2
-   HepMC3 flows      = F
 
 * Cleanup
 
-* Test output end: eio_hepmc_1
+* Test output end: eio_hepmc2_1

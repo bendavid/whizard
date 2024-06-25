@@ -62,7 +62,8 @@ DISTCLEANFILES = api.f90
 
 libapi_ut_la_SOURCES = \
   api_uti.f90 api_ut.f90 \
-  api_hepmc_uti.f90 api_hepmc_ut.f90 \
+  api_hepmc2_uti.f90 api_hepmc2_ut.f90 \
+  api_hepmc3_uti.f90 api_hepmc3_ut.f90 \
   api_lcio_uti.f90 api_lcio_ut.f90
 
 
@@ -107,12 +108,12 @@ endif
 libapi_la_CPPFLAGS =
 libapi_ut_cc_la_CPPFLAGS =
 if HEPMC3_AVAILABLE
-libapi_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC3 $(HEPMC_INCLUDES)
-libapi_ut_cc_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC3 $(HEPMC_INCLUDES)
+libapi_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC3 $(HEPMC3_INCLUDES)
+libapi_ut_cc_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC3 $(HEPMC3_INCLUDES)
 endif
 if HEPMC2_AVAILABLE
-libapi_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC2 $(HEPMC_INCLUDES)
-libapi_ut_cc_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC2 $(HEPMC_INCLUDES)
+libapi_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC2 $(HEPMC2_INCLUDES)
+libapi_ut_cc_la_CPPFLAGS += -DWHIZARD_WITH_HEPMC2 $(HEPMC2_INCLUDES)
 endif
 if LCIO_AVAILABLE
 libapi_la_CPPFLAGS += -DWHIZARD_WITH_LCIO $(LCIO_INCLUDES)

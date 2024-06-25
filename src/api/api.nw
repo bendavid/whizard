@@ -1275,81 +1275,136 @@ command line.
 
 @ %def api_8
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Unit tests: HepMC interface}
+\subsection{Unit tests: HepMC2/3 interface}
 Test module, followed by the corresponding implementation module.
-<<[[api_hepmc_ut.f90]]>>=
+<<[[api_hepmc2_ut.f90]]>>=
 <<File header>>
 
-module api_hepmc_ut
+module api_hepmc2_ut
   use unit_tests
   use system_dependencies, only: HEPMC2_AVAILABLE
   use system_dependencies, only: HEPMC3_AVAILABLE
-  use api_hepmc_uti
+  use api_hepmc2_uti
 
 <<Standard module head>>
 
-<<API/HEPMC: public test>>
+<<API/HEPMC2: public test>>
 
 contains
 
-<<API/HEPMC: test driver>>
+<<API/HEPMC2: test driver>>
 
-end module api_hepmc_ut
-@ %def api_hepmc_ut
+end module api_hepmc2_ut
+@ %def api_hepmc2_ut
 @
-<<[[api_hepmc_uti.f90]]>>=
+<<[[api_hepmc3_ut.f90]]>>=
 <<File header>>
 
-module api_hepmc_uti
+module api_hepmc3_ut
+  use unit_tests
+  use system_dependencies, only: HEPMC2_AVAILABLE
+  use system_dependencies, only: HEPMC3_AVAILABLE
+  use api_hepmc3_uti
+
+<<Standard module head>>
+
+<<API/HEPMC3: public test>>
+
+contains
+
+<<API/HEPMC3: test driver>>
+
+end module api_hepmc3_ut
+@ %def api_hepmc3_ut
+@
+<<[[api_hepmc2_uti.f90]]>>=
+<<File header>>
+
+module api_hepmc2_uti
 
   use iso_fortran_env, only: int32, real64 !NODEP!
-  use hepmc_interface, only: hepmc_event_t
+  use hepmc2_interface, only: hepmc2_event_t
 
   use api
 
 <<Standard module head>>
 
-<<API/HEPMC: test declarations>>
+<<API/HEPMC2: test declarations>>
 
 contains
 
-<<API/HEPMC: tests>>
+<<API/HEPMC2: tests>>
 
-end module api_hepmc_uti
-@ %def api_hepmc_ut
-@ API/HEPMC: driver for the unit tests below.
-<<API/HEPMC: public test>>=
-  public :: api_hepmc_test
-<<API/HEPMC: test driver>>=
-  subroutine api_hepmc_test (u, results)
+end module api_hepmc2_uti
+@ %def api_hepmc2_ut
+<<[[api_hepmc3_uti.f90]]>>=
+<<File header>>
+
+module api_hepmc3_uti
+
+  use iso_fortran_env, only: int32, real64 !NODEP!
+  use hepmc3_interface, only: hepmc3_event_t
+
+  use api
+
+<<Standard module head>>
+
+<<API/HEPMC3: test declarations>>
+
+contains
+
+<<API/HEPMC3: tests>>
+
+end module api_hepmc3_uti
+@ %def api_hepmc3_ut
+@ API/HEPMC2/3: driver for the unit tests below.
+<<API/HEPMC2: public test>>=
+  public :: api_hepmc2_test
+<<API/HEPMC3: public test>>=
+  public :: api_hepmc3_test
+<<API/HEPMC2: test driver>>=
+  subroutine api_hepmc2_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<API/HEPMC: execute tests>>
-  end subroutine api_hepmc_test
+  <<API/HEPMC2: execute tests>>
+  end subroutine api_hepmc2_test
 
-@ %def api_hepmc_test
+@ %def api_hepmc2_test
+@
+<<API/HEPMC3: test driver>>=
+  subroutine api_hepmc3_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<API/HEPMC3: execute tests>>
+  end subroutine api_hepmc3_test
+
+@ %def api_hepmc3_test
 @
 \subsubsection{HepMC2/HepMC3 interface test}
 Declare a process and generate two events.  Access the events via an HepMC3
 (or HepMC2) object.
-<<API/HEPMC: execute tests>>=
+<<API/HEPMC2: execute tests>>=
   if (HEPMC2_AVAILABLE) then
-     call test (api_hepmc_1, "api_hepmc2_1", &
+     call test (api_hepmc2_1, "api_hepmc2_1", &
           "HepMC2 interface", &
           u, results)
-  else if (HEPMC3_AVAILABLE) then
-     call test (api_hepmc_1, "api_hepmc3_1", &
+  end if
+<<API/HEPMC3: execute tests>>=
+  if (HEPMC3_AVAILABLE) then
+     call test (api_hepmc3_1, "api_hepmc3_1", &
           "HepMC3 interface", &
           u, results)
   end if
-<<API/HEPMC: test declarations>>=
-  public :: api_hepmc_1
-<<API/HEPMC: tests>>=
-  subroutine api_hepmc_1 (u)
-    use hepmc_interface, only: hepmc_event_get_event_index
-    use hepmc_interface, only: hepmc_event_get_n_particles
-    use hepmc_interface, only: hepmc_event_print
-    use hepmc_interface, only: hepmc_event_final
+<<API/HEPMC2: test declarations>>=
+  public :: api_hepmc2_1
+<<API/HEPMC3: test declarations>>=
+  public :: api_hepmc3_1
+<<API/HEPMC2: tests>>=
+  subroutine api_hepmc2_1 (u)
+    use hepmc2_interface, only: hepmc2_event_get_event_index
+    use hepmc2_interface, only: hepmc2_event_get_n_particles
+    use hepmc2_interface, only: hepmc2_event_print
+    use hepmc2_interface, only: hepmc2_event_final
     integer, intent(in) :: u
 
     type(whizard_api_t) :: whizard
@@ -1359,51 +1414,109 @@ Declare a process and generate two events.  Access the events via an HepMC3
     integer :: i
     integer(int32) :: idx, npt
 
-    type(hepmc_event_t) :: hepmc_event
+    type(hepmc2_event_t) :: hepmc2_event
 
-    write (u, "(A)")  "* Test output: api_hepmc_1"
+    write (u, "(A)")  "* Test output: api_hepmc2_1"
     write (u, "(A)")  "*   Purpose:  generate events"
     write (u, "(A)")
 
     call whizard%option ("model", "QED")
-    call whizard%option ("library", "api_hepmc_1_lib")
-    call whizard%option ("logfile", "api_hepmc_1_log.out")
+    call whizard%option ("library", "api_hepmc2_1_lib")
+    call whizard%option ("logfile", "api_hepmc2_1_log.out")
     call whizard%option ("rebuild", "T")
     call whizard%init ()
 
-    call whizard%command ("process api_hepmc_1_p = e1, E1 => e2, E2")
+    call whizard%command ("process api_hepmc2_1_p = e1, E1 => e2, E2")
 
     call whizard%set_var ("sqrts", 10._real64)
     call whizard%command ("iterations = 1:100")
     call whizard%set_var ("seed", 0_int32)
-    call whizard%command ("integrate (api_hepmc_1_p)")
+    call whizard%command ("integrate (api_hepmc2_1_p)")
 
     call whizard%set_var ("?unweighted", .false.)
-    call whizard%set_var ("$sample", "api_hepmc_1_evt")
-    call whizard%command ("sample_format = hepmc")
+    call whizard%set_var ("$sample", "api_hepmc2_1_evt")
+    call whizard%command ("sample_format = hepmc2")
     call whizard%set_var ("n_events", 2_int32)
 
-    call whizard%new_sample ("api_hepmc_1_p", sample)
+    call whizard%new_sample ("api_hepmc2_1_p", sample)
     call sample%open (it_begin, it_end)
     do i = it_begin, it_end
-       call sample%next_event (hepmc_event)
-       idx = hepmc_event_get_event_index (hepmc_event)
-       npt = hepmc_event_get_n_particles (hepmc_event)
-       call hepmc_event_print (hepmc_event)
+       call sample%next_event (hepmc2_event)
+       idx = hepmc2_event_get_event_index (hepmc2_event)
+       npt = hepmc2_event_get_n_particles (hepmc2_event)
+       call hepmc2_event_print (hepmc2_event)
        write (u, "(A,I0)")  "Event #", idx
        write (u, "(2x,A,1x,I0)")  "n_particles =", npt
-       call hepmc_event_final (hepmc_event)
+       call hepmc2_event_final (hepmc2_event)
     end do
     call sample%close ()
 
     call whizard%final ()
 
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: api_hepmc_1"
+    write (u, "(A)")  "* Test output end: api_hepmc2_1"
 
-  end subroutine api_hepmc_1
+  end subroutine api_hepmc2_1
 
-@ %def api_hepmc_1
+@ %def api_hepmc2_1
+<<API/HEPMC3: tests>>=
+  subroutine api_hepmc3_1 (u)
+    use hepmc3_interface, only: hepmc3_event_get_event_index
+    use hepmc3_interface, only: hepmc3_event_get_n_particles
+    use hepmc3_interface, only: hepmc3_event_print
+    integer, intent(in) :: u
+
+    type(whizard_api_t) :: whizard
+    type(simulation_api_t) :: sample
+
+    integer :: it_begin, it_end
+    integer :: i
+    integer(int32) :: idx, npt
+
+    type(hepmc3_event_t) :: hepmc3_event
+
+    write (u, "(A)")  "* Test output: api_hepmc3_1"
+    write (u, "(A)")  "*   Purpose:  generate events"
+    write (u, "(A)")
+
+    call whizard%option ("model", "QED")
+    call whizard%option ("library", "api_hepmc3_1_lib")
+    call whizard%option ("logfile", "api_hepmc3_1_log.out")
+    call whizard%option ("rebuild", "T")
+    call whizard%init ()
+
+    call whizard%command ("process api_hepmc3_1_p = e1, E1 => e2, E2")
+
+    call whizard%set_var ("sqrts", 10._real64)
+    call whizard%command ("iterations = 1:100")
+    call whizard%set_var ("seed", 0_int32)
+    call whizard%command ("integrate (api_hepmc3_1_p)")
+
+    call whizard%set_var ("?unweighted", .false.)
+    call whizard%set_var ("$sample", "api_hepmc3_1_evt")
+    call whizard%command ("sample_format = hepmc3")
+    call whizard%set_var ("n_events", 2_int32)
+
+    call whizard%new_sample ("api_hepmc3_1_p", sample)
+    call sample%open (it_begin, it_end)
+    do i = it_begin, it_end
+       call sample%next_event (hepmc3_event)
+       idx = hepmc3_event_get_event_index (hepmc3_event)
+       npt = hepmc3_event_get_n_particles (hepmc3_event)
+       call hepmc3_event_print (hepmc3_event)
+       write (u, "(A,I0)")  "Event #", idx
+       write (u, "(2x,A,1x,I0)")  "n_particles =", npt
+    end do
+    call sample%close ()
+
+    call whizard%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: api_hepmc3_1"
+
+  end subroutine api_hepmc3_1
+
+@ %def api_hepmc3_1
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Unit tests: LCIO interface}
 Test module, followed by the corresponding implementation module.
@@ -2247,37 +2360,59 @@ function returns a C pointer, which is supposed to be the pointer to a
 #ifdef WHIZARD_WITH_HEPMC3
 #include "HepMC3/GenEvent.h"
 extern "C" {
-HepMC3::GenEvent* whizard_sample_next_event_hepmc( void* sample );
+HepMC3::GenEvent* whizard_sample_next_event_hepmc3( void* sample );
 }
 #endif
 #ifdef WHIZARD_WITH_HEPMC2
 #include "HepMC/GenEvent.h"
 extern "C" {
-HepMC::GenEvent* whizard_sample_next_event_hepmc( void* sample );
+HepMC::GenEvent* whizard_sample_next_event_hepmc2( void* sample );
 }
 #endif
 
 <<C API: Fortran implementation>>=
-function whizard_sample_next_event_hepmc (sample_handle) result (evt) bind (C)
+function whizard_sample_next_event_hepmc2 (sample_handle) result (evt) bind (C)
   use iso_c_binding, only: c_ptr  !NODEP!
   use iso_c_binding, only: c_f_pointer  !NODEP!
-  use hepmc_interface, only: hepmc_event_t
-  use hepmc_interface, only: hepmc_event_get_c_ptr
+  use hepmc2_interface, only: hepmc2_event_t
+  use hepmc2_interface, only: hepmc2_event_get_c_ptr
   use api, only: simulation_api_t
 
   type(c_ptr), intent(inout) :: sample_handle
   type(c_ptr) :: evt
 
   type(simulation_api_t), pointer :: sample
-  type(hepmc_event_t) :: hepmc_event
+  type(hepmc2_event_t) :: hepmc2_event
 
   call c_f_pointer (sample_handle, sample)
-  call sample%next_event (hepmc_event)
-  evt = hepmc_event_get_c_ptr (hepmc_event)
+  call sample%next_event (hepmc2_event)
+  evt = hepmc2_event_get_c_ptr (hepmc2_event)
 
-end function whizard_sample_next_event_hepmc
+end function whizard_sample_next_event_hepmc2
 
-@ %def whizard_sample_next_event_hepmc
+@ %def whizard_sample_next_event_hepmc2
+@
+<<C API: Fortran implementation>>=
+function whizard_sample_next_event_hepmc3 (sample_handle) result (evt) bind (C)
+  use iso_c_binding, only: c_ptr  !NODEP!
+  use iso_c_binding, only: c_f_pointer  !NODEP!
+  use hepmc3_interface, only: hepmc3_event_t
+  use hepmc3_interface, only: hepmc3_event_get_c_ptr
+  use api, only: simulation_api_t
+
+  type(c_ptr), intent(inout) :: sample_handle
+  type(c_ptr) :: evt
+
+  type(simulation_api_t), pointer :: sample
+  type(hepmc3_event_t) :: hepmc3_event
+
+  call c_f_pointer (sample_handle, sample)
+  call sample%next_event (hepmc3_event)
+  evt = hepmc3_event_get_c_ptr (hepmc3_event)
+
+end function whizard_sample_next_event_hepmc3
+
+@ %def whizard_sample_next_event_hepmc3
 @
 Extra handler for LCIO events.  This is available for C++ only.  The Fortran
 function returns a C pointer, which is supposed to be the pointer to a
@@ -3434,21 +3569,21 @@ double WhizardSample::get_sqme() {
 If HepMC is available: produce a new event, accessible via the [[sample]]
 Fortran pointer, and return a pointer to a new [[GenEvent]] event object.
 <<C++ API: WhizardSample: public methods>>=
-#ifdef WHIZARD_WITH_HEPMC2
-  void next_event( HepMC::GenEvent** evt );
-#endif
 #ifdef WHIZARD_WITH_HEPMC3
   void next_event( HepMC3::GenEvent** evt );
+#endif
+#ifdef WHIZARD_WITH_HEPMC2
+  void next_event( HepMC::GenEvent** evt );
 #endif
 <<C++ API: WhizardSample: method implementations>>=
 #ifdef WHIZARD_WITH_HEPMC2
 void WhizardSample::next_event( HepMC::GenEvent** evt ) {
-  *evt = whizard_sample_next_event_hepmc( &sample );
+  *evt = whizard_sample_next_event_hepmc2( &sample );
 };
 #endif
 #ifdef WHIZARD_WITH_HEPMC3
 void WhizardSample::next_event( HepMC3::GenEvent** evt ) {
-  *evt = whizard_sample_next_event_hepmc( &sample );
+  *evt = whizard_sample_next_event_hepmc3( &sample );
 };
 #endif
 
@@ -3620,7 +3755,9 @@ int main( int argc, char* argv[] )
 
 <<C++ API: execute tests>>
 
-<<C++ API: execute HepMC tests>>
+<<C++ API: execute HepMC2 tests>>
+
+<<C++ API: execute HepMC3 tests>>
 
 <<C++ API: execute LCIO tests>>
 
@@ -3915,17 +4052,21 @@ Generate events and retrieve event data.
   }
 @ %def api_ut_cc_5
 @
-\subsubsection{HepMC3 test}
+\subsubsection{HepMC2/3 test}
 This test checks whether we can interface the [[GenEvent]] handle.  If HepMC3
 is not available, the test is skipped.  We can use the macro [[WHIZARD_WITH_HEPMC3]] to
 check if this is the case.
-<<C++ API: execute HepMC tests>>=
-#ifdef WHIZARD_WITH_HEPMC3
-  WTest->run_test( &api_ut_hepmc3_cc_1, "api_hepmc3_cc_1", "HepMC3 interface" );
-#elif WHIZARD_WITH_HEPMC2
+<<C++ API: execute HepMC2 tests>>=
+#ifdef WHIZARD_WITH_HEPMC2
   WTest->run_test( &api_ut_hepmc2_cc_1, "api_hepmc2_cc_1", "HepMC2 interface" );
 #else
-  cout << "Skipping test: api_hepmc_cc_1 (HepMC2/3 unavailable)\n";
+  cout << "Skipping test: api_hepmc2_cc_1 (HepMC2 unavailable)\n";
+#endif
+<<C++ API: execute HepMC3 tests>>=
+#ifdef WHIZARD_WITH_HEPMC3
+  WTest->run_test( &api_ut_hepmc3_cc_1, "api_hepmc3_cc_1", "HepMC3 interface" );
+#else
+  cout << "Skipping test: api_hepmc3_cc_1 (HepMC3 unavailable)\n";
 #endif
 <<C++ API: tests>>=
 #if defined(WHIZARD_WITH_HEPMC3)
@@ -3934,7 +4075,7 @@ check if this is the case.
     Whizard* whizard;
     WhizardSample* sample;
 
-    GenEvent* evt;
+    HepMC3::GenEvent* evt;
     int it, it_begin, it_end;
     int idx;
     int npt;
@@ -3961,7 +4102,7 @@ check if this is the case.
 
     whizard->set_bool( "?unweighted", 0 );
     whizard->set_string( "$sample", "api_hepmc3_cc_1_evt" );
-    whizard->command( "sample_format = hepmc" );
+    whizard->command( "sample_format = hepmc3" );
     whizard->set_int( "n_events", 2 );
 
     sample = whizard->new_sample( "api_hepmc3_cc_1_p" );
@@ -3990,7 +4131,7 @@ check if this is the case.
     Whizard* whizard;
     WhizardSample* sample;
 
-    GenEvent* evt;
+    HepMC::GenEvent* evt;
     int it, it_begin, it_end;
     int idx;
     int npt;
@@ -4017,7 +4158,7 @@ check if this is the case.
 
     whizard->set_bool( "?unweighted", 0 );
     whizard->set_string( "$sample", "api_hepmc2_cc_1_evt" );
-    whizard->command( "sample_format = hepmc" );
+    whizard->command( "sample_format = hepmc2" );
     whizard->set_int( "n_events", 2 );
 
     sample = whizard->new_sample( "api_hepmc2_cc_1_p" );
@@ -4027,7 +4168,7 @@ check if this is the case.
        npt = 0;
        sample->next_event( &evt );
        idx = evt->event_number();
-       for ( GenEvent::particle_iterator it = evt->particles_begin();
+       for ( HepMC::GenEvent::particle_iterator it = evt->particles_begin();
          it != evt->particles_end(); ++it )
          { npt++;
          }

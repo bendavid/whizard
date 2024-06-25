@@ -1,12 +1,12 @@
-* Test output: eio_hepmc_1
-*   Purpose: write a HepMC file
+* Test output: eio_hepmc3_1
+*   Purpose: write a HepMC3 file
 
 * Initialize test process
 
 * Generate and write an event
 
  HepMC event stream:
-   Writing to file   = eio_hepmc_1.hepmc
+   Writing to file   = eio_hepmc3_1.hepmc
    Recover beams     = F
    Alpha_s from file = F
    Scale from file   = F
@@ -45,4 +45,4 @@ HepMC::Asciiv3-END_EVENT_LISTING
 
 * Cleanup
 
-* Test output end: eio_hepmc_1
+* Test output end: eio_hepmc3_1

@@ -1,81 +1,36 @@
 dnl hepmc.m4 -- checks for HepMC library
 dnl
 
-### Determine paths to HEPMC components
-### If successful, set the conditional HEPMC_AVAILABLE
-### Also: HEPMC_VERSION HEPMC_INCLUDES LDFLAGS_HEPMC
+### Determine paths to HEPMC2/3 components
+### If successful, set the conditional HEPMC3_AVAILABLE
+### Also: HEPMC2/3_VERSION HEPMC2/3_INCLUDES LDFLAGS2/3_HEPMC
 AC_DEFUN([WO_PROG_HEPMC],
 [dnl
 AC_REQUIRE([AC_PROG_CXX])
 AC_REQUIRE([AC_PROG_FC])
 
+AC_ARG_ENABLE([hepmc2],
+  [AS_HELP_STRING([--enable-hepmc2],
+    [enable HepMC2 for handling event data [[yes]]])],
+  [], [enable_hepmc2="yes"])
+
 AC_ARG_ENABLE([hepmc],
   [AS_HELP_STRING([--enable-hepmc],
-    [enable HepMC for handling event data [[yes]]])],
+    [enable HepMC3 for handling event data [[yes]]])],
   [], [enable_hepmc="yes"])
 
-hepmc_is_v3="no"
 hepmcok="no"
 
 if test "$enable_hepmc" = "yes"; then
+   AC_MSG_NOTICE([looking for HepMC3 ... ])
    ACX_CHECK_HEPMC3()
    if test "${hepmcok}" = "no"; then
      AC_MSG_NOTICE([HepMC3 not found, incompatible, or HepMC3-config not found])
-     AC_MSG_NOTICE([looking for HepMC2 instead ... ])
-     if test -n "$HEPMC_DIR"; then
-       wo_hepmc_includes="-I$HEPMC_DIR/include"
-     fi
-     AC_MSG_CHECKING([the HepMC version])
-     AC_LANG([C++])
-     wo_cxxflags_tmp=$CXXFLAGS
-     CXXFLAGS="$CXXFLAGS $wo_hepmc_includes"
-     AC_LINK_IFELSE([dnl
-       AC_LANG_PROGRAM([[#include "HepMC/Version.h"]],
-         [[std::cout << HepMC::versionName();]])],
-       [dnl
-       wk_hepmc_version=`./conftest`
-       AC_MSG_RESULT([$wk_hepmc_version])],
-       [dnl
-       AC_MSG_RESULT([unknown])
-       enable_hepmc="no"])
-     CXXFLAGS=$wo_cxxflags_tmp
-     
-     HEPMC_VERSION=$wk_hepmc_version
-     AC_SUBST([HEPMC_VERSION])
-
-     if test -n "$HEPMC_DIR"; then
-       wo_hepmc_ldflags="-Wl,-rpath,$HEPMC_DIR/lib -L$HEPMC_DIR/lib -lHepMC"
-     else
-       wo_hepmc_ldflags="-lHepMC"
-     fi
-     if test "$enable_hepmc" = "yes"; then
-       wo_require_stdcpp="yes"
-       AC_MSG_CHECKING([for GenEvent class in -lHepMC])
-       wo_libs_tmp=$LIBS
-       LIBS="$wo_hepmc_ldflags $wo_libs_tmp"
-       AC_LANG([C++])
-       wo_cxxflags_tmp=$CXXFLAGS
-       CXXFLAGS="$CXXFLAGS $wo_hepmc_includes"
-       AC_LINK_IFELSE([dnl
-         AC_LANG_PROGRAM([[#include "HepMC/GenEvent.h"]],
-           [[using namespace HepMC;  GenEvent* evt = new GenEvent();]])],
-         [],
-         [enable_hepmc="no"])
-       AC_MSG_RESULT([$enable_hepmc])
-       CXXFLAGS=$wo_cxxflags_tmp
-       LIBS=$wo_libs_tmp
-     else
-       AC_MSG_CHECKING([for HepMC])
-       AC_MSG_RESULT([(disabled)])
-     fi
-     
-     if test "$enable_hepmc" = "yes"; then
-       HEPMC_INCLUDES=$wo_hepmc_includes
-       LDFLAGS_HEPMC=$wo_hepmc_ldflags
-     fi
+     AC_MSG_CHECKING([for HepMC3])
+     AC_MSG_RESULT([(disabled)])
+     enable_hepmc="no"
      AM_CONDITIONAL([HEPMC3_HAS_ROOT],false)
    else
-      hepmc_is_v3="yes"
       AC_MSG_CHECKING([the HepMC3 version])
       save_CXXFLAGS="$CXXFLAGS"
       save_LIBS="$LIBS"
@@ -90,43 +45,98 @@ if test "$enable_hepmc" = "yes"; then
 ]],
           [[using namespace HepMC3; std::cout << HepMC3::version();]])],
         [dnl
-        wk_hepmc_version=`./conftest`
-        AC_MSG_RESULT([$wk_hepmc_version])],
+        wk_hepmc3_version=`./conftest`
+        AC_MSG_RESULT([$wk_hepmc3_version])],
         [dnl
         AC_MSG_RESULT([unknown])
         enable_hepmc="no"])  
       CXXFLAGS="$save_CXXFLAGS"
       LIBS="$save_LIBS"  
-      HEPMC_VERSION=$wk_hepmc_version
-      AC_SUBST([HEPMC_VERSION])   
+      HEPMC3_VERSION=$wk_hepmc3_version
+      AC_SUBST([HEPMC3_VERSION])   
    fi
 fi
 
-HEPMC_AVAILABLE_FLAG=$enable_hepmc
+AC_SUBST([HEPMC3_INCLUDES])
+AC_SUBST([LDFLAGS_HEPMC3])
 
-AC_SUBST([HEPMC_INCLUDES])
-AC_SUBST([LDFLAGS_HEPMC])
-AC_SUBST([HEPMC_AVAILABLE_FLAG])
+AM_CONDITIONAL([HEPMC3_AVAILABLE], [test "$enable_hepmc" = "yes"])
 
-AM_CONDITIONAL([HEPMC_AVAILABLE], [test "$enable_hepmc" = "yes"])
-AM_CONDITIONAL([HEPMC2_AVAILABLE], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "no"])
-AM_CONDITIONAL([HEPMC3_AVAILABLE], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"])
-if test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"; then
+if test "$enable_hepmc" = "yes"; then
    HEPMC3_AVAILABLE_FLAG=".true."
 else
    HEPMC3_AVAILABLE_FLAG=".false."
 fi
-if test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "no"; then
+if test "$enable_hepmc" = "no"; then
+   AM_CONDITIONAL([HEPMC3_HAS_ROOT],false)
+fi
+AC_SUBST([HEPMC3_AVAILABLE_FLAG])
+
+if test "$enable_hepmc2" = "yes"; then
+   AC_MSG_NOTICE([looking for HepMC2 ... ])
+   if test -n "$HEPMC2_DIR"; then
+     wo_hepmc2_includes="-I$HEPMC2_DIR/include"
+   fi
+   AC_MSG_CHECKING([the HepMC2 version])
+   AC_LANG([C++])
+   wo_cxxflags_tmp=$CXXFLAGS
+   CXXFLAGS="$CXXFLAGS $wo_hepmc2_includes"
+   AC_LINK_IFELSE([dnl
+     AC_LANG_PROGRAM([[#include "HepMC/Version.h"]],
+       [[std::cout << HepMC::versionName();]])],
+     [dnl
+     wk_hepmc2_version=`./conftest`
+     AC_MSG_RESULT([$wk_hepmc2_version])],
+     [dnl
+     AC_MSG_RESULT([unknown])
+     enable_hepmc="no"])
+   CXXFLAGS=$wo_cxxflags_tmp
+   
+   HEPMC2_VERSION=$wk_hepmc2_version
+   AC_SUBST([HEPMC2_VERSION])
+
+   if test -n "$HEPMC2_DIR"; then
+     wo_hepmc2_ldflags="-Wl,-rpath,$HEPMC2_DIR/lib -L$HEPMC2_DIR/lib -lHepMC"
+   else
+     wo_hepmc2_ldflags="-lHepMC"
+   fi
+   if test "$enable_hepmc2" = "yes"; then
+     wo_require_stdcpp="yes"
+     AC_MSG_CHECKING([for GenEvent class in -lHepMC])
+     wo_libs_tmp=$LIBS
+     LIBS="$wo_hepmc2_ldflags $wo_libs_tmp"
+     AC_LANG([C++])
+     wo_cxxflags_tmp=$CXXFLAGS
+     CXXFLAGS="$CXXFLAGS $wo_hepmc2_includes"
+     AC_LINK_IFELSE([dnl
+       AC_LANG_PROGRAM([[#include "HepMC/GenEvent.h"]],
+         [[using namespace HepMC;  GenEvent* evt = new GenEvent();]])],
+       [],
+       [enable_hepmc2="no"])
+     AC_MSG_RESULT([$enable_hepmc2])
+     CXXFLAGS=$wo_cxxflags_tmp
+     LIBS=$wo_libs_tmp
+   else
+     AC_MSG_CHECKING([for HepMC2])
+     AC_MSG_RESULT([(disabled)])
+   fi
+   
+   if test "$enable_hepmc2" = "yes"; then
+     HEPMC2_INCLUDES=$wo_hepmc2_includes
+     LDFLAGS_HEPMC2=$wo_hepmc2_ldflags
+   fi
+fi
+
+AC_SUBST([HEPMC2_INCLUDES])
+AC_SUBST([LDFLAGS_HEPMC2])
+
+AM_CONDITIONAL([HEPMC2_AVAILABLE], [test "$enable_hepmc2" = "yes"])
+if test "$enable_hepmc2" = "yes"; then
    HEPMC2_AVAILABLE_FLAG=".true."
 else
    HEPMC2_AVAILABLE_FLAG=".false."
 fi
-if test "$enable_hepmc" = "no"; then
-   AM_CONDITIONAL([HEPMC3_HAS_ROOT],false)
-fi
 AC_SUBST([HEPMC2_AVAILABLE_FLAG])
-AC_SUBST([HEPMC3_AVAILABLE_FLAG])
-AM_CONDITIONAL([HEPMC_IS_VERSION3], [test "$enable_hepmc" = "yes" -a "$hepmc_is_v3" = "yes"])
 ])
 
 dnl #####################################################################
@@ -161,7 +171,7 @@ if test "${hepmcconfig}" = "no"; then
    $2
 else
 
-   dnl now see if HepMC is functional
+   dnl now see if HepMC3 is functional
    save_CXXFLAGS="$CXXFLAGS"
    save_LIBS="$LIBS"
 
@@ -178,6 +188,9 @@ else
    fi
    AC_MSG_RESULT([$hepmc3_root])
    AM_CONDITIONAL([HEPMC3_HAS_ROOT], [test "$hepmc3_root" = "yes"])
+   if test "$hepmc3_root" = "yes"; then
+      AC_DEFINE([HEPMC3_ROOTIO])
+   fi
 
    AC_MSG_CHECKING([if HepMC3 is functional])
    AC_LANG_PUSH(C++)
@@ -193,8 +206,8 @@ using namespace HepMC3; GenEvent evt(Units::GEV,Units::MM);
 
    AC_MSG_CHECKING([for HepMC3])
    if test "${hepmcok}" = "yes"; then
-      HEPMC_INCLUDES="`${hepmcconfig} --cxxflags` $HEPMCROOTINCL"
-      LDFLAGS_HEPMC="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs` $HEPMCROOTLIBS"
+      HEPMC3_INCLUDES="`${hepmcconfig} --cxxflags` $HEPMCROOTINCL"
+      LDFLAGS_HEPMC3="-Wl,-rpath,`${hepmcconfig} --libdir` `${hepmcconfig} --libs` $HEPMCROOTLIBS"
       AC_MSG_RESULT([yes])
       $1
    else

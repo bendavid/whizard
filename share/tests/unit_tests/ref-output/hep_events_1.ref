@@ -1,5 +1,5 @@
 * Test output: HEP events
-*   Purpose: test HepMC event routines
+*   Purpose: test HepMC2 event routines
 
 * Reading model file
 
@@ -277,8 +277,8 @@
  T =   0.000000000000E+00
  Parents:  3
 
-* Transfer particle_set to HepMC, print, and output to
-        hep_events.hepmc.dat
+* Transfer particle_set to HepMC2, print, and output to
+        hep_events.hepmc2.dat
 
 
 * Recover from HepMC file

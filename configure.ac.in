@@ -724,9 +724,14 @@ AC_CONFIG_LINKS([python/whizard_python.pyx:python/whizard_python.pyx])
 AC_CONFIG_LINKS([python/cwhizard.pxd:python/cwhizard.pxd])
 
 ###---------------------------------------------------------------------
-### Subdirectory src/hepmc
+### Subdirectory src/hepmc2
 
-AC_CONFIG_FILES([src/hepmc/Makefile])
+AC_CONFIG_FILES([src/hepmc2/Makefile])
+
+###---------------------------------------------------------------------
+### Subdirectory src/hepmc3
+
+AC_CONFIG_FILES([src/hepmc3/Makefile])
 
 ###---------------------------------------------------------------------
 ### Subdirectory src/lcio

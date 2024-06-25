@@ -55,7 +55,8 @@ CXXFLAGS = my-cxxflags
 CXXLIBSS = my-cxxlibs
 LDFLAGS = my-ldflags
 LDFLAGS_STATIC = my-ldflags-static
-LDFLAGS_HEPMC = my-ldflags-hepmc
+LDFLAGS_HEPMC2 = my-ldflags-hepmc2
+LDFLAGS_HEPMC3 = my-ldflags-hepmc3
 LDFLAGS_LCIO = my-ldflags-lcio
 LDFLAGS_HOPPET = my-ldflags-hoppet
 LDFLAGS_LOOPTOOLS = my-ldflags-looptools
@@ -87,7 +88,8 @@ $(EXE): $(DISP).lo $(LIBRARIES)
 	$(LINK) $(FC) -static $(FCFLAGS) \
 	   $(LDWHIZARD) $(LDFLAGS) \
 	   -o $(EXE) $^ \
-	   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \
+	   $(LDFLAGS_HEPMC2) $(LDFLAGS_HEPMC3) \
+	   $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \
 	   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC)
 
 # Main targets

@@ -1,7 +1,7 @@
-* Test output: eio_hepmc_2
-*   Purpose: read a HepMC event
+* Test output: eio_hepmc2_2
+*   Purpose: read a HepMC2 event
 
-* Write a HepMC data file
+* Write a HepMC2 data file
 
 * Initialize test process
 
@@ -22,13 +22,11 @@
 * Initialize
 
  HepMC event stream:
-   Reading from file = eio_hepmc_2.hepmc
+   Reading from file = eio_hepmc2_2.hepmc
    Recover beams     = F
    Alpha_s from file = F
    Scale from file   = F
    File extension    = 'hepmc'
-   HepMC3 mode       = 2
-   HepMC3 flows      = F
    Numerical process IDs:
      1: 42
 
@@ -92,4 +90,4 @@ iostat = -1
 
 * Cleanup
 
-* Test output end: eio_hepmc_2
+* Test output end: eio_hepmc2_2

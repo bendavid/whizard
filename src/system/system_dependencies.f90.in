@@ -65,8 +65,10 @@ module system_dependencies
        "@BUILDDIR@/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
        "@BUILDDIR@/src"
-  character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "@BUILDDIR@/src/hepmc"
+  character(*), parameter :: WHIZARD_TEST_HEPMC2_LIBPATH = &
+       "@BUILDDIR@/src/hepmc2"
+  character(*), parameter :: WHIZARD_TEST_HEPMC3_LIBPATH = &
+       "@BUILDDIR@/src/hepmc3"
   character(*), parameter :: WHIZARD_TEST_LCIO_LIBPATH = &
        "@BUILDDIR@/src/lcio"
   character(*), parameter :: WHIZARD_TEST_HOPPET_LIBPATH = &
@@ -117,13 +119,14 @@ module system_dependencies
   character(*), parameter :: WHIZARD_TEST_LDFLAGS = &
        "-L" // WHIZARD_TEST_MAIN_LIBPATH // " " // &
        "-L" // WHIZARD_TEST_SRC_LIBPATH // " " // &
-       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_HEPMC2_LIBPATH // " " // &
+       "-L" // WHIZARD_TEST_HEPMC3_LIBPATH // " " // &
        "-L" // WHIZARD_TEST_LCIO_LIBPATH // " " // &
        "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
        "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "@RPC_CFLAGS@ " // &
-       "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
+       "@RPC_CFLAGS@ @LDFLAGS_HEPMC2@ @LDFLAGS_HEPMC3@ " // &
+       "@LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
        "@LDFLAGS_LOOPTOOLS@ @LDFLAGS_OPENLOOPS@ " // &
        "@LDFLAGS_RECOLA@"
 
@@ -201,8 +204,8 @@ module system_dependencies
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
       "-lwhizard_main -lwhizard -lomega " // &
-       "@RPC_CFLAGS@ " // &
-       "@LDFLAGS_HEPMC@ @LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
+       "@RPC_CFLAGS@ @LDFLAGS_HEPMC2@ @LDFLAGS_HEPMC3@ " // &
+       "@LDFLAGS_LCIO@ @LDFLAGS_HOPPET@ " // &
        "@LDFLAGS_LOOPTOOLS@ @LDFLAGS_OPENLOOPS@ " // &
        "@LDFLAGS_RECOLA@"
 
@@ -257,8 +260,10 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
   character(*), parameter :: DEFAULT_LDFLAGS_STATIC = &
        "@LDFLAGS_STATIC@ @RPC_CFLAGS@"
-  character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
-       "@LDFLAGS_HEPMC@"
+  character(*), parameter :: DEFAULT_LDFLAGS_HEPMC2 = &
+       "@LDFLAGS_HEPMC2@"
+  character(*), parameter :: DEFAULT_LDFLAGS_HEPMC3 = &
+       "@LDFLAGS_HEPMC3@"
   character(*), parameter :: DEFAULT_LDFLAGS_LCIO = &
        "@LDFLAGS_LCIO@"
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
