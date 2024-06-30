@@ -263,6 +263,17 @@ case $host in
   ;;
 esac
 case $FC_VENDOR in
+gfortran)
+  case $host in
+  *-darwin*)
+     AC_FC_LIBRARY_LDFLAGS()
+     FCLIBS="$FCLIBS -lgcc"
+     ;;
+  *)
+     AC_FC_LIBRARY_LDFLAGS()
+     ;;
+  esac
+  ;;
 NAG)
   WO_NAGFOR_LIBRARY_LDFLAGS()
   ;;
