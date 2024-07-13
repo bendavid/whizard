@@ -856,6 +856,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/susyhit.ref \
     functional_tests/ref-output/template_me_1.ref \
     functional_tests/ref-output/template_me_2.ref \
+    functional_tests/ref-output/template_me_3.ref \
     functional_tests/ref-output/testproc_1.ref \
     functional_tests/ref-output/testproc_2.ref \
     functional_tests/ref-output/testproc_3.ref \
@@ -1461,6 +1462,7 @@ MISC_TESTS_SIN = \
     functional_tests/tauola_3.sin \
     functional_tests/template_me_1.sin \
     functional_tests/template_me_2.sin \
+    functional_tests/template_me_3.sin \
     functional_tests/testproc_1.sin \
     functional_tests/testproc_2.sin \
     functional_tests/testproc_3.sin \

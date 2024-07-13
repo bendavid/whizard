@@ -4,6 +4,9 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.4.1
 
+2024-07-13
+	Bug fix: correct normalization for template MEs
+
 2024-06-30
 	Bug fix: static linking on Darwin with clang/gfortran
 

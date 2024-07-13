@@ -57,6 +57,7 @@ TESTS_DEFAULT = \
     testproc_12.run \
     template_me_1.run \
     template_me_2.run \
+    template_me_3.run \
     model_scheme_1.run \
     rebuild_1.run \
     rebuild_4.run \

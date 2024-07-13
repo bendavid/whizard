@@ -1,0 +1,38 @@
+# SINDARIN input for WHIZARD self-test
+# Testing the template ME method for non-constant kinematics
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+seed = 0
+
+phs_off_shell = 1
+phs_t_channel = 2
+
+$method = "template"
+
+process template_me_3_p1 = e1, E1 => Z, H
+
+
+me = 0
+
+sqrts = 500 GeV
+
+
+beams = e1, E1 => gaussian
+gaussian_spread1 = 5%
+gaussian_spread2 = 10%
+
+iterations = 1:1000
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+integrate (template_me_3_p1) 
+
+n_events = 5
+sample_format = lhef
+?sample_pacify = true
+simulate (template_me_3_p1)

@@ -2028,6 +2028,7 @@ value in this context.
 <<Template matrix elements: procedures>>=
   module subroutine template_me_state_reset_new_kinematics (object)
     class(template_me_state_t), intent(inout) :: object
+    object%new_kinematics = .true.
   end subroutine template_me_state_reset_new_kinematics
 
 @
@@ -2206,8 +2207,8 @@ allowed.  Here we have to consult the matrix-element driver.
 the (only) term.  We assume that everything has been set up correctly,
 so the array fits.
 
-%We reset the [[new_kinematics]] flag, so that the next call to
-%[[compute_amplitude]] will evaluate the matrix element.
+We reset the [[new_kinematics]] flag, so that the next call to
+[[compute_amplitude]] will evaluate the matrix element.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: compute_hard_kinematics => &
        prc_template_me_compute_hard_kinematics
