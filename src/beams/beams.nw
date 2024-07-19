@@ -20727,7 +20727,6 @@ submodule (sf_gaussian) sf_gaussian_s
 
   use io_units
   use format_defs, only: FMT_12
-  use file_registries
   use diagnostics
   use lorentz
 
@@ -20740,14 +20739,6 @@ contains
 end submodule sf_gaussian_s
 
 @ %def sf_gaussian_s
-@
-\subsection{The beam-data file registry}
-We manage data files via the [[file_registries]] module.  To this end,
-we keep the registry as a private module variable here.
-<<CCC SF gaussian: variables>>=
-  type(file_registry_t), save :: beam_file_registry
-
-@ %def beam_file_registry
 @
 \subsection{Data type}
 We store the spread for each beam, as a relative number related to the beam
