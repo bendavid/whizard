@@ -5232,25 +5232,33 @@ the first one.
   procedure :: mapping => resonance_history_mapping
 <<Resonances: sub interfaces>>=
     module function resonance_history_mapping &
-         (res_hist, p, i_gluon) result (p_map)
+         (res_hist, p, i_gluon, i_con) result (p_map)
       real(default) :: p_map
       class(resonance_history_t), intent(in) :: res_hist
       type(vector4_t), intent(in), dimension(:) :: p
-      integer, intent(in), optional :: i_gluon
+      integer, intent(in), optional :: i_gluon, i_con
     end function resonance_history_mapping
 <<Resonances: procedures>>=
   module function resonance_history_mapping &
-       (res_hist, p, i_gluon) result (p_map)
+       (res_hist, p, i_gluon, i_con) result (p_map)
     real(default) :: p_map
     class(resonance_history_t), intent(in) :: res_hist
     type(vector4_t), intent(in), dimension(:) :: p
-    integer, intent(in), optional :: i_gluon
+    integer, intent(in), optional :: i_gluon, i_con
     integer :: i_res
     real(default) :: s
     p_map = one
     do i_res = 1, res_hist%n_resonances
        associate (res => res_hist%resonances(i_res))
-          s = compute_resonance_mass (p, res%contributors%c, i_gluon)**2
+          if (present (i_con)) then
+             if (i_res == i_con) then
+                s = compute_resonance_mass (p, res%contributors%c, i_gluon)**2
+             else
+                s = compute_resonance_mass (p, res%contributors%c)**2
+             end if
+          else
+             s = compute_resonance_mass (p, res%contributors%c, i_gluon)**2
+          end if
           p_map = p_map * res%mapping (s)
        end associate
     end do
@@ -24959,7 +24967,7 @@ submodule (phs_fks) phs_fks_s
   use format_utils, only: write_separator
   use physics_defs
   use flavors
-  use pdg_arrays, only: is_colored
+  use pdg_arrays, only: is_colored, is_charged
   use cascades
   use cascades2
   use ttv_formfactors, only: generate_on_shell_decay_threshold, m1s_to_mpole
@@ -27083,10 +27091,11 @@ recoiling momenta.
        phs_fks_generator_generate_fsr_resonances
 <<PHS fks: sub interfaces>>=
     module subroutine phs_fks_generator_generate_fsr_resonances (generator, &
-         emitter, i_phs, i_con, p_born, p_real, xi_y_phi, no_jacobians)
+         emitter, i_phs, i_con, boost_to_cm, p_born, p_real, xi_y_phi, no_jacobians)
       class(phs_fks_generator_t), intent(inout) :: generator
       integer, intent(in) :: emitter, i_phs
       integer, intent(in) :: i_con
+      type(lorentz_transformation_t), intent(in) :: boost_to_cm
       type(vector4_t), intent(in), dimension(:) :: p_born
       type(vector4_t), intent(inout), dimension(:) :: p_real
       real(default), intent(in), dimension(3), optional :: xi_y_phi
@@ -27094,10 +27103,11 @@ recoiling momenta.
     end subroutine phs_fks_generator_generate_fsr_resonances
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_generate_fsr_resonances (generator, &
-       emitter, i_phs, i_con, p_born, p_real, xi_y_phi, no_jacobians)
+       emitter, i_phs, i_con, boost_to_cm, p_born, p_real, xi_y_phi, no_jacobians)
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: emitter, i_phs
     integer, intent(in) :: i_con
+    type(lorentz_transformation_t), intent(in) :: boost_to_cm
     type(vector4_t), intent(in), dimension(:) :: p_born
     type(vector4_t), intent(inout), dimension(:) :: p_real
     real(default), intent(in), dimension(3), optional :: xi_y_phi
@@ -27141,7 +27151,7 @@ recoiling momenta.
 
     call generator%generate_fsr_in (p_born, p_real)
 
-    p_resonance = generator%real_kinematics%xi_ref_momenta(i_con)
+    p_resonance = boost_to_cm * generator%real_kinematics%xi_ref_momenta(i_con)
     q0 = p_resonance**1
 
     boost_to_resonance = inverse (boost (p_resonance, q0))
@@ -27520,8 +27530,8 @@ $\xi$.
       p = generator%real_kinematics%p_born_cms%phs_point(1)
       generator%real_kinematics%supply_xi_max = .true.
       if (present (i_con)) then
-         call generator%generate_fsr (emitter, i_phs, i_con, p, p_real, &
-              xi_y_phi, no_jacobians)
+         call generator%generate_fsr (emitter, i_phs, i_con, inverse (phs%lt_cm_to_lab), &
+              p, p_real, xi_y_phi, no_jacobians)
       else
          call generator%generate_fsr (emitter, i_phs, p, p_real, &
               xi_y_phi, no_jacobians)
@@ -27598,7 +27608,7 @@ $\xi$.
     class(phs_fks_t), intent(inout) :: phs
     type(vector4_t), intent(in), dimension(:) :: p
     logical, intent(in) :: threshold
-    integer :: i_phs, i_con, emitter
+    integer :: i_phs, i, i_con, emitter
     do i_phs = 1, size (phs%phs_identifiers)
        associate (phs_id => phs%phs_identifiers(i_phs), generator => phs%generator)
           emitter = phs_id%emitter
@@ -27606,10 +27616,18 @@ $\xi$.
              call generator%compute_xi_max (emitter, i_phs, p, &
                   generator%real_kinematics%xi_max(i_phs), i_con = thr_leg(emitter))
           else if (allocated (phs_id%contributors)) then
-             do i_con = 1, size (phs_id%contributors)
-                call generator%compute_xi_max (emitter, i_phs, p, &
-                     generator%real_kinematics%xi_max(i_phs), i_con = 1)
+             do i = 1, size (generator%resonance_contributors)
+                if (all (generator%resonance_contributors(i)%c == &
+                   phs_id%contributors)) then
+                   i_con = i
+                   exit
+                else
+                   i_con = 1
+                end if
              end do
+             call generator%compute_xi_max (emitter, i_phs, p, &
+                  generator%real_kinematics%xi_max(i_phs), i_con = i_con, &
+                  boost_to_cm = inverse (phs%lt_cm_to_lab))
           else
              call generator%compute_xi_max (emitter, i_phs, p, &
                   generator%real_kinematics%xi_max(i_phs))
@@ -28536,22 +28554,24 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
   procedure :: compute_xi_max => phs_fks_generator_compute_xi_max
 <<PHS fks: sub interfaces>>=
     module subroutine phs_fks_generator_compute_xi_max (generator, emitter, &
-         i_phs, p, xi_max, i_con, y_in)
+         i_phs, p, xi_max, i_con, boost_to_cm, y_in)
       class(phs_fks_generator_t), intent(inout) :: generator
       integer, intent(in) :: i_phs, emitter
       type(vector4_t), intent(in), dimension(:) :: p
       real(default), intent(out) :: xi_max
       integer, intent(in), optional :: i_con
+      type(lorentz_transformation_t), intent(in), optional :: boost_to_cm
       real(default), intent(in), optional :: y_in
     end subroutine phs_fks_generator_compute_xi_max
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_compute_xi_max (generator, emitter, &
-       i_phs, p, xi_max, i_con, y_in)
+       i_phs, p, xi_max, i_con, boost_to_cm, y_in)
     class(phs_fks_generator_t), intent(inout) :: generator
     integer, intent(in) :: i_phs, emitter
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(out) :: xi_max
     integer, intent(in), optional :: i_con
+    type(lorentz_transformation_t), intent(in), optional :: boost_to_cm
     real(default), intent(in), optional :: y_in
     real(default) :: q0
     type(vector4_t), dimension(:), allocatable :: pp, pp_decay
@@ -28572,7 +28592,11 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
           y = rad_var%y(i_phs)
        end if
        if (present (i_con)) then
-          p_res = rad_var%xi_ref_momenta(i_con)
+          if (present (boost_to_cm)) then
+             p_res = boost_to_cm * rad_var%xi_ref_momenta(i_con)
+          else
+             p_res = rad_var%xi_ref_momenta(i_con)
+          end if
           L_to_resonance = inverse (boost (p_res, q0))
           pp = L_to_resonance * p
        else
@@ -28902,7 +28926,7 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
   procedure :: prepare_generation => phs_fks_generator_prepare_generation
 <<PHS fks: sub interfaces>>=
     module subroutine phs_fks_generator_prepare_generation (generator, &
-         r_in, i_phs, emitter, p_born, phs_identifiers, contributors, i_con)
+         r_in, i_phs, emitter, p_born, phs_identifiers, contributors, boost_to_cm, i_con)
       class(phs_fks_generator_t), intent(inout) :: generator
       real(default), dimension(3), intent(in) :: r_in
       integer, intent(in) :: i_phs, emitter
@@ -28910,11 +28934,12 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
       type(phs_identifier_t), intent(in), dimension(:) :: phs_identifiers
       type(resonance_contributors_t), intent(in), dimension(:), optional :: &
            contributors
+      type(lorentz_transformation_t), intent(in), optional :: boost_to_cm
       integer, intent(in), optional :: i_con
     end subroutine phs_fks_generator_prepare_generation
 <<PHS fks: procedures>>=
   module subroutine phs_fks_generator_prepare_generation (generator, &
-       r_in, i_phs, emitter, p_born, phs_identifiers, contributors, i_con)
+       r_in, i_phs, emitter, p_born, phs_identifiers, contributors, boost_to_cm, i_con)
     class(phs_fks_generator_t), intent(inout) :: generator
     real(default), dimension(3), intent(in) :: r_in
     integer, intent(in) :: i_phs, emitter
@@ -28922,13 +28947,15 @@ This way, all components of [[p_real]] are constructed in the real Lab frame.
     type(phs_identifier_t), intent(in), dimension(:) :: phs_identifiers
     type(resonance_contributors_t), intent(in), dimension(:), optional :: &
          contributors
+    type(lorentz_transformation_t), intent(in), optional :: boost_to_cm
     integer, intent(in), optional :: i_con
     call generator%generate_radiation_variables (r_in, p_born, phs_identifiers)
     call generator%compute_xi_ref_momenta &
          (generator%real_kinematics%p_born_lab%phs_point(1)%get (), &
          contributors)
     call generator%compute_xi_max (emitter, i_phs, p_born, &
-         generator%real_kinematics%xi_max(i_phs), i_con = i_con)
+         generator%real_kinematics%xi_max(i_phs), i_con = i_con, &
+         boost_to_cm = boost_to_cm)
   end subroutine phs_fks_generator_prepare_generation
 
 @ %def phs_fks_generator_prepare_generation
@@ -29138,16 +29165,17 @@ Both do not depend on the real radiation so we can leave them as they are.
 @
 <<PHS fks: procedures>>=
   subroutine clean_resonance_histories &
-       (res_hist, n_in, flv, res_hist_clean, success)
+       (res_hist, n_in, flv, nlo_correction_type, res_hist_clean, success)
     type(resonance_history_t), intent(in), dimension(:) :: res_hist
     integer, intent(in) :: n_in
     integer, intent(in), dimension(:) :: flv
+    type(string_t) :: nlo_correction_type
     type(resonance_history_t), intent(out), dimension(:), allocatable :: &
          res_hist_clean
     logical, intent(out) :: success
     integer :: i_hist
     type(resonance_history_t), dimension(:), allocatable :: &
-         res_hist_colored, res_hist_contracted
+         res_hist_colored, res_hist_charged, res_hist_contracted
 
     if (debug_on) call msg_debug (D_SUBTRACTION, "resonance_mapping_init")
     if (debug_active (D_SUBTRACTION)) then
@@ -29157,8 +29185,13 @@ Both do not depend on the real radiation so we can leave them as they are.
        end do
     end if
 
-    call remove_uncolored_resonances ()
-    call contract_resonances (res_hist_colored, res_hist_contracted)
+    if (nlo_correction_type == "QCD") then
+       call remove_uncolored_resonances ()
+       call contract_resonances (res_hist_colored, res_hist_contracted)
+    else
+       call remove_uncharged_resonances ()
+       call contract_resonances (res_hist_charged, res_hist_contracted)
+    end if
     call remove_subresonances (res_hist_contracted, res_hist_clean)
     !!! Here, we are still not sure whether we actually would rather use
     !!! call remove_multiple_resonances (res_hist_contracted, res_hist_clean)
@@ -29210,6 +29243,41 @@ Both do not depend on the real radiation so we can leave them as they are.
          end if
       end do
     end subroutine remove_uncolored_resonances
+
+    subroutine remove_uncharged_resonances ()
+      type(resonance_history_t), dimension(:), allocatable :: res_hist_tmp
+      integer :: n_hist, nleg_out, n_removed
+      integer :: i_res, i_hist
+      n_hist = size (res_hist)
+      nleg_out = size (flv) - n_in
+      allocate (res_hist_tmp (n_hist))
+      allocate (res_hist_charged (n_hist))
+      do i_hist = 1, n_hist
+         res_hist_tmp(i_hist) = res_hist(i_hist)
+         call res_hist_tmp(i_hist)%add_offset (n_in)
+         n_removed = 0
+         do i_res = 1, res_hist_tmp(i_hist)%n_resonances
+            associate (resonance => res_hist_tmp(i_hist)%resonances(i_res - n_removed))
+               if (.not. any (is_charged (flv (resonance%contributors%c))) &
+                  .or. size (resonance%contributors%c) == nleg_out) then
+                     call res_hist_tmp(i_hist)%remove_resonance (i_res - n_removed)
+                     n_removed = n_removed + 1
+               end if
+            end associate
+         end do
+         if (allocated (res_hist_tmp(i_hist)%resonances)) then
+            if (any (res_hist_charged == res_hist_tmp(i_hist))) then
+               cycle
+            else
+               do i_res = 1, res_hist_tmp(i_hist)%n_resonances
+                  associate (resonance => res_hist_tmp(i_hist)%resonances(i_res))
+                     call res_hist_charged(i_hist)%add_resonance (resonance)
+                  end associate
+               end do
+            end if
+         end if
+      end do
+    end subroutine remove_uncharged_resonances
 
     subroutine contract_resonances (res_history_in, res_history_out)
       type(resonance_history_t), intent(in), dimension(:) :: res_history_in
@@ -29301,12 +29369,13 @@ Both do not depend on the real radiation so we can leave them as they are.
   public :: get_filtered_resonance_histories
 <<PHS fks: sub interfaces>>=
     module subroutine get_filtered_resonance_histories &
-         (phs_config, n_in, flv_state, model, excluded_resonances, &
-          resonance_histories_filtered, success)
+         (phs_config, n_in, flv_state, model, nlo_correction_type, &
+          excluded_resonances, resonance_histories_filtered, success)
       type(phs_fks_config_t), intent(inout) :: phs_config
       integer, intent(in) :: n_in
       integer, intent(in), dimension(:,:), allocatable :: flv_state
       type(model_t), intent(in) :: model
+      type(string_t), intent(in) :: nlo_correction_type
       type(string_t), intent(in), dimension(:), allocatable :: &
            excluded_resonances
       type(resonance_history_t), intent(out), dimension(:), &
@@ -29315,12 +29384,13 @@ Both do not depend on the real radiation so we can leave them as they are.
     end subroutine get_filtered_resonance_histories
 <<PHS fks: procedures>>=
   module subroutine get_filtered_resonance_histories &
-       (phs_config, n_in, flv_state, model, excluded_resonances, &
-        resonance_histories_filtered, success)
+       (phs_config, n_in, flv_state, model, nlo_correction_type, &
+        excluded_resonances, resonance_histories_filtered, success)
     type(phs_fks_config_t), intent(inout) :: phs_config
     integer, intent(in) :: n_in
     integer, intent(in), dimension(:,:), allocatable :: flv_state
     type(model_t), intent(in) :: model
+    type(string_t), intent(in) :: nlo_correction_type
     type(string_t), intent(in), dimension(:), allocatable :: &
          excluded_resonances
     type(resonance_history_t), intent(out), dimension(:), &
@@ -29331,8 +29401,8 @@ Both do not depend on the real radiation so we can leave them as they are.
        resonance_histories_clean!, resonance_histories_filtered
     allocate (resonance_histories (size (phs_config%get_resonance_histories ())))
     resonance_histories = phs_config%get_resonance_histories ()
-    call clean_resonance_histories (resonance_histories, &
-         n_in, flv_state (:,1), resonance_histories_clean, success)
+    call clean_resonance_histories (resonance_histories, n_in, &
+         flv_state (:,1), nlo_correction_type, resonance_histories_clean, success)
     if (success .and. allocated (excluded_resonances)) then
        call filter_particles_from_resonances (resonance_histories_clean, &
             excluded_resonances, model, resonance_histories_filtered)
@@ -29830,7 +29900,7 @@ end module phs_fks_uti
             resonance_lists (i_con, 2), ")"
        call generator%compute_xi_max (emitter, i_phs, p_born, &
             generator%real_kinematics%xi_max(i_phs), i_con = i_con)
-       call generator%generate_fsr (emitter, i_phs, i_con, p_born, p_real)
+       call generator%generate_fsr (emitter, i_phs, i_con, identity, p_born, p_real)
        call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
        call write_separator(u)
        write (u, "(A)") "* Check if resonance masses are conserved: "

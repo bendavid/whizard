@@ -12912,6 +12912,7 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
          type is (phs_fks_config_t)
             call get_filtered_resonance_histories (phs_config, &
                  data_born%n_in, flavor_born, model, &
+                 pcm%settings%nlo_correction_type, &
                  template%excluded_resonances, &
                  resonance_histories, success)
          end select
@@ -12925,6 +12926,8 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
          pcm%settings%use_resonance_mappings = .true.
       end if
     end associate
+    call pcm%region_data%set_mass_color_and_charge (model)
+    call pcm%region_data%set_splitting_info ()
     if (pcm%settings%factorization_mode == FACTORIZATION_THRESHOLD) then
        call pcm%region_data%set_isr_pseudo_regions ()
        call pcm%region_data%split_up_interference_regions_for_threshold ()
@@ -13857,19 +13860,19 @@ object and the squared matrix-element collector.
   procedure :: compute_sqme_mismatch => pcm_nlo_workspace_compute_sqme_mismatch
 <<PCM: sub interfaces>>=
     module subroutine pcm_nlo_workspace_compute_sqme_mismatch (pcm_work, pcm, &
-         alpha_s, separate_uborns, sqme_mism)
+         alpha_s, alpha_qed, separate_uborns, sqme_mism)
       class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
       class(pcm_t), intent(in) :: pcm
-      real(default), intent(in) :: alpha_s
+      real(default), intent(in) :: alpha_s, alpha_qed
       logical, intent(in) :: separate_uborns
       real(default), dimension(:), allocatable, intent(inout) :: sqme_mism
     end subroutine pcm_nlo_workspace_compute_sqme_mismatch
 <<PCM: procedures>>=
   module subroutine pcm_nlo_workspace_compute_sqme_mismatch (pcm_work, pcm, &
-       alpha_s, separate_uborns, sqme_mism)
+       alpha_s, alpha_qed, separate_uborns, sqme_mism)
     class(pcm_nlo_workspace_t), intent(inout) :: pcm_work
     class(pcm_t), intent(in) :: pcm
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_s, alpha_qed
     logical, intent(in) :: separate_uborns
     real(default), dimension(:), allocatable, intent(inout) :: sqme_mism
     select type (pcm)
@@ -13880,7 +13883,7 @@ object and the squared matrix-element collector.
           allocate (sqme_mism (1))
        end if
        sqme_mism = zero
-       sqme_mism = pcm_work%soft_mismatch%evaluate (alpha_s)
+       sqme_mism = pcm_work%soft_mismatch%evaluate (alpha_s, alpha_qed)
     end select
   end subroutine pcm_nlo_workspace_compute_sqme_mismatch
 
@@ -16234,7 +16237,8 @@ and summed over color and helicity. They should not be squared again.
       call connected%setup_connected_matrix (isolated)
       if (term%nlo_type == NLO_VIRTUAL .or. (term%nlo_type == NLO_REAL &
            .and. term%config%i_term_global == term%config%i_sub) &
-           .or. term%nlo_type == NLO_DGLAP) then
+           .or. term%nlo_type == NLO_DGLAP &
+           .or. term%nlo_type == NLO_MISMATCH) then
          !!! We do not care about the subtraction matrix elements in
          !!! connected%matrix, because all entries there are supposed
          !!! to be squared. To be able to match with flavor quantum numbers,
@@ -16735,21 +16739,21 @@ BLHA-based OLP, so for \texttt{GoSam} we assume the same structure.
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_sqme_mismatch => term_instance_evaluate_sqme_mismatch
 <<Instances: sub interfaces>>=
-    module subroutine term_instance_evaluate_sqme_mismatch (term, alpha_s)
+    module subroutine term_instance_evaluate_sqme_mismatch (term, alpha_s, alpha_qed)
       class(term_instance_t), intent(inout) :: term
-      real(default), intent(in) :: alpha_s
+      real(default), intent(in) :: alpha_s, alpha_qed
     end subroutine term_instance_evaluate_sqme_mismatch
 <<Instances: procedures>>=
-  module subroutine term_instance_evaluate_sqme_mismatch (term, alpha_s)
+  module subroutine term_instance_evaluate_sqme_mismatch (term, alpha_s, alpha_qed)
     class(term_instance_t), intent(inout) :: term
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_s, alpha_qed
     real(default), dimension(:), allocatable :: sqme_mism
     if (term%nlo_type /= NLO_MISMATCH) call msg_fatal &
        ("Trying to evaluate soft mismatch with unsuited term_instance.")
     select type (pcm_work => term%pcm_work)
     type is (pcm_nlo_workspace_t)
        call pcm_work%compute_sqme_mismatch &
-            (term%pcm, alpha_s, term%connected%has_matrix, sqme_mism)
+            (term%pcm, alpha_s, alpha_qed, term%connected%has_matrix, sqme_mism)
     end select
     call term%connected%trace%set_only_matrix_element &
          (1, cmplx (sum (sqme_mism) * term%weight, 0, default))
@@ -19416,7 +19420,7 @@ terms, iterating over all active process components.
                   case (NLO_VIRTUAL)
                      call term%evaluate_sqme_virt (alpha_s, alpha_qed)
                   case (NLO_MISMATCH)
-                     call term%evaluate_sqme_mismatch (alpha_s)
+                     call term%evaluate_sqme_mismatch (alpha_s, alpha_qed)
                   case (NLO_DGLAP)
                      call term%evaluate_sqme_dglap (alpha_s, alpha_qed)
                   end select

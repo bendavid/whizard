@@ -11572,7 +11572,8 @@ been shifted to [[n_vir]]. We thus take [[n_in]] from the [[particle_set]].
     logical :: use_contributors
     integer :: n_regions
     integer :: i_term
-    type(vector4_t), dimension(:), allocatable :: p_real
+    type(lorentz_transformation_t) :: boost_to_cm
+    type(vector4_t), dimension(:), allocatable :: p_real, p_born
 
     select type (pcm_work => evt%process_instance%pcm_work)
     class is (pcm_nlo_workspace_t)
@@ -11581,6 +11582,9 @@ been shifted to [[n_vir]]. We thus take [[n_in]] from the [[particle_set]].
           i_term = evt%get_i_term ()
           event_deps%p_born_lab%phs_point(1) = &
                evt%process_instance%term(i_term)%p_seed
+          p_born = event_deps%p_born_lab%phs_point(1)%get ()
+          boost_to_cm = inverse (boost (p_born(1) + p_born(2), &
+                        (p_born(1) + p_born(2))**1))
           event_deps%p_born_cms%phs_point(1) &
                = evt%boost_to_cms (event_deps%p_born_lab%phs_point(1))
           call evt%phs_fks_generator%set_sqrts_hat &
@@ -11595,10 +11599,18 @@ been shifted to [[n_vir]]. We thus take [[n_in]] from the [[particle_set]].
              if (event_deps%phs_identifiers(i_phs)%evaluated) cycle
              emitter = event_deps%phs_identifiers(i_phs)%emitter
              associate (generator => evt%phs_fks_generator)
-                if (emitter <= evt%process%get_n_in ()) then
+                if (use_contributors) then
+                   i_con = event_deps%alr_to_i_con(alr)
+                   call generator%prepare_generation (x_rad, i_phs, emitter, &
+                        event_deps%p_born_cms%phs_point(1)%get (), &
+                        event_deps%phs_identifiers, event_deps%contributors, &
+                        boost_to_cm, i_con)
+                else
                    call generator%prepare_generation (x_rad, i_phs, emitter, &
                         event_deps%p_born_cms%phs_point(1)%get (), &
                         event_deps%phs_identifiers)
+                end if
+                if (emitter <= evt%process%get_n_in ()) then
                    ! TODO wk 19-02-28: intent of p_real (also below)?
                    p_real = event_deps%p_real_lab%phs_point(i_phs)
                    select case (generator%isr_kinematics%isr_mode)
@@ -11616,13 +11628,9 @@ been shifted to [[n_vir]]. We thus take [[n_in]] from the [[particle_set]].
                         = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
                 else
                    if (use_contributors) then
-                      i_con = event_deps%alr_to_i_con(alr)
-                      call generator%prepare_generation (x_rad, i_phs, emitter, &
-                           event_deps%p_born_cms%phs_point(1)%get (), &
-                           event_deps%phs_identifiers, event_deps%contributors, i_con)
                       p_real = event_deps%p_real_cms%phs_point(i_phs)
                       call generator%generate_fsr (emitter, i_phs, i_con, &
-                           event_deps%p_born_cms%phs_point(1)%get (), &
+                           boost_to_cm, event_deps%p_born_cms%phs_point(1)%get (), &
                            p_real)
                       event_deps%p_real_cms%phs_point(i_phs) = p_real
                    else

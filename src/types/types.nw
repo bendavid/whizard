@@ -1687,6 +1687,23 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function is_colored
 
 @ %def is_colored
+@ Check if pdg-number corresponds to a charged particle
+<<PDG arrays: public>>=
+  public :: is_charged
+<<PDG arrays: sub interfaces>>=
+    elemental module function is_charged (pdg_nr)
+      logical :: is_charged
+      integer, intent(in) :: pdg_nr
+    end function is_charged
+<<PDG arrays: procedures>>=
+  elemental module function is_charged (pdg_nr)
+    logical :: is_charged
+    integer, intent(in) :: pdg_nr
+    is_charged = is_quark (pdg_nr) .or. is_charged_lepton (pdg_nr) .or. &
+                 abs (pdg_nr) == W_BOSON
+  end function is_charged
+
+@ %def is_charged
 @ Check if the pdg-number corresponds to a lepton
 <<PDG arrays: public>>=
   public :: is_lepton

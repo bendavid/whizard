@@ -2224,6 +2224,11 @@ singularity if the radiated parton becomes soft.
        call msg_bug ("singular_region_assign: Trying to copy a " // &
             "singular region without allocated ftuples!")
     end if
+    if (allocated (reg_in%i_reg_to_i_con)) &
+       reg_out%i_reg_to_i_con = reg_in%i_reg_to_i_con
+    reg_out%pseudo_isr = reg_in%pseudo_isr
+    reg_out%sc_required = reg_in%sc_required
+    reg_out%eqv_index = reg_in%eqv_index
   end subroutine singular_region_assign
 @ %def singular_region_assign
 @ Two singular regions match if they would produce the same amplitude.
@@ -2328,36 +2333,28 @@ we have to check other attributes as well.
     n_alr_res = 0
     do alr = 1, size (regions)
        do i_res = 1, size (res_map%res_histories)
-          if (res_map%res_histories(i_res)%contains_leg &
-               (regions(alr)%emitter)) &
-               n_alr_res = n_alr_res + 1
+          n_alr_res = n_alr_res + 1
        end do
     end do
 
     allocate (res_map%alr_to_i_res (n_alr_res))
-    allocate (res_map%i_res_to_alr (size (res_map%res_histories), 10))
+    allocate (res_map%i_res_to_alr (size (res_map%res_histories), n_alr_res))
     res_map%i_res_to_alr = 0
     allocate (alr_new_to_old (n_alr_res))
     alr_new = 1
     do alr = 1, size (regions)
        do i_res = 1, size (res_map%res_histories)
-          if (res_map%res_histories(i_res)%contains_leg &
-               (regions(alr)%emitter)) then
-             res_map%alr_to_i_res (alr_new) = i_res
-             alr_new_to_old (alr_new) = alr
-             alr_new = alr_new  + 1
-          end if
+          res_map%alr_to_i_res (alr_new) = i_res
+          alr_new_to_old (alr_new) = alr
+          alr_new = alr_new  + 1
        end do
     end do
 
     do i_res = 1, size (res_map%res_histories)
        k = 1
        do alr = 1, size (regions)
-          if (res_map%res_histories(i_res)%contains_leg &
-               (regions(alr)%emitter)) then
-             res_map%i_res_to_alr (i_res, k) = alr
-             k = k + 1
-          end if
+          res_map%i_res_to_alr (i_res, k) = alr
+          k = k + 1
        end do
     end do
     if (debug_active (D_SUBTRACTION)) then
@@ -2412,22 +2409,22 @@ we have to check other attributes as well.
   procedure :: get_resonance_value => resonance_mapping_get_resonance_value
 <<FKS regions: sub interfaces>>=
     module function resonance_mapping_get_resonance_value &
-         (res_map, i_res, p, i_gluon) result (p_map)
+         (res_map, i_res, p, i_gluon, i_con) result (p_map)
       real(default) :: p_map
       class(resonance_mapping_t), intent(in) :: res_map
       integer, intent(in) :: i_res
       type(vector4_t), intent(in), dimension(:) :: p
-      integer, intent(in), optional :: i_gluon
+      integer, intent(in), optional :: i_gluon, i_con
     end function resonance_mapping_get_resonance_value
 <<FKS regions: procedures>>=
   module function resonance_mapping_get_resonance_value &
-       (res_map, i_res, p, i_gluon) result (p_map)
+       (res_map, i_res, p, i_gluon, i_con) result (p_map)
     real(default) :: p_map
     class(resonance_mapping_t), intent(in) :: res_map
     integer, intent(in) :: i_res
     type(vector4_t), intent(in), dimension(:) :: p
-    integer, intent(in), optional :: i_gluon
-    p_map = res_map%res_histories(i_res)%mapping (p, i_gluon)
+    integer, intent(in), optional :: i_gluon, i_con
+    p_map = res_map%res_histories(i_res)%mapping (p, i_gluon, i_con)
   end function resonance_mapping_get_resonance_value
 
 @ %def resonance_mapping_get_resonance_value
@@ -2717,8 +2714,6 @@ $\sum_\alpha S_\alpha = 1$.
          flst_alr, nlo_correction_type)
     reg_data%n_flv_real = maxval (reg_data%regions%real_index)
     call reg_data%find_emitters ()
-    call reg_data%set_mass_color_and_charge (model)
-    call reg_data%set_splitting_info ()
   end subroutine region_data_init
 
 @ %def region_data_init
@@ -2799,7 +2794,7 @@ must be compatible with the resonance.
        (reg_data)
     class(region_data_t), intent(inout) :: reg_data
     integer :: alr
-    integer, dimension(:), allocatable :: alr_new_to_old
+    integer, dimension(:), allocatable :: alr_res
     integer :: n_alr_new
     type(singular_region_t), dimension(:), allocatable :: save_regions
     if (debug_on)  call msg_debug &
@@ -2815,13 +2810,13 @@ must be compatible with the resonance.
        end do
 
        associate (res_map => fks_mapping%res_map)
-          call res_map%set_alr_to_i_res (reg_data%regions, alr_new_to_old)
+          call res_map%set_alr_to_i_res (reg_data%regions, alr_res)
           deallocate (reg_data%regions)
-          n_alr_new = size (alr_new_to_old)
+          n_alr_new = size (alr_res)
           reg_data%n_regions = n_alr_new
           allocate (reg_data%regions (n_alr_new))
           do alr = 1, n_alr_new
-             reg_data%regions(alr) = save_regions(alr_new_to_old (alr))
+             reg_data%regions(alr) = save_regions(alr_res (alr))
              reg_data%regions(alr)%i_res = res_map%alr_to_i_res (alr)
           end do
        end associate
@@ -3150,11 +3145,16 @@ between emitters 0, 1 and 2.
     type is (fks_mapping_resonances_t)
        associate (res_history => fks_mapping%res_map%res_histories (i_res))
           do i = 1, res_history%n_resonances
-             if (any (res_history%resonances(i)%contributors%c == emitter)) then
+!!! TODO (pb-2023): Extend this condition to arbitrary emitters
+             if (any (res_history%resonances(i)%contributors%c == emitter) &
+                .or. emitter <= reg_data%n_in) then
                 allocate (c (size (res_history%resonances(i)%contributors%c)))
                 c = res_history%resonances(i)%contributors%c
                 success = .true.
                 exit
+             else
+                call msg_fatal ("FKS resonance aware method with FS emitters not" // &
+                                "associated to resonance currently not available")
              end if
           end do
        end associate
@@ -4281,13 +4281,14 @@ of the present one is increased.
                  (i_res, i_em, contributors, share_emitter)
             !!! Lookup contributor index
             do i_con = 1, size (reg_data%alr_contributors)
+               if (.not. share_emitter) cycle
                if (all (reg_data%alr_contributors(i_con)%c == contributors)) &
                     then
                   sregion%i_reg_to_i_con (i_reg) = i_con
                   exit
                end if
             end do
-            deallocate (contributors)
+            if (allocated (contributors)) deallocate (contributors)
          end do
        end associate
     end do
@@ -4335,12 +4336,10 @@ resonances are possible for all ftuples
              do i_reg = 1, n_reg_save
                 associate (ftuple_new => sregion%ftuples(k))
                    i_em = ftuple_save(i_reg)%ireg(1)
-                   if (reg_data%emitter_is_in_resonance (i_res, i_em)) then
-                      call ftuple_new%set (i_em, ftuple_save(i_reg)%ireg(2))
-                      ftuple_new%i_res = i_res
-                      ftuple_new%splitting_type = ftuple_save(i_reg)%splitting_type
-                      k = k + 1
-                   end if
+                   call ftuple_new%set (i_em, ftuple_save(i_reg)%ireg(2))
+                   ftuple_new%i_res = i_res
+                   ftuple_new%splitting_type = ftuple_save(i_reg)%splitting_type
+                   k = k + 1
                 end associate
              end do
           end do
@@ -4357,8 +4356,7 @@ resonances are possible for all ftuples
       do i_reg = 1, sregion%nregions
          do i_res = 1, n_res
             i_em = sregion%ftuples(i_reg)%ireg(1)
-            if (reg_data%emitter_is_in_resonance (i_res, i_em)) &
-               n_new = n_new + 1
+            n_new = n_new + 1
          end do
       end do
     end function count_n_new_ftuples
@@ -5669,24 +5667,76 @@ leave out the denominator because it will cancel out anyway.
     integer, intent(in) :: i, j
     integer, intent(in), optional :: i_con
     real(default) :: E1, E2
-    integer :: ii_con
+    integer :: ii_con, em, rad, k
     if (present (i_con)) then
        ii_con = i_con
     else
        call msg_fatal ("Resonance mappings require resonance index as input!")
     end if
     d = 0
-    if (i /= j) then
-       if (i > 2 .and. j > 2) then
-          associate (p_res => map%res_map%p_res (ii_con))
-             E1 = p(i) * p_res
-             E2 = p(j) * p_res
-             d = two * p(i) * p(j) * E1 * E2 / (E1 + E2)**2
-          end associate
-       else
-          call msg_fatal ("Resonance mappings are not implemented for ISR")
-       end if
+    if (i < j) then
+       em = i
+       rad = j
+    else
+       em = j
+       rad = i
     end if
+    associate (p_res => map%res_map%p_res (ii_con))
+       if (em <= 2) then
+          d = dij_isr (2, em, rad, p, 1._default)
+       else
+          d = compute_dij_res (em, rad, p_res, p)
+       end if
+    end associate
+  contains
+
+    function compute_dij_res (i, j, p_res, p) result (d_ij)
+      real(default) :: d_ij
+      integer, intent(in) :: i, j
+      type(vector4_t), intent(in) ::  p_res
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default) :: E1, E2
+      E1 = p(i) * p_res
+      E2 = p(j) * p_res
+      d_ij = two * p(i) * p(j) * E1 * E2 / (E1 + E2)**2
+    end function compute_dij_res
+
+    function dij_isr (n_in, i, j, p, expo) result (d_ij)
+      real(default) :: d_ij
+      integer, intent(in) :: n_in, i, j
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: expo
+      real(default) :: E, y
+      select case (n_in)
+      case (1)
+         call get_emitter_variables (1, i, j, p, E, y)
+         d_ij = (E**2 * (one - y**2))**expo
+      case (2)
+         if ((i == 0 .and. j > 2) .or. (j == 0 .and. i > 2)) then
+            call get_emitter_variables (0, i, j, p, E, y)
+            d_ij = (E**2 * (one - y**2))**expo
+         else if ((i == 1 .and. j > 2) .or. (j == 1 .and. i > 2)) then
+            call get_emitter_variables (1, i, j, p, E, y)
+            d_ij = (two * E**2 * (one - y))**expo
+         else if ((i == 2 .and. j > 2) .or. (j == 2 .and. i > 2)) then
+            call get_emitter_variables (2, i, j, p, E, y)
+            d_ij = (two * E**2 * (one + y))**expo
+         end if
+      end select
+    end function dij_isr
+
+    subroutine get_emitter_variables (i_check, i, j, p, E, y)
+       integer, intent(in) :: i_check, i, j
+       type(vector4_t), intent(in), dimension(:) :: p
+       real(default), intent(out) :: E, y
+       if (j == i_check) then
+           E = energy (p(i))
+           y = polar_angle_ct (p(i))
+       else
+           E = energy (p(j))
+           y = polar_angle_ct(p(j))
+       end if
+    end subroutine get_emitter_variables
   end function fks_mapping_resonances_dij
 
 @ %def fks_mapping_resonances_dij
@@ -5720,8 +5770,12 @@ leave out the denominator because it will cancel out anyway.
           call ftuple%get (i, j)
           i_res = ftuple%i_res
        end associate
-       pfr = map%res_map%get_resonance_value (i_res, p_real, nlegreal)
        i_con = sregion%i_reg_to_i_con (i_reg)
+       if (i > 2 .and. j > 2) then
+          pfr = map%res_map%get_resonance_value (i_res, p_real, nlegreal, i_con)
+       else
+          pfr = map%res_map%get_resonance_value (i_res, p_real)
+       end if
        d = d + pfr / map%dij (p_real, i, j, i_con)
     end do
     map%sumdij = d
@@ -5751,7 +5805,11 @@ leave out the denominator because it will cancel out anyway.
     real(default) :: pfr
     integer :: i_gluon
     i_gluon = size (p)
-    pfr = map%res_map%get_resonance_value (i_res, p, i_gluon)
+    if (i > 2 .and. j > 2) then
+       pfr = map%res_map%get_resonance_value (i_res, p, i_gluon, map%i_con)
+    else
+       pfr = map%res_map%get_resonance_value (i_res, p)
+    end if
     value = pfr / (map%dij (p, i, j, map%i_con) * map%sumdij)
   end function fks_mapping_resonances_svalue
 
@@ -5803,19 +5861,62 @@ reference.
     integer, intent(in) :: em
     integer, intent(in), optional :: i_con
     real(default) :: E1, E2
-    integer :: ii_con
+    integer :: ii_con, k
     type(vector4_t) :: pb
     if (present (i_con)) then
        ii_con = i_con
     else
        call msg_fatal ("fks_mapping_resonances requires resonance index")
     end if
+    d = 0
     associate (p_res => map%res_map%p_res(ii_con))
-      pb = p_born(em)
-      E1 = pb * p_res
-      E2 = p_soft * p_res
-      d = two * pb * p_soft * E1 * E2 / E1**2
+       if (em <= 2) then
+          d = dij_soft_isr (2, p_soft, 1._default)
+       else
+          d = compute_dij_soft_res (em, p_res, p_soft)
+       end if
     end associate
+  contains
+
+    function compute_dij_soft_res (i, p_res, p_soft) result (dij_soft)
+       real(default) :: dij_soft
+       type(vector4_t), intent(in) :: p_soft, p_res
+       integer, intent(in) :: i
+       pb = p_born(i)
+       E1 = pb * p_res
+       E2 = p_soft * p_res
+       dij_soft = two * pb * p_soft * E2 / E1
+    end function compute_dij_soft_res
+
+    function dij_soft_isr (n_in, p_soft, expo) result (dij_soft)
+       real(default) :: dij_soft
+       integer, intent(in) :: n_in
+       type(vector4_t), intent(in) :: p_soft
+       real(default), intent(in) :: expo
+       real(default) :: y
+       y = polar_angle_ct (p_soft)
+       select case (n_in)
+       case (1)
+          dij_soft = one - y**2
+       case (2)
+          select case (em)
+          case (0)
+             dij_soft = one - y**2
+          case (1)
+             dij_soft = two * (one - y)
+          case (2)
+             dij_soft = two * (one + y)
+          case default
+             dij_soft = zero
+             call msg_fatal ("fks_mappings_default_dij_soft: n_in > 2")
+          end select
+       case default
+          dij_soft = zero
+          call msg_fatal ("fks_mappings_default_dij_soft: n_in > 2")
+       end select
+       dij_soft = p_soft%p(0)**2 * dij_soft
+       dij_soft = dij_soft**expo
+    end function dij_soft_isr
   end function fks_mapping_resonances_dij_soft
 
 @ %def fks_mapping_resonances_dij_soft
@@ -5856,7 +5957,7 @@ reference.
     map%sumdij_soft = d
   end subroutine fks_mapping_resonances_compute_sumdij_soft
 
-@ %def fks_mapping_resonances_ompute_sumdij_soft
+@ %def fks_mapping_resonances_compute_sumdij_soft
 @
 <<FKS regions: fks mapping resonances: TBP>>=
   procedure :: svalue_soft => fks_mapping_resonances_svalue_soft
@@ -8052,9 +8153,9 @@ only implements the second one.
        if (allocated (reg_data%alr_contributors)) then
           i_contr = reg_data%alr_to_i_contributor (alr)
           k_res = get_resonance_momentum (p_born, reg_data%alr_contributors(i_contr)%c)
-          E_tot2 = k_res%p(0)**2
+          E_tot2 = k_res**2
           L_to_resonance = inverse (boost (k_res, k_res**1))
-          xi_max = two * space_part_norm (L_to_resonance * p_born(em)) / k_res%p(0)
+          xi_max = two * space_part_norm (L_to_resonance * p_born(em)) / k_res**1
        else
           E_tot2 = sqrts**2
           xi_max = two * E_em / sqrts
@@ -8594,31 +8695,39 @@ the direction of the real radiation in the soft limit.
   procedure :: create_softvec_fsr => soft_subtraction_create_softvec_fsr
 <<Real subtraction: sub interfaces>>=
     module subroutine soft_subtraction_create_softvec_fsr &
-         (sub_soft, p_born, y, phi, emitter, xi_ref_momentum)
+         (sub_soft, p_born, p_born_lab, y, phi, emitter, xi_ref_momentum)
       class(soft_subtraction_t), intent(inout) :: sub_soft
-      type(vector4_t), intent(in), dimension(:) :: p_born
+      type(vector4_t), intent(in), dimension(:) :: p_born, p_born_lab
       real(default), intent(in) :: y, phi
       integer, intent(in) :: emitter
       type(vector4_t), intent(in) :: xi_ref_momentum
     end subroutine soft_subtraction_create_softvec_fsr
 <<Real subtraction: procedures>>=
   module subroutine soft_subtraction_create_softvec_fsr &
-       (sub_soft, p_born, y, phi, emitter, xi_ref_momentum)
+       (sub_soft, p_born, p_born_lab, y, phi, emitter, xi_ref_momentum)
     class(soft_subtraction_t), intent(inout) :: sub_soft
-    type(vector4_t), intent(in), dimension(:) :: p_born
+    type(vector4_t), intent(in), dimension(:) :: p_born, p_born_lab
     real(default), intent(in) :: y, phi
     integer, intent(in) :: emitter
     type(vector4_t), intent(in) :: xi_ref_momentum
+    type(vector4_t) :: xi_ref_mom
     type(vector3_t) :: dir
     type(vector4_t) :: p_em
     type(lorentz_transformation_t) :: rot
-    type(lorentz_transformation_t) :: boost_to_rest_frame
+    type(lorentz_transformation_t) :: boost_to_rest_frame, boost_to_cm
     logical :: requires_boost
     associate (p_soft => sub_soft%p_soft)
        p_soft%p(0) = one
        requires_boost = sub_soft%requires_boost (two * p_born(1)%p(0))
        if (requires_boost) then
-          boost_to_rest_frame = inverse (boost (xi_ref_momentum, xi_ref_momentum**1))
+          if (sub_soft%use_resonance_mappings) then
+             boost_to_cm = inverse (boost (p_born_lab (1) + p_born_lab (2), &
+                           (p_born_lab (1) + p_born_lab (2))**1))
+             xi_ref_mom = boost_to_cm * xi_ref_momentum
+          else
+             xi_ref_mom = xi_ref_momentum
+          end if
+          boost_to_rest_frame = inverse (boost (xi_ref_mom, xi_ref_mom**1))
           p_em = boost_to_rest_frame * p_born(emitter)
        else
           p_em = p_born(emitter)
@@ -9029,23 +9138,24 @@ numerical value of the soft mismatch.
   procedure :: evaluate => soft_mismatch_evaluate
 <<Real subtraction: sub interfaces>>=
     module function soft_mismatch_evaluate &
-         (soft_mismatch, alpha_s) result (sqme_mismatch)
+         (soft_mismatch, alpha_s, alpha_qed) result (sqme_mismatch)
       real(default) :: sqme_mismatch
       class(soft_mismatch_t), intent(inout) :: soft_mismatch
-      real(default), intent(in) :: alpha_s
+      real(default), intent(in) :: alpha_s, alpha_qed
     end function soft_mismatch_evaluate
 <<Real subtraction: procedures>>=
   module function soft_mismatch_evaluate &
-       (soft_mismatch, alpha_s) result (sqme_mismatch)
+       (soft_mismatch, alpha_s, alpha_qed) result (sqme_mismatch)
     real(default) :: sqme_mismatch
     class(soft_mismatch_t), intent(inout) :: soft_mismatch
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_s, alpha_qed
     integer :: alr, i_born, emitter, i_res, i_phs, i_con
     real(default) :: xi, y, q2, s
     real(default) :: E_gluon
     type(vector4_t) :: p_em
     real(default) :: sqme_alr, sqme_soft
-    type(vector4_t), dimension(:), allocatable :: p_born
+    type(vector4_t), dimension(:), allocatable :: p_born, p_born_lab
+    type(lorentz_transformation_t) :: boost_to_cm
     sqme_mismatch = zero
     associate (real_kinematics => soft_mismatch%real_kinematics)
        xi = real_kinematics%xi_mismatch
@@ -9065,6 +9175,10 @@ numerical value of the soft mismatch.
 
        do alr = 1, soft_mismatch%reg_data%n_regions
 
+           emitter = soft_mismatch%reg_data%regions(alr)%emitter
+           i_res = soft_mismatch%reg_data%regions(alr)%i_res
+           if (.not. soft_mismatch%reg_data%emitter_is_in_resonance (i_res, emitter)) &
+              cycle
            i_phs = real_kinematics%alr_to_i_phs (alr)
            if (soft_mismatch%reg_data%has_pseudo_isr ()) then
               i_con = 1
@@ -9075,9 +9189,7 @@ numerical value of the soft mismatch.
               p_born = soft_mismatch%real_kinematics%p_born_cms%get_momenta(1)
            end if
            q2 = real_kinematics%xi_ref_momenta(i_con)**2
-           emitter = soft_mismatch%reg_data%regions(alr)%emitter
            p_em = p_born (emitter)
-           i_res = soft_mismatch%reg_data%regions(alr)%i_res
            i_born = soft_mismatch%reg_data%regions(alr)%uborn_index
 
            call print_debug_alr ()
@@ -9087,22 +9199,45 @@ numerical value of the soft mismatch.
            if (debug_active (D_MISMATCH)) &
                 print *, 'Created soft vector: ', &
                 soft_mismatch%sub_soft%p_soft%p
+           p_born_lab = soft_mismatch%real_kinematics%p_born_lab%get_momenta (1)
+           if (soft_mismatch%reg_data%n_in == 2) then
+              boost_to_cm = inverse (boost (p_born_lab (1) + p_born_lab (2), &
+                            sqrt(real_kinematics%cms_energy2)))
+           else
+              boost_to_cm = identity
+           end if
 
            select type (fks_mapping => soft_mismatch%reg_data%fks_mapping)
            type is (fks_mapping_resonances_t)
-              call fks_mapping%set_resonance_momentum &
-                   (real_kinematics%xi_ref_momenta(i_con))
+              call fks_mapping%set_resonance_momenta &
+                   (boost_to_cm * real_kinematics%xi_ref_momenta)
            end select
+           associate (nlo_corr_type => &
+                    soft_mismatch%reg_data%regions(alr)%nlo_correction_type)
+              select case (char (nlo_corr_type))
+              case ("QCD")
+                 sqme_soft = soft_mismatch%sub_soft%compute &
+                      (p_born, soft_mismatch%sqme_born_color_c(:,:,i_born), y, &
+                      q2, alpha_s, alr, emitter, i_res)
 
-           sqme_soft = soft_mismatch%sub_soft%compute &
-                (p_born, soft_mismatch%sqme_born_color_c(:,:,i_born), y, &
-                q2, alpha_s, alr, emitter, i_res)
+                 sqme_alr = soft_mismatch%compute (alr, xi, y, p_em, &
+                      boost_to_cm * real_kinematics%xi_ref_momenta(i_con), &
+                      soft_mismatch%sub_soft%p_soft, &
+                      soft_mismatch%sqme_born(i_born), sqme_soft, &
+                      alpha_s, s)
+              case ("EW")
+                 sqme_soft = soft_mismatch%sub_soft%compute &
+                      (p_born, soft_mismatch%sqme_born_charge_c(:,:,i_born), y, &
+                      q2, alpha_qed, alr, emitter, i_res)
 
-           sqme_alr = soft_mismatch%compute (alr, xi, y, p_em, &
-                real_kinematics%xi_ref_momenta(i_con), &
-                soft_mismatch%sub_soft%p_soft, &
-                soft_mismatch%sqme_born(i_born), sqme_soft, &
-                alpha_s, s)
+                 sqme_alr = soft_mismatch%compute (alr, xi, y, p_em, &
+                      boost_to_cm * real_kinematics%xi_ref_momenta(i_con), &
+                      soft_mismatch%sub_soft%p_soft, &
+                      soft_mismatch%sqme_born(i_born), sqme_soft, &
+                      alpha_qed, s)
+
+              end select
+           end associate
 
            if (debug_on) call msg_debug (D_MISMATCH, 'sqme_alr: ', sqme_alr)
            sqme_mismatch = sqme_mismatch + sqme_alr
@@ -9140,27 +9275,28 @@ numerical value of the soft mismatch.
 <<Real subtraction: sub interfaces>>=
     module function soft_mismatch_compute &
          (soft_mismatch, alr, xi, y, p_em, p_res, p_soft, &
-       sqme_born, sqme_soft, alpha_s, s) result (sqme_mismatch)
+       sqme_born, sqme_soft, alpha_coupling, s) result (sqme_mismatch)
       real(default) :: sqme_mismatch
       class(soft_mismatch_t), intent(in) :: soft_mismatch
       integer, intent(in) :: alr
       real(default), intent(in) :: xi, y
       type(vector4_t), intent(in) :: p_em, p_res, p_soft
       real(default), intent(in) :: sqme_born, sqme_soft
-      real(default), intent(in) :: alpha_s, s
+      real(default), intent(in) :: alpha_coupling, s
     end function soft_mismatch_compute
 <<Real subtraction: procedures>>=
   module function soft_mismatch_compute &
        (soft_mismatch, alr, xi, y, p_em, p_res, p_soft, &
-     sqme_born, sqme_soft, alpha_s, s) result (sqme_mismatch)
+     sqme_born, sqme_soft, alpha_coupling, s) result (sqme_mismatch)
     real(default) :: sqme_mismatch
     class(soft_mismatch_t), intent(in) :: soft_mismatch
     integer, intent(in) :: alr
     real(default), intent(in) :: xi, y
     type(vector4_t), intent(in) :: p_em, p_res, p_soft
     real(default), intent(in) :: sqme_born, sqme_soft
-    real(default), intent(in) :: alpha_s, s
-    real(default) :: q2, expo, sm1, sm2, jacobian
+    real(default), intent(in) :: alpha_coupling, s
+    real(default) :: q2, expo, sm1, sm2, jacobian, cf_factor, pfr
+    integer :: em
 
     q2 = p_res**2
     expo = - two * p_soft * p_res / q2
@@ -9171,11 +9307,25 @@ numerical value of the soft mismatch.
          (D_MISMATCH, 'sqme_soft in mismatch ', sqme_soft)
 
     sm2 = zero
+    cf_factor = zero
+    pfr = zero
+    em = soft_mismatch%reg_data%regions(alr)%emitter
     if (soft_mismatch%reg_data%regions(alr)%has_collinear_divergence ()) then
+       if (soft_mismatch%reg_data%regions(alr)%nlo_correction_type == "QCD") then
+          cf_factor = CF
+       else if (soft_mismatch%reg_data%regions(alr)%nlo_correction_type == "EW") then
+          cf_factor = soft_mismatch%reg_data%regions(alr)%flst_real%charge(em)**2
+       end if
        expo = - two * p_em * p_res / q2 * &
           p_soft%p(0) / p_em%p(0)
-       sm2 = 32 * pi * alpha_s * cf / (s * xi**2) * sqme_born * &
+       sm2 = 32 * pi * alpha_coupling * cf_factor / (s * xi**2) * sqme_born * &
           ( exp(expo) - exp(- xi) ) / (one - y)
+       select type (fks_mapping => soft_mismatch%reg_data%fks_mapping)
+       type is (fks_mapping_resonances_t)
+          pfr = fks_mapping%get_resonance_weight (alr, &
+                 soft_mismatch%real_kinematics%p_born_cms%get_momenta(1))
+       end select
+       sm2 = sm2 * pfr
     end if
 
     jacobian = soft_mismatch%real_kinematics%jac_mismatch * &
@@ -9735,7 +9885,7 @@ is true).
              sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, &
                   i_res, alpha_coupling)
              i_con = rsub%get_i_contributor (alr)
-             sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
+             sqme_alr = sqme_alr * rsub%get_phs_factor (i_con, i_res, this_emitter)
           end if
           sqme_alr_arr(alr) = sqme_alr_arr(alr) + sqme_alr
           if (.not. (debug_active (D_SUBTRACTION) .or. debug2_active (D_SUBTRACTION))) then
@@ -9798,15 +9948,21 @@ ISR or FSR region, and also if resonances are used.
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
+    type(vector4_t), dimension(:), allocatable :: p_born_lab
+    type(lorentz_transformation_t) :: boost_to_cm
+    select type (fks_mapping => rsub%reg_data%fks_mapping)
+    type is (fks_mapping_resonances_t)
+       allocate (p_born_lab (rsub%reg_data%n_legs_born))
+       p_born_lab = rsub%real_kinematics%p_born_lab%get_momenta (1)
+       boost_to_cm = inverse (boost (p_born_lab (1) + p_born_lab (2), &
+                     (p_born_lab (1) + p_born_lab (2))**1))
+       call fks_mapping%set_resonance_momenta &
+            (boost_to_cm * rsub%real_kinematics%xi_ref_momenta)
+    end select
     if (emitter <= rsub%isr_kinematics%n_in) then
        sqme = rsub%evaluate_region_isr &
             (alr, emitter, i_phs, i_res, alpha_coupling)
     else
-       select type (fks_mapping => rsub%reg_data%fks_mapping)
-       type is (fks_mapping_resonances_t)
-          call fks_mapping%set_resonance_momenta &
-               (rsub%real_kinematics%xi_ref_momenta)
-       end select
        sqme = rsub%evaluate_region_fsr (alr, emitter, i_phs, i_res, alpha_coupling)
     end if
   end function real_subtraction_evaluate_emitter_region
@@ -9836,10 +9992,10 @@ ISR or FSR region, and also if resonances are used.
     else
        p_real = rsub%real_kinematics%p_real_cms%get_momenta (i_phs)
     end if
-    i_res = rsub%get_i_res (alr)
     sum_s_alpha = zero
     do i_ftuple = 1, rsub%reg_data%regions(alr)%nregions
        call rsub%reg_data%regions(alr)%ftuples(i_ftuple)%get (i1, i2)
+       i_res = rsub%reg_data%regions(alr)%ftuples(i_ftuple)%i_res
        sum_s_alpha = sum_s_alpha + rsub%reg_data%get_svalue (p_real, alr, i1, i2, i_res)
     end do
   end function real_subtraction_sum_up_s_alpha
@@ -9868,20 +10024,21 @@ thus add up to 1.
     real(default) :: sum_s_alpha_soft
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, i_phs
-    type(vector4_t), dimension(:), allocatable :: p_born
+    type(vector4_t), dimension(:), allocatable :: p_born, p_born_lab
     integer :: i_res, i_ftuple, i1, i2, emitter, nlegs
     allocate (p_born (rsub%reg_data%n_legs_born))
+    allocate (p_born_lab (rsub%reg_data%n_legs_born))
     if (rsub%reg_data%has_pseudo_isr ()) then
        p_born = rsub%real_kinematics%p_born_onshell%get_momenta (1)
     else
        p_born = rsub%real_kinematics%p_born_cms%get_momenta (1)
     end if
-    i_res = rsub%get_i_res (alr)
     emitter = rsub%reg_data%regions(alr)%emitter
+    p_born_lab = rsub%real_kinematics%p_born_lab%get_momenta (1)
     associate (r => rsub%real_kinematics)
        if (emitter > rsub%sub_soft%reg_data%n_in) then
-          call rsub%sub_soft%create_softvec_fsr (p_born, r%y_soft(i_phs), r%phi, &
-               emitter, r%xi_ref_momenta(rsub%sub_soft%i_xi_ref (alr, i_phs)))
+          call rsub%sub_soft%create_softvec_fsr (p_born, p_born_lab, r%y_soft(i_phs), &
+               r%phi, emitter, r%xi_ref_momenta(rsub%sub_soft%i_xi_ref (alr, i_phs)))
        else
           call rsub%sub_soft%create_softvec_isr (r%y_soft(i_phs), r%phi)
        end if
@@ -9890,6 +10047,7 @@ thus add up to 1.
     sum_s_alpha_soft = zero
     do i_ftuple = 1, rsub%reg_data%regions(alr)%nregions
        call rsub%reg_data%regions(alr)%ftuples(i_ftuple)%get (i1, i2)
+       i_res = rsub%reg_data%regions(alr)%ftuples(i_ftuple)%i_res
        if (i2 == nlegs) then
           sum_s_alpha_soft = sum_s_alpha_soft + rsub%reg_data%get_svalue_soft &
             (p_born, rsub%sub_soft%p_soft, alr, i1, i_res)
@@ -10600,18 +10758,23 @@ conversion is supplied in [[phs_fks_generator_generate_isr]].
   procedure :: get_phs_factor => real_subtraction_get_phs_factor
 <<Real subtraction: sub interfaces>>=
     module function real_subtraction_get_phs_factor &
-         (rsub, i_con) result (factor)
+         (rsub, i_con, i_res, em) result (factor)
       real(default) :: factor
       class(real_subtraction_t), intent(in) :: rsub
-      integer, intent(in) :: i_con
+      integer, intent(in) :: i_con, i_res, em
     end function real_subtraction_get_phs_factor
 <<Real subtraction: procedures>>=
-  module function real_subtraction_get_phs_factor (rsub, i_con) result (factor)
+  module function real_subtraction_get_phs_factor (rsub, i_con, i_res, em) result (factor)
     real(default) :: factor
     class(real_subtraction_t), intent(in) :: rsub
-    integer, intent(in) :: i_con
+    integer, intent(in) :: i_con, i_res, em
     real(default) :: s
-    s = rsub%real_kinematics%xi_ref_momenta (i_con)**2
+    if (rsub%settings%use_resonance_mappings .and. &
+        .not. rsub%reg_data%emitter_is_in_resonance (i_res, em)) then
+       s = rsub%real_kinematics%cms_energy2
+     else
+       s = rsub%real_kinematics%xi_ref_momenta (i_con)**2
+    end if
     factor = s / (8 * twopi3)
   end function real_subtraction_get_phs_factor
 
@@ -10663,27 +10826,34 @@ Be aware that this approach will not work for $pe$ collisions.
     real(default), intent(in) :: alpha_coupling
     integer :: i_xi_ref, i_born
     real(default) :: q2, sf_factor
-    type(vector4_t), dimension(:), allocatable :: p_born
+    type(vector4_t), dimension(:), allocatable :: p_born, p_born_lab
     associate (real_kinematics => rsub%real_kinematics, &
             nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type, &
             sregion => rsub%reg_data%regions(alr))
       sqme_soft = zero
       if (sregion%has_soft_divergence ()) then
          i_xi_ref = rsub%sub_soft%i_xi_ref (alr, i_phs)
-         q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
          allocate (p_born (rsub%reg_data%n_legs_born))
+         allocate (p_born_lab (rsub%reg_data%n_legs_born))
          if (rsub%reg_data%has_pseudo_isr ()) then
             p_born = real_kinematics%p_born_onshell%get_momenta (1)
          else
             p_born = real_kinematics%p_born_cms%get_momenta (1)
          end if
+         p_born_lab = rsub%real_kinematics%p_born_lab%get_momenta (1)
          if (emitter > rsub%sub_soft%reg_data%n_in) then
+            q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
             call rsub%sub_soft%create_softvec_fsr &
-                 (p_born, real_kinematics%y_soft(i_phs), &
+                 (p_born, p_born_lab, real_kinematics%y_soft(i_phs), &
                  real_kinematics%phi, emitter, &
                  real_kinematics%xi_ref_momenta(i_xi_ref))
             sf_factor = one
          else
+            if (rsub%reg_data%n_in == 1) then
+               q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
+            else
+               q2 = (p_born(1) + p_born(2))**2
+            end if
             call rsub%sub_soft%create_softvec_isr &
                  (real_kinematics%y_soft(i_phs), real_kinematics%phi)
             sf_factor = rsub%sf_factors(alr, 0)
@@ -10923,14 +11093,14 @@ here are equivalent to those used by POWHEG.
                  sqme_born_coll, &
                  mom_times_sqme_spin_c, &
                  xi, alpha_coupling, sregion%double_fsr)
-            if (rsub%sub_coll%use_resonance_mappings) then
-               select type (fks_mapping => rsub%reg_data%fks_mapping)
-               type is (fks_mapping_resonances_t)
-                  pfr = fks_mapping%get_resonance_weight (alr, &
-                       rsub%real_kinematics%p_born_cms%get_momenta(1))
-               end select
-               sqme_coll = sqme_coll * pfr
-            end if
+         end if
+         if (rsub%sub_coll%use_resonance_mappings) then
+            select type (fks_mapping => rsub%reg_data%fks_mapping)
+            type is (fks_mapping_resonances_t)
+               pfr = fks_mapping%get_resonance_weight (alr, &
+                     rsub%real_kinematics%p_born_cms%get_momenta(1))
+            end select
+            sqme_coll = sqme_coll * pfr
          end if
       end if
     end associate
@@ -10960,6 +11130,7 @@ in this case, we need to differentiate between [[em]] and [[em_pdf = 0]].
     real(default), intent(in) :: alpha_coupling
     real(default) :: mom_times_sqme_spin_c, sqme_born_coll
     real(default) :: N_col
+    real(default) :: pfr
     integer :: i_con, em_pdf, i
     associate (sregion => rsub%reg_data%regions(alr))
       sqme_cs = zero
@@ -11014,6 +11185,14 @@ in this case, we need to differentiate between [[em]] and [[em_pdf = 0]].
                  sqme_born_coll, &
                  mom_times_sqme_spin_c, &
                  zero, alpha_coupling, sregion%double_fsr)
+         end if
+         if (rsub%sub_coll%use_resonance_mappings) then
+            select type (fks_mapping => rsub%reg_data%fks_mapping)
+            type is (fks_mapping_resonances_t)
+               pfr = fks_mapping%get_resonance_weight (alr, &
+                     rsub%real_kinematics%p_born_cms%get_momenta(1))
+            end select
+            sqme_cs = sqme_cs * pfr
          end if
       end if
     end associate
