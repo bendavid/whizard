@@ -3152,9 +3152,6 @@ between emitters 0, 1 and 2.
                 c = res_history%resonances(i)%contributors%c
                 success = .true.
                 exit
-             else
-                call msg_fatal ("FKS resonance aware method with FS emitters not" // &
-                                "associated to resonance currently not available")
              end if
           end do
        end associate
