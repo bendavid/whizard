@@ -90,7 +90,7 @@ Contents of template_me_3_p1.lhe:
 <init>
  11 -11  2.5000000000E+02  2.5000000000E+02 -1 -1 -1 -1 3 1
   8.9783898254E-04  4.3231408061E-07  1.0000000000E+00 1
-<generator version="3.1.4.1">WHIZARD</generator>
+<generator version=[...]>WHIZARD</generator>
 <xsecinfo neve="5" totxsec="8.9783898254E-04" />
 </init>
 <event>

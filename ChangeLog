@@ -2,7 +2,10 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use git log/svn log to see detailed changes.
 
-	Version 3.1.4.1
+	Version 3.1.5
+
+2024-09-13
+	RELEASE: version 3.1.5
 
 2024-09-12
 	Special parameterization for photo-induced low-pT hadrons

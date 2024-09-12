@@ -74,8 +74,11 @@ WHIZARD:
 -- LoopTools for one-loop functions (for the top threshold)
    You can get it from: http://www.feynarts.de/looptools/
 
--- HepMC for the corresponding event file standard.	
-   Available from: http://hepmc.web.cern.ch/hepmc
+-- HepMC2 for the corresponding event file standard.	
+   Available from: http://gitlab.cern.ch/hepmc/HepMC
+
+-- HepMC3 for the corresponding event file standard.	
+   Available from: http://gitlab.cern.ch/hepmc/HepMC3
 
 -- LCIO for the corresponding file standard.
    Available from: https://github.com/iLCSoft/LCIO
@@ -255,7 +258,8 @@ Optional Features:
   --enable-recola         (experimental) enable Recola for NLO matrix elements
                           [[no]]
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
-  --enable-hepmc          enable HepMC for handling event data [[yes]]
+  --enable-hepmc2         enable HepMC2 for handling event data [[yes]]
+  --enable-hepmc          enable HepMC3 for handling event data [[yes]]
   --enable-lcio		  enable LCIO for binary event files [[yes]]
   --enable-hdf5           build WHIZARD with HDF5 support [[yes]]
   --enable-pythia6        enable internal PYTHIA6 for hadronization [[yes]]
@@ -394,7 +398,7 @@ Make sure that <install_dir>/bin is before /usr/bin in your path.
 
 Noweb can be accessed from here:
 
-http://www.cs.tufts.edu/~nr/noweb/
+https://github.com/nrnrnr/noweb
 
 Untar the source code. Go to the src/ subdirectory of the unpacked noweb 
 source code. Follow the instructions from the INSTALL file. You have to
