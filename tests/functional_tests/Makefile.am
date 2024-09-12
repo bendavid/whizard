@@ -388,6 +388,7 @@ TESTS_REQ_PYTHIA6 = \
     tauola_2.run \
     tauola_3.run \
     isr_5.run \
+    gamgam_hadrons.run \
     mlm_pythia6_isr.run \
     mlm_matching_isr.run
 XFAIL_TESTS_REQ_PYTHIA6 =

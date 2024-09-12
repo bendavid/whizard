@@ -68,6 +68,7 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_tau_dec                   =  F
    muli_active                  =  F
    hadronization_active         =  F
+   gg -> hadrons special mode   =  F
  General settings:
     [ISR and FSR off]
  Matching Settings:

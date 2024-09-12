@@ -155,6 +155,7 @@ end of the line.
      logical :: tau_dec = .false.
      logical :: verbose = .false.
      integer :: method = PS_UNDEFINED
+     logical :: gg_hadrons = .false.
      logical :: hadron_collision = .false.
      logical :: mlm_matching = .false.
      logical :: ckkw_matching = .false.
@@ -207,6 +208,10 @@ hadronization are switched on).
          var_list%get_lval (var_str ("?muli_active"))
     settings%hadronization_active = &
          var_list%get_lval (var_str ("?hadronization_active"))
+    if (var_list%get_sval (var_str ("$method")) == &
+         var_str ("template_gg_had")) then
+       settings%gg_hadrons = .true.
+    end if
     settings%mlm_matching = &
          var_list%get_lval (var_str ("?mlm_matching"))
     settings%ckkw_matching = &
@@ -290,6 +295,8 @@ hadronization are switched on).
          "muli_active                  = ", settings%muli_active
     write (u, "(3x,A,1x,L1)") &
          "hadronization_active         = ", settings%hadronization_active
+    write (u, "(3x,A,1x,L1)") &
+         "gg -> hadrons special mode   = ", settings%gg_hadrons
     write (u, "(1x,A)")  "General settings:"
     if (settings%isr_active .or. settings%fsr_active) then
        write (u, "(3x,A)") &
@@ -6970,6 +6977,7 @@ end module shower_pythia6
 submodule (shower_pythia6) shower_pythia6_s
 
 <<Use debug>>
+  use kinds, only: i64
   use constants
   use numeric_utils, only: vanishes
   use io_units
@@ -6999,6 +7007,12 @@ end submodule shower_pythia6_s
 @
 <<Shower pythia6: variables>>=
   integer :: N_old
+  integer :: nprint_aa_pipi = 100
+  integer(i64) :: ncall_aa_pipi = 0
+  logical :: gg_hadrons_initialized = .false.
+  integer :: n_gg_hadrons_count = 0
+  integer :: n_gg_hadrons_print = 100
+  real(double) :: sqrts_pup12
 
 @ %def N_old
 @ The PYTHIA6 shower type.
@@ -7103,7 +7117,8 @@ end submodule shower_pythia6_s
     common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
     COMMON/PYDAT2/KCHG(500,4),PMAS(500,4),PARF(2000),VCKM(4,4)
     COMMON/PYINT4/MWID(500),WIDS(500,5)
-    save /PYJETS/,/PYDAT2/,/PYINT4/
+    COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
+    save /PYJETS/,/PYDAT2/,/PYINT4/,/PYPARS/
     integer :: u_W2P
     integer :: i
     real(double) :: beta_z, pz_in, E_in
@@ -7126,7 +7141,125 @@ end submodule shower_pythia6_s
     ! TODO: (bcn 2015-04-24) doesnt change anything I think
     ! P(1,1:5) = pset_reduced%prt(1)%momentum_to_pythia6 ()
     ! P(2,1:5) = pset_reduced%prt(2)%momentum_to_pythia6 ()
-    call pyevnt ()
+    if (shower%settings%gg_hadrons) then
+       n_gg_hadrons_count = n_gg_hadrons_count + 1
+       do i=1,5
+          p(1,i)=pup(i,1)
+          p(2,i)=pup(i,2)
+          k(1,1)=1
+          k(2,1)=1
+       enddo
+       N=2
+    end if
+    pztot = p(1,3) + p(2,3)
+    eetot = p(1,4) + p(2,4)
+    sqrts_pup12 = 2.*sqrt(p(1,4)*p(2,4))
+    if (shower%settings%gg_hadrons .and. &
+         n_gg_hadrons_count <= n_gg_hadrons_print) then
+       print *, " shower_pythia6_generate_emissions point 003 "," N= ", &
+            N, " pztot= ",pztot, " eetot= ",eetot," sqrts_pup12= ",sqrts_pup12
+       call pylist(2)
+    end if
+    if (.not. shower%settings%gg_hadrons) then
+       call pyevnt ()
+    else if (sqrts_pup12.gt.parp(2)) then
+       call pyevnt ()
+       chi2 = 1.e20
+       if (msti(61).eq.0) then
+          pxsum=0.
+          pysum=0.
+          pzsum=0.
+          eesum=0.
+          do i = 1,N
+             if (k(i,1).eq.1) then
+                pxsum=pxsum+p(i,1)
+                pysum=pysum+p(i,2)
+                pzsum=pzsum+p(i,3)
+                eesum=eesum+p(i,4)
+             end if
+          end do
+          chi2 = pxsum**2 + pysum**2 + (pztot-pzsum)**2 + (eetot-eesum)**2
+          xmass2 = eesum**2 - pxsum**2 - pysum**2 - pzsum**2
+          xmass = sign(sqrt(abs(xmass2)),xmass2)
+          if (shower%settings%gg_hadrons .and. &
+               n_gg_hadrons_count <= n_gg_hadrons_print) then
+             print *, " after pyevnt ", " msti(61)= ",msti(61)," chi2= ", chi2, " pxsum= ",pxsum, &
+                  " pysum= ",pysum," pzsum= ",pzsum," eesum= ",eesum," mass= ",xmass
+          endif
+       endif
+       if(shower%settings%gg_hadrons.and.msti(61).eq.1.or.chi2.gt.1.e-6) then
+          mstp(122)=0
+          ntryMax=100
+          chi2=1.e20
+          do itry=1,ntryMax
+             print *, " itry= ",itry," sqrts= ",2.*sqrt(p(1,4)*p(2,4))
+             call pyinit('3MOM', 'gamma', 'gamma', sqrts_mstp171)
+             do i=1,5
+                p(1,i)=pup(i,1)
+                p(2,i)=pup(i,2)
+                k(1,1)=1
+                k(2,1)=1
+             enddo
+             N=2
+             call pyevnt()
+             if(msti(61).eq.0) then
+                pxsum=0.
+                pysum=0.
+                pzsum=0.
+                eesum=0.
+                do i=1,N
+                   if(k(i,1).eq.1) then
+                      pxsum=pxsum+p(i,1)
+                      pysum=pysum+p(i,2)
+                      pzsum=pzsum+p(i,3)
+                      eesum=eesum+p(i,4)
+                   endif
+                enddo
+                chi2=pxsum**2+pysum**2+(pztot-pzsum)**2+(eetot-eesum)**2
+                if(chi2.lt.1.e-6) then
+                   exit
+                endif
+             endif
+          enddo
+          if(msti(61).ne.0.or.chi2.gt.1.e-6) then
+             print *, " failed after ",ntryMax," attempts to generate event"
+             print *, " program will now stop"
+             stop
+          endif
+       endif
+    else
+    !!! begin aa_pipi simulation
+       do i = 1,5
+          p(1,i)=pup(i,1)
+          p(2,i)=pup(i,2)
+          p(3,i)=pup(i,3)
+          p(4,i)=pup(i,4)
+       enddo
+       do j = 1, 4
+          k(j,1)=istup(j)
+          k(j,2)=idup(j)
+       end do
+       N = 4
+       if (shower%settings%gg_hadrons .and. &
+            n_gg_hadrons_count <= n_gg_hadrons_print) then
+          print *, " before aa_pipi ", " p(1,:)= ", p(1,:), &
+               " k(1,1)= ", k(1,1), " k(1,2)= ", k(1,2)
+          print *, " before aa_pipi ", " p(2,:)= ", p(2,:), &
+               " k(2,1)= ", k(2,1), " k(2,2)= ", k(2,2)
+          print *, " before aa_pipi ", " p(3,:)= ", p(3,:), &
+               " k(3,1)= ", k(3,1), " k(3,2)= ", k(3,2)
+          print *, " before aa_pipi ", " p(4,:)= ", p(4,:), &
+               " k(4,1)= ", k(4,1), " k(4,2)= ", k(4,2)
+       end if
+       call aa_pipi ()
+       call pyhepc (2)
+       call pyexec ()
+       !!! end aa_pipi simulation
+    end if
+    if (shower%settings%gg_hadrons .and. &
+         n_gg_hadrons_count <= n_gg_hadrons_print) then
+       call pylist(2)
+    end if
     call pyedit(12)
     do i = 1, n
       if (K(i,1) == 14 .and. abs(K(i,2)) >= 11 .and. abs(K(i,2)) <= 16) then
@@ -7137,7 +7270,8 @@ end submodule shower_pythia6_s
         end if
       end if
     end do
-    if (.not. shower%settings%hadron_collision) then
+    if (.not. shower%settings%hadron_collision .and. &
+        .not. shower%settings%gg_hadrons) then
        pz_in = pup(3,1) + pup(3,2)
        E_in = pup(4,1) + pup(4,2)
        beta_z = pz_in / E_in
@@ -7193,80 +7327,114 @@ end submodule shower_pythia6_s
     end subroutine shower_pythia6_transfer_settings
 <<Shower pythia6: procedures>>=
   module subroutine shower_pythia6_transfer_settings (shower)
+    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+    IMPLICIT INTEGER(I-N)
+    COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
+    SAVE /PYPARS/
+    COMMON/PYINT1/MINT(400),VINT(400)
+    COMMON/PYINT7/SIGT(0:6,0:6,0:5)
+    SAVE /PYINT1/,/PYINT7/
+    integer :: N, NPAD, K
+    real(double) :: P, V
+    common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
+    save /PYJETS/
     class(shower_pythia6_t), intent(inout) :: shower
     character(len=10) :: buffer
     real(default) :: rand
     logical, save :: tauola_initialized = .false.
     if (debug_on) call msg_debug (D_SHOWER, "shower_pythia6_transfer_settings")
-    !!! We repeat these as they are overwritten by the hadronization
-    call pygive ("MSTP(111)=1")     !!! Allow hadronization and decays
-    call pygive ("MSTJ(1)=0")       !!! No jet fragmentation
-    call pygive ("MSTJ(21)=1")      !!! Allow decays but no jet fragmentation
-
-    if (shower%initialized_for_NPRUP >= NPRUP) then
+    if (.not. shower%settings%gg_hadrons) then
+       !!! We repeat these as they are overwritten by the hadronization
+       call pygive ("MSTP(111)=1")     !!! Allow hadronization and decays
+       call pygive ("MSTJ(1)=0")       !!! No jet fragmentation
+       call pygive ("MSTJ(21)=1")      !!! Allow decays but no jet fragmentation
+    end if
+    if (.not. shower%settings%gg_hadrons .and. shower%initialized_for_NPRUP >= NPRUP) then
       if (debug_on) call msg_debug (D_SHOWER, "calling upinit")
       call upinit ()
-    else
-       if (shower%settings%isr_active) then
-          call pygive ("MSTP(61)=1")
+    else if (.not. shower%settings%gg_hadrons .or. &
+         (shower%settings%gg_hadrons .and. .not. gg_hadrons_initialized)) then
+       if (shower%settings%gg_hadrons .and. .not. gg_hadrons_initialized) then
+          gg_hadrons_initialized = .true.
+          sqrts = 2.*sqrt(ebmup(1)*ebmup(2))
+          print *, " start of shower_pythia6_transfer_settings ", "idbmup(1:2) = ", idbmup(1:2), " sqrts= ", sqrts, &
+               " ebmup, pdfgup =    ", ebmup, pdfgup
+          call pythia6_set_config (shower%settings%pythia6_pygive)
+          ! sqrts_mstp171=max(parp(2),0.01*sqrts,0.36)
+          sqrts_mstp171=0.1457*sqrts
+          p(1:2,:)=0.d0
+          p(1:2,3)=0.5d0*sqrts_mstp171
+          p(2,3)=-p(2,3)
+          print *, " before pyinit call ", " mstp(14)= ",mstp(14)," mstp(123)= ",mstp(123)," mstp(171)= ",mstp(171), &
+               " mstp(172)= ",mstp(172)," parp(2)= ",parp(2)," parp(104)= ",parp(104)," parp(111)= ",parp(111)
+          print *, " before pyinit(3MOM,.. ", "idbmup(1:2) = ", idbmup(1:2), " sqrts_mstp171= ", sqrts_mstp171, &
+               " ebmup, pdfgup =    ", ebmup, pdfgup
+          call pyinit('3MOM', 'gamma', 'gamma', sqrts_mstp171)
+          do j = 0,5
+             print *, " after pyinit(3MOM,.. ", " j= ", j," sigt(0:4,0,j)= ",sigt(0:4,0,j)
+          end do
        else
-          call pygive ("MSTP(61)=0")  !!! switch off ISR
+          if (shower%settings%isr_active) then
+             call pygive ("MSTP(61)=1")
+          else
+             call pygive ("MSTP(61)=0")  !!! switch off ISR
+          end if
+          if (shower%settings%fsr_active) then
+             call pygive ("MSTP(71)=1")
+          else
+             call pygive ("MSTP(71)=0")   !!! switch off FSR
+          end if
+          call pygive ("MSTP(11)=0")      !!! Disable Pythias QED-ISR per default
+          call pygive ("MSTP(171)=1")     !!! Allow variable energies
+          
+          write (buffer, "(F10.5)") sqrt (abs (shower%settings%min_virtuality))
+          call pygive ("PARJ(82)=" // buffer)
+          write (buffer, "(F10.5)") shower%settings%isr_tscalefactor
+          call pygive ("PARP(71)=" // buffer)
+          write (buffer, "(F10.5)") shower%settings%fsr_lambda
+          call pygive ("PARP(72)=" // buffer)
+          write(buffer, "(F10.5)") shower%settings%isr_lambda
+          call pygive ("PARP(61)=" // buffer)
+          write (buffer, "(I10)") shower%settings%max_n_flavors
+          call pygive ("MSTJ(45)=" // buffer)
+          if (shower%settings%isr_alphas_running) then
+             call pygive ("MSTP(64)=2")
+          else
+             call pygive ("MSTP(64)=0")
+          end if
+          if (shower%settings%fsr_alphas_running) then
+             call pygive ("MSTJ(44)=2")
+          else
+             call pygive ("MSTJ(44)=0")
+          end if
+          write (buffer, "(F10.5)") shower%settings%fixed_alpha_s
+          call pygive ("PARU(111)=" // buffer)
+          write (buffer, "(F10.5)") shower%settings%isr_primordial_kt_width
+          call pygive ("PARP(91)=" // buffer)
+          write (buffer, "(F10.5)") shower%settings%isr_primordial_kt_cutoff
+          call pygive ("PARP(93)=" // buffer)
+          write (buffer, "(F10.5)") 1._double - shower%settings%isr_z_cutoff
+          call pygive ("PARP(66)=" // buffer)
+          write (buffer, "(F10.5)") shower%settings%isr_minenergy
+          call pygive ("PARP(65)=" // buffer)
+          if (shower%settings%isr_only_onshell_emitted_partons) then
+             call pygive ("MSTP(63)=0")
+          else
+             call pygive ("MSTP(63)=2")
+          end if
+          if (shower%settings%mlm_matching) then
+             call pygive ("MSTP(62)=2")
+             call pygive ("MSTP(67)=0")
+          end if
+          call pythia6_set_config (shower%settings%pythia6_pygive)
+          if (debug_on) call msg_debug (D_SHOWER, "calling pyinit")
+          call PYINIT ("USER", "", "", 0D0)
        end if
-       if (shower%settings%fsr_active) then
-          call pygive ("MSTP(71)=1")
-       else
-          call pygive ("MSTP(71)=0")   !!! switch off FSR
-       end if
-       call pygive ("MSTP(11)=0")      !!! Disable Pythias QED-ISR per default
-       call pygive ("MSTP(171)=1")     !!! Allow variable energies
-
-       write (buffer, "(F10.5)") sqrt (abs (shower%settings%min_virtuality))
-       call pygive ("PARJ(82)=" // buffer)
-       write (buffer, "(F10.5)") shower%settings%isr_tscalefactor
-       call pygive ("PARP(71)=" // buffer)
-       write (buffer, "(F10.5)") shower%settings%fsr_lambda
-       call pygive ("PARP(72)=" // buffer)
-       write(buffer, "(F10.5)") shower%settings%isr_lambda
-       call pygive ("PARP(61)=" // buffer)
-       write (buffer, "(I10)") shower%settings%max_n_flavors
-       call pygive ("MSTJ(45)=" // buffer)
-       if (shower%settings%isr_alphas_running) then
-          call pygive ("MSTP(64)=2")
-       else
-          call pygive ("MSTP(64)=0")
-       end if
-       if (shower%settings%fsr_alphas_running) then
-          call pygive ("MSTJ(44)=2")
-       else
-          call pygive ("MSTJ(44)=0")
-       end if
-       write (buffer, "(F10.5)") shower%settings%fixed_alpha_s
-       call pygive ("PARU(111)=" // buffer)
-       write (buffer, "(F10.5)") shower%settings%isr_primordial_kt_width
-       call pygive ("PARP(91)=" // buffer)
-       write (buffer, "(F10.5)") shower%settings%isr_primordial_kt_cutoff
-       call pygive ("PARP(93)=" // buffer)
-       write (buffer, "(F10.5)") 1._double - shower%settings%isr_z_cutoff
-       call pygive ("PARP(66)=" // buffer)
-       write (buffer, "(F10.5)") shower%settings%isr_minenergy
-       call pygive ("PARP(65)=" // buffer)
-       if (shower%settings%isr_only_onshell_emitted_partons) then
-          call pygive ("MSTP(63)=0")
-       else
-          call pygive ("MSTP(63)=2")
-       end if
-       if (shower%settings%mlm_matching) then
-          call pygive ("MSTP(62)=2")
-          call pygive ("MSTP(67)=0")
-       end if
-       call pythia6_set_config (shower%settings%pythia6_pygive)
-       if (debug_on) call msg_debug (D_SHOWER, "calling pyinit")
-       call PYINIT ("USER", "", "", 0D0)
        call shower%rng%generate (rand)
        write (buffer, "(I10)") floor (rand*900000000)
        call pygive ("MRPY(1)=" // buffer)
        call pygive ("MRPY(2)=0")
-       call pythia6_set_config (shower%settings%pythia6_pygive)
+       call pythia6_set_config (shower%settings%pythia6_pygive)   !!! why call this again ??
        shower%initialized_for_NPRUP = NPRUP
     end if
     if (shower%settings%tau_dec) then
@@ -7345,9 +7513,13 @@ added back in by Pythia.
     class(model_data_t), pointer :: model
     type(vector4_t) :: momentum
     type(particle_t), dimension(:), allocatable :: particles, beams
+    real(default) :: lifetime
+    type(vector4_t) :: vertex
+    integer, dimension(:), allocatable :: parenta, childa
     integer :: dangling_col, dangling_anti_col, color, anti_color
     integer :: i, j, py_entries, next_color, n_tot_old, parent, real_parent
     integer :: pdg, status, child, hadro_start, i_py, i_whz
+    integer :: whizard_status
     integer, allocatable, dimension(:) :: py_index, whz_index
     logical, allocatable, dimension(:) :: valid
     real(default), parameter :: py_tiny = 1E-10_default
@@ -7355,59 +7527,115 @@ added back in by Pythia.
     real(double) :: P, V
     common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
     save /PYJETS/
+    integer, dimension(200) :: MSTP
+    real(kind=double), dimension(200) :: PARP
+    integer, dimension(200) :: MSTI
+    real(kind=double), dimension(200) :: PARI
+    common/PYPARS/MSTP,PARP,MSTI,PARI
+    save /PYPARS/
     integer, parameter :: KSUSY1 = 1000000, KSUSY2 = 2000000
 
     if (signal_is_pending ()) return
-    if (debug_active (D_SHOWER)) then
-       call msg_debug (D_SHOWER, 'Combine PYTHIA6 with particle set')
-       call msg_debug (D_SHOWER, 'Particle set before replacing')
-       call particle_set%write (summary=.true., compressed=.true.)
-       call pylist (3)
-       call msg_debug (D_SHOWER, string = "settings%hadron_collision", &
-          value = settings%hadron_collision)
-    end if
-    if (settings%method == PS_PYTHIA6 .and. settings%hadron_collision) then
-       call pythia6_set_last_treated_line(2)
-       allocate (beams(2))
-       beams = particle_set%prt(1:2)
-       call particle_set%replace (beams)
+    if (.not. settings%gg_hadrons .or. sqrts_pup12.gt.parp(2)) then
        if (debug_active (D_SHOWER)) then
-         call msg_debug (D_SHOWER, 'Resetting particle set to')
-         call particle_set%write (summary=.true., compressed=.true.)
+          call msg_debug (D_SHOWER, 'Combine PYTHIA6 with particle set')
+          call msg_debug (D_SHOWER, 'Particle set before replacing')
+          call particle_set%write (summary=.true., compressed=.true.)
+          call pylist (3)
+          call msg_debug (D_SHOWER, string = "settings%hadron_collision", &
+               value = settings%hadron_collision)
        end if
-    end if
-    call fill_hepevt_block_from_pythia ()
-    call count_valid_entries_in_pythia_record ()
-    call particle_set%without_hadronic_remnants &
-         (particles, n_tot_old, py_entries)
-    if (debug_active (D_SHOWER)) then
-       print *, 'n_tot_old =    ', n_tot_old
-       print *, 'py_entries =    ', py_entries
-    end if
-    call add_particles_of_pythia ()
-    call particle_set%replace (particles)
-    if (settings%hadron_collision) then
-       call set_parent_child_relations_from_K ()
-       call set_parent_child_relations_of_color_strings_to_hadrons ()
-       !!! call particle_set%remove_duplicates (py_tiny * 100.0_default)
-    else
-       call set_parent_child_relations_from_hepevt ()
-    end if
-    !call fix_nonemitting_outgoings ()
-    if (settings%method == PS_WHIZARD) then
-       call fudge_whizard_partons_in_hadro ()
-    end if
-    where ((particle_set%prt%status == PRT_OUTGOING .or. &
+       if (settings%method == PS_PYTHIA6 .and. settings%hadron_collision) then
+          call pythia6_set_last_treated_line(2)
+          allocate (beams(2))
+          beams = particle_set%prt(1:2)
+          call particle_set%replace (beams)
+          if (debug_active (D_SHOWER)) then
+             call msg_debug (D_SHOWER, 'Resetting particle set to')
+             call particle_set%write (summary=.true., compressed=.true.)
+          end if
+       end if
+       call fill_hepevt_block_from_pythia ()
+       call count_valid_entries_in_pythia_record ()
+       call particle_set%without_hadronic_remnants &
+            (particles, n_tot_old, py_entries)
+       if (debug_active (D_SHOWER)) then
+          print *, 'n_tot_old =    ', n_tot_old
+          print *, 'py_entries =    ', py_entries
+       end if
+       call add_particles_of_pythia ()
+       call particle_set%replace (particles)
+       if (settings%hadron_collision) then
+          call set_parent_child_relations_from_K ()
+          call set_parent_child_relations_of_color_strings_to_hadrons ()
+          !!! call particle_set%remove_duplicates (py_tiny * 100.0_default)
+       else
+          call set_parent_child_relations_from_hepevt ()
+       end if
+       !call fix_nonemitting_outgoings ()
+       if (settings%method == PS_WHIZARD .or. settings%gg_hadrons) then
+          call fudge_whizard_partons_in_hadro ()
+       end if
+       where ((particle_set%prt%status == PRT_OUTGOING .or. &
             particle_set%prt%status == PRT_VIRTUAL .or. &
             particle_set%prt%status == PRT_BEAM_REMNANT) .and. &
             particle_set%prt%has_children ()) &
             particle_set%prt%status = PRT_RESONANT
-    if (debug_active (D_SHOWER)) then
-       print *, 'Particle set after replacing'
-       call particle_set%write (summary=.true., compressed=.true.)
-       print *, ' pythia6_set_last_treated_line will set to: ', N
+       if (debug_active (D_SHOWER)) then
+          print *, 'Particle set after replacing'
+          call particle_set%write (summary=.true., compressed=.true.)
+          print *, ' pythia6_set_last_treated_line will set to: ', N
+       end if
+       call pythia6_set_last_treated_line(N)
+    else
+       allocate (particles(N))
+       do i_py = 1,N
+          color = 0
+          anti_color = 0
+          momentum = real ([p(i_py,4), p(i_py,1:3)], kind=default)
+          pdg = K(i_py,2)
+          call find_model (model, pdg, model_in, model_hadrons)
+          if (i_py.le.2) then
+             whizard_status = PRT_INCOMING
+          else if (k(i_py,1).eq.1) then
+             whizard_status = PRT_OUTGOING
+          else
+             whizard_status = PRT_VIRTUAL
+          endif
+          call particles(i_py)%init &
+               (whizard_status, pdg, model, color, anti_color, momentum)
+          if (k(i_py,3).gt.0.or.i_py.eq.3) then
+             allocate (parenta(1))
+             parenta(1) = max(1,k(i_py,3))
+             particles(i_py)%parent=parenta
+             deallocate (parenta)
+          end if
+          if (k(i_py,4).gt.0.and.k(i_py,5).ge.k(i_py,4)) then
+             allocate (childa(k(i_py,5)-k(i_py,4)+1))
+             do j = 1,k(i_py,5)-k(i_py,4)+1
+                childa(j) = k(i_py,4)+j-1
+             end do
+             particles(i_py)%child = childa
+             deallocate (childa)
+          end if
+          lifetime = V(i_py,5)
+          vertex = [real (V(i_py,4), kind=default), &
+               real (V(i_py,1), kind=default), &
+               real (V(i_py,2), kind=default), &
+               real (V(i_py,3), kind=default)]
+          if (.not. vanishes(lifetime)) then
+             call particles(i_py)%set_lifetime (lifetime)
+          end if
+          if (any (.not. vanishes(real(V(i_py,1:4), kind = default)))) then
+             call particles(i_py)%set_vertex (vertex)
+          end if
+          if (allocated(particles(i_py)%parent)) then
+          end if
+          if (allocated(particles(i_py)%child)) then
+          end if
+       end do
+       call particle_set%replace (particles)
     end if
-    call pythia6_set_last_treated_line(N)
 
   contains
 
@@ -7435,16 +7663,30 @@ added back in by Pythia.
     end do FIND
     do i_py = N, N_old+1, -1
        status = K(i_py,1)
-       if (any (P(i_py,1:4) > 1E-8_default * P(1,4)) .and. &
-            (status >= 1 .and. status <= 21)) then
-          pset_idx = find_pythia_particle (i_py, more_fuzzy=.false.)
-          direct_decendent = IDHEP(JMOHEP(1,i_py)) == cmshower .and. &
-               JMOHEP(2,i_py) == 0
-          emitted_zero_momentum_photon = find_pythia_particle &
-               (JMOHEP(1,i_py), more_fuzzy=.false.) == pset_idx
-          comes_from_cmshower = status == 1 .and. &
-               (direct_decendent .or. emitted_zero_momentum_photon)
-          valid(i_py) = pset_idx == 0 .or. comes_from_cmshower
+       if (settings%gg_hadrons) then
+          if (any (P(i_py,1:4) > 1E-8_default * P(1,4)) .and. &
+               (status >= 1 .and. status <= 21) .and. JMOHEP(1,i_py) > 0) then
+             pset_idx = find_pythia_particle (i_py, more_fuzzy=.false.)
+             direct_decendent = IDHEP(JMOHEP(1,i_py)) == cmshower .and. &
+                  JMOHEP(2,i_py) == 0
+             emitted_zero_momentum_photon = find_pythia_particle &
+                  (JMOHEP(1,i_py), more_fuzzy=.false.) == pset_idx
+             comes_from_cmshower = status == 1 .and. &
+                  (direct_decendent .or. emitted_zero_momentum_photon)
+             valid(i_py) = pset_idx == 0 .or. comes_from_cmshower
+          end if
+       else
+          if (any (P(i_py,1:4) > 1E-8_default * P(1,4)) .and. &
+               (status >= 1 .and. status <= 21)) then
+             pset_idx = find_pythia_particle (i_py, more_fuzzy=.false.)
+             direct_decendent = IDHEP(JMOHEP(1,i_py)) == cmshower .and. &
+                  JMOHEP(2,i_py) == 0
+             emitted_zero_momentum_photon = find_pythia_particle &
+                  (JMOHEP(1,i_py), more_fuzzy=.false.) == pset_idx
+             comes_from_cmshower = status == 1 .and. &
+                  (direct_decendent .or. emitted_zero_momentum_photon)
+             valid(i_py) = pset_idx == 0 .or. comes_from_cmshower
+          end if
        end if
     end do
     py_entries = count (valid)
@@ -8008,6 +8250,630 @@ with the ordering of the color string but am not sure.
   end subroutine pythia6_set_last_treated_line
 
 @ %def pythia6_set_last_treated_line
+@ This is the code based on Timothy Barklow and Michael Peskin for the 
+simulation of the production of low-pT hadrons from
+$\gamma\gamma$-induced interactions at $e^+e^-$ colliders.
+<<Shower pythia6: procedures>>=
+  subroutine aa_pipi ()
+
+    real(kind=double), save :: cost
+    real(kind=double), save :: sint
+    real(kind=double), save :: phi
+    real(kind=double), save :: pabs
+    real(kind=double), save :: gambet
+    real(kind=double), save :: sumsig
+    real(kind=double), save :: rchannel
+    real(kind=double), save :: gam_r
+    real(kind=double), save :: gambet_r
+    real(kind=double), save :: cth_r
+    real(kind=double), save :: sth_r
+    real(kind=double), save :: phi_r
+    real(kind=double), save :: cphi_r
+    real(kind=double), save :: sphi_r
+    real(kind=double), save :: xm_r
+    real(kind=double), save :: pab_r
+    real(kind=double), dimension(5), save :: prestq
+    real(kind=double), dimension(5), save :: prestqb
+    real(kind=double), dimension(0:3,0:3), save :: lor
+    real(kind=double), dimension(0:3,0:3), save :: lor_inv
+    real(kind=double), dimension(0:3,0:3), save :: rot
+    real(kind=double), dimension(0:3,0:3), save :: rot_inv
+    real(kind=double), dimension(0:3,0:3), save :: boost
+    real(kind=double), dimension(0:3,0:3), save :: boost_inv
+    real(kind=double), dimension(0:3), save :: plabd
+    real(kind=double), dimension(0:3), save :: plabdb
+    real(kind=double), dimension(0:3), save :: plabddb
+    real(kind=double), dimension(0:3), save :: prestddb
+    real(kind=double), dimension(0:3), save :: presthad
+    real(kind=double), dimension(0:3), save :: presthadb
+    real(kind=double), dimension(0:3), save :: plabhad
+    real(kind=double), dimension(0:3), save :: plabhadb
+    integer, save :: i
+
+    integer, parameter :: kf_pip = 211
+    integer, parameter :: kf_pi0 = 111
+    integer, parameter :: kf_rhop = 213
+    integer, parameter :: kf_rho0 = 113
+    integer, parameter :: kf_kp = 321
+    integer, parameter :: kf_k0 = 311
+    integer, parameter :: kf_omega = 223
+    integer, parameter :: kf_f2 = 225
+    integer, parameter :: kf_f2p = 335
+
+    real(kind=double), save :: xmpip, xmpi0, xmkp, xmk0
+    real(kind=double), save :: xmrhop, xmrho0, xmomega, xmf2, xmf2p
+    real(kind=double), save :: xwrhop, xwrho0, xwomega, xwf2, xwf2p
+
+    real(kind=double), save :: xm_res_rhoprhom, xm_res_rho0rho0
+    real(kind=double), save :: xm_res_rho0omega, xm_res_omegaomega
+    real(kind=double), save :: xw_res_rhoprhom, xw_res_rho0rho0
+    real(kind=double), save :: xw_res_rho0omega, xw_res_omegaomega
+
+    real(kind=double), save :: srt_born_peak_pippim, srt_born_peak_kpkm
+    real(kind=double), save :: srt_born_peak_rhoprhom, srt_born_peak_rho0rho0
+    real(kind=double), save :: srt_born_peak_rho0omega, srt_born_peak_omegaomega
+
+    real(kind=double), save :: srt_thresh_pippim, srt_thresh_pi0pi0
+    real(kind=double), save :: srt_thresh_kpkm, srt_thresh_k0k0
+    real(kind=double), save :: srt_thresh_rhoprhom, srt_thresh_rho0rho0
+    real(kind=double), save :: srt_thresh_rho0omega, srt_thresh_omegaomega
+    real(kind=double), save :: srt_thresh_factor_scalar, srt_thresh_factor_vector
+    real(kind=double), save :: beta_peak
+    real(kind=double), save :: sig_born_peak_pippim, sig_born_peak_kpkm
+    real(kind=double), save :: sig_res_peak_rhoprhom, sig_res_peak_rho0rho0
+    real(kind=double), save :: sig_res_peak_rho0omega, sig_res_peak_omegaomega
+    real(kind=double), save :: sig_f2_peak_pippim, sig_f2_peak_pi0pi0
+    real(kind=double), save :: sig_f2p_peak_kpkm, sig_f2p_peak_k0k0
+    real(kind=double), save :: frac_res_rhop, frac_res_rho0, frac_res_omega
+    real(kind=double), save :: beta_pippim, beta_kpkm
+    real(kind=double), save :: sig_pippim, sig_pi0pi0, sig_kpkm, sig_k0k0
+    real(kind=double), save :: sig_rhoprhom, sig_rho0rho0, sig_rho0omega, sig_omegaomega
+    real(kind=double), save :: prob_pippim, prob_pi0pi0, prob_kpkm, prob_k0k0
+    real(kind=double), save :: prob_rhoprhom, prob_rho0rho0, prob_rho0omega, prob_omegaomega
+    real(kind=double), save :: eqq, pzqq, xmqq, gam, bet
+    real(kind=double), dimension(5), save :: pq, pqb
+    real(kind=double), save :: m1, w1, a1, b1, c1, g1, z1, s1, ta1, tb1
+    real(kind=double), save :: m2, w2, a2, b2, c2, g2, z2, s2, ta2, tb2
+    integer, save :: iq, iqb
+    
+    integer, dimension(500,4) :: kchg
+    real(kind=double), dimension(500,4) :: pmas
+    real(kind=double), dimension(2000) :: parf
+    real(kind=double), dimension(4,4) :: vckm
+    COMMON/PYDAT2/kchg,pmas,parf,vckm      
+    save /PYDAT2/
+  <<HEPEVT BLOCK>>
+
+    interface
+       function pyr(i_dum)
+         use kinds, only: double
+         implicit none
+         real(kind=double) :: pyr
+         integer, intent(in) :: i_dum
+       end function pyr
+    end interface
+
+    interface
+       function pycomp(kf)
+         implicit none
+         integer :: pycomp
+         integer, intent(in) :: kf
+       end function pycomp
+    end interface
+
+    ncall_aa_pipi = ncall_aa_pipi + 1
+    check_ncall_aa: if (ncall_aa_pipi == 1) then
+       xmpip   = pmas(pycomp(kf_pip),1)
+       xmpi0   = pmas(pycomp(kf_pi0),1)
+       xmkp    = pmas(pycomp(kf_kp),1)
+       xmk0    = pmas(pycomp(kf_k0),1)
+       xmrhop  = pmas(pycomp(kf_rhop),1)
+       xmrho0  = pmas(pycomp(kf_rho0),1)
+       xmf2    = pmas(pycomp(kf_f2),1)
+       xmf2p   = pmas(pycomp(kf_f2p),1)
+       xmomega = pmas(pycomp(kf_omega),1)
+       xwrhop  = pmas(pycomp(kf_rhop),2)
+       xwrho0  = pmas(pycomp(kf_rho0),2)
+       xwf2    = pmas(pycomp(kf_f2),2)
+       xwf2p   = pmas(pycomp(kf_f2p),2)
+       ! xwomega=pmas(pycomp(kf_omega),2)
+       !!! Set width of omega = mass of omega because 90% of omega omega 
+       xwomega = xmomega
+       print *, " xmpip,xmpi0,xmrhop,xmrho0,xmomega= ", xmpip,xmpi0,xmrhop,xmrho0,xmomega
+       print *, " xmf2,xmf2p= ", xmf2,xmf2p
+       print *, " xwf2,xwf2p= ", xwf2,xwf2p
+       print *, " xwrhop,xwrho0,xwomega= ", xwrhop,xwrho0,xwomega
+       srt_born_peak_pippim = sqrt(6.)*xmpip
+       srt_born_peak_kpkm = sqrt(6.)*xmkp
+       srt_born_peak_rhoprhom = 1.3
+       srt_born_peak_rho0rho0 = 1.6
+       srt_born_peak_rho0omega = 1.6
+       srt_born_peak_omegaomega = 1.7
+       srt_thresh_factor_scalar = 1.01
+       srt_thresh_factor_vector = 1.05
+       srt_thresh_pippim = (2.*xmpip) * srt_thresh_factor_scalar
+       srt_thresh_pi0pi0 = (2.*xmpi0) * srt_thresh_factor_scalar
+       srt_thresh_kpkm   = (2.*xmkp)  * srt_thresh_factor_scalar
+       srt_thresh_k0k0   = (2.*xmk0)  * srt_thresh_factor_scalar
+       srt_thresh_rhoprhom  = 1.1
+       srt_thresh_rho0rho0  = 1.1
+       srt_thresh_rho0omega = 1.1
+       srt_thresh_omegaomega= 1.4
+       !!! JRR: this should only be printed out conditionally on some debug parameter
+       print *, " srt_thresh_factor_scalar,srt_thresh_factor_vector= ", &
+            srt_thresh_factor_scalar,srt_thresh_factor_vector
+       print *, " srt_thresh_pippim,srt_thresh_pi0pi0= ", &
+            srt_thresh_pippim,srt_thresh_pi0pi0
+       print *, " srt_thresh_kpkm,srt_thresh_k0k0= ", &
+            srt_thresh_kpkm,srt_thresh_k0k0
+       print *, " srt_thresh_rhoprhom,srt_thresh_rho0rho0= ", &
+            srt_thresh_rhoprhom,srt_thresh_rho0rho0
+       print *, " srt_thresh_rho0omega,srt_thresh_omegaomega= ", &
+            srt_thresh_rho0omega,srt_thresh_omegaomega
+       beta_peak = sqrt(1./3.)
+       ! maximum cross sections from H. Kolanowski, "Two-Photon Physics at e+e- Storage Rings", 
+       !                                            Springer Tracts in Modern Physics, Vol. 105, 1984
+       ! or Crystal Ball, Measurement of pi0pi0 Production in Two-Photon Collisions,  PhysRev D41, 3324 (1990)
+       ! or hep-ph/0404245
+       sig_born_peak_pippim = 450._double   ! Kolanowski, Fig 5.3
+       sig_f2_peak_pippim   = 240._double   ! Fig 6.10, dotted curve
+       sig_f2_peak_pi0pi0   = 140._double   ! Crystal Ball, Fig. 7
+       sig_born_peak_kpkm   = 36._double    ! Scale sig_born_peak_pippim by beta_peak/s_peak
+       sig_f2p_peak_kpkm    = 26._double    ! Kolanowski, Fig 6.26
+       sig_f2p_peak_k0k0    = 18._double    ! Kolanowski, Fig 6.26
+
+       ! Roughly account for non-resonant pi+pi0, pi+pi-, pi+pi-pi0 production, respectively
+       frac_res_rhop  = 1.0_double
+       frac_res_rho0  = 1.0_double
+       frac_res_omega = 0.4_double
+       !!! JRR: this should only be printed out conditionally on some debug parameter
+       print *, " frac_res_rhop,frac_res_rho0,frac_res_omega= ", &
+            frac_res_rhop, frac_res_rho0, frac_res_omega
+
+       sig_res_peak_rho0rho0 = 69.4_double  ! Table 1 resonant only, Z.Phys.C 50, 1 (1991)
+       xm_res_rho0rho0 = 1.5_double
+       xw_res_rho0rho0 = 0.4_double
+
+       sig_res_peak_rhoprhom = 29.8_double  ! Table 1 resonant only, Phys Lett B267 535 (1991)
+       xm_res_rhoprhom = 1.7_double
+       xw_res_rhoprhom = 0.4_double
+
+       ! Table 6.1 resonant only ,E. Kriznic thesis University of Ljubljana, Report No. IJS-DP-6928 (1994)
+       sig_res_peak_rho0omega = 17.3_double  
+       xm_res_rho0omega = 1.6_double
+       xw_res_rho0omega = 0.5_double
+
+       sig_res_peak_omegaomega = 43.5_double  !  Table 1 non-resonant only ,Phys Lett B374 265 (1996)
+       xm_res_omegaomega = 2.7_double
+       xw_res_omegaomega = 1.4_double
+
+    end if check_ncall_aa
+    
+    call pyhepc(1)
+    if (ncall_aa_pipi .le. nprint_aa_pipi) then
+       print *, " after pyhepc(1) ", " phep(:,1)= ", phep(:,1), &
+                " isthep(1)= ", isthep(1), " idhep(1)= ", idhep(1)
+       print *, " after pyhepc(1) ", " phep(:,2)= ", phep(:,2), &
+                " isthep(2)= ", isthep(2), " idhep(1)= ", idhep(2)
+       print *, " after pyhepc(1) ", " phep(:,3)= ", phep(:,3), &
+                " isthep(3)= ", isthep(3), " idhep(1)= ", idhep(3)
+       print *, " after pyhepc(1) ", " phep(:,4)= ", phep(:,4), &
+                " isthep(4)= ", isthep(4), " idhep(1)= ", idhep(4)
+    end if
+
+    isthep(1) = 3
+    isthep(2) = 3
+    iq = 3
+    iqb = 4
+
+    if (ncall_aa_pipi .le. nprint_aa_pipi) then
+       print *, " phep(1:4,1)= ",phep(1:4,1)," phep(1:4,2)= ",phep(1:4,2)
+       print *, " phep(1:4,3)= ",phep(1:4,3)," phep(1:4,4)= ",phep(1:4,4)
+    end if
+    plabd(0)=phep(4,iq)
+    plabd(1:3)=phep(1:3,iq)
+    plabdb(0)=phep(4,iqb)
+    plabdb(1:3)=phep(1:3,iqb)
+    plabddb=plabd+plabdb
+    pab_r=sqrt(sum(plabddb(1:3)**2))
+    xm_r=sqrt(plabddb(0)**2-pab_r**2)
+    gam_r=plabddb(0)/xm_r
+    gambet_r=pab_r/xm_r
+    cth_r=plabddb(3)/pab_r
+    sth_r=sqrt(1.d0-cth_r**2)
+    check_0pt: if(abs(plabddb(1)).lt.epsilon(0.d0).and.abs(plabddb(2)).lt.epsilon(0.d0)) then
+       phi_r=0.d0
+    else check_0pt
+       phi_r=atan2(plabddb(2),plabddb(1))
+    end if check_0pt
+    cphi_r=cos(phi_r)
+    sphi_r=sin(phi_r)
+
+    rot(0,0)=1.
+    rot(0,1)=0.
+    rot(0,2)=0.
+    rot(0,3)=0.
+
+    rot(1,0)=0.d0
+    rot(1,1)=cth_r*cphi_r
+    rot(1,2)=cth_r*sphi_r
+    rot(1,3)=-sth_r
+
+    rot(2,0)=0.d0
+    rot(2,1)=-sphi_r
+    rot(2,2)=cphi_r
+    rot(2,3)=0.d0
+
+    rot(3,0)=0.
+    rot(3,1)=sth_r*cphi_r
+    rot(3,2)=sth_r*sphi_r
+    rot(3,3)=cth_r
+
+    boost(0,0)=gam_r
+    boost(0,1)=0.
+    boost(0,2)=0.
+    boost(0,3)=-gambet_r
+
+    boost(1,0)=0.d0
+    boost(1,1)=1.
+    boost(1,2)=0.
+    boost(1,3)=0.
+
+    boost(2,0)=0.d0
+    boost(2,1)=0.
+    boost(2,2)=1.
+    boost(2,3)=0.d0
+
+    boost(3,0)=-gambet_r
+    boost(3,1)=0.
+    boost(3,2)=0.
+    boost(3,3)=gam_r
+
+    boost_inv=boost
+    boost_inv(0,3)=-boost(0,3)
+    boost_inv(3,0)=boost_inv(0,3)
+
+    rot_inv=transpose(rot)
+
+    lor=matmul(boost,rot)
+    lor_inv=matmul(rot_inv,boost_inv)
+
+    prestddb=matmul(lor,plabddb)
+
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " aa_pipi plabddb(0:3)= ", plabddb(0:3)
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " aa_pipi prestddb(0:3)= ", prestddb(0:3)
+
+
+    eqq=prestddb(0)
+    xmqq=prestddb(0)
+    gam=1.
+    bet=0.
+    gambet=0.
+
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " ncall_aa_pipi,xmqq,pyr=", ncall_aa_pipi,xmqq,pyr(0)
+
+    beta_pippim=sqrt(1.-4.*xmpip**2/xmqq**2)
+    sig_pippim=sig_born_peak_pippim*beta_pippim/beta_peak*srt_born_peak_pippim**2/xmqq**2+sig_f2_peak_pippim*(xmf2*xwf2)**2/  &
+         ((xmqq-xmf2)**2+(xmf2*xwf2)**2)
+    sig_pi0pi0=sig_f2_peak_pi0pi0*(xmf2*xwf2)**2/((xmqq-xmf2)**2+(xmf2*xwf2)**2)
+    sig_kpkm=0.
+    sig_k0k0=0.
+    sig_rhoprhom=0.
+    sig_rho0rho0=0.
+    sig_rho0omega=0.
+    sig_omegaomega=0.
+    check_thresh_kpkm: if(xmqq.gt.srt_thresh_kpkm) then
+       beta_kpkm=sqrt(1.-4.*xmkp**2/xmqq**2)
+       sig_kpkm=sig_born_peak_kpkm*beta_kpkm/beta_peak*srt_born_peak_kpkm**2/xmqq**2+sig_f2p_peak_kpkm*(xmf2p*xwf2p)**2/ &
+            ((xmqq-xmf2p)**2+(xmf2p*xwf2p)**2)
+    end if check_thresh_kpkm
+    check_thresh_k0k0: if(xmqq.gt.srt_thresh_k0k0) then
+       sig_k0k0=sig_f2p_peak_k0k0*(xmf2p*xwf2p)**2/((xmqq-xmf2p)**2+(xmf2p*xwf2p)**2)
+    endif check_thresh_k0k0
+    check_thresh_rhoprhom: if(xmqq.gt.srt_thresh_rhoprhom) then
+       sig_rhoprhom=sig_res_peak_rhoprhom*(xm_res_rhoprhom*xw_res_rhoprhom)**2/((xmqq-xm_res_rhoprhom)**2+(xm_res_rhoprhom* &
+            xw_res_rhoprhom)**2)
+    end if check_thresh_rhoprhom
+    check_thresh_rho0rho0: if(xmqq.gt.srt_thresh_rho0rho0) then
+       sig_rho0rho0=sig_res_peak_rho0rho0*(xm_res_rho0rho0*xw_res_rho0rho0)**2/((xmqq-xm_res_rho0rho0)**2+(xm_res_rho0rho0* &
+            xw_res_rho0rho0)**2)
+    end if check_thresh_rho0rho0
+    check_thresh_rho0omega: if(xmqq.gt.srt_thresh_rho0omega) then
+       sig_rho0omega=sig_res_peak_rho0omega*(xm_res_rho0omega*xw_res_rho0omega)**2/((xmqq-xm_res_rho0omega)**2+ &
+            (xm_res_rho0omega*xw_res_rho0omega)**2)
+    end if check_thresh_rho0omega
+    check_thresh_omegaomega: if(xmqq.gt.srt_thresh_omegaomega) then
+       sig_omegaomega=sig_res_peak_omegaomega*(xm_res_omegaomega*xw_res_omegaomega)**2/((xmqq-xm_res_omegaomega)**2+ &
+            (xm_res_omegaomega*xw_res_omegaomega)**2)
+    end if check_thresh_omegaomega
+    sumsig=sig_pippim+sig_pi0pi0+sig_kpkm+sig_k0k0+sig_rhoprhom+sig_rho0rho0+sig_rho0omega+sig_omegaomega
+    prob_pippim=sig_pippim/sumsig
+    prob_pi0pi0=sig_pi0pi0/sumsig
+    prob_kpkm=sig_kpkm/sumsig
+    prob_k0k0=sig_k0k0/sumsig
+    prob_rhoprhom=sig_rhoprhom/sumsig
+    prob_rho0rho0=sig_rho0rho0/sumsig
+    prob_rho0omega=sig_rho0omega/sumsig
+    prob_omegaomega=sig_omegaomega/sumsig
+    rchannel=pyr(0)
+    if (ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk sig_pippim,sig_pi0pi0,sig_kpkm,sig_k0k0= ", sig_pippim,sig_pi0pi0, &
+         sig_kpkm,sig_k0k0
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk sig_rhoprhom,sig_rho0rho0= ", sig_rhoprhom,sig_rho0rho0
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk sig_rho0omega, sig_omegaomega,sumsig= ", sig_rho0omega, &
+         sig_omegaomega,sumsig
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk prob_pippim,prob_pi0pi0,prob_kpkm,prob_k0k0= ", prob_pippim, &
+         prob_pi0pi0,prob_kpkm,prob_k0k0
+     if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk prob_rhoprhom,prob_rho0rho0= ", prob_rhoprhom,prob_rho0rho0
+     if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk prob_rho0omega, prob_omegaomega,rchannel= ", prob_rho0omega, &
+          prob_omegaomega,rchannel
+    check_prob_k0k0: if(rchannel.lt.prob_pippim) then
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_pippim"
+       call do_pippim
+    else if(rchannel.lt.prob_pippim+prob_pi0pi0) then check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_pi0pi0"
+       call do_pi0pi0
+    else if(rchannel.lt.prob_pippim+prob_pi0pi0+prob_kpkm) then check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_kpkm"
+       call do_kpkm
+    else if(rchannel.lt.prob_pippim+prob_pi0pi0+prob_kpkm+prob_k0k0) then check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_k0k0"
+       call do_k0k0
+    else if(rchannel.lt.prob_pippim+prob_pi0pi0+prob_kpkm+prob_k0k0+prob_rhoprhom) then check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_rhoprhom"
+       call do_rhoprhom
+    else if(rchannel.lt.prob_pippim+prob_pi0pi0+prob_kpkm+prob_k0k0+prob_rhoprhom+prob_rho0rho0) then check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_rho0rho0"
+       call do_rho0rho0
+    else if(rchannel.lt.prob_pippim+prob_pi0pi0+prob_kpkm+prob_k0k0+prob_rhoprhom+prob_rho0rho0+prob_rho0omega) &
+         then check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_rho0omega"
+       call do_rho0omega
+    else  check_prob_k0k0
+       if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " kk call do_omegaomega"
+       call do_omegaomega
+    end if check_prob_k0k0
+
+    cost=-1.d0+2.d0*pyr(0)
+    sint=sqrt(max(0.d0,1.d0-cost**2))
+    phi=2.d0*pi*pyr(0)
+    pq(4)=(xmqq**2-pqb(5)**2+pq(5)**2)/2.d0/xmqq
+    pqb(4)=xmqq-pq(4)
+    pabs=sqrt(max(0.d0,pq(4)**2-pq(5)**2))
+    pq(1)=pabs*sint*cos(phi)
+    pq(2)=pabs*sint*sin(phi)
+    pq(3)=pabs*cost
+    pqb(1:3)=-pq(1:3)
+    isthep(iq)=1
+    isthep(iqb)=1
+    jmohep(:,iq)=0
+    jdahep(:,iqb)=0
+
+    prestq(5)=pq(5)
+    prestq(4)=gam*pq(4)+gambet*pq(3)
+    prestq(3)=gambet*pq(4)+gam*pq(3)
+    prestq(1:2)=pq(1:2)
+
+    prestqb(5)=pqb(5)
+    prestqb(4)=gam*pqb(4)+gambet*pqb(3)
+    prestqb(3)=gambet*pqb(4)+gam*pqb(3)
+    prestqb(1:2)=pqb(1:2)
+  
+    !    call inverse_calc_prest(phep(:,iq),phep(:,iqb),prestq,prestqb)
+
+    presthad(0)=prestq(4)
+    presthad(1:3)=prestq(1:3)
+    presthadb(0)=prestqb(4)
+    presthadb(1:3)=prestqb(1:3)
+
+
+    plabhad=matmul(lor_inv,presthad)
+    plabhadb=matmul(lor_inv,presthadb)
+
+    phep(4,iq)=plabhad(0)
+    phep(1:3,iq)=plabhad(1:3)
+    phep(5,iq)=sqrt(max(0.,plabhad(0)**2-sum(plabhad(1:3)**2)))
+
+    phep(4,iqb)=plabhadb(0)
+    phep(1:3,iqb)=plabhadb(1:3)
+    phep(5,iqb)=sqrt(max(0.,plabhadb(0)**2-sum(plabhadb(1:3)**2)))
+
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " aa_pipi presthad(0:3)= ", presthad(0:3)
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " aa_pipi plabhad(0:3)= ", plabhad(0:3)
+
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " aa_pipi presthadb(0:3)= ", presthadb(0:3)
+    if(ncall_aa_pipi.le.nprint_aa_pipi) print *, " aa_pipi plabhadb(0:3)= ", plabhadb(0:3)
+
+  contains
+
+    subroutine do_pippim ()
+      idhep(iq)=kf_pip
+      idhep(iqb)=-kf_pip
+      pq(5)=xmpip
+      pqb(5)=xmpip
+      return
+    end subroutine do_pippim
+    
+    subroutine do_pi0pi0 ()
+      idhep(iq)=kf_pi0
+      idhep(iqb)=kf_pi0
+      pq(5)=xmpi0
+      pqb(5)=xmpi0
+      return
+    end subroutine do_pi0pi0
+    
+    subroutine do_kpkm ()
+      idhep(iq)=kf_kp
+      idhep(iqb)=-kf_kp
+      pq(5)=xmkp
+      pqb(5)=xmkp
+      return
+    end subroutine do_kpkm
+    
+    subroutine do_k0k0 ()
+      idhep(iq)=kf_k0
+      idhep(iqb)=kf_k0
+      pq(5)=xmk0
+      pqb(5)=xmk0
+      return
+    end subroutine do_k0k0
+    
+    subroutine do_rhoprhom ()
+      m1=xmrhop
+      check_res_rhop_1: if(pyr(0).lt.frac_res_rhop) then
+         w1=xwrhop
+      else check_res_rhop_1
+         w1=xmrhop
+      end if check_res_rhop_1
+      g1=(xmpip+xmpi0)**2
+    
+      m2=xmrhop
+      check_res_rhop_2: if(pyr(0).lt.frac_res_rhop) then
+         w2=xwrhop
+      else check_res_rhop_2
+         w2=xmrhop
+      end if check_res_rhop_2
+      g2=(xmpip+xmpi0)**2
+    
+      idhep(iq)=kf_rhop
+      idhep(iqb)=-kf_rhop
+    
+      call do_vectorvector ()
+    
+      return 
+    
+    end subroutine do_rhoprhom
+    
+    subroutine do_rho0rho0 ()
+      m1=xmrho0
+      check_frac_res_rho0_1: if(pyr(0).lt.frac_res_rho0) then
+         w1=xwrho0
+      else check_frac_res_rho0_1
+         w1=xmrho0
+      end if check_frac_res_rho0_1
+      g1=(2.*xmpip)**2
+    
+      m2=xmrho0
+      check_frac_res_rho0_2: if(pyr(0).lt.frac_res_rho0) then
+         w2=xwrho0
+      else check_frac_res_rho0_2
+         w2=xmrho0
+      end if check_frac_res_rho0_2
+      g2=(2.*xmpip)**2
+    
+      idhep(iq)=kf_rho0
+      idhep(iqb)=kf_rho0
+    
+      call do_vectorvector ()
+    
+      return 
+    
+    end subroutine do_rho0rho0
+    
+    subroutine do_rho0omega ()
+      m1=xmrho0
+      check_frac_res_rho0_1: if(pyr(0).lt.frac_res_rho0) then
+         w1=xwrho0
+      else check_frac_res_rho0_1
+         w1=xmrho0
+      end if check_frac_res_rho0_1
+      g1=(2.*xmpip)**2
+    
+      m2=xmomega
+      check_frac_rec_omega_2: if(pyr(0).lt.frac_res_omega) then
+         w2=xwomega
+      else check_frac_rec_omega_2
+         w2=xmomega
+      end if check_frac_rec_omega_2
+      g2=(2.*xmpip+xmpi0)**2
+    
+      idhep(iq)=kf_rho0
+      idhep(iqb)=kf_omega
+    
+      call do_vectorvector ()
+    
+      return 
+    
+    end subroutine do_rho0omega
+    
+    subroutine do_omegaomega ()
+      m1=xmomega
+      check_frac_rec_omega_1: if(pyr(0).lt.frac_res_omega) then
+         w1=xwomega
+      else check_frac_rec_omega_1
+         w1=xmomega
+      end if check_frac_rec_omega_1
+      g1=(2.*xmpip+xmpi0)**2
+    
+      m2=xmomega
+      check_frac_rec_omega_2: if(pyr(0).lt.frac_res_omega) then
+         w2=xwomega
+      else check_frac_rec_omega_2
+         w2=xmomega
+      end if check_frac_rec_omega_2
+      g2=(2.*xmpip+xmpi0)**2
+    
+      idhep(iq)=kf_omega
+      idhep(iqb)=kf_omega
+    
+      call do_vectorvector ()
+    
+      return 
+    
+    end subroutine do_omegaomega
+    
+    subroutine do_vectorvector ()
+      integer :: n_breit_wigner
+      real(kind=double) :: g1p
+      real(kind=double) :: g2p
+      g1p=g1*srt_thresh_factor_vector**2
+      g2p=g2*srt_thresh_factor_vector**2
+    
+      c1=m1*w1
+      a1=g1p-m1**2
+      b1=(xmqq-sqrt(g1p))**2-m1**2
+      tb1=atan(b1/c1)
+      ta1=atan(a1/c1)
+    
+      c2=m2*w2
+      a2=g2p-m2**2
+      b2=(xmqq-sqrt(g2p))**2-m2**2
+      tb2=atan(b2/c2)
+      ta2=atan(a2/c2)
+    
+      n_breit_wigner=0
+      loop_breit_wigner: do
+         n_breit_wigner=n_breit_wigner+1
+         z1=c1*tan(pyr(0)*(tb1-ta1)+ta1)
+         z2=c2*tan(pyr(0)*(tb2-ta2)+ta2)
+         s1=z1+m1**2
+         s2=z2+m2**2
+         check_masses: if(sqrt(s1)+sqrt(s2)<xmqq) then
+            pq(5)=sqrt(s1)
+            pqb(5)=sqrt(s2)
+            exit loop_breit_wigner
+         end if check_masses
+         check_breit_wigner: if(n_breit_wigner > 1000000) then
+            print *, " n_breit_wigner,sqrt(s1),sqrt(s2),xmqq= ",n_breit_wigner,sqrt(s1),sqrt(s2),xmqq
+            print *, " m1,w1,a1,b1= ",m1,w1,a1,b1
+            print *, " c1,g1p= ",c1,g1p
+            print *, " z1,ta1,tb1= ",z1,ta1,tb1
+            print *, " m2,w2,a2,b2= ",m2,w2,a2,b2
+            print *, " c2,g2p= ",c2,g2p
+            print *, " z2,ta2,tb2= ",z2,ta2,tb2
+            print *, " idhep(iq),idhep(iqb)= ", idhep(iq),idhep(iqb)
+            print *, " xmpip,xmpi0,xmrhop,xmrho0,xmomega= ", xmpip,xmpi0,xmrhop,xmrho0,xmomega
+            print *, " xwrhop,xwrho0,xwomega= ", xwrhop,xwrho0,xwomega
+            print *, " program will now stop"
+            stop
+         end if check_breit_wigner
+      end do loop_breit_wigner
+      return 
+    
+    end subroutine do_vectorvector
+
+  end subroutine aa_pipi
+
+@ %def aa_pipi
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 @

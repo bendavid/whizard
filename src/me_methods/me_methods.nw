@@ -968,16 +968,16 @@ Gfortran 7/8/9 bug, has to remain in the main module.
   procedure :: init => template_me_def_init
 <<Template matrix elements: main procedures>>=
   subroutine template_me_def_init &
-       (object, model, prt_in, prt_out, unity)
+       (object, model, prt_in, prt_out, unity, gg_had)
     class(template_me_def_t), intent(out) :: object
     class(model_data_t), intent(in), target :: model
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    logical, intent(in) :: unity
+    logical, intent(in) :: unity, gg_had
     allocate (template_me_writer_t :: object%writer)
     select type (writer => object%writer)
     type is (template_me_writer_t)
-       call writer%init (model, prt_in, prt_out, unity)
+       call writer%init (model, prt_in, prt_out, unity, gg_had)
     end select
   end subroutine template_me_def_init
 
@@ -1158,6 +1158,7 @@ responsible for writing interfaces and wrappers.
      class(model_data_t), pointer :: model => null ()
      type(string_t) :: model_name
      logical :: unity
+     logical :: gg_had
      type(string_t), dimension(:), allocatable :: prt_in
      type(string_t), dimension(:), allocatable :: prt_out
      integer :: n_in
@@ -1234,21 +1235,21 @@ responsible for writing interfaces and wrappers.
   procedure :: init => template_me_writer_init
 <<Template matrix elements: sub interfaces>>=
     module subroutine template_me_writer_init (writer, model, &
-         prt_in, prt_out, unity)
+         prt_in, prt_out, unity, gg_had)
       class(template_me_writer_t), intent(out) :: writer
       class(model_data_t), intent(in), target :: model
       type(string_t), dimension(:), intent(in) :: prt_in
       type(string_t), dimension(:), intent(in) :: prt_out
-      logical, intent(in) :: unity
+      logical, intent(in) :: unity, gg_had
     end subroutine template_me_writer_init
 <<Template matrix elements: procedures>>=
   module subroutine template_me_writer_init (writer, model, &
-       prt_in, prt_out, unity)
+       prt_in, prt_out, unity, gg_had)
     class(template_me_writer_t), intent(out) :: writer
     class(model_data_t), intent(in), target :: model
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    logical, intent(in) :: unity
+    logical, intent(in) :: unity, gg_had
     writer%model => model
     writer%model_name = model%get_name ()
     writer%n_in = size (prt_in)
@@ -1257,6 +1258,7 @@ responsible for writing interfaces and wrappers.
     allocate (writer%prt_in (size (prt_in)), source = prt_in)
     allocate (writer%prt_out (size (prt_out)), source = prt_out)
     writer%unity = unity
+    writer%gg_had = gg_had
   end subroutine template_me_writer_init
 
 @ %def template_me_writer_init
@@ -1588,8 +1590,14 @@ responsible for writing interfaces and wrappers.
     write (u, "(A)") "    complex(default), dimension(:,:,:), intent(out) :: amp"
     write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: k"
     write (u, "(A)") "    real(default) :: fac"
+    if (writer%gg_had) then
+       write (u, "(A)") "    real(default) :: srt, sigtot_fb"
+    end if
     write (u, "(A)") "    integer :: i"
     write (u, "(A)") "    ! We give all helicities the same weight!"
+    if (writer%gg_had) then
+       write (u, "(A)") "    !!! This will contain the specific code for gg->hadrons."
+    end if
     if (writer%unity) then
        write (u, "(A,1x,I0,1x,A)") "    fac = ", col_fac
        write (u, "(A)") "    amp = const * sqrt(fac)"
@@ -1599,9 +1607,47 @@ responsible for writing interfaces and wrappers.
        write (u, "(A,1x,I0,A)") "         - dot_product (k(1:,1), k(1:,2)))) ** (3-", &
                                   writer%n_out, ")) * sqrt(const * fac)"
     end if
+    if (writer%gg_had) then
+       write (u, "(A)") "    srt = amp(1,1,1) / sqrt(const*fac)"
+       write (u, "(A)") "    call a6f_pyxtot (srt, sigtot_fb)"
+       write (u, "(A)") "    amp = amp * sqrt(sigtot_fb)"
+    end if
     write (u, "(A,1x,I0,A)") "    amp = amp / sqrt(", hel_out, "._default)"
     write (u, "(A)") "  end subroutine calculate_amplitudes"
     write (u, "(A)") "                                           "
+    if (writer%gg_had) then
+	write (u, "(A)") " pure subroutine a6f_pyxtot(srtin,sgout)"
+	write (u, "(A)") "   real(default), intent(in)  :: srtin"
+	write (u, "(A)") "   real(default), intent(out) :: sgout"
+	write (u, "(A)") ""
+	write (u, "(A)") "   real(default), parameter :: lns_exp = 2.1e0_default"
+	write (u, "(A)") "   real(default), parameter :: lns_cof = 6.3e-3_default"
+	write (u, "(A)") "   real(default), parameter :: s_exp = -0.37e0_default"
+	write (u, "(A)") "   real(default), parameter :: s_cof = 1.96e0_default"
+	write (u, "(A)") "   real(default), parameter :: sig0_peskin_fb = 2.e8_default"
+	write (u, "(A)") "   real(default), parameter :: srt_peskin_min = 1.5_default"
+	write (u, "(A)") "   real(default), parameter :: srt_sim_min = 0.3_default"
+	write (u, "(A)") ""
+	write (u, "(A)") "   real(default) :: s_peskin"
+	write (u, "(A)") "   real(default) :: slog_peskin"
+	write (u, "(A)") ""
+	write (u, "(A)") "   if (srtin > srt_sim_min) then"
+	write (u, "(A)") "      if (srtin > srt_peskin_min) then"
+	write (u, "(A)") "         s_peskin = srtin**2"
+	write (u, "(A)") "      else"
+	write (u, "(A)") "         s_peskin = srt_peskin_min**2"
+	write (u, "(A)") "      end if"
+	write (u, "(A)") ""
+	write (u, "(A)") "      slog_peskin = log(s_peskin)"
+	write (u, "(A)") ""
+	write (u, "(A)") "      sgout = sig0_peskin_fb * (1.d0 + lns_cof*slog_peskin**lns_exp &"
+        write (u, "(A)") "                                     + s_cof*s_peskin**s_exp)"
+	write (u, "(A)") "   else"
+	write (u, "(A)") "      sgout = 0."
+	write (u, "(A)") "   end if"
+	write (u, "(A)") ""
+	write (u, "(A)") " end subroutine a6f_pyxtot"
+    end if
     write (u, "(A)") "end module tpr_" // char(id)
     close (u, iostat=status)
     deallocate (sxxx)
@@ -1945,19 +1991,19 @@ Gfortran 7/8/9 bug, remains in main module.
   public :: template_me_make_process_component
 <<Template matrix elements: main procedures>>=
   subroutine template_me_make_process_component (entry, component_index, &
-         model, model_name, prt_in, prt_out, unity)
+         model, model_name, prt_in, prt_out, unity, gg_had)
     class(process_def_entry_t), intent(inout) :: entry
     integer, intent(in) :: component_index
     type(string_t), intent(in) :: model_name
     class(model_data_t), intent(in), target :: model
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
-    logical, intent(in) :: unity
+    logical, intent(in) :: unity, gg_had
     class(prc_core_def_t), allocatable :: def
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
-       call def%init (model, prt_in, prt_out, unity)
+       call def%init (model, prt_in, prt_out, unity, gg_had)
     end select
     call entry%import_component (component_index, &
          n_out = size (prt_out), &
@@ -2450,7 +2496,7 @@ parallel make.
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
-       call def%init (model, prt_in, prt_out, unity = .false.)
+       call def%init (model, prt_in, prt_out, unity = .false., gg_had = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("template_me1_a"), model_name = model_name, &
@@ -2620,7 +2666,7 @@ parallel make.
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
-       call def%init (model, prt_in, prt_out, unity = .true.)
+       call def%init (model, prt_in, prt_out, unity = .true., gg_had = .false.)
     end select
     allocate (entry)
     call entry%init (var_str ("template_me2_a"), model_name = model_name, &

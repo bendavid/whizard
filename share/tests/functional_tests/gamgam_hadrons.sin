@@ -1,0 +1,63 @@
+# SINDARIN input for WHIZARD self-test: method ofr gg -> (low-pT) hadrons
+
+model = SM
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+$method = "template_gg_had"
+
+process gamgam_hadrons_proc = A, A => d, D
+
+seed = 0
+
+compile ()
+
+$phs_method = "wood"
+$integration_method = "vamp"
+
+sqrts = 500 GeV
+
+$sample = "gamgam_hadrons"
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+
+?hadronization_active = false
+?ps_fsr_active = true
+?allow_decays = false
+?ps_taudec_active = false
+?keep_beams = true
+?keep_remnants = true
+$shower_method = "PYTHIA6"
+
+
+me = 0
+mmu = 0
+ms = 0
+mc = 0
+mb = 0
+mH = 125.
+wH = 4.03e-3
+alphas = 1.e-6
+
+
+
+$ps_PYTHIA_PYGIVE = "MSTP(14)=1; MSTP(123)=1; MSTP(171)=1; MSTP(172)=2; PARP(2)=3.; PARP(104)=0.2; PARP(111)=.5; PARJ(21)=0.40000; PARJ(41)=0.11000; PARJ(42)=0.52000; PARJ(81)=0.25000; PARJ(82)=1.90000; MSTJ(11)=3; PARJ(54)=-0.03100; PARJ(55)=-0.00200; PARJ(1)=0.08500; PARJ(3)=0.45000; PARJ(4)=0.02500; PARJ(2)=0.31000; PARJ(11)=0.60000; PARJ(12)=0.40000; PARJ(13)=0.72000; PARJ(14)=0.43000; PARJ(15)=0.08000; PARJ(16)=0.08000; PARJ(17)=0.17000; MSTP(3)=1"
+
+
+beams = A, A  => circe2
+$circe2_file = "teslagg_500.circe"
+$circe2_design = "TESLA/GG"
+?circe2_polarized = true
+
+integrate (gamgam_hadrons_proc) { iterations = 3:1000:"g", 3:1000 }
+
+n_events = 1
+simulate (gamgam_hadrons_proc)
+

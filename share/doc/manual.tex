@@ -332,6 +332,7 @@ Parameter & Value & Default & Description \\
   Maximilian L\"oschner, %
   Krzysztof~M\k{e}ka{\l}a, %
   Akiya Miyamoto, %
+  Michael Peskin, %
   Vincent Rothe, %
   Sebastian Schmidt, %
   Marco Sekulla, %
@@ -10263,6 +10264,17 @@ disable. The methods produce a process library for their corresponding
 processes, and a makefile, by  which \whizard\ steers compilation and
 linking of the process source code.
 
+There is also a specialized third version of template matrix elements,
+called \ttt{template\_gg\_had}, which should only be used for a
+dedicated simulation of low-$p_\perp$ hadrons in photon-photon
+collisions (either from the beam spectrum at an electron-positron or a
+photon collider) or in collinear splittings of photons off leptons
+using the equivalent photon approximation (EPA). For it, parton shower
+and hadronization from \pythiasix\ has to be switched
+on. \whizard\ will use special parameterizations from e.g. the Crystal
+Ball experiment on the total cross section and distribution of hadrons
+in photon-photon collisions.
+
 %%%%%
 
 \section{The O'Mega matrix elements}
@@ -11364,7 +11376,62 @@ option above has to be added to an existing
 
 \subsection{Other tools for parton shower and hadronization}
 
-\subsection{Loop-induced processes}
+%%%%%
+
+\section{Simulation of low-$p_T$ hadrons at lepton colliders}
+
+The largest cross section at lepton colliders is given by the
+photon-induced production of hadrons at low transverse momentum
+($p_T$). These processes are dominated by non-perturbative physics,
+but are also not well described by the standard hadronization models
+like the Lund string model or cluster hadronization. They are best
+described by fits to experimental data. Here, a simple functional
+parameterization is used of the form
+\begin{equation}
+  \sigma_{e^+e^- \to \gamma^*\gamma^* \to \text{hadrons}} (Q^2)
+    = c_0
+      \cdot \left( 1 + c_1 \log^{c_2}(Q^2) + c_3 \cdot Q^{2 \cdot c_4}
+  \right)
+  \; . 
+\end{equation}
+Here, $Q^2$ is the invariant mass of the produced hadron system which
+is set constant at a lower threshold of $(1.5 \,\text{GeV})^2$, while
+the respective constants are given by $c_0 = 2\cdot 10^8$ fb, $c_1 =
+6.3 \cdot 10^{-3}$, $c_2 = 2.1$, $c_3 = 1.96$, $c_4 = -0.37$. Most of
+these fits are obtained from data from the Crystall Ball experiment.
+
+In order to simulate this, there is a special matrix element method
+that is switched on via
+\begin{code}
+  $method = "template_gg_had"
+\end{code}
+which is to be used for a process with two quarks in the final state,
+e.g.
+\begin{code}
+  process gamgam_hadrons_proc = A, A => d, D
+\end{code}
+with the following beam structure:
+\begin{code}
+  beams = A, A  => epa
+\end{code}
+All the special settings for parton showering and hadronization for
+this production process of low-$p_T$ hadrons is automatically taken
+care of in the interface of \whizard\ with \pythiasix.
+
+A typical setting of \pythiasix\ shower and hadronization tuning
+parameters is e.g.
+\begin{code}
+  $ps_PYTHIA_PYGIVE = "MSTP(14)=1; MSTP(123)=1; MSTP(171)=1; MSTP(172)=2; PARP(2)=3.;
+  PARP(104)=0.2; PARP(111)=.5; PARJ(21)=0.40000; PARJ(41)=0.11000; PARJ(42)=0.52000;
+  PARJ(81)=0.25000; PARJ(82)=1.90000; MSTJ(11)=3; PARJ(54)=-0.03100; PARJ(55)=-0.00200;
+  PARJ(1)=0.08500; PARJ(3)=0.45000; PARJ(4)=0.02500; PARJ(2)=0.31000; PARJ(11)=0.60000;
+  PARJ(12)=0.40000; PARJ(13)=0.72000; PARJ(14)=0.43000; PARJ(15)=0.08000; PARJ(16)=0.08000;
+  PARJ(17)=0.17000; MSTP(3)=1"
+\end{code}
+
+%%%%%
+
+\section{Loop-induced processes}
 
 In order to steer loop-induced processes the usage of the OLP
 \openloops is required. Information on the interface and setting up
@@ -11377,6 +11444,8 @@ be observed
 \item Set the coupling powers \ttt{alpha\_power} and \ttt{alphas\_power}
 corresponding to those of loop-squared amplitudes of the process.
 \end{itemize}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

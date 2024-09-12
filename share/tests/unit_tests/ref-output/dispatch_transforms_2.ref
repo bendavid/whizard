@@ -149,6 +149,7 @@ Combined transformation (partons -> partons with recoil in lab frame) =
    ps_tau_dec                   =  F
    muli_active                  =  F
    hadronization_active         =  F
+   gg -> hadrons special mode   =  F
  General settings:
     [ISR and FSR off]
  Matching Settings:

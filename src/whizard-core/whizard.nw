@@ -3689,13 +3689,22 @@ Gfortran 7/8/9 bug, has to remain in the main module:
        allocate (template_me_def_t :: core_def)
        select type (core_def)
        type is (template_me_def_t)
-          call core_def%init (model, prt_in, prt_out, unity = .false.)
+          call core_def%init (model, prt_in, prt_out, &
+               unity = .false., gg_had = .false.)
        end select
     case ("template_unity")
        allocate (template_me_def_t :: core_def)
        select type (core_def)
        type is (template_me_def_t)
-          call core_def%init (model, prt_in, prt_out, unity = .true.)
+          call core_def%init (model, prt_in, prt_out, &
+               unity = .true., gg_had = .false.)
+       end select
+    case ("template_gg_had")
+       allocate (template_me_def_t :: core_def)
+       select type (core_def)
+       type is (template_me_def_t)
+          call core_def%init (model, prt_in, prt_out, &
+               unity = .false., gg_had = .true.)
        end select
     case ("omega")
        allocate (omega_def_t :: core_def)

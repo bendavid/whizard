@@ -223,6 +223,7 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_tau_dec                   =  F
    muli_active                  =  F
    hadronization_active         =  F
+   gg -> hadrons special mode   =  F
  General settings:
    method                       =  PYTHIA6
    shower_verbose               =  F
@@ -384,6 +385,7 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_tau_dec                   =  F
    muli_active                  =  F
    hadronization_active         =  T
+   gg -> hadrons special mode   =  F
  General settings:
    method                       =  PYTHIA6
    shower_verbose               =  F
@@ -532,6 +534,7 @@ Sum of outgoing momenta: p(0:3) =         1000.000        0.000        0.000    
    ps_tau_dec                   =  F
    muli_active                  =  F
    hadronization_active         =  T
+   gg -> hadrons special mode   =  F
  General settings:
    method                       =  PYTHIA6
    shower_verbose               =  F

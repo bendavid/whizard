@@ -89,3 +89,11 @@ function pyr (idummy)
   write (0, "(A)")  "**************************************************************"
   stop  
 end function pyr
+
+function pycomp (kf)
+  integer, intent(in) :: kf
+  write (0, "(A)")  "**************************************************************"
+  write (0, "(A)")  "*** Error: PYTHIA6 has not been enabled, WHIZARD terminates ***"
+  write (0, "(A)")  "**************************************************************"
+  stop  
+end function pycomp

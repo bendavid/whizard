@@ -1,0 +1,114 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$method = "template_gg_had"
+| Process library 'gamgam_hadrons_lib': recorded process 'gamgam_hadrons_proc'
+seed = 0
+| Process library 'gamgam_hadrons_lib': compiling ...
+| Process library 'gamgam_hadrons_lib': writing makefile
+| Process library 'gamgam_hadrons_lib': removing old files
+| Process library 'gamgam_hadrons_lib': writing driver
+| Process library 'gamgam_hadrons_lib': creating source code
+| Writing test matrix element for process 'gamgam_hadrons_proc_i1'
+| Process library 'gamgam_hadrons_lib': compiling sources
+| Process library 'gamgam_hadrons_lib': linking
+| Process library 'gamgam_hadrons_lib': loading
+| Process library 'gamgam_hadrons_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  5.00000E+02
+$sample = "gamgam_hadrons"
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?sample_pacify = true
+?hadronization_active = false
+?ps_fsr_active = true
+?allow_decays = false
+?ps_taudec_active = false
+?keep_beams = true
+?keep_remnants = true
+$shower_method = "PYTHIA6"
+SM.me =>  0.00000E+00
+SM.mmu =>  0.00000E+00
+SM.ms =>  0.00000E+00
+SM.mc =>  0.00000E+00
+SM.mb =>  0.00000E+00
+SM.mH =>  1.25000E+02
+SM.wH =>  4.03000E-03
+SM.alphas =>  1.00000E-06
+$ps_PYTHIA_PYGIVE = "MSTP(14)=1; MSTP(123)=1; MSTP(171)=1; MSTP(172)=2; PARP(2)=3.; PARP(104)=0.2; PARP(111)=.5; PARJ(21)=0.40000; PARJ(41)=0.11000; PARJ(42)=0.52000; PARJ(81)=0.25000; PARJ(82)=1.90000; MSTJ(11)=3; PARJ(54)=-0.03100; PARJ(55)=-0.00200; PARJ(1)=0.08500; PARJ(3)=0.45000; PARJ(4)=0.02500; PARJ(2)=0.31000; PARJ(11)=0.60000; PARJ(12)=0.40000; PARJ(13)=0.72000; PARJ(14)=0.43000; PARJ(15)=0.08000; PARJ(16)=0.08000; PARJ(17)=0.17000; MSTP(3)=1"
+$circe2_file = "teslagg_500.circe"
+$circe2_design = "TESLA/GG"
+?circe2_polarized = true
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process gamgam_hadrons_proc:
+| Beam structure: A, A => circe2
+| Beam data (collision):
+|   A  (mass = 0.0000000E+00 GeV)
+|   A  (mass = 0.0000000E+00 GeV)
+|   sqrts = 5.000000000000E+02 GeV
+| CIRCE2: activating generator mode
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'gamgam_hadrons_proc.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'gamgam_hadrons_proc'
+|   Library name  = 'gamgam_hadrons_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'gamgam_hadrons_proc_i1':   A, A => d, dbar [template_gg_had]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: Using 8 equivalences between channels.
+| Phase space: wood
+| Beam structure: circe2
+| Beam structure: 1 channels, 0 dimensions
+Warning: No cuts have been defined.
+| Starting integration for process 'gamgam_hadrons_proc'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        800     3.550E+08   1.03E+07    2.89    0.82    15.3
+   2        800     3.487E+08   7.65E+06    2.19    0.62    25.8
+   3        800     3.503E+08   7.41E+06    2.11    0.60    32.6
+|-----------------------------------------------------------------------------|
+   3       2400     3.507E+08   4.73E+06    1.35    0.66    32.6    0.12   3
+|-----------------------------------------------------------------------------|
+   4        800     3.509E+08   7.58E+06    2.16    0.61    29.9
+   5        800     3.492E+08   8.00E+06    2.29    0.65    29.5
+   6        800     3.573E+08   7.19E+06    2.01    0.57    29.1
+|-----------------------------------------------------------------------------|
+   6       2400     3.528E+08   4.37E+06    1.24    0.61    29.1    0.33   3
+|=============================================================================|
+n_events = 1
+| Starting simulation for process 'gamgam_hadrons_proc'
+| Simulate: using integration grids from file 'gamgam_hadrons_proc.m1.vg'
+| Simulate: activating parton shower
+| Shower: Using PYTHIA6 shower
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Simulation: requested number of events = 1
+|             corr. to luminosity [fb-1] =   2.8348E-09
+| Events: writing to ASCII file 'gamgam_hadrons.debug'
+| Events: writing to raw file 'gamgam_hadrons.evx'
+| Events: generating 1 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: actual unweighting efficiency =  16.67 %
+| Events: closing ASCII file 'gamgam_hadrons.debug'
+| Events: closing raw file 'gamgam_hadrons.evx'
+| There were no errors and    1 warning(s).
+| WHIZARD run finished.
+|=============================================================================|
+Contents of gamgam_hadrons.debug

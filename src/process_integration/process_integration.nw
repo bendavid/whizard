@@ -23023,7 +23023,7 @@ the phase space configuration.
     allocate (template_me_def_t :: def)
     select type (def)
     type is (template_me_def_t)
-       call def%init (model, prt_in, prt_out, unity = .false.)
+       call def%init (model, prt_in, prt_out, unity = .false., gg_had = .false.)
     end select
     allocate (entry)
     call entry%init (procname, &

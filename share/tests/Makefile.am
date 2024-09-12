@@ -683,6 +683,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/fatal_beam_decay.ref \
     functional_tests/ref-output/fks_res_2.ref \
     functional_tests/ref-output/flvsum_1.ref \
+    functional_tests/ref-output/gamgam_hadrons.ref \
     functional_tests/ref-output/gaussian_1.ref \
     functional_tests/ref-output/gaussian_2.ref \
     functional_tests/ref-output/hadronize_1.ref \
@@ -1229,6 +1230,7 @@ MISC_TESTS_SIN = \
     functional_tests/flvsum_1.sin \
     functional_tests/gaussian_1.sin \
     functional_tests/gaussian_2.sin \
+    functional_tests/gamgam_hadrons.sin \
     functional_tests/hadronize_1.sin \
     functional_tests/helicity.sin \
     functional_tests/hepmc2_1.sin \
