@@ -4203,21 +4203,23 @@ internal data.
   procedure :: setup_cores => process_setup_cores
 <<Process: sub interfaces>>=
     module subroutine process_setup_cores (process, dispatch_core, &
-         helicity_selection, use_color_factors, has_beam_pol)
+         helicity_selection, use_color_factors, has_beam_pol, gfermi_scheme)
       class(process_t), intent(inout) :: process
       procedure(dispatch_core_proc) :: dispatch_core
       type(helicity_selection_t), intent(in), optional :: helicity_selection
       logical, intent(in), optional :: use_color_factors
       logical, intent(in), optional :: has_beam_pol
+      integer, intent(in), optional :: gfermi_scheme
     end subroutine process_setup_cores
 <<Process: procedures>>=
   module subroutine process_setup_cores (process, dispatch_core, &
-       helicity_selection, use_color_factors, has_beam_pol)
+       helicity_selection, use_color_factors, has_beam_pol, gfermi_scheme)
     class(process_t), intent(inout) :: process
     procedure(dispatch_core_proc) :: dispatch_core
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
+    integer, intent(in), optional :: gfermi_scheme
     integer :: i
     associate (pcm => process%pcm)
       call pcm%allocate_cores (process%config, process%core_entry)
@@ -4228,7 +4230,8 @@ internal data.
               helicity_selection, &
               process%config%qcd, &
               use_color_factors, &
-              has_beam_pol)
+              has_beam_pol, &
+              gfermi_scheme)
          call process%core_entry(i)%configure &
               (process%env%get_lib_ptr (), process%meta%id)
          if (process%core_entry(i)%core%uses_blha ()) then
@@ -4242,7 +4245,7 @@ internal data.
 <<Process: interfaces>>=
   abstract interface
      subroutine dispatch_core_proc (core, core_def, model, &
-          helicity_selection, qcd, use_color_factors, has_beam_pol)
+          helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
        import
        class(prc_core_t), allocatable, intent(inout) :: core
        class(prc_core_def_t), intent(in) :: core_def
@@ -4251,6 +4254,7 @@ internal data.
        type(qcd_t), intent(in), optional :: qcd
        logical, intent(in), optional :: use_color_factors
        logical, intent(in), optional :: has_beam_pol
+       integer, intent(in), optional :: gfermi_scheme
      end subroutine dispatch_core_proc
   end interface
 
@@ -7708,7 +7712,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
   procedure :: setup_test_cores => process_setup_test_cores
 <<Process: main procedures>>=
   subroutine dispatch_test_me_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol)
+       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     use prc_test_core, only: test_t
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
@@ -7717,11 +7721,12 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
+    integer, intent(in), optional :: gfermi_scheme
     allocate (test_t :: core)
   end subroutine dispatch_test_me_core
 
   subroutine dispatch_template_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol)
+       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     use prc_template_me, only: prc_template_me_t
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
@@ -7730,6 +7735,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
+    integer, intent(in), optional :: gfermi_scheme
     allocate (prc_template_me_t :: core)
     select type (core)
     type is (prc_template_me_t)

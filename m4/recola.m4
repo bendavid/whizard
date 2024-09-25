@@ -40,7 +40,7 @@ if test "$enable_recola" = "yes"; then
                 call get_recola_version_rcl (version)
 		print *, version
                 ]])],
-         [wo_recola_version=`./conftest | $SED -e 's/^[ \t]*//'`],
+         [wo_recola_version=`./conftest | $SED -e 's/^[ \t]*//g;s/[ \t]*//g'`],
          [enable_recola="no"])
      AC_MSG_RESULT([$enable_recola])
      LIBS="$save_LIBS"
@@ -54,19 +54,30 @@ if test "$enable_recola" = "yes"; then
        AC_MSG_CHECKING([for Recola])
        AC_MSG_RESULT([disabled])
      else
-       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1" || test "$wo_recola_version" = "1.2" || test "$wo_recola_version" = "2.0.0" || test "$wo_recola_version" = 2.1.0 || test "$wo_recola_version" = 2.1.1; then
+       if test "$wo_recola_version" = "1.0" || test "$wo_recola_version" = "1.1" || test "$wo_recola_version" = "1.2" || test "$wo_recola_version" = "1.3.1" || test "$wo_recola_version" = "1.3.2" || test "$wo_recola_version" = "1.3.3" || test "$wo_recola_version" = "1.4.1"  || test "$wo_recola_version" = "1.4.2" || test "$wo_recola_version" = "1.4.3" || test "$wo_recola_version" = "2.0.0" || test "$wo_recola_version" = 2.1.0 || test "$wo_recola_version" = 2.1.1; then
          AC_MSG_NOTICE([error: **************************************************])
-         AC_MSG_NOTICE([error: Old RECOLA versions (1.0/1.1/1.2, 2.0.0/2.1.0-1)  ])
+         AC_MSG_NOTICE([error: RECOLA versions older than 1.4.4, or 2.0/2.1.0-1) ])
          AC_MSG_NOTICE([error: are not supported. RECOLA will be disabled.       ])
          AC_MSG_NOTICE([error: **************************************************])
          AC_MSG_CHECKING([for Recola])
          AC_MSG_RESULT([(disabled)])
-         enable_recola = "no"
+         enable_recola="no"
+         RECOLA_INTEGERVERSION=00000
+         AC_SUBST([RECOLA_INTEGERVERSION])
        else 
          RECOLA_INCLUDES=$wo_recola_includes
          RECOLA_VERSION=$wo_recola_version
+         AC_CACHE_VAL([wo_recola_cv_integer_version],
+           [wo_recola_cv_integer_version="`echo "$wo_recola_version" | \
+             $AWK 'NR==1 {
+               changequote(<<,>>)dnl
+                 split (<<$>>1, version, "[.+]+");
+                 printf ("%d%02d%02d", version[1], version[2], version[3])}'`"
+               changequote([,])])
+         RECOLA_INTEGERVERSION=$wo_recola_cv_integer_version
          LDFLAGS_RECOLA=$wo_recola_ldflags_cc
-         AC_SUBST([RECOLA_VERSION]) 
+         AC_SUBST([RECOLA_VERSION])
+	 AC_SUBST([RECOLA_INTEGERVERSION])
          AC_SUBST([RECOLA_DIR])
          AC_MSG_CHECKING([for Recola version])
          AC_MSG_RESULT([$wo_recola_version])
@@ -77,10 +88,14 @@ if test "$enable_recola" = "yes"; then
      AC_MSG_CHECKING([for Recola])
      AC_MSG_RESULT([(disabled)])
      enable_recola="no"
+     RECOLA_INTEGERVERSION=00000
+     AC_SUBST([RECOLA_INTEGERVERSION])
   fi
 else
    AC_MSG_CHECKING([for Recola])
    AC_MSG_RESULT([(disabled)])
+   enable_recola="no"
+   RECOLA_INTEGERVERSION=00000
 fi
 
 AC_SUBST([RECOLA_INCLUDES])

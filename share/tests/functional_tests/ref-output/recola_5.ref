@@ -3,6 +3,7 @@
 ?integration_timer = false
 ?pacify = true
 $method = "recola"
+recola_gfermi_scheme = 0
 openmp_num_threads = 1
 | Process library 'recola_5_lib': recorded process 'recola_5_p1'
 | Process library 'recola_5_lib': recorded process 'recola_5_p2'

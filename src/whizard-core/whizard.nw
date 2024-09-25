@@ -3756,7 +3756,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, prt_out, &
                   nlo, alpha_power, alphas_power, correction_type, &
-                  ufo, ufo_path, restrictions)
+                  ufo, ufo_path, restrictions, var_list)
           else
              call msg_fatal ("Dispatch RECOLA def: No id!")
           end if
@@ -3800,7 +3800,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
   public :: dispatch_core
 <<Dispatch ME methods: main procedures>>=
   subroutine dispatch_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol)
+       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
@@ -3808,6 +3808,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
+    integer, intent(in), optional :: gfermi_scheme
     select type (core_def)
     type is (prc_test_def_t)
        allocate (test_t :: core)
@@ -3840,6 +3841,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
       if (.not. allocated (core)) allocate (prc_recola_t :: core)
       select type (core)
       type is (prc_recola_t)
+         call core%set_gfermi (gfermi_scheme)
          call core%set_parameters (qcd, model)
       end select
     type is (prc_external_test_def_t)
@@ -6517,6 +6519,8 @@ local changes to currently inactive models.
 
 @ %def integration_init_process
 @ Initialization, third part: complete process configuration.
+[[Recola]] needs the mass renormalization scheme set before starting
+to register processes.
 <<Integrations: integration: TBP>>=
   procedure :: setup_process => integration_setup_process
 <<Integrations: sub interfaces>>=
@@ -6544,6 +6548,7 @@ local changes to currently inactive models.
     type(string_t) :: sf_string
     type(string_t) :: workspace
     real(default) :: sqrts
+    integer :: gfermi_scheme
 
     verb = .true.;  if (present (verbose))  verb = verbose
 
@@ -6553,13 +6558,14 @@ local changes to currently inactive models.
     call display_init_message (verb)
 
     var_list => local%get_var_list_ptr ()
+    gfermi_scheme = var_list%get_ival (var_str ("recola_gfermi_scheme"))
     call setup_log_and_history ()
 
     associate (process => intg%process)
       call set_intg_parameters (process)
 
-      call process%setup_cores (dispatch_core, &
-           intg%helicity_selection, intg%use_color_factors, intg%has_beam_pol)
+      call process%setup_cores (dispatch_core, intg%helicity_selection, &
+           intg%use_color_factors, intg%has_beam_pol, gfermi_scheme)
 
       call process%init_phs_config ()
       call process%init_components ()

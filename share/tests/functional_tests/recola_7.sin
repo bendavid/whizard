@@ -21,6 +21,8 @@ wtop = 0
 mtop = 175 GeV
 
 $method = "recola"
+### numerical backwards compatibility with Recola 1.4.3
+recola_gfermi_scheme = 0
 
 !!! Tests should be run single-threaded
 openmp_num_threads = 1

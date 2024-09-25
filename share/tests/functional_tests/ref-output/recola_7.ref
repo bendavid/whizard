@@ -14,6 +14,7 @@ SM.ms =>  0.00000E+00
 SM.wtop =>  0.00000E+00
 SM.mtop =>  1.75000E+02
 $method = "recola"
+recola_gfermi_scheme = 0
 openmp_num_threads = 1
 ?use_vamp_equivalences = false
 ?alphas_is_fixed = false

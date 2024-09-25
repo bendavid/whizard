@@ -3,6 +3,7 @@
 ?integration_timer = false
 ?pacify = true
 $method = "recola"
+recola_gfermi_scheme = 0
 openmp_num_threads = 1
 SM.me =>  0.00000E+00
 SM.ms =>  0.00000E+00

@@ -10765,7 +10765,7 @@ This sequence sets up a two-jet process, ready for generating events.
 @ A minimal dispatcher version that allocates the core object for testing.
 <<setup testbed>>=
   subroutine dispatch_core_omega_test (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol)
+       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
@@ -10773,6 +10773,7 @@ This sequence sets up a two-jet process, ready for generating events.
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
+    integer, intent(in), optional :: gfermi_scheme
     allocate (prc_omega_t :: core)
     select type (core)
     type is (prc_omega_t)

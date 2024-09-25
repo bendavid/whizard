@@ -319,11 +319,12 @@ module system_dependencies
   character(*), parameter :: SAMURAI_DIR = &
        "@SAMURAI_DIR@"
 
-  ! OpenLoops
+  ! OpenLoops and Recola
   character(*), parameter :: OPENLOOPS_DIR = &
        "@OPENLOOPS_DIR@"
   character(*), parameter :: RECOLA_DIR = &
-       "@RECOLA_DIR@"  
+       "@RECOLA_DIR@"
+  integer, parameter :: recola_version = @RECOLA_INTEGERVERSION@
 
   ! Hardwired options for batch-mode processing
   character(*), parameter :: OPT_LATEX  = &

@@ -529,11 +529,12 @@ so RECOLA can initialize itself for integration.
 <<Recola wrapper: public>>=
   public :: rclwrap_use_gfermi_scheme
 <<Recola wrapper: procedures>>=
-  subroutine rclwrap_use_gfermi_scheme (gf)
+  subroutine rclwrap_use_gfermi_scheme (gf, mode)
     real(double), intent(in), optional :: gf
+    integer, intent(in), optional :: mode
     if (debug_on) call msg_debug2 (D_ME_METHODS, "use_gfermi_scheme_rcl", &
          real(gf, kind=default))
-    call use_gfermi_scheme_rcl (gf)
+    call use_gfermi_scheme_rcl (g = gf, massesgf = mode)
   end subroutine rclwrap_use_gfermi_scheme
 
 @ %def rclwrap_use_gfermi_scheme
@@ -1463,8 +1464,9 @@ end module recola_wrapper
 <<Recola wrapper dummy: public>>=
   public :: rclwrap_use_gfermi_scheme
 <<Recola wrapper dummy: procedures>>=
-  subroutine rclwrap_use_gfermi_scheme (gf)
+  subroutine rclwrap_use_gfermi_scheme (gf, mode)
     real(double), intent(in), optional :: gf
+    integer, intent(in), optional :: mode
   end subroutine rclwrap_use_gfermi_scheme
 
 @ %def rclwrap_use_gfermi_scheme
@@ -2235,7 +2237,7 @@ Gfortran 7/8/9 bug: has to remain in the main module.
 <<Prc recola: main procedures>>=
   subroutine recola_def_init (object, basename, model_name, &
        prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
-       correction_type, ufo, ufo_path, restrictions)
+       correction_type, ufo, ufo_path, restrictions, var_list)
     class(recola_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
@@ -2246,6 +2248,7 @@ Gfortran 7/8/9 bug: has to remain in the main module.
     logical, intent(in), optional :: ufo
     type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
+    type(var_list_t), intent(in) :: var_list
     if (debug_on) call msg_debug (D_ME_METHODS, "recola_def_init: " &
          // char (basename) // ", nlo_type", nlo_type)
     object%basename = basename
@@ -2596,6 +2599,7 @@ implement the deferred type-bound procedures of [[prc_core_t]].
      integer, dimension(:), allocatable :: recola_ids
      integer, dimension(:,:), allocatable :: color_state
      integer :: n_f = 0
+     integer :: gfermi_scheme = 1
      logical :: helicity_and_color_arrays_are_replaced = .false.
   contains
   <<Prc recola: prc recola: TBP>>
@@ -2800,6 +2804,26 @@ This has become obsolete and is empty.
 
 @ %def prc_recola_prepare_external_code
 @
+The $G_F$ renormalization scheme needs to be set before any processes
+are being registered.
+<<Prc recola: prc recola: TBP>>=
+  procedure :: set_gfermi => prc_recola_set_gfermi
+<<Prc recola: sub interfaces>>=
+    module subroutine prc_recola_set_gfermi (object, gfermi)
+      class(prc_recola_t), intent(inout) :: object
+      integer, intent(in) :: gfermi
+    end subroutine prc_recola_set_gfermi
+<<Prc recola: procedures>>=
+  module subroutine prc_recola_set_gfermi (object, gfermi)
+    class(prc_recola_t), intent(inout) :: object
+    integer, intent(in) :: gfermi
+
+    if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: set_gfermi")
+    object%gfermi_scheme = gfermi
+  end subroutine prc_recola_set_gfermi
+
+@ %def prc_recola_set_gfermi
+@
 Set all Recola parameters to their correct values.  We use the model
 object for masses and such.  Note that the QCD object provides the
 [[n_f]] parameter which affects $\alpha_s$ evaluation.
@@ -2848,7 +2872,8 @@ the Recola workflow, however.
          dble(model%get_real (var_str ('wH'))))
 
     !!! TODO PB 03-03-2022: Automatize EW input schemes
-    call rclwrap_use_gfermi_scheme (dble(model%get_real (var_str ('GF'))))
+    call rclwrap_use_gfermi_scheme & 
+         (dble(model%get_real (var_str ('GF'))), object%gfermi_scheme)
     !!! TODO PB 03-03-2022: Automatize mass threshold for light fermions
     call rclwrap_set_light_fermions (0._double)
     call rclwrap_set_delta_ir (0._double, dble(pi**2 / 6))
@@ -3335,6 +3360,8 @@ end module prc_recola_uti
     write (u, "(A)") "* RECOLA: Evaluate process"
     counter  = 1
     call rclwrap_request_generate_processes ()
+    !!! Test was written for old default scheme of gf as product of real parts
+    call rclwrap_use_gfermi_scheme (1.16637d-5, 0)
     write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- at leading order"
     call rclwrap_add_process (counter, var_str ('e+ e- -> mu+ mu-'), var_str ('LO'))
     call rclwrap_define_processes ()
@@ -3458,6 +3485,8 @@ end module prc_recola_uti
     write (u, "(A)")
     write (u, "(A)") "* RECOLA: Evaluate process"
     call rclwrap_request_generate_processes ()
+    !!! Test was written for old default scheme of gf as product of real parts
+    call rclwrap_use_gfermi_scheme (1.16637d-5, 0)
     write (u, "(A)") "*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order"
     call rclwrap_add_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
     call rclwrap_define_processes ()
