@@ -62,13 +62,17 @@ struct stdstr stdstr_;
 struct stdhd1 stdhd1_;
 struct stdhd2 stdhd2_;
 
-extern int xdr_stdhep_();
-extern int xdr_stdhep_multi_();
-extern int xdr_stdhep_4_();
-extern int xdr_stdhep_4_multi_();
-extern int xdr_stdhep_cm1_();
-extern int xdr_hepeup_();
-extern int xdr_heprup_();
+/*
+ * In C23 standard the exact arguments need to be fully specified, as C23
+ * removed prototyped functions
+ */
+extern int xdr_stdhep_(XDR *xdrs, int *blockid, int *ntot, char** version);
+extern int xdr_stdhep_multi_(XDR *xdrs, int *blockid, int *ntot, char** version);
+extern int xdr_stdhep_4_(XDR *xdrs, int *blockid, int *ntot, char**version);
+extern int xdr_stdhep_4_multi_(XDR *xdrs, int *blockid, int* ntot, char** version);
+extern int xdr_stdhep_cm1_(XDR *xdrs, int *blockid, int *ntot, char** version);
+extern int xdr_hepeup_(XDR *xdrs, int *blockid, int *ntot, char** version);
+extern int xdr_heprup_(XDR *xdrs, int *blockid, int *ntot, char** version);
 
 int StdHepXdrReadInit(char *filename, int ntries, int ist)
 {
