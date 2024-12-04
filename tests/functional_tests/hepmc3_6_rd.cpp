@@ -24,10 +24,9 @@ void read_event_file()
        // Now read the file
        int icount=0;
        GenEvent evt = GenEvent(Units::GEV,Units::MM);
-       bool ok;
        int num = 1;
-       while ( num > 0) {
-	 ok = ascii_in.read_event(evt);
+       ascii_in.read_event(evt);
+       while ( !ascii_in.failed()) {
 	 num = evt.event_number();
 	 if (num > 0) {
 	   icount++;
@@ -44,6 +43,8 @@ void read_event_file()
 	   std::cout << "  alphaQED = " <<
 	     evt.attribute<DoubleAttribute>("alphaQED")->value()
 		     << std::endl;
+	   evt.clear();
+	   ascii_in.read_event(evt);
 	 }
 	 // Done event analysis
 	}
