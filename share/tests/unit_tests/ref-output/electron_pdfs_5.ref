@@ -3,55 +3,642 @@
 
 * Auxiliary functions V:
 
-* Integrals over endpoint_func_NS, interval [0,1]:
+* Integrals over all endpoint functions, interval [0,1]:
 
-  endpoint_func_NS (0.100) =   14.724544
-  endpoint_func_NS (0.500) =   -7.657719
-  endpoint_func_NS (0.900) =   -3.713501
-  endpoint_func_NS (0.999) =   -0.073418
-
-* Integrals over endpoint_func_S, interval [0,1]:
-
-  endpoint_func_S (0.100) =  -93.395246
-  endpoint_func_S (0.500) =  -23.348384
-  endpoint_func_S (0.900) =   -3.127739
-  endpoint_func_S (0.999) =   -0.032383
-
-* Integrals over endpoint_func_GAM, interval [0,1]:
-
-  endpoint_func_GAM (0.100) =  -49.091680
-  endpoint_func_GAM (0.500) =   -1.808421
-  endpoint_func_GAM (0.900) =    4.329055
-  endpoint_func_GAM (0.999) =    1.286007
+  endpoint_func_NS  (    1.0000000000E-24) =   -2.258E+05
+  endpoint_func_S   (    1.0000000000E-24) =    2.243E+05
+  endpoint_func_GAM (    1.0000000000E-24) =   -9.616E+24
+  endpoint_func_ELE (    1.0000000000E-24) =   -7.365E+02
+  endpoint_func_POS (    1.0000000000E-24) =    2.251E+05
+  endpoint_func (x =     1.0000000000E-24, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-24, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-23) =   -1.987E+05
+  endpoint_func_S   (    1.0000000000E-23) =    1.973E+05
+  endpoint_func_GAM (    1.0000000000E-23) =   -9.616E+23
+  endpoint_func_ELE (    1.0000000000E-23) =   -7.062E+02
+  endpoint_func_POS (    1.0000000000E-23) =    1.980E+05
+  endpoint_func (x =     1.0000000000E-23, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-23, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-22) =   -1.738E+05
+  endpoint_func_S   (    1.0000000000E-22) =    1.725E+05
+  endpoint_func_GAM (    1.0000000000E-22) =   -9.616E+22
+  endpoint_func_ELE (    1.0000000000E-22) =   -6.759E+02
+  endpoint_func_POS (    1.0000000000E-22) =    1.731E+05
+  endpoint_func (x =     1.0000000000E-22, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-22, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-21) =   -1.511E+05
+  endpoint_func_S   (    1.0000000000E-21) =    1.498E+05
+  endpoint_func_GAM (    1.0000000000E-21) =   -9.616E+21
+  endpoint_func_ELE (    1.0000000000E-21) =   -6.456E+02
+  endpoint_func_POS (    1.0000000000E-21) =    1.505E+05
+  endpoint_func (x =     1.0000000000E-21, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-21, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-20) =   -1.305E+05
+  endpoint_func_S   (    1.0000000000E-20) =    1.292E+05
+  endpoint_func_GAM (    1.0000000000E-20) =   -9.616E+20
+  endpoint_func_ELE (    1.0000000000E-20) =   -6.153E+02
+  endpoint_func_POS (    1.0000000000E-20) =    1.298E+05
+  endpoint_func (x =     1.0000000000E-20, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-20, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-19) =   -1.118E+05
+  endpoint_func_S   (    1.0000000000E-19) =    1.106E+05
+  endpoint_func_GAM (    1.0000000000E-19) =   -9.616E+19
+  endpoint_func_ELE (    1.0000000000E-19) =   -5.850E+02
+  endpoint_func_POS (    1.0000000000E-19) =    1.112E+05
+  endpoint_func (x =     1.0000000000E-19, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-19, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-18) =   -9.496E+04
+  endpoint_func_S   (    1.0000000000E-18) =    9.385E+04
+  endpoint_func_GAM (    1.0000000000E-18) =   -9.616E+18
+  endpoint_func_ELE (    1.0000000000E-18) =   -5.547E+02
+  endpoint_func_POS (    1.0000000000E-18) =    9.440E+04
+  endpoint_func (x =     1.0000000000E-18, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-18, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-17) =   -7.991E+04
+  endpoint_func_S   (    1.0000000000E-17) =    7.886E+04
+  endpoint_func_GAM (    1.0000000000E-17) =   -9.616E+17
+  endpoint_func_ELE (    1.0000000000E-17) =   -5.244E+02
+  endpoint_func_POS (    1.0000000000E-17) =    7.939E+04
+  endpoint_func (x =     1.0000000000E-17, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-17, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-16) =   -6.653E+04
+  endpoint_func_S   (    1.0000000000E-16) =    6.555E+04
+  endpoint_func_GAM (    1.0000000000E-16) =   -9.616E+16
+  endpoint_func_ELE (    1.0000000000E-16) =   -4.941E+02
+  endpoint_func_POS (    1.0000000000E-16) =    6.604E+04
+  endpoint_func (x =     1.0000000000E-16, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-16, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-15) =   -5.473E+04
+  endpoint_func_S   (    1.0000000000E-15) =    5.380E+04
+  endpoint_func_GAM (    1.0000000000E-15) =   -9.616E+15
+  endpoint_func_ELE (    1.0000000000E-15) =   -4.638E+02
+  endpoint_func_POS (    1.0000000000E-15) =    5.427E+04
+  endpoint_func (x =     1.0000000000E-15, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-15, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-14) =   -4.440E+04
+  endpoint_func_S   (    1.0000000000E-14) =    4.354E+04
+  endpoint_func_GAM (    1.0000000000E-14) =   -9.616E+14
+  endpoint_func_ELE (    1.0000000000E-14) =   -4.335E+02
+  endpoint_func_POS (    1.0000000000E-14) =    4.397E+04
+  endpoint_func (x =     1.0000000000E-14, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-14, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-13) =   -3.545E+04
+  endpoint_func_S   (    1.0000000000E-13) =    3.465E+04
+  endpoint_func_GAM (    1.0000000000E-13) =   -9.616E+13
+  endpoint_func_ELE (    1.0000000000E-13) =   -4.032E+02
+  endpoint_func_POS (    1.0000000000E-13) =    3.505E+04
+  endpoint_func (x =     1.0000000000E-13, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-13, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-12) =   -2.778E+04
+  endpoint_func_S   (    1.0000000000E-12) =    2.704E+04
+  endpoint_func_GAM (    1.0000000000E-12) =   -9.616E+12
+  endpoint_func_ELE (    1.0000000000E-12) =   -3.729E+02
+  endpoint_func_POS (    1.0000000000E-12) =    2.741E+04
+  endpoint_func (x =     1.0000000000E-12, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-12, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-11) =   -2.130E+04
+  endpoint_func_S   (    1.0000000000E-11) =    2.061E+04
+  endpoint_func_GAM (    1.0000000000E-11) =   -9.616E+11
+  endpoint_func_ELE (    1.0000000000E-11) =   -3.426E+02
+  endpoint_func_POS (    1.0000000000E-11) =    2.095E+04
+  endpoint_func (x =     1.0000000000E-11, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-11, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-10) =   -1.589E+04
+  endpoint_func_S   (    1.0000000000E-10) =    1.527E+04
+  endpoint_func_GAM (    1.0000000000E-10) =   -9.616E+10
+  endpoint_func_ELE (    1.0000000000E-10) =   -3.123E+02
+  endpoint_func_POS (    1.0000000000E-10) =    1.558E+04
+  endpoint_func (x =     1.0000000000E-10, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-10, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-09) =   -1.148E+04
+  endpoint_func_S   (    1.0000000000E-09) =    1.091E+04
+  endpoint_func_GAM (    1.0000000000E-09) =   -9.616E+09
+  endpoint_func_ELE (    1.0000000000E-09) =   -2.820E+02
+  endpoint_func_POS (    1.0000000000E-09) =    1.120E+04
+  endpoint_func (x =     1.0000000000E-09, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-09, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-08) =   -7.953E+03
+  endpoint_func_S   (    1.0000000000E-08) =    7.449E+03
+  endpoint_func_GAM (    1.0000000000E-08) =   -9.616E+08
+  endpoint_func_ELE (    1.0000000000E-08) =   -2.517E+02
+  endpoint_func_POS (    1.0000000000E-08) =    7.701E+03
+  endpoint_func (x =     1.0000000000E-08, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-08, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-07) =   -5.219E+03
+  endpoint_func_S   (    1.0000000000E-07) =    4.776E+03
+  endpoint_func_GAM (    1.0000000000E-07) =   -9.616E+07
+  endpoint_func_ELE (    1.0000000000E-07) =   -2.214E+02
+  endpoint_func_POS (    1.0000000000E-07) =    4.998E+03
+  endpoint_func (x =     1.0000000000E-07, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-07, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-06) =   -3.180E+03
+  endpoint_func_S   (    1.0000000000E-06) =    2.798E+03
+  endpoint_func_GAM (    1.0000000000E-06) =   -9.616E+06
+  endpoint_func_ELE (    1.0000000000E-06) =   -1.911E+02
+  endpoint_func_POS (    1.0000000000E-06) =    2.989E+03
+  endpoint_func (x =     1.0000000000E-06, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-06, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-05) =   -1.737E+03
+  endpoint_func_S   (    1.0000000000E-05) =    1.416E+03
+  endpoint_func_GAM (    1.0000000000E-05) =   -9.614E+05
+  endpoint_func_ELE (    1.0000000000E-05) =   -1.608E+02
+  endpoint_func_POS (    1.0000000000E-05) =    1.576E+03
+  endpoint_func (x =     1.0000000000E-05, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-05, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-04) =   -7.935E+02
+  endpoint_func_S   (    1.0000000000E-04) =    5.325E+02
+  endpoint_func_GAM (    1.0000000000E-04) =   -9.594E+04
+  endpoint_func_ELE (    1.0000000000E-04) =   -1.305E+02
+  endpoint_func_POS (    1.0000000000E-04) =    6.630E+02
+  endpoint_func (x =     1.0000000000E-04, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-04, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-03) =   -2.514E+02
+  endpoint_func_S   (    1.0000000000E-03) =    5.092E+01
+  endpoint_func_GAM (    1.0000000000E-03) =   -9.453E+03
+  endpoint_func_ELE (    1.0000000000E-03) =   -1.002E+02
+  endpoint_func_POS (    1.0000000000E-03) =    1.511E+02
+  endpoint_func (x =     1.0000000000E-03, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-03, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-02) =   -1.477E+01
+  endpoint_func_S   (    1.0000000000E-02) =   -1.250E+02
+  endpoint_func_GAM (    1.0000000000E-02) =   -8.581E+02
+  endpoint_func_ELE (    1.0000000000E-02) =   -6.991E+01
+  endpoint_func_POS (    1.0000000000E-02) =   -5.514E+01
+  endpoint_func (x =     1.0000000000E-02, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-02, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    1.0000000000E-01) =    1.472E+01
+  endpoint_func_S   (    1.0000000000E-01) =   -9.340E+01
+  endpoint_func_GAM (    1.0000000000E-01) =   -4.909E+01
+  endpoint_func_ELE (    1.0000000000E-01) =   -3.934E+01
+  endpoint_func_POS (    1.0000000000E-01) =   -5.406E+01
+  endpoint_func (x =     1.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     1.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    2.0000000000E-01) =    3.499E+00
+  endpoint_func_S   (    2.0000000000E-01) =   -6.288E+01
+  endpoint_func_GAM (    2.0000000000E-01) =   -1.567E+01
+  endpoint_func_ELE (    2.0000000000E-01) =   -2.969E+01
+  endpoint_func_POS (    2.0000000000E-01) =   -3.319E+01
+  endpoint_func (x =     2.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     2.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    3.0000000000E-01) =   -2.797E+00
+  endpoint_func_S   (    3.0000000000E-01) =   -4.464E+01
+  endpoint_func_GAM (    3.0000000000E-01) =   -7.133E+00
+  endpoint_func_ELE (    3.0000000000E-01) =   -2.372E+01
+  endpoint_func_POS (    3.0000000000E-01) =   -2.092E+01
+  endpoint_func (x =     3.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     3.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    4.0000000000E-01) =   -6.129E+00
+  endpoint_func_S   (    4.0000000000E-01) =   -3.232E+01
+  endpoint_func_GAM (    4.0000000000E-01) =   -3.692E+00
+  endpoint_func_ELE (    4.0000000000E-01) =   -1.922E+01
+  endpoint_func_POS (    4.0000000000E-01) =   -1.309E+01
+  endpoint_func (x =     4.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     4.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    5.0000000000E-01) =   -7.658E+00
+  endpoint_func_S   (    5.0000000000E-01) =   -2.335E+01
+  endpoint_func_GAM (    5.0000000000E-01) =   -1.808E+00
+  endpoint_func_ELE (    5.0000000000E-01) =   -1.550E+01
+  endpoint_func_POS (    5.0000000000E-01) =   -7.845E+00
+  endpoint_func (x =     5.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     5.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    6.0000000000E-01) =   -7.974E+00
+  endpoint_func_S   (    6.0000000000E-01) =   -1.651E+01
+  endpoint_func_GAM (    6.0000000000E-01) =   -4.013E-01
+  endpoint_func_ELE (    6.0000000000E-01) =   -1.224E+01
+  endpoint_func_POS (    6.0000000000E-01) =   -4.266E+00
+  endpoint_func (x =     6.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     6.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    7.0000000000E-01) =   -7.370E+00
+  endpoint_func_S   (    7.0000000000E-01) =   -1.111E+01
+  endpoint_func_GAM (    7.0000000000E-01) =    9.774E-01
+  endpoint_func_ELE (    7.0000000000E-01) =   -9.238E+00
+  endpoint_func_POS (    7.0000000000E-01) =   -1.869E+00
+  endpoint_func (x =     7.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     7.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    8.0000000000E-01) =   -5.964E+00
+  endpoint_func_S   (    8.0000000000E-01) =   -6.742E+00
+  endpoint_func_GAM (    8.0000000000E-01) =    2.552E+00
+  endpoint_func_ELE (    8.0000000000E-01) =   -6.353E+00
+  endpoint_func_POS (    8.0000000000E-01) =   -3.892E-01
+  endpoint_func (x =     8.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     8.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    9.0000000000E-01) =   -3.713E+00
+  endpoint_func_S   (    9.0000000000E-01) =   -3.128E+00
+  endpoint_func_GAM (    9.0000000000E-01) =    4.329E+00
+  endpoint_func_ELE (    9.0000000000E-01) =   -3.421E+00
+  endpoint_func_POS (    9.0000000000E-01) =    2.929E-01
+  endpoint_func (x =     9.0000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     9.0000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    9.5000000000E-01) =   -2.170E+00
+  endpoint_func_S   (    9.5000000000E-01) =   -1.528E+00
+  endpoint_func_GAM (    9.5000000000E-01) =    4.953E+00
+  endpoint_func_ELE (    9.5000000000E-01) =   -1.849E+00
+  endpoint_func_POS (    9.5000000000E-01) =    3.214E-01
+  endpoint_func (x =     9.5000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     9.5000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    9.9000000000E-01) =   -5.629E-01
+  endpoint_func_S   (    9.9000000000E-01) =   -3.088E-01
+  endpoint_func_GAM (    9.9000000000E-01) =    3.726E+00
+  endpoint_func_ELE (    9.9000000000E-01) =   -4.359E-01
+  endpoint_func_POS (    9.9000000000E-01) =    1.270E-01
+  endpoint_func (x =     9.9000000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     9.9000000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    9.9900000000E-01) =   -7.342E-02
+  endpoint_func_S   (    9.9900000000E-01) =   -3.238E-02
+  endpoint_func_GAM (    9.9900000000E-01) =    1.286E+00
+  endpoint_func_ELE (    9.9900000000E-01) =   -5.290E-02
+  endpoint_func_POS (    9.9900000000E-01) =    2.052E-02
+  endpoint_func (x =     9.9900000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     9.9900000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    9.9990000000E-01) =   -9.025E-03
+  endpoint_func_S   (    9.9990000000E-01) =   -3.401E-03
+  endpoint_func_GAM (    9.9990000000E-01) =    3.080E-01
+  endpoint_func_ELE (    9.9990000000E-01) =   -6.213E-03
+  endpoint_func_POS (    9.9990000000E-01) =    2.812E-03
+  endpoint_func (x =     9.9990000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     9.9990000000E-01, e+ - [S - NS]/2) =           0.00000000
+  endpoint_func_NS  (    9.9999000000E-01) =   -1.070E-03
+  endpoint_func_S   (    9.9999000000E-01) =   -3.564E-04
+  endpoint_func_GAM (    9.9999000000E-01) =    6.047E-02
+  endpoint_func_ELE (    9.9999000000E-01) =   -7.134E-04
+  endpoint_func_POS (    9.9999000000E-01) =    3.570E-04
+  endpoint_func (x =     9.9999000000E-01, e- - [S + NS]/2) =           0.00000000
+  endpoint_func (x =     9.9999000000E-01, e+ - [S - NS]/2) =           0.00000000
 
 * Q = 10 GeV, recnum, alpha fixed:
 
-  recnum (S,   0.100) = -2.8574E-05
-  recnum (S,   0.500) = -7.1435E-06
-  recnum (S,   0.900) = -9.5694E-07
-  recnum (S,   0.999) = -9.9075E-09
-  recnum (NS,  0.100) =  4.5050E-06
-  recnum (NS,  0.500) = -2.3429E-06
-  recnum (NS,  0.900) = -1.1362E-06
-  recnum (NS,  0.999) = -2.2462E-08
-  recnum (GAM, 0.100) = -1.5020E-05
-  recnum (GAM, 0.500) = -5.5329E-07
-  recnum (GAM, 0.900) =  1.3245E-06
-  recnum (GAM, 0.999) =  3.9346E-07
+  recnum (S,       1.0000000000E-24) =    6.863E-02
+  recnum (S,       1.0000000000E-23) =    6.035E-02
+  recnum (S,       1.0000000000E-22) =    5.276E-02
+  recnum (S,       1.0000000000E-21) =    4.584E-02
+  recnum (S,       1.0000000000E-20) =    3.954E-02
+  recnum (S,       1.0000000000E-19) =    3.384E-02
+  recnum (S,       1.0000000000E-18) =    2.871E-02
+  recnum (S,       1.0000000000E-17) =    2.413E-02
+  recnum (S,       1.0000000000E-16) =    2.005E-02
+  recnum (S,       1.0000000000E-15) =    1.646E-02
+  recnum (S,       1.0000000000E-14) =    1.332E-02
+  recnum (S,       1.0000000000E-13) =    1.060E-02
+  recnum (S,       1.0000000000E-12) =    8.272E-03
+  recnum (S,       1.0000000000E-11) =    6.306E-03
+  recnum (S,       1.0000000000E-10) =    4.672E-03
+  recnum (S,       1.0000000000E-09) =    3.339E-03
+  recnum (S,       1.0000000000E-08) =    2.279E-03
+  recnum (S,       1.0000000000E-07) =    1.461E-03
+  recnum (S,       1.0000000000E-06) =    8.560E-04
+  recnum (S,       1.0000000000E-05) =    4.331E-04
+  recnum (S,       1.0000000000E-04) =    1.629E-04
+  recnum (S,       1.0000000000E-03) =    1.558E-05
+  recnum (S,       1.0000000000E-02) =   -3.826E-05
+  recnum (S,       1.0000000000E-01) =   -2.857E-05
+  recnum (S,       2.0000000000E-01) =   -1.924E-05
+  recnum (S,       3.0000000000E-01) =   -1.366E-05
+  recnum (S,       4.0000000000E-01) =   -9.887E-06
+  recnum (S,       5.0000000000E-01) =   -7.143E-06
+  recnum (S,       6.0000000000E-01) =   -5.050E-06
+  recnum (S,       7.0000000000E-01) =   -3.398E-06
+  recnum (S,       8.0000000000E-01) =   -2.063E-06
+  recnum (S,       9.0000000000E-01) =   -9.569E-07
+  recnum (S,       9.5000000000E-01) =   -4.674E-07
+  recnum (S,       9.9000000000E-01) =   -9.449E-08
+  recnum (S,       9.9900000000E-01) =   -9.907E-09
+  recnum (S,       9.9990000000E-01) =   -1.040E-09
+  recnum (S,       9.9999000000E-01) =   -1.090E-10
+  recnum (NS,      1.0000000000E-24) =   -6.908E-02
+  recnum (NS,      1.0000000000E-23) =   -6.079E-02
+  recnum (NS,      1.0000000000E-22) =   -5.318E-02
+  recnum (NS,      1.0000000000E-21) =   -4.623E-02
+  recnum (NS,      1.0000000000E-20) =   -3.991E-02
+  recnum (NS,      1.0000000000E-19) =   -3.420E-02
+  recnum (NS,      1.0000000000E-18) =   -2.905E-02
+  recnum (NS,      1.0000000000E-17) =   -2.445E-02
+  recnum (NS,      1.0000000000E-16) =   -2.036E-02
+  recnum (NS,      1.0000000000E-15) =   -1.674E-02
+  recnum (NS,      1.0000000000E-14) =   -1.359E-02
+  recnum (NS,      1.0000000000E-13) =   -1.085E-02
+  recnum (NS,      1.0000000000E-12) =   -8.500E-03
+  recnum (NS,      1.0000000000E-11) =   -6.515E-03
+  recnum (NS,      1.0000000000E-10) =   -4.863E-03
+  recnum (NS,      1.0000000000E-09) =   -3.512E-03
+  recnum (NS,      1.0000000000E-08) =   -2.433E-03
+  recnum (NS,      1.0000000000E-07) =   -1.597E-03
+  recnum (NS,      1.0000000000E-06) =   -9.729E-04
+  recnum (NS,      1.0000000000E-05) =   -5.315E-04
+  recnum (NS,      1.0000000000E-04) =   -2.428E-04
+  recnum (NS,      1.0000000000E-03) =   -7.690E-05
+  recnum (NS,      1.0000000000E-02) =   -4.520E-06
+  recnum (NS,      1.0000000000E-01) =    4.505E-06
+  recnum (NS,      2.0000000000E-01) =    1.071E-06
+  recnum (NS,      3.0000000000E-01) =   -8.558E-07
+  recnum (NS,      4.0000000000E-01) =   -1.875E-06
+  recnum (NS,      5.0000000000E-01) =   -2.343E-06
+  recnum (NS,      6.0000000000E-01) =   -2.440E-06
+  recnum (NS,      7.0000000000E-01) =   -2.255E-06
+  recnum (NS,      8.0000000000E-01) =   -1.825E-06
+  recnum (NS,      9.0000000000E-01) =   -1.136E-06
+  recnum (NS,      9.5000000000E-01) =   -6.641E-07
+  recnum (NS,      9.9000000000E-01) =   -1.722E-07
+  recnum (NS,      9.9900000000E-01) =   -2.246E-08
+  recnum (NS,      9.9990000000E-01) =   -2.761E-09
+  recnum (NS,      9.9999000000E-01) =   -3.275E-10
+  recnum (GAM,     1.0000000000E-24) =   -2.942E+18
+  recnum (GAM,     1.0000000000E-23) =   -2.942E+17
+  recnum (GAM,     1.0000000000E-22) =   -2.942E+16
+  recnum (GAM,     1.0000000000E-21) =   -2.942E+15
+  recnum (GAM,     1.0000000000E-20) =   -2.942E+14
+  recnum (GAM,     1.0000000000E-19) =   -2.942E+13
+  recnum (GAM,     1.0000000000E-18) =   -2.942E+12
+  recnum (GAM,     1.0000000000E-17) =   -2.942E+11
+  recnum (GAM,     1.0000000000E-16) =   -2.942E+10
+  recnum (GAM,     1.0000000000E-15) =   -2.942E+09
+  recnum (GAM,     1.0000000000E-14) =   -2.942E+08
+  recnum (GAM,     1.0000000000E-13) =   -2.942E+07
+  recnum (GAM,     1.0000000000E-12) =   -2.942E+06
+  recnum (GAM,     1.0000000000E-11) =   -2.942E+05
+  recnum (GAM,     1.0000000000E-10) =   -2.942E+04
+  recnum (GAM,     1.0000000000E-09) =   -2.942E+03
+  recnum (GAM,     1.0000000000E-08) =   -2.942E+02
+  recnum (GAM,     1.0000000000E-07) =   -2.942E+01
+  recnum (GAM,     1.0000000000E-06) =   -2.942E+00
+  recnum (GAM,     1.0000000000E-05) =   -2.941E-01
+  recnum (GAM,     1.0000000000E-04) =   -2.935E-02
+  recnum (GAM,     1.0000000000E-03) =   -2.892E-03
+  recnum (GAM,     1.0000000000E-02) =   -2.625E-04
+  recnum (GAM,     1.0000000000E-01) =   -1.502E-05
+  recnum (GAM,     2.0000000000E-01) =   -4.794E-06
+  recnum (GAM,     3.0000000000E-01) =   -2.182E-06
+  recnum (GAM,     4.0000000000E-01) =   -1.129E-06
+  recnum (GAM,     5.0000000000E-01) =   -5.533E-07
+  recnum (GAM,     6.0000000000E-01) =   -1.228E-07
+  recnum (GAM,     7.0000000000E-01) =    2.990E-07
+  recnum (GAM,     8.0000000000E-01) =    7.808E-07
+  recnum (GAM,     9.0000000000E-01) =    1.324E-06
+  recnum (GAM,     9.5000000000E-01) =    1.515E-06
+  recnum (GAM,     9.9000000000E-01) =    1.140E-06
+  recnum (GAM,     9.9900000000E-01) =    3.935E-07
+  recnum (GAM,     9.9990000000E-01) =    9.423E-08
+  recnum (GAM,     9.9999000000E-01) =    1.850E-08
+  recnum (ELE,     1.0000000000E-24) =   -2.253E-04
+  recnum (ELE,     1.0000000000E-23) =   -2.161E-04
+  recnum (ELE,     1.0000000000E-22) =   -2.068E-04
+  recnum (ELE,     1.0000000000E-21) =   -1.975E-04
+  recnum (ELE,     1.0000000000E-20) =   -1.883E-04
+  recnum (ELE,     1.0000000000E-19) =   -1.790E-04
+  recnum (ELE,     1.0000000000E-18) =   -1.697E-04
+  recnum (ELE,     1.0000000000E-17) =   -1.604E-04
+  recnum (ELE,     1.0000000000E-16) =   -1.512E-04
+  recnum (ELE,     1.0000000000E-15) =   -1.419E-04
+  recnum (ELE,     1.0000000000E-14) =   -1.326E-04
+  recnum (ELE,     1.0000000000E-13) =   -1.234E-04
+  recnum (ELE,     1.0000000000E-12) =   -1.141E-04
+  recnum (ELE,     1.0000000000E-11) =   -1.048E-04
+  recnum (ELE,     1.0000000000E-10) =   -9.556E-05
+  recnum (ELE,     1.0000000000E-09) =   -8.628E-05
+  recnum (ELE,     1.0000000000E-08) =   -7.701E-05
+  recnum (ELE,     1.0000000000E-07) =   -6.774E-05
+  recnum (ELE,     1.0000000000E-06) =   -5.847E-05
+  recnum (ELE,     1.0000000000E-05) =   -4.920E-05
+  recnum (ELE,     1.0000000000E-04) =   -3.993E-05
+  recnum (ELE,     1.0000000000E-03) =   -3.066E-05
+  recnum (ELE,     1.0000000000E-02) =   -2.139E-05
+  recnum (ELE,     1.0000000000E-01) =   -1.203E-05
+  recnum (ELE,     2.0000000000E-01) =   -9.084E-06
+  recnum (ELE,     3.0000000000E-01) =   -7.257E-06
+  recnum (ELE,     4.0000000000E-01) =   -5.881E-06
+  recnum (ELE,     5.0000000000E-01) =   -4.743E-06
+  recnum (ELE,     6.0000000000E-01) =   -3.745E-06
+  recnum (ELE,     7.0000000000E-01) =   -2.827E-06
+  recnum (ELE,     8.0000000000E-01) =   -1.944E-06
+  recnum (ELE,     9.0000000000E-01) =   -1.047E-06
+  recnum (ELE,     9.5000000000E-01) =   -5.657E-07
+  recnum (ELE,     9.9000000000E-01) =   -1.334E-07
+  recnum (ELE,     9.9900000000E-01) =   -1.618E-08
+  recnum (ELE,     9.9990000000E-01) =   -1.901E-09
+  recnum (ELE,     9.9999000000E-01) =   -2.183E-10
+  recnum (POS,     1.0000000000E-24) =    6.886E-02
+  recnum (POS,     1.0000000000E-23) =    6.057E-02
+  recnum (POS,     1.0000000000E-22) =    5.297E-02
+  recnum (POS,     1.0000000000E-21) =    4.603E-02
+  recnum (POS,     1.0000000000E-20) =    3.973E-02
+  recnum (POS,     1.0000000000E-19) =    3.402E-02
+  recnum (POS,     1.0000000000E-18) =    2.888E-02
+  recnum (POS,     1.0000000000E-17) =    2.429E-02
+  recnum (POS,     1.0000000000E-16) =    2.021E-02
+  recnum (POS,     1.0000000000E-15) =    1.660E-02
+  recnum (POS,     1.0000000000E-14) =    1.345E-02
+  recnum (POS,     1.0000000000E-13) =    1.072E-02
+  recnum (POS,     1.0000000000E-12) =    8.386E-03
+  recnum (POS,     1.0000000000E-11) =    6.411E-03
+  recnum (POS,     1.0000000000E-10) =    4.767E-03
+  recnum (POS,     1.0000000000E-09) =    3.426E-03
+  recnum (POS,     1.0000000000E-08) =    2.356E-03
+  recnum (POS,     1.0000000000E-07) =    1.529E-03
+  recnum (POS,     1.0000000000E-06) =    9.144E-04
+  recnum (POS,     1.0000000000E-05) =    4.823E-04
+  recnum (POS,     1.0000000000E-04) =    2.028E-04
+  recnum (POS,     1.0000000000E-03) =    4.624E-05
+  recnum (POS,     1.0000000000E-02) =   -1.687E-05
+  recnum (POS,     1.0000000000E-01) =   -1.654E-05
+  recnum (POS,     2.0000000000E-01) =   -1.015E-05
+  recnum (POS,     3.0000000000E-01) =   -6.401E-06
+  recnum (POS,     4.0000000000E-01) =   -4.006E-06
+  recnum (POS,     5.0000000000E-01) =   -2.400E-06
+  recnum (POS,     6.0000000000E-01) =   -1.305E-06
+  recnum (POS,     7.0000000000E-01) =   -5.718E-07
+  recnum (POS,     8.0000000000E-01) =   -1.191E-07
+  recnum (POS,     9.0000000000E-01) =    8.961E-08
+  recnum (POS,     9.5000000000E-01) =    9.833E-08
+  recnum (POS,     9.9000000000E-01) =    3.887E-08
+  recnum (POS,     9.9900000000E-01) =    6.278E-09
+  recnum (POS,     9.9990000000E-01) =    8.604E-10
+  recnum (POS,     9.9999000000E-01) =    1.092E-10
 
 * Q = 10 GeV, recnum, alpha running:
 
-  recnum (S,   0.100) = -2.9574E-05
-  recnum (S,   0.500) = -7.3933E-06
-  recnum (S,   0.900) = -9.9040E-07
-  recnum (S,   0.999) = -1.0254E-08
-  recnum (NS,  0.100) =  4.6626E-06
-  recnum (NS,  0.500) = -2.4248E-06
-  recnum (NS,  0.900) = -1.1759E-06
-  recnum (NS,  0.999) = -2.3248E-08
-  recnum (GAM, 0.100) = -1.5545E-05
-  recnum (GAM, 0.500) = -5.7264E-07
-  recnum (GAM, 0.900) =  1.3708E-06
-  recnum (GAM, 0.999) =  4.0722E-07
+  recnum (S,       1.0000000000E-24) =    7.103E-02
+  recnum (S,       1.0000000000E-23) =    6.246E-02
+  recnum (S,       1.0000000000E-22) =    5.461E-02
+  recnum (S,       1.0000000000E-21) =    4.744E-02
+  recnum (S,       1.0000000000E-20) =    4.092E-02
+  recnum (S,       1.0000000000E-19) =    3.502E-02
+  recnum (S,       1.0000000000E-18) =    2.972E-02
+  recnum (S,       1.0000000000E-17) =    2.497E-02
+  recnum (S,       1.0000000000E-16) =    2.076E-02
+  recnum (S,       1.0000000000E-15) =    1.704E-02
+  recnum (S,       1.0000000000E-14) =    1.379E-02
+  recnum (S,       1.0000000000E-13) =    1.097E-02
+  recnum (S,       1.0000000000E-12) =    8.561E-03
+  recnum (S,       1.0000000000E-11) =    6.526E-03
+  recnum (S,       1.0000000000E-10) =    4.835E-03
+  recnum (S,       1.0000000000E-09) =    3.456E-03
+  recnum (S,       1.0000000000E-08) =    2.359E-03
+  recnum (S,       1.0000000000E-07) =    1.512E-03
+  recnum (S,       1.0000000000E-06) =    8.859E-04
+  recnum (S,       1.0000000000E-05) =    4.483E-04
+  recnum (S,       1.0000000000E-04) =    1.686E-04
+  recnum (S,       1.0000000000E-03) =    1.612E-05
+  recnum (S,       1.0000000000E-02) =   -3.960E-05
+  recnum (S,       1.0000000000E-01) =   -2.957E-05
+  recnum (S,       2.0000000000E-01) =   -1.991E-05
+  recnum (S,       3.0000000000E-01) =   -1.414E-05
+  recnum (S,       4.0000000000E-01) =   -1.023E-05
+  recnum (S,       5.0000000000E-01) =   -7.393E-06
+  recnum (S,       6.0000000000E-01) =   -5.226E-06
+  recnum (S,       7.0000000000E-01) =   -3.517E-06
+  recnum (S,       8.0000000000E-01) =   -2.135E-06
+  recnum (S,       9.0000000000E-01) =   -9.904E-07
+  recnum (S,       9.5000000000E-01) =   -4.837E-07
+  recnum (S,       9.9000000000E-01) =   -9.779E-08
+  recnum (S,       9.9900000000E-01) =   -1.025E-08
+  recnum (S,       9.9990000000E-01) =   -1.077E-09
+  recnum (S,       9.9999000000E-01) =   -1.129E-10
+  recnum (NS,      1.0000000000E-24) =   -7.150E-02
+  recnum (NS,      1.0000000000E-23) =   -6.291E-02
+  recnum (NS,      1.0000000000E-22) =   -5.504E-02
+  recnum (NS,      1.0000000000E-21) =   -4.785E-02
+  recnum (NS,      1.0000000000E-20) =   -4.131E-02
+  recnum (NS,      1.0000000000E-19) =   -3.539E-02
+  recnum (NS,      1.0000000000E-18) =   -3.007E-02
+  recnum (NS,      1.0000000000E-17) =   -2.530E-02
+  recnum (NS,      1.0000000000E-16) =   -2.107E-02
+  recnum (NS,      1.0000000000E-15) =   -1.733E-02
+  recnum (NS,      1.0000000000E-14) =   -1.406E-02
+  recnum (NS,      1.0000000000E-13) =   -1.123E-02
+  recnum (NS,      1.0000000000E-12) =   -8.798E-03
+  recnum (NS,      1.0000000000E-11) =   -6.743E-03
+  recnum (NS,      1.0000000000E-10) =   -5.033E-03
+  recnum (NS,      1.0000000000E-09) =   -3.635E-03
+  recnum (NS,      1.0000000000E-08) =   -2.518E-03
+  recnum (NS,      1.0000000000E-07) =   -1.653E-03
+  recnum (NS,      1.0000000000E-06) =   -1.007E-03
+  recnum (NS,      1.0000000000E-05) =   -5.501E-04
+  recnum (NS,      1.0000000000E-04) =   -2.513E-04
+  recnum (NS,      1.0000000000E-03) =   -7.959E-05
+  recnum (NS,      1.0000000000E-02) =   -4.678E-06
+  recnum (NS,      1.0000000000E-01) =    4.663E-06
+  recnum (NS,      2.0000000000E-01) =    1.108E-06
+  recnum (NS,      3.0000000000E-01) =   -8.858E-07
+  recnum (NS,      4.0000000000E-01) =   -1.941E-06
+  recnum (NS,      5.0000000000E-01) =   -2.425E-06
+  recnum (NS,      6.0000000000E-01) =   -2.525E-06
+  recnum (NS,      7.0000000000E-01) =   -2.334E-06
+  recnum (NS,      8.0000000000E-01) =   -1.888E-06
+  recnum (NS,      9.0000000000E-01) =   -1.176E-06
+  recnum (NS,      9.5000000000E-01) =   -6.873E-07
+  recnum (NS,      9.9000000000E-01) =   -1.782E-07
+  recnum (NS,      9.9900000000E-01) =   -2.325E-08
+  recnum (NS,      9.9990000000E-01) =   -2.858E-09
+  recnum (NS,      9.9999000000E-01) =   -3.389E-10
+  recnum (GAM,     1.0000000000E-24) =   -3.045E+18
+  recnum (GAM,     1.0000000000E-23) =   -3.045E+17
+  recnum (GAM,     1.0000000000E-22) =   -3.045E+16
+  recnum (GAM,     1.0000000000E-21) =   -3.045E+15
+  recnum (GAM,     1.0000000000E-20) =   -3.045E+14
+  recnum (GAM,     1.0000000000E-19) =   -3.045E+13
+  recnum (GAM,     1.0000000000E-18) =   -3.045E+12
+  recnum (GAM,     1.0000000000E-17) =   -3.045E+11
+  recnum (GAM,     1.0000000000E-16) =   -3.045E+10
+  recnum (GAM,     1.0000000000E-15) =   -3.045E+09
+  recnum (GAM,     1.0000000000E-14) =   -3.045E+08
+  recnum (GAM,     1.0000000000E-13) =   -3.045E+07
+  recnum (GAM,     1.0000000000E-12) =   -3.045E+06
+  recnum (GAM,     1.0000000000E-11) =   -3.045E+05
+  recnum (GAM,     1.0000000000E-10) =   -3.045E+04
+  recnum (GAM,     1.0000000000E-09) =   -3.045E+03
+  recnum (GAM,     1.0000000000E-08) =   -3.045E+02
+  recnum (GAM,     1.0000000000E-07) =   -3.045E+01
+  recnum (GAM,     1.0000000000E-06) =   -3.045E+00
+  recnum (GAM,     1.0000000000E-05) =   -3.044E-01
+  recnum (GAM,     1.0000000000E-04) =   -3.038E-02
+  recnum (GAM,     1.0000000000E-03) =   -2.993E-03
+  recnum (GAM,     1.0000000000E-02) =   -2.717E-04
+  recnum (GAM,     1.0000000000E-01) =   -1.555E-05
+  recnum (GAM,     2.0000000000E-01) =   -4.962E-06
+  recnum (GAM,     3.0000000000E-01) =   -2.259E-06
+  recnum (GAM,     4.0000000000E-01) =   -1.169E-06
+  recnum (GAM,     5.0000000000E-01) =   -5.726E-07
+  recnum (GAM,     6.0000000000E-01) =   -1.271E-07
+  recnum (GAM,     7.0000000000E-01) =    3.095E-07
+  recnum (GAM,     8.0000000000E-01) =    8.081E-07
+  recnum (GAM,     9.0000000000E-01) =    1.371E-06
+  recnum (GAM,     9.5000000000E-01) =    1.568E-06
+  recnum (GAM,     9.9000000000E-01) =    1.180E-06
+  recnum (GAM,     9.9900000000E-01) =    4.072E-07
+  recnum (GAM,     9.9990000000E-01) =    9.753E-08
+  recnum (GAM,     9.9999000000E-01) =    1.915E-08
+  recnum (ELE,     1.0000000000E-24) =   -2.332E-04
+  recnum (ELE,     1.0000000000E-23) =   -2.236E-04
+  recnum (ELE,     1.0000000000E-22) =   -2.140E-04
+  recnum (ELE,     1.0000000000E-21) =   -2.044E-04
+  recnum (ELE,     1.0000000000E-20) =   -1.948E-04
+  recnum (ELE,     1.0000000000E-19) =   -1.853E-04
+  recnum (ELE,     1.0000000000E-18) =   -1.757E-04
+  recnum (ELE,     1.0000000000E-17) =   -1.661E-04
+  recnum (ELE,     1.0000000000E-16) =   -1.565E-04
+  recnum (ELE,     1.0000000000E-15) =   -1.469E-04
+  recnum (ELE,     1.0000000000E-14) =   -1.373E-04
+  recnum (ELE,     1.0000000000E-13) =   -1.277E-04
+  recnum (ELE,     1.0000000000E-12) =   -1.181E-04
+  recnum (ELE,     1.0000000000E-11) =   -1.085E-04
+  recnum (ELE,     1.0000000000E-10) =   -9.890E-05
+  recnum (ELE,     1.0000000000E-09) =   -8.930E-05
+  recnum (ELE,     1.0000000000E-08) =   -7.971E-05
+  recnum (ELE,     1.0000000000E-07) =   -7.011E-05
+  recnum (ELE,     1.0000000000E-06) =   -6.052E-05
+  recnum (ELE,     1.0000000000E-05) =   -5.092E-05
+  recnum (ELE,     1.0000000000E-04) =   -4.133E-05
+  recnum (ELE,     1.0000000000E-03) =   -3.173E-05
+  recnum (ELE,     1.0000000000E-02) =   -2.214E-05
+  recnum (ELE,     1.0000000000E-01) =   -1.246E-05
+  recnum (ELE,     2.0000000000E-01) =   -9.402E-06
+  recnum (ELE,     3.0000000000E-01) =   -7.511E-06
+  recnum (ELE,     4.0000000000E-01) =   -6.087E-06
+  recnum (ELE,     5.0000000000E-01) =   -4.909E-06
+  recnum (ELE,     6.0000000000E-01) =   -3.876E-06
+  recnum (ELE,     7.0000000000E-01) =   -2.925E-06
+  recnum (ELE,     8.0000000000E-01) =   -2.012E-06
+  recnum (ELE,     9.0000000000E-01) =   -1.083E-06
+  recnum (ELE,     9.5000000000E-01) =   -5.855E-07
+  recnum (ELE,     9.9000000000E-01) =   -1.380E-07
+  recnum (ELE,     9.9900000000E-01) =   -1.675E-08
+  recnum (ELE,     9.9990000000E-01) =   -1.967E-09
+  recnum (ELE,     9.9999000000E-01) =   -2.259E-10
+  recnum (POS,     1.0000000000E-24) =    7.127E-02
+  recnum (POS,     1.0000000000E-23) =    6.269E-02
+  recnum (POS,     1.0000000000E-22) =    5.482E-02
+  recnum (POS,     1.0000000000E-21) =    4.764E-02
+  recnum (POS,     1.0000000000E-20) =    4.111E-02
+  recnum (POS,     1.0000000000E-19) =    3.521E-02
+  recnum (POS,     1.0000000000E-18) =    2.989E-02
+  recnum (POS,     1.0000000000E-17) =    2.514E-02
+  recnum (POS,     1.0000000000E-16) =    2.091E-02
+  recnum (POS,     1.0000000000E-15) =    1.718E-02
+  recnum (POS,     1.0000000000E-14) =    1.392E-02
+  recnum (POS,     1.0000000000E-13) =    1.110E-02
+  recnum (POS,     1.0000000000E-12) =    8.679E-03
+  recnum (POS,     1.0000000000E-11) =    6.635E-03
+  recnum (POS,     1.0000000000E-10) =    4.934E-03
+  recnum (POS,     1.0000000000E-09) =    3.545E-03
+  recnum (POS,     1.0000000000E-08) =    2.439E-03
+  recnum (POS,     1.0000000000E-07) =    1.583E-03
+  recnum (POS,     1.0000000000E-06) =    9.464E-04
+  recnum (POS,     1.0000000000E-05) =    4.992E-04
+  recnum (POS,     1.0000000000E-04) =    2.099E-04
+  recnum (POS,     1.0000000000E-03) =    4.786E-05
+  recnum (POS,     1.0000000000E-02) =   -1.746E-05
+  recnum (POS,     1.0000000000E-01) =   -1.712E-05
+  recnum (POS,     2.0000000000E-01) =   -1.051E-05
+  recnum (POS,     3.0000000000E-01) =   -6.625E-06
+  recnum (POS,     4.0000000000E-01) =   -4.146E-06
+  recnum (POS,     5.0000000000E-01) =   -2.484E-06
+  recnum (POS,     6.0000000000E-01) =   -1.351E-06
+  recnum (POS,     7.0000000000E-01) =   -5.918E-07
+  recnum (POS,     8.0000000000E-01) =   -1.232E-07
+  recnum (POS,     9.0000000000E-01) =    9.274E-08
+  recnum (POS,     9.5000000000E-01) =    1.018E-07
+  recnum (POS,     9.9000000000E-01) =    4.023E-08
+  recnum (POS,     9.9900000000E-01) =    6.497E-09
+  recnum (POS,     9.9990000000E-01) =    8.904E-10
+  recnum (POS,     9.9999000000E-01) =    1.130E-10
 
 * Test output end: electron_pdfs_5

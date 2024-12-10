@@ -5,69 +5,315 @@
 
 * Q = 10 GeV, elec_asym, LL+NLL, alpha fixed:
 
-  elec_asym (LL,x=0.1)   =  0.052451
-  elec_asym (LL,x=0.5)   =  0.091898
-  elec_asym (LL,x=0.9)   =  0.426764
-  elec_asym (LL,x=0.999) = 34.544105
+  elec_asym (LL,x=    1.0000000000E-24)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-23)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-22)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-21)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-20)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-19)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-18)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-17)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-16)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-15)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-14)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-13)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-12)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-11)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-10)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-09)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-08)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-07)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-06)   =     4.743E-02
+  elec_asym (LL,x=    1.0000000000E-05)   =     4.744E-02
+  elec_asym (LL,x=    1.0000000000E-04)   =     4.744E-02
+  elec_asym (LL,x=    1.0000000000E-03)   =     4.748E-02
+  elec_asym (LL,x=    1.0000000000E-02)   =     4.789E-02
+  elec_asym (LL,x=    1.0000000000E-01)   =     5.245E-02
+  elec_asym (LL,x=    2.0000000000E-01)   =     5.869E-02
+  elec_asym (LL,x=    3.0000000000E-01)   =     6.666E-02
+  elec_asym (LL,x=    4.0000000000E-01)   =     7.723E-02
+  elec_asym (LL,x=    5.0000000000E-01)   =     9.190E-02
+  elec_asym (LL,x=    6.0000000000E-01)   =     1.137E-01
+  elec_asym (LL,x=    7.0000000000E-01)   =     1.496E-01
+  elec_asym (LL,x=    8.0000000000E-01)   =     2.203E-01
+  elec_asym (LL,x=    9.0000000000E-01)   =     4.268E-01
+  elec_asym (LL,x=    9.5000000000E-01)   =     8.268E-01
+  elec_asym (LL,x=    9.9000000000E-01)   =     3.840E+00
+  elec_asym (LL,x=    9.9900000000E-01)   =     3.454E+01
+  elec_asym (LL,x=    9.9990000000E-01)   =     3.108E+02
+  elec_asym (LL,x=    9.9999000000E-01)   =     2.796E+03
 
-  elec_asym (NLL,x=0.1)   =  0.050804
-  elec_asym (NLL,x=0.5)   =  0.094489
-  elec_asym (NLL,x=0.9)   =  0.504941
-  elec_asym (NLL,x=0.999) = 53.903465
-
-   QED structure function (PDF):
-     Flavor    = 0
-     Mass      =  5.10999E-04
-     q_max     =  3.00000E+03
-     alpha     =  7.29735E-03
-     Order     = 3
-     Log. ord. = 0
-     # leptons = 1
-     epsilon   =  7.00818E-02
-   QED parameters (running coupling):
-     Scale mu  =  5.10999E-04
-     alpha(mu) =  7.29735E-03
-     LL order  = 0
-     N(flv)    = 0
-     N(lep)    = 1
-     analytic  = T
+  elec_asym (NLL,x=    1.0000000000E-24)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-23)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-22)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-21)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-20)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-19)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-18)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-17)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-16)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-15)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-14)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-13)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-12)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-11)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-10)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-09)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-08)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-07)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-06)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-05)   =     4.543E-02
+  elec_asym (NLL,x=    1.0000000000E-04)   =     4.544E-02
+  elec_asym (NLL,x=    1.0000000000E-03)   =     4.548E-02
+  elec_asym (NLL,x=    1.0000000000E-02)   =     4.592E-02
+  elec_asym (NLL,x=    1.0000000000E-01)   =     5.080E-02
+  elec_asym (NLL,x=    2.0000000000E-01)   =     5.755E-02
+  elec_asym (NLL,x=    3.0000000000E-01)   =     6.628E-02
+  elec_asym (NLL,x=    4.0000000000E-01)   =     7.799E-02
+  elec_asym (NLL,x=    5.0000000000E-01)   =     9.449E-02
+  elec_asym (NLL,x=    6.0000000000E-01)   =     1.194E-01
+  elec_asym (NLL,x=    7.0000000000E-01)   =     1.614E-01
+  elec_asym (NLL,x=    8.0000000000E-01)   =     2.463E-01
+  elec_asym (NLL,x=    9.0000000000E-01)   =     5.049E-01
+  elec_asym (NLL,x=    9.5000000000E-01)   =     1.030E+00
+  elec_asym (NLL,x=    9.9000000000E-01)   =     5.314E+00
+  elec_asym (NLL,x=    9.9900000000E-01)   =     5.390E+01
+  elec_asym (NLL,x=    9.9990000000E-01)   =     5.321E+02
+  elec_asym (NLL,x=    9.9999000000E-01)   =     5.143E+03
 
 * Q = 10 GeV, elec_asym, LL+NLL, alpha running:
 
-  Integrator t (10 GeV)   =  0.023131
 
-  elec_asym (LL,x=0.1)   =  0.052867
-  elec_asym (LL,x=0.5)   =  0.092608
-  elec_asym (LL,x=0.9)   =  0.429815
-  elec_asym (LL,x=0.999) = 34.734245
+  elec_asym (LL,x=    1.0000000000E-24)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-23)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-22)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-21)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-20)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-19)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-18)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-17)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-16)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-15)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-14)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-13)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-12)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-11)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-10)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-09)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-08)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-07)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-06)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-05)   =     4.781E-02
+  elec_asym (LL,x=    1.0000000000E-04)   =     4.782E-02
+  elec_asym (LL,x=    1.0000000000E-03)   =     4.786E-02
+  elec_asym (LL,x=    1.0000000000E-02)   =     4.827E-02
+  elec_asym (LL,x=    1.0000000000E-01)   =     5.287E-02
+  elec_asym (LL,x=    2.0000000000E-01)   =     5.915E-02
+  elec_asym (LL,x=    3.0000000000E-01)   =     6.719E-02
+  elec_asym (LL,x=    4.0000000000E-01)   =     7.783E-02
+  elec_asym (LL,x=    5.0000000000E-01)   =     9.261E-02
+  elec_asym (LL,x=    6.0000000000E-01)   =     1.146E-01
+  elec_asym (LL,x=    7.0000000000E-01)   =     1.507E-01
+  elec_asym (LL,x=    8.0000000000E-01)   =     2.219E-01
+  elec_asym (LL,x=    9.0000000000E-01)   =     4.298E-01
+  elec_asym (LL,x=    9.5000000000E-01)   =     8.325E-01
+  elec_asym (LL,x=    9.9000000000E-01)   =     3.864E+00
+  elec_asym (LL,x=    9.9900000000E-01)   =     3.473E+01
+  elec_asym (LL,x=    9.9990000000E-01)   =     3.122E+02
+  elec_asym (LL,x=    9.9999000000E-01)   =     2.807E+03
 
-  elec_asym (NLL,x=0.1)   =  0.051223
-  elec_asym (NLL,x=0.5)   =  0.095204
-  elec_asym (NLL,x=0.9)   =  0.507945
-  elec_asym (NLL,x=0.999) = 54.026750
+  elec_asym (NLL,x=    1.0000000000E-24)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-23)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-22)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-21)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-20)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-19)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-18)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-17)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-16)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-15)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-14)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-13)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-12)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-11)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-10)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-09)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-08)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-07)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-06)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-05)   =     4.581E-02
+  elec_asym (NLL,x=    1.0000000000E-04)   =     4.582E-02
+  elec_asym (NLL,x=    1.0000000000E-03)   =     4.586E-02
+  elec_asym (NLL,x=    1.0000000000E-02)   =     4.630E-02
+  elec_asym (NLL,x=    1.0000000000E-01)   =     5.122E-02
+  elec_asym (NLL,x=    2.0000000000E-01)   =     5.802E-02
+  elec_asym (NLL,x=    3.0000000000E-01)   =     6.681E-02
+  elec_asym (NLL,x=    4.0000000000E-01)   =     7.859E-02
+  elec_asym (NLL,x=    5.0000000000E-01)   =     9.520E-02
+  elec_asym (NLL,x=    6.0000000000E-01)   =     1.203E-01
+  elec_asym (NLL,x=    7.0000000000E-01)   =     1.625E-01
+  elec_asym (NLL,x=    8.0000000000E-01)   =     2.479E-01
+  elec_asym (NLL,x=    9.0000000000E-01)   =     5.079E-01
+  elec_asym (NLL,x=    9.5000000000E-01)   =     1.036E+00
+  elec_asym (NLL,x=    9.9000000000E-01)   =     5.336E+00
+  elec_asym (NLL,x=    9.9900000000E-01)   =     5.403E+01
+  elec_asym (NLL,x=    9.9990000000E-01)   =     5.325E+02
+  elec_asym (NLL,x=    9.9999000000E-01)   =     5.139E+03
 
 * Q = 10 GeV, phot_asym, LL+NLL, alpha fixed:
 
-  phot_asym (LL,x=0.1)   =  0.083269
-  phot_asym (LL,x=0.5)   =  0.957798
-  phot_asym (LL,x=0.9)   = -0.007602
-  phot_asym (LL,x=0.999) =  0.019579
+  phot_asym (LL,x=    1.0000000000E-24)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-23)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-22)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-21)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-20)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-19)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-18)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-17)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-16)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-15)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-14)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-13)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-12)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-11)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-10)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-09)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-08)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-07)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-06)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-05)   =     6.753E-02
+  phot_asym (LL,x=    1.0000000000E-04)   =     6.754E-02
+  phot_asym (LL,x=    1.0000000000E-03)   =     6.765E-02
+  phot_asym (LL,x=    1.0000000000E-02)   =     6.877E-02
+  phot_asym (LL,x=    1.0000000000E-01)   =     8.327E-02
+  phot_asym (LL,x=    2.0000000000E-01)   =     1.112E-01
+  phot_asym (LL,x=    3.0000000000E-01)   =     1.688E-01
+  phot_asym (LL,x=    4.0000000000E-01)   =     3.201E-01
+  phot_asym (LL,x=    5.0000000000E-01)   =     9.578E-01
+  phot_asym (LL,x=    6.0000000000E-01)   =     1.188E+01
+  phot_asym (LL,x=    7.0000000000E-01)   =    -3.126E+01
+  phot_asym (LL,x=    8.0000000000E-01)   =    -3.514E-01
+  phot_asym (LL,x=    9.0000000000E-01)   =    -7.602E-03
+  phot_asym (LL,x=    9.5000000000E-01)   =     1.408E-02
+  phot_asym (LL,x=    9.9000000000E-01)   =     1.969E-02
+  phot_asym (LL,x=    9.9900000000E-01)   =     1.958E-02
+  phot_asym (LL,x=    9.9990000000E-01)   =     1.877E-02
+  phot_asym (LL,x=    9.9999000000E-01)   =     1.792E-02
 
-  phot_asym (NLL,x=0.1)   =  0.156845
-  phot_asym (NLL,x=0.5)   =  0.936072
-  phot_asym (NLL,x=0.9)   = -0.008650
-  phot_asym (NLL,x=0.999) =  0.016285
+  phot_asym (NLL,x=    1.0000000000E-24)   =     2.505E+23
+  phot_asym (NLL,x=    1.0000000000E-23)   =     2.400E+22
+  phot_asym (NLL,x=    1.0000000000E-22)   =     2.295E+21
+  phot_asym (NLL,x=    1.0000000000E-21)   =     2.189E+20
+  phot_asym (NLL,x=    1.0000000000E-20)   =     2.084E+19
+  phot_asym (NLL,x=    1.0000000000E-19)   =     1.979E+18
+  phot_asym (NLL,x=    1.0000000000E-18)   =     1.873E+17
+  phot_asym (NLL,x=    1.0000000000E-17)   =     1.768E+16
+  phot_asym (NLL,x=    1.0000000000E-16)   =     1.663E+15
+  phot_asym (NLL,x=    1.0000000000E-15)   =     1.557E+14
+  phot_asym (NLL,x=    1.0000000000E-14)   =     1.452E+13
+  phot_asym (NLL,x=    1.0000000000E-13)   =     1.347E+12
+  phot_asym (NLL,x=    1.0000000000E-12)   =     1.241E+11
+  phot_asym (NLL,x=    1.0000000000E-11)   =     1.136E+10
+  phot_asym (NLL,x=    1.0000000000E-10)   =     1.031E+09
+  phot_asym (NLL,x=    1.0000000000E-09)   =     9.252E+07
+  phot_asym (NLL,x=    1.0000000000E-08)   =     8.199E+06
+  phot_asym (NLL,x=    1.0000000000E-07)   =     7.145E+05
+  phot_asym (NLL,x=    1.0000000000E-06)   =     6.092E+04
+  phot_asym (NLL,x=    1.0000000000E-05)   =     5.038E+03
+  phot_asym (NLL,x=    1.0000000000E-04)   =     3.985E+02
+  phot_asym (NLL,x=    1.0000000000E-03)   =     2.935E+01
+  phot_asym (NLL,x=    1.0000000000E-02)   =     1.927E+00
+  phot_asym (NLL,x=    1.0000000000E-01)   =     1.568E-01
+  phot_asym (NLL,x=    2.0000000000E-01)   =     1.305E-01
+  phot_asym (NLL,x=    3.0000000000E-01)   =     1.742E-01
+  phot_asym (NLL,x=    4.0000000000E-01)   =     3.175E-01
+  phot_asym (NLL,x=    5.0000000000E-01)   =     9.361E-01
+  phot_asym (NLL,x=    6.0000000000E-01)   =     1.134E+01
+  phot_asym (NLL,x=    7.0000000000E-01)   =    -3.272E+01
+  phot_asym (NLL,x=    8.0000000000E-01)   =    -3.539E-01
+  phot_asym (NLL,x=    9.0000000000E-01)   =    -8.650E-03
+  phot_asym (NLL,x=    9.5000000000E-01)   =     1.278E-02
+  phot_asym (NLL,x=    9.9000000000E-01)   =     1.775E-02
+  phot_asym (NLL,x=    9.9900000000E-01)   =     1.629E-02
+  phot_asym (NLL,x=    9.9990000000E-01)   =     1.365E-02
+  phot_asym (NLL,x=    9.9999000000E-01)   =     1.066E-02
 
 * Q = 10 GeV, phot_asym, LL+NLL, alpha running:
 
-  phot_asym (LL,x=0.1)   =  0.083922
-  phot_asym (LL,x=0.5)   =  0.965229
-  phot_asym (LL,x=0.9)   = -0.007661
-  phot_asym (LL,x=0.999) =  0.019708
+  phot_asym (LL,x=    1.0000000000E-24)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-23)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-22)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-21)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-20)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-19)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-18)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-17)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-16)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-15)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-14)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-13)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-12)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-11)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-10)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-09)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-08)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-07)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-06)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-05)   =     6.806E-02
+  phot_asym (LL,x=    1.0000000000E-04)   =     6.807E-02
+  phot_asym (LL,x=    1.0000000000E-03)   =     6.818E-02
+  phot_asym (LL,x=    1.0000000000E-02)   =     6.931E-02
+  phot_asym (LL,x=    1.0000000000E-01)   =     8.392E-02
+  phot_asym (LL,x=    2.0000000000E-01)   =     1.121E-01
+  phot_asym (LL,x=    3.0000000000E-01)   =     1.701E-01
+  phot_asym (LL,x=    4.0000000000E-01)   =     3.226E-01
+  phot_asym (LL,x=    5.0000000000E-01)   =     9.652E-01
+  phot_asym (LL,x=    6.0000000000E-01)   =     1.197E+01
+  phot_asym (LL,x=    7.0000000000E-01)   =    -3.150E+01
+  phot_asym (LL,x=    8.0000000000E-01)   =    -3.541E-01
+  phot_asym (LL,x=    9.0000000000E-01)   =    -7.661E-03
+  phot_asym (LL,x=    9.5000000000E-01)   =     1.418E-02
+  phot_asym (LL,x=    9.9000000000E-01)   =     1.983E-02
+  phot_asym (LL,x=    9.9900000000E-01)   =     1.971E-02
+  phot_asym (LL,x=    9.9990000000E-01)   =     1.889E-02
+  phot_asym (LL,x=    9.9999000000E-01)   =     1.802E-02
 
-  phot_asym (NLL,x=0.1)   =  0.157801
-  phot_asym (NLL,x=0.5)   =  0.949870
-  phot_asym (NLL,x=0.9)   = -0.008428
-  phot_asym (NLL,x=0.999) =  0.016398
+  phot_asym (NLL,x=    1.0000000000E-24)   =     2.505E+23
+  phot_asym (NLL,x=    1.0000000000E-23)   =     2.400E+22
+  phot_asym (NLL,x=    1.0000000000E-22)   =     2.294E+21
+  phot_asym (NLL,x=    1.0000000000E-21)   =     2.189E+20
+  phot_asym (NLL,x=    1.0000000000E-20)   =     2.084E+19
+  phot_asym (NLL,x=    1.0000000000E-19)   =     1.978E+18
+  phot_asym (NLL,x=    1.0000000000E-18)   =     1.873E+17
+  phot_asym (NLL,x=    1.0000000000E-17)   =     1.768E+16
+  phot_asym (NLL,x=    1.0000000000E-16)   =     1.662E+15
+  phot_asym (NLL,x=    1.0000000000E-15)   =     1.557E+14
+  phot_asym (NLL,x=    1.0000000000E-14)   =     1.452E+13
+  phot_asym (NLL,x=    1.0000000000E-13)   =     1.346E+12
+  phot_asym (NLL,x=    1.0000000000E-12)   =     1.241E+11
+  phot_asym (NLL,x=    1.0000000000E-11)   =     1.136E+10
+  phot_asym (NLL,x=    1.0000000000E-10)   =     1.030E+09
+  phot_asym (NLL,x=    1.0000000000E-09)   =     9.251E+07
+  phot_asym (NLL,x=    1.0000000000E-08)   =     8.198E+06
+  phot_asym (NLL,x=    1.0000000000E-07)   =     7.144E+05
+  phot_asym (NLL,x=    1.0000000000E-06)   =     6.091E+04
+  phot_asym (NLL,x=    1.0000000000E-05)   =     5.038E+03
+  phot_asym (NLL,x=    1.0000000000E-04)   =     3.985E+02
+  phot_asym (NLL,x=    1.0000000000E-03)   =     2.935E+01
+  phot_asym (NLL,x=    1.0000000000E-02)   =     1.928E+00
+  phot_asym (NLL,x=    1.0000000000E-01)   =     1.578E-01
+  phot_asym (NLL,x=    2.0000000000E-01)   =     1.319E-01
+  phot_asym (NLL,x=    3.0000000000E-01)   =     1.764E-01
+  phot_asym (NLL,x=    4.0000000000E-01)   =     3.219E-01
+  phot_asym (NLL,x=    5.0000000000E-01)   =     9.499E-01
+  phot_asym (NLL,x=    6.0000000000E-01)   =     1.152E+01
+  phot_asym (NLL,x=    7.0000000000E-01)   =    -3.329E+01
+  phot_asym (NLL,x=    8.0000000000E-01)   =    -3.059E-01
+  phot_asym (NLL,x=    9.0000000000E-01)   =    -8.428E-03
+  phot_asym (NLL,x=    9.5000000000E-01)   =     1.291E-02
+  phot_asym (NLL,x=    9.9000000000E-01)   =     1.789E-02
+  phot_asym (NLL,x=    9.9900000000E-01)   =     1.640E-02
+  phot_asym (NLL,x=    9.9990000000E-01)   =     1.374E-02
+  phot_asym (NLL,x=    9.9999000000E-01)   =     1.072E-02
 
 * Test output end: electron_pdfs_1
