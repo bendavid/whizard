@@ -1,6 +1,6 @@
 (* keystones_omegalib_generate.ml --
 
-   Copyright (C) 2019-2024 by
+   Copyright (C) 2019-2025 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
