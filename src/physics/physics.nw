@@ -4343,10 +4343,10 @@ end submodule kinematics_vars_s
          deltasqhigh, deltasqhigh1, deltasqhigh2, deltasqhigh21, &
          deltasqhigh22, deltasqlow
     ! Calculation coefficients for the quadratic and quartic curves
-    real(default) :: a1, b1, c1, d1, e1, f1, &
+    real*16 :: a1, b1, c1, d1, e1, f1, &
          a2, b2, c2, d2, e2, f2
-    real(default) :: d20, d11, d21, e11, e20, e21
-    real(default) :: f10, f12, f20, f21, f22
+    real*16 :: d20, d11, d21, e11, e20, e21
+    real*16 :: f10, f12, f20, f21, f22
     integer:: nsolshigh, nsolslow, findhigh, nsolsmid
 
     print *, 'using calculation for massive visible particles.'
@@ -4511,10 +4511,10 @@ end submodule kinematics_vars_s
          deltasqhigh1, deltasqhigh2, &
          minmass, maxmass, mass, &
          deltamid, midmass, nsolsmid
-    real(default) :: a1, b1, c1, d1, e1, f1, &
+    real*16 :: a1, b1, c1, d1, e1, f1, &
          a2, b2, c2, d2, e2, f2    
-    real(default) :: d20, d21, e20, e21
-    real(default) :: f20, f21, f22
+    real*16 :: d20, d21, e20, e21
+    real*16 :: f20, f21, f22
     integer :: nsolshigh, nsolslow, findhigh
     print *, 'using calculation for massless visible particles.'
     ! first rotate system so that pay=0
