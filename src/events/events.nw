@@ -16829,6 +16829,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     call hepmc3_iostream_close (iostream)
     call hepmc3_event_to_particle_set (particle_set2, &
          hepmc_event, model, model, PRT_DEFINITE_HELICITY)
+    call pacify (particle_set2)
     call particle_set2%write (u)
 
     write (u, "(A)")
