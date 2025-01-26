@@ -6813,6 +6813,12 @@ procedure with type [[V_NONE]].
          'renormalization scheme in \recola\. For the default, 1, ' // &
          '$G_F$ is given by the absolute value of the complex parameters, ' // &
          'for the value 0 by the product of real parts of those parameters.'))
+    call var_list%append_int (var_str ("openloops_wf_v_select"), 3, &
+         intrinsic = .true., &
+         description=var_str ('Integer parameter that sets the convention for ' // &
+         'the Openloops vector boson wavefunctions. The default, 3, is needed ' // &
+         'for NLO calculations, 1 is the Openloops default, which supports ' // &
+         'external vector boson polarization.'))
     call var_list%append_real (var_str ("ellis_sexton_scale"), &
          -1._default, intrinsic = .true., &
          description = var_str ('Real positive paramter for the Ellis-Sexton scale' // &

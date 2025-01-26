@@ -370,6 +370,7 @@ openloops_stability_log = 0
 $openloops_extra_cmd = ""
 $openloops_allowed_libs = ""
 recola_gfermi_scheme = 1
+openloops_wf_v_select = 3
 ellis_sexton_scale = -1.000000000000E+00
 ?disable_subtraction = false
 fks_dij_exp1 =  1.000000000000E+00

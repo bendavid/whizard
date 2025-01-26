@@ -1986,6 +1986,7 @@ end submodule blha_olp_interfaces_s
     logical :: use_internal_color_correlations = .true.
     real(default) :: external_top_yukawa = -1._default
     integer :: ew_scheme
+    integer :: openloops_wf_v = 3
     integer :: loop_method = BLHA_MODE_GENERIC
   contains
   <<BLHA OLP interfaces: blha template: TBP>>
@@ -2096,6 +2097,7 @@ Obviously, this process-core type uses the BLHA interface.
     type(string_t) :: nlo_suffix
     logical :: include_polarizations = .false.
     logical :: switch_off_muon_yukawas = .false.
+    integer :: wf_v_select = 3
     real(default) :: external_top_yukawa = -1.0
     procedure(olp_start),nopass,  pointer :: &
          blha_olp_start => null ()
@@ -2363,24 +2365,27 @@ Obviously, this process-core type uses the BLHA interface.
   procedure :: init => blha_template_init
 <<BLHA OLP interfaces: sub interfaces>>=
     module subroutine blha_template_init (template, requires_polarizations, &
-           switch_off_muon_yukawas, external_top_yukawa, ew_scheme)
+         switch_off_muon_yukawas, external_top_yukawa, ew_scheme, wf_v_select)
       class(blha_template_t), intent(inout) :: template
       logical, intent(in) :: requires_polarizations, switch_off_muon_yukawas
       real(default), intent(in) :: external_top_yukawa
       type(string_t), intent(in) :: ew_scheme
+      integer, intent(in) :: wf_v_select
     end subroutine blha_template_init
 <<BLHA OLP interfaces: procedures>>=
   module subroutine blha_template_init (template, requires_polarizations, &
-         switch_off_muon_yukawas, external_top_yukawa, ew_scheme)
+       switch_off_muon_yukawas, external_top_yukawa, ew_scheme, wf_v_select)
     class(blha_template_t), intent(inout) :: template
     logical, intent(in) :: requires_polarizations, switch_off_muon_yukawas
     real(default), intent(in) :: external_top_yukawa
     type(string_t), intent(in) :: ew_scheme
+    integer, intent(in) :: wf_v_select
     template%compute_component = .false.
     template%include_polarizations = requires_polarizations
     template%switch_off_muon_yukawas = switch_off_muon_yukawas
     template%external_top_yukawa = external_top_yukawa
     template%ew_scheme = ew_scheme_string_to_int (ew_scheme)
+    template%openloops_wf_v = wf_v_select
   end subroutine blha_template_init
 
 @ %def blha_template_init
@@ -3536,6 +3541,7 @@ Obviously, this process-core type uses the BLHA interface.
        driver%include_polarizations = blha_template%include_polarizations
        driver%switch_off_muon_yukawas = blha_template%switch_off_muon_yukawas
        driver%external_top_yukawa = blha_template%external_top_yukawa
+       driver%wf_v_select = blha_template%openloops_wf_v
     end select
   end subroutine prc_blha_init_blha
 

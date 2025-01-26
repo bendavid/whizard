@@ -3069,15 +3069,18 @@ not?  We use a default value for the scheme (not set in unit tests).
     logical :: muon_yukawa_off
     real(default) :: top_yukawa
     type(string_t) :: ew_scheme
+    integer :: wf_v_select
     muon_yukawa_off = &
          var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa"))
     top_yukawa = &
          var_list%get_rval (var_str ("blha_top_yukawa"))
     ew_scheme = &
          var_list%get_sval (var_str ("$blha_ew_scheme"))
+    wf_v_select = &
+         var_list%get_ival (var_str ("openloops_wf_v_select"))
     if (ew_scheme == "")  ew_scheme = "Gmu"
-    call pcm%blha_defaults%init &
-         (polarized_beams, muon_yukawa_off, top_yukawa, ew_scheme)
+    call pcm%blha_defaults%init (polarized_beams, &
+         muon_yukawa_off, top_yukawa, ew_scheme, wf_v_select)
   end subroutine pcm_set_blha_defaults
 
 @ %def pcm_set_blha_defaults

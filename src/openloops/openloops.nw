@@ -835,12 +835,23 @@ filenames do not clash.
     call core%set_electroweak_parameters (model)
     select type (driver => core%driver)
     type is (openloops_driver_t)
-       !!! We have to set the external vector boson wavefunction to the MadGraph convention
-       !!! in order to be consistent with our calculation of the spin correlated contributions.
-       call driver%blha_olp_set_parameter ('wf_v_select'//c_null_char, &
-            3._double, 0._double, ierr)
-       if (ierr == 0) call parameter_error_message (var_str ('wf_v_select'), &
-            var_str ('prc_openloops_prepare_external_code'))
+       select case (driver%wf_v_select)
+       case (1)
+          !!! Openloops default, no specific setting
+       case (2)
+          call driver%blha_olp_set_parameter ('wf_v_select'//c_null_char, &
+               2._double, 0._double, ierr)
+          if (ierr == 0) call parameter_error_message (var_str ('wf_v_select'), &
+               var_str ('prc_openloops_prepare_external_code'))
+       case (3)
+          !!! We have to set the external vector boson wavefunction to the MadGraph convention
+          !!! in order to be consistent with our calculation of the spin correlated contributions.
+          call driver%blha_olp_set_parameter ('wf_v_select'//c_null_char, &
+               3._double, 0._double, ierr)
+          if (ierr == 0) call parameter_error_message (var_str ('wf_v_select'), &
+               var_str ('prc_openloops_prepare_external_code'))
+       case default
+       end select
     end select
     call core%read_contract_file (flv_states)
     call core%print_parameter_file (i_core)
