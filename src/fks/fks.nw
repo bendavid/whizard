@@ -2680,7 +2680,7 @@ $\sum_\alpha S_\alpha = 1$.
     integer, dimension(:), allocatable :: emitter
     type(flv_structure_t), dimension(:), allocatable :: flst_alr
     integer :: i, n_real
-    integer :: n_flv_real_before_check
+    integer :: n_flv_real_before_check, n_onshell_phot_is, n_onshell_phot_fs
     reg_data%n_in = n_in
     reg_data%alpha_power = alpha_pow
     reg_data%alphas_power = alphas_pow
@@ -2695,11 +2695,19 @@ $\sum_\alpha S_\alpha = 1$.
        call reg_data%flv_born(i)%init (flavor_born (:, i), n_in)
     end do
     n_real = 0
+    n_onshell_phot_is = n_onshell_photons (flavor_born (1:n_in,:))
+    n_onshell_phot_fs = n_onshell_photons (flavor_born (n_in+1:,:))
     do i = 1, n_flv_real_before_check
        if (nlo_correction_type == "EW") then
           if (.not. (query_coupling_powers &
               (flavor_real (:, i), reg_data%alpha_power + 1, &
                reg_data%alphas_power))) cycle
+          !!! veto photon splittings for on-shell case
+          if (count (flavor_real (1:n_in,i) == PHOTON) &
+              < n_onshell_phot_is) cycle
+          if (count (flavor_real (n_in+1:,i) == PHOTON) &
+              < n_onshell_phot_fs &
+              .and. any (is_colored (flavor_real (1:n_in,i)))) cycle
        end if
        n_real = n_real + 1
        flv_real_tmp (:, n_real) = flavor_real (:, i)
@@ -9679,6 +9687,7 @@ We store a pointer to the [[nlo_settings_t]] object which holds tuning parameter
      integer :: purpose = INTEGRATION
      logical :: radiation_event = .true.
      logical :: subtraction_event = .false.
+     logical :: rcl_spin_c = .false.
      integer, dimension(:), allocatable :: selected_alr
   contains
   <<Real subtraction: real subtraction: TBP>>
@@ -10924,12 +10933,16 @@ Be aware that this approach will not work for $pe$ collisions.
          end if
        end associate
        mom_times_sqme = zero
-       do mu = 1, 3
-          do nu = 1, 3
-             mom_times_sqme = mom_times_sqme + &
-                  k_perp(mu) * k_perp(nu) * rsub%sqme_born_spin_c (mu, nu, emitter, i_born)
+       if (rsub%rcl_spin_c) then
+          mom_times_sqme = rsub%sqme_born_spin_c (1, 1, emitter, i_born)
+       else
+          do mu = 1, 3
+             do nu = 1, 3
+                mom_times_sqme = mom_times_sqme + &
+                     k_perp(mu) * k_perp(nu) * rsub%sqme_born_spin_c (mu, nu, emitter, i_born)
+             end do
           end do
-       end do
+       end if
     else
        mom_times_sqme = zero
     end if

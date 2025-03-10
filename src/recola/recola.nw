@@ -1140,13 +1140,14 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_compute_color_correlation
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_compute_color_correlation (id, p, &
-     i1, i2, sqme)
+     pow, i1, i2, sqme)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
-    integer, intent(in) :: i1, i2
+    integer, intent(in) :: pow, i1, i2
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "compute_colour_correlation_rcl")
     call compute_colour_correlation_rcl (id, p, i1, i2, sqme)
+    call get_colour_correlation_rcl (id, pow, i1, i2, sqme)
   end subroutine rclwrap_compute_color_correlation
 
 @ %def rclwrap_compute_color_correlation
@@ -1201,14 +1202,15 @@ the mass regulator in GeV to [[m]].
 <<Recola wrapper: public>>=
   public :: rclwrap_compute_spin_correlation
 <<Recola wrapper: procedures>>=
-  subroutine rclwrap_compute_spin_correlation (id, p, i_photon, pol, sqme)
+  subroutine rclwrap_compute_spin_correlation (id, p, pow, i_photon, pol, sqme)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
-    integer, intent(in) :: i_photon
+    integer, intent(in) :: pow, i_photon
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "compute_spin_correlation_rcl")
     call compute_spin_correlation_rcl (id, p, i_photon, pol, sqme)
+    call get_spin_correlation_rcl (id, pow, sqme)
   end subroutine rclwrap_compute_spin_correlation
 
 @ %def rclwrap_compute_spin_correlation
@@ -1924,10 +1926,10 @@ end module recola_wrapper
   public :: rclwrap_compute_color_correlation
 <<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_color_correlation (id, p, &
-     i1, i2, sqme)
+     pow, i1, i2, sqme)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
-    integer, intent(in) :: i1, i2
+    integer, intent(in) :: pow, i1, i2
     real(double), intent(out), optional :: sqme
   end subroutine rclwrap_compute_color_correlation
 
@@ -1975,10 +1977,10 @@ end module recola_wrapper
 <<Recola wrapper dummy: public>>=
   public :: rclwrap_compute_spin_correlation
 <<Recola wrapper dummy: procedures>>=
-  subroutine rclwrap_compute_spin_correlation (id, p, i_photon, pol, sqme)
+  subroutine rclwrap_compute_spin_correlation (id, p, pow, i_photon, pol, sqme)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
-    integer, intent(in) :: i_photon
+    integer, intent(in) :: pow, i_photon
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
   end subroutine rclwrap_compute_spin_correlation
@@ -2085,6 +2087,7 @@ module prc_recola
   use prc_core_def, only: prc_core_driver_t, prc_core_def_t
   use prc_external
   use process_libraries, only: process_library_t
+  use pdg_arrays, only: query_coupling_powers
 
 <<Standard module head>>
 
@@ -2489,6 +2492,9 @@ processes have been defined.
        else if (iostat > 0) then
           call err_flv_list (writer%id)
        end if
+       if (index (writer%id, "REAL") > 0 .and. &
+          .not. query_coupling_powers (pdg, writer%alpha_power, writer%alphas_power)) &
+          cycle
        i_flv = i_flv + 1
        call rclwrap_get_new_recola_id (recola_id)
        recola_ids(i_flv) = recola_id
@@ -2876,6 +2882,7 @@ the Recola workflow, however.
          (dble(model%get_real (var_str ('GF'))), object%gfermi_scheme)
     !!! TODO PB 03-03-2022: Automatize mass threshold for light fermions
     call rclwrap_set_light_fermions (0._double)
+    !!! TODO PB 20-02-2023: Automatize onshell scheme activation
     call rclwrap_set_delta_ir (0._double, dble(pi**2 / 6))
   end subroutine prc_recola_set_parameters
 
@@ -3033,24 +3040,26 @@ implementation can fail due to missing helicity initialization.
 @ %def prc_recola_compute_amplitude
 @
 <<Prc recola: prc recola: TBP>>=
-  procedure :: compute_sqme => prc_recola_compute_sqme
+  procedure :: compute_sqme_rcl => prc_recola_compute_sqme_rcl
 <<Prc recola: sub interfaces>>=
-    module subroutine prc_recola_compute_sqme (object, i_flv, i_hel, p, &
-         ren_scale, sqme, bad_point)
+    module subroutine prc_recola_compute_sqme_rcl (object, i_flv, i_hel, p, &
+         ren_scale, subl_cp, sqme, bad_point)
       class(prc_recola_t), intent(in) :: object
       integer, intent(in) :: i_flv, i_hel
       type(vector4_t), dimension(:), intent(in) :: p
       real(default), intent(in) :: ren_scale
+      logical, intent(in) :: subl_cp
       real(default), intent(out) :: sqme
       logical, intent(out) :: bad_point
-    end subroutine prc_recola_compute_sqme
+    end subroutine prc_recola_compute_sqme_rcl
 <<Prc recola: procedures>>=
-  module subroutine prc_recola_compute_sqme (object, i_flv, i_hel, p, &
-       ren_scale, sqme, bad_point)
+  module subroutine prc_recola_compute_sqme_rcl (object, i_flv, i_hel, p, &
+       ren_scale, subl_cp, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
+    logical, intent(in) :: subl_cp
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
     real(double) :: sqme_dble
@@ -3059,11 +3068,14 @@ implementation can fail due to missing helicity initialization.
     real(default) :: alpha_s
     integer :: i
     integer :: alphas_power
+    integer :: pow
     ! TODO sbrass: Helicity for RECOLA
     if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
     end do
+    pow = object%get_alphas_power ()
+    if (subl_cp .and. pow > 0) pow = pow - 1
     alpha_s = object%qcd%alpha%get (ren_scale)
     if (debug_on) call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
     if (debug_on) call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
@@ -3071,35 +3083,37 @@ implementation can fail due to missing helicity initialization.
     call rclwrap_set_mu_ir (dble (ren_scale))
     call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'LO')
     call rclwrap_get_squared_amplitude &
-         (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
+         (object%recola_ids(i_flv), pow, 'LO', sqme_dble)
     sqme = real(sqme_dble, kind=default)
     bad_point = .false.
-  end subroutine prc_recola_compute_sqme
+  end subroutine prc_recola_compute_sqme_rcl
 
-@ %def prc_recola_compute_sqme
+@ %def prc_recola_compute_sqme_rcl
 @
 <<Prc recola: prc recola: TBP>>=
-  procedure :: compute_sqme_virt => prc_recola_compute_sqme_virt
+  procedure :: compute_sqme_virt_rcl => prc_recola_compute_sqme_virt_rcl
 <<Prc recola: sub interfaces>>=
-    module subroutine prc_recola_compute_sqme_virt (object, i_flv, i_hel,  &
-         p, ren_scale, es_scale, loop_method, sqme, bad_point)
+    module subroutine prc_recola_compute_sqme_virt_rcl (object, i_flv, i_hel,  &
+         p, ren_scale, es_scale, loop_method, subl_cp, sqme, bad_point)
       class(prc_recola_t), intent(in) :: object
       integer, intent(in) :: i_flv, i_hel
       type(vector4_t), dimension(:), intent(in) :: p
       real(default), intent(in) :: ren_scale, es_scale
       integer, intent(in) :: loop_method
+      logical, intent(in) :: subl_cp
       real(default), dimension(4), intent(out) :: sqme
       real(default) :: amp
       logical, intent(out) :: bad_point
-    end subroutine prc_recola_compute_sqme_virt
+    end subroutine prc_recola_compute_sqme_virt_rcl
 <<Prc recola: procedures>>=
-  module subroutine prc_recola_compute_sqme_virt (object, i_flv, i_hel,  &
-       p, ren_scale, es_scale, loop_method, sqme, bad_point)
+  module subroutine prc_recola_compute_sqme_virt_rcl (object, i_flv, i_hel,  &
+       p, ren_scale, es_scale, loop_method, subl_cp, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale, es_scale
     integer, intent(in) :: loop_method
+    logical, intent(in) :: subl_cp
     real(default), dimension(4), intent(out) :: sqme
     real(default) :: amp
     logical, intent(out) :: bad_point
@@ -3107,10 +3121,10 @@ implementation can fail due to missing helicity initialization.
          p_recola
     real(double) :: sqme_dble
     real(default) :: alpha_s
-    integer :: i, as_coupling_power
+    integer :: i, pow_lo, pow_nlo
     logical :: ew_corr
     ! TODO sbrass Helicity for RECOLA
-    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt")
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt_rcl")
     sqme = zero
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
@@ -3125,21 +3139,20 @@ implementation can fail due to missing helicity initialization.
           ew_corr = def%corr == RECOLA_EW
        end select
     end if
-    if (ew_corr) then
-       as_coupling_power = object%get_alphas_power ()
-    else
-       as_coupling_power = object%get_alphas_power () + 1
-    end if
+    pow_lo = object%get_alphas_power ()
+    if (subl_cp .and. pow_lo > 0) pow_lo = pow_lo - 1
+    pow_nlo = object%get_alphas_power ()
+    if (.not. ew_corr) pow_nlo = pow_nlo + 1
     call rclwrap_get_squared_amplitude (object%recola_ids(i_flv), &
-         as_coupling_power, 'NLO', sqme_dble)
-    sqme(3) = sqme_dble 
+         pow_nlo, 'NLO', sqme_dble)
+    sqme(3) = sqme_dble
     call rclwrap_get_squared_amplitude &
-         (object%recola_ids(i_flv), object%get_alphas_power (), 'LO', sqme_dble)
+         (object%recola_ids(i_flv), pow_lo, 'LO', sqme_dble)
     sqme(4) = sqme_dble
     bad_point = .false.
-  end subroutine prc_recola_compute_sqme_virt
+  end subroutine prc_recola_compute_sqme_virt_rcl
 
-@ %def prc_recola_compute_sqme_virt
+@ %def prc_recola_compute_sqme_virt_rcl
 @
 <<Prc recola: prc recola: TBP>>=
   procedure :: get_alpha_qed => prc_recola_get_alpha_qed
@@ -3188,18 +3201,28 @@ fact that we are taking only one half of the symmetric matrix.
     real(default), intent(in) :: ren_scale
     real(default), dimension(:), intent(out) :: sqme_color_c
     logical, intent(out) :: bad_point
-    integer :: i1, i2, i, n_tot
+    integer :: i1, i2, i, n_tot, pow
     real(double) :: sqme_dble
+    logical :: ew_corr
+    ew_corr = .false.
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
     end do
     n_tot = object%data%n_in + object%data%n_out
     i = 0
+    pow = object%get_alphas_power ()
+    if (associated (object%def)) then
+       select type (def => object%def)
+       type is (recola_def_t)
+          ew_corr = def%corr == RECOLA_EW
+       end select
+    end if
+    if (ew_corr .and. pow > 0) pow = pow - 1
     do i1 = 1, n_tot
        do i2 = 1, i1-1
           i = i + 1
           call rclwrap_compute_color_correlation &
-               (object%recola_ids(i_flv), p_recola, i1, i2, sqme_dble)
+               (object%recola_ids(i_flv), p_recola, pow, i1, i2, sqme_dble)
           sqme_color_c(i) = real (sqme_dble, kind=default)
           select case (abs (object%data%flv_state (i1, i_flv)))
           case (1:6)
@@ -3213,6 +3236,58 @@ fact that we are taking only one half of the symmetric matrix.
 
 @ %def prc_recola_compute_sqme_color_c_raw
 @
+<<Prc recola: prc recola: TBP>>=
+  procedure :: compute_sqme_spin_c => prc_recola_compute_sqme_spin_c
+<<Prc recola: sub interfaces>>=
+    module subroutine prc_recola_compute_sqme_spin_c (object, &
+         i_flv, i_hel, em, p, ren_scale, k_perp, subl_cp, sqme_spin_c, bad_point)
+      class(prc_recola_t), intent(inout) :: object
+      integer, intent(in) :: i_flv, i_hel
+      integer, intent(in) :: em
+      type(vector4_t), intent(in), dimension(:) :: p
+      real(default), intent(in) :: ren_scale
+      real(default), intent(in), dimension(0:3) :: k_perp
+      logical, intent(in) :: subl_cp
+      real(default), intent(out), dimension(6) :: sqme_spin_c
+      logical, intent(out) :: bad_point
+    end subroutine prc_recola_compute_sqme_spin_c
+<<Prc recola: procedures>>=
+  module subroutine prc_recola_compute_sqme_spin_c (object, &
+       i_flv, i_hel, em, p, ren_scale, k_perp, subl_cp, sqme_spin_c, bad_point)
+    class(prc_recola_t), intent(inout) :: object
+    integer, intent(in) :: i_flv, i_hel
+    integer, intent(in) :: em
+    type(vector4_t), intent(in), dimension(:) :: p
+    real(default), intent(in), dimension(0:3) :: k_perp
+    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
+         p_recola
+    real(default), intent(in) :: ren_scale
+    logical, intent(in) :: subl_cp
+    real(default), intent(out), dimension(6) :: sqme_spin_c
+    logical, intent(out) :: bad_point
+    real(double) :: sqme
+    real(double) :: ren_scale_dble
+    real(default) :: phi
+    real(double) :: acc, acc_dble
+    real(default) :: alpha_s
+    complex(double), dimension(0:3) :: pol
+    integer :: i, pow
+    pow = object%get_alphas_power ()
+    if (subl_cp .and. pow > 0) pow = pow - 1
+    pol = cmplx (k_perp, 0, double)
+    do i = 1, object%data%n_in + object%data%n_out
+       p_recola(:, i) = dble(p(i)%p)
+    end do
+    alpha_s = object%qcd%alpha%get (ren_scale)
+    call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
+    call rclwrap_set_mu_ir (dble (ren_scale))
+    call rclwrap_compute_spin_correlation ( &
+         object%recola_ids(i_flv), p_recola, pow, em, pol, sqme)
+    sqme_spin_c = sqme
+    bad_point = .false.
+  end subroutine prc_recola_compute_sqme_spin_c
+
+@ %def prc_recola_compute_sqme_spin_c
 \subsection{Unit tests}
 <<[[prc_recola_ut.f90]]>>=
 <<File header>>

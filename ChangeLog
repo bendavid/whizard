@@ -4,6 +4,14 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.5.1
 
+2025-03-10
+	Larger revision of NLO EW functionality and Recola interface:
+	- complete photon treatment for NLO EW
+	- Recola OLP with full NLO EW and pp process functionality
+	- Bug fix: massive lepton initial states for NLO EW
+	- Bug fix: event generation for QCD-EW mixed NLO corrections
+	- Bug fix: determine coupling powers from flavor structures
+
 2024-12-10
 	More stable and faster implementation of NLL electron PDFs
 

@@ -1939,8 +1939,8 @@ coupling power combinations is well-defined.
      n_bound = 0
      if (n_gamWZH + n_leptons == n_legs) then
         n_bound = n_gamWZH + n_leptons - 2
-     else if (n_quarks == 2 .and. n_leptons + n_quarks + n_gamWZH == n_legs) then
-        n_bound = n_legs - 2
+     else if (n_quarks == 2) then
+        n_bound = n_legs - n_gluons - 2
      else if (n_gamWZH + n_leptons > 0) then
         n_bound = n_leptons/2 + n_gamWZH
      end if
@@ -1949,6 +1949,8 @@ coupling power combinations is well-defined.
            pairs_included (n_legs - i) = .false.
         end do
      end if
+     !!! Todo PB: This is not true for additional WHZA radiation
+     !!! should be more generalized
      if (n_quarks == 4 .and. .not. qcd_ew_interferences (flv)) then
         do i = 1, 2
            pairs_included (n_legs - i) = .false.
@@ -1964,7 +1966,7 @@ coupling power combinations is well-defined.
   end function query_coupling_powers
 
 @ %def query_coupling_powers
-This functions checks if there is a flavor structure which possibly can
+This function checks if there is a flavor structure which possibly can
 induce QCD-EW interference amplitudes. It evaluates to [[true]] if there are
 at least 2 quark pairs whereby the quarks of at least one quark pair must
 have the same flavor.
@@ -1996,6 +1998,28 @@ have the same flavor.
   end function qcd_ew_interferences
 
 @ %def qcd_ew_interferences
+Returns the minimal number of photons per flavor structure of an array of
+flavor structures. If the array is reduced to the initial- or final-state
+flavor structures this number corresponds to the number of on-shell
+photons of the IS or FS, respectively.
+<<PDG arrays: public>>=
+  public :: n_onshell_photons
+<<PDG arrays: sub interfaces>>=
+    module function n_onshell_photons (flv) result (n_photons)
+       integer, intent(in), dimension(:,:) :: flv
+       integer :: n_photons
+    end function n_onshell_photons
+<<PDG arrays: procedures>>=
+  module function n_onshell_photons (flv) result (n_photons)
+     integer, intent(in), dimension(:,:) :: flv
+     integer :: n_photons, i_flv
+     n_photons = size (flv, dim = 1)
+     do i_flv = 1, size (flv, dim = 2)
+        n_photons = min (count (flv (:, i_flv) == PHOTON), n_photons)
+     end do
+  end function n_onshell_photons
+
+@ %def n_onshell_photons
 @ Assign equivalent cut expression class to PDG code.
 <<PDG arrays: public>>=
   public :: flv_eqv_expr_class

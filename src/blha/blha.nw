@@ -58,7 +58,7 @@ submodule (blha_config) blha_config_s
   use io_units
   use constants
   use string_utils
-  use physics_defs, only: PHOTON, PHOTON_OFFSHELL
+  use physics_defs, only: PHOTON, PHOTON_OFFSHELL, PHOTON_ONSHELL
   use diagnostics
   use flavors
   use pdg_arrays
@@ -309,6 +309,8 @@ of the particles. Note that the output can only be processed by OpenLoops.
      integer :: openloops_stability_log = 0
      integer :: n_off_photons_is = 0
      integer :: n_off_photons_fs = 0
+     integer :: n_on_photons_is = 0
+     integer :: n_on_photons_fs = 0
   end type blha_configuration_t
 
 @ %def blha_cffg_process_node_t blha_configuration_t
@@ -558,7 +560,8 @@ This types control the creation of BLHA-interface files
     integer, dimension(:,:), intent(in) :: flv_born
     integer, intent(in) :: n_in
     integer :: i_file, i, i_flv 
-    integer :: noff_is, noff_fs, noff_is_max, noff_fs_max
+    integer :: noff_is, noff_fs, noff_is_max, noff_fs_max, non_is, non_fs
+    non_is = 0; non_fs = 0
     do i_file = 1, master%n_files
        noff_is_max = 0; noff_fs_max = 0
        do i_flv = 1, size (flv_born, 2)
@@ -572,6 +575,10 @@ This types control the creation of BLHA-interface files
           end do
           noff_fs_max = max (noff_fs, noff_fs_max)
        end do
+       non_is = n_onshell_photons (flv_born (:n_in,:))
+       non_fs = n_onshell_photons (flv_born (n_in + 1 :,:))
+       noff_is_max = noff_is_max - non_is
+       noff_fs_max = noff_fs_max - non_fs
        if (master%blha_cfg(i_file)%correction_type == BLHA_CT_EW &
           .and. master%ew_scheme == BLHA_EW_0 &
           .and. (noff_is_max > 0 .or. noff_fs_max > 0)) then
@@ -581,6 +588,8 @@ This types control the creation of BLHA-interface files
        end if
        master%blha_cfg(i_file)%n_off_photons_is = noff_is_max
        master%blha_cfg(i_file)%n_off_photons_fs = noff_fs_max
+       master%blha_cfg(i_file)%n_on_photons_is = non_is
+       master%blha_cfg(i_file)%n_on_photons_fs = non_fs
     end do
   end subroutine blha_master_set_photon_characteristics
 
@@ -1593,7 +1602,7 @@ This forbids to choose $\alpha=\alpha(0)$ since otherwise the order in $\alpha(0
 conserved in the real amplitudes corresponding to the factorizing Born process.
 Consequently, for FKS the NLO components are not of the same order in $\alpha(0)$.
 The option \texttt{\$blha\_ew\_scheme = "alpha\_0"} is thus refused for the case if EW
-corrections are activated and photons are present at LO.
+corrections are activated and off-shell (splitting) photons are present at LO.
 <<BLHA config: public>>=
   public :: blha_configuration_write
 <<BLHA config: sub interfaces>>=
@@ -1614,7 +1623,7 @@ corrections are activated and photons are present at LO.
     logical :: full, nlo3
     type(string_t) :: buf
     type(blha_cfg_process_node_t), pointer :: node
-    integer :: i
+    integer :: i, n_phot
     character(3) :: pdg_char
     character(5) :: pdg_char_extra
     character(4) :: hel_char
@@ -1846,9 +1855,15 @@ corrections are activated and photons are present at LO.
                 end select
              end if
           end if
+          n_phot = 0
           do i = 1, size (node%pdg_in)
-             if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_in(i)%pdg == PHOTON &
-                .and. cfg%n_off_photons_is > 0) then
+             if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_out(i)%pdg == PHOTON &
+                .and. cfg%n_on_photons_is > n_phot) then
+                write (pdg_char_extra, '(I5)') PHOTON_ONSHELL
+                buf = (buf // pdg_char_extra) // " "
+                n_phot = n_phot + 1
+             else if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_in(i)%pdg == PHOTON &
+                .and. cfg%n_off_photons_is > n_phot) then
                 if (cfg%ew_scheme == BLHA_EW_0) then
                    call msg_fatal ("ew_scheme: 'alpha_0' or 'alpha_thompson' " &
                         // "in combination",  [ var_str ("with off-shell external photons " &
@@ -1856,6 +1871,7 @@ corrections are activated and photons are present at LO.
                 end if
                 write (pdg_char_extra, '(I5)') PHOTON_OFFSHELL
                 buf = (buf // pdg_char_extra) // " "
+                n_phot = n_phot + 1
              else
                 call node%pdg_in(i)%write_pdg (pdg_char)
                 if (node%pdg_in(i)%polarized) then
@@ -1867,9 +1883,15 @@ corrections are activated and photons are present at LO.
              end if
           end do
           buf = buf // "-> "
+          n_phot = 0
           do i = 1, size (node%pdg_out)
              if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_out(i)%pdg == PHOTON &
-                .and. cfg%n_off_photons_fs > 0) then
+                .and. cfg%n_on_photons_fs > n_phot) then
+                write (pdg_char_extra, '(I5)') PHOTON_ONSHELL
+                buf = (buf // pdg_char_extra) // " "
+                n_phot = n_phot + 1
+             else if (cfg%correction_type == BLHA_CT_EW .and. node%pdg_out(i)%pdg == PHOTON &
+                .and. cfg%n_off_photons_fs > n_phot) then
                 if (cfg%ew_scheme == BLHA_EW_0) then
                    call msg_fatal ("ew_scheme: 'alpha_0' or 'alpha_thompson' " &
                         // "in combination with off-shell external photons " &
@@ -1877,6 +1899,7 @@ corrections are activated and photons are present at LO.
                 end if
                 write (pdg_char_extra, '(I5)') PHOTON_OFFSHELL
                 buf = (buf // pdg_char_extra) // " "
+                n_phot = n_phot + 1
              else
                 call node%pdg_out(i)%write_pdg (pdg_char)
                 buf = (buf // pdg_char) // " "
@@ -2964,7 +2987,8 @@ Obviously, this process-core type uses the BLHA interface.
                do i_flv = 1, size (flavors, 2)
                   flv_array = 0
                   do i = 1, size (flv_array)
-                     if (i_array (i) == PHOTON_OFFSHELL .and. &
+                     if ((i_array (i) == PHOTON_OFFSHELL .or. &
+                          i_array (i) == PHOTON_ONSHELL) .and. &
                           flavors (i, i_flv) == PHOTON) then
                         flv_array (i) = i_array (i)
                      else

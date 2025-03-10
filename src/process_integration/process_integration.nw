@@ -2548,15 +2548,18 @@ the trace (and thus, matrix and flows) evaluator, respectively.
     integer, intent(in), dimension(:), optional :: flv_index
     type(evaluator_t), intent(inout) :: evaluator
     integer :: i, i_flv
-    do i = 1, size (sqme)
-       if (present (flv_index)) then
+    if (present (flv_index)) then
+       do i = 1, size (flv_index)
           i_flv = flv_index(i)
-       else
-          i_flv = i
-       end if
-       call evaluator%add_to_matrix_element (qn(:,i_flv), sqme(i), &
-            match_only_flavor = .true.)
-    end do
+          call evaluator%add_to_matrix_element (qn(:,i_flv), sqme(i), &
+               match_only_flavor = .true.)
+       end do
+    else
+       do i = 1, size (sqme)
+          call evaluator%add_to_matrix_element (qn(:,i), sqme(i), &
+               match_only_flavor = .true.)
+       end do
+    end if
   end subroutine refill_evaluator
 
 @ %def refill_evaluator
@@ -14995,6 +14998,7 @@ module instances
   use state_matrices
   use phs_base
   use prc_core, only: prc_core_t, prc_core_state_t
+  use pdg_arrays, only: query_coupling_powers
   !!! local modules
   use parton_states
   use process_counter
@@ -15037,7 +15041,7 @@ submodule (instances) instances_s
   use numeric_utils
   use helicities
   use flavors
-  use pdg_arrays, only: is_quark, is_charged_lepton, flv_eqv_expr_class
+  use pdg_arrays, only: is_quark, is_charged_lepton, flv_eqv_expr_class, n_onshell_photons
 
   !!! We should depend less on these modules (move it to pcm_nlo_t e.g.)
   use phs_wood, only: phs_wood_t
@@ -15051,6 +15055,8 @@ submodule (instances) instances_s
   use prc_openloops, only: prc_openloops_t, openloops_state_t
   use prc_gosam, only: prc_gosam_t
   use prc_recola, only: prc_recola_t
+  use real_subtraction, only: real_subtraction_compute_k_perp_isr
+  use real_subtraction, only: real_subtraction_compute_k_perp_fsr
   use blha_olp_interfaces, only: blha_color_c_fill_offdiag, blha_color_c_fill_diag
   use ttv_formfactors, only: m1s_to_mpole
 
@@ -15473,9 +15479,12 @@ relevant for a NLO algorithm.
     beam_config = process%get_beam_config ()
     select type (pcm => term%pcm)
     type is (pcm_nlo_t)
+       n_in = pcm%region_data%get_n_in ()
+       flv_born = pcm%region_data%get_flv_states_born ()
        term%flv_dep_cut_eval = pcm%settings%nlo_correction_type == "EW" &
                                .and. pcm%region_data%alphas_power > 0 &
-                               .and. any(is_charged_lepton(f_out%get_pdg()))
+                               .and. (any(is_charged_lepton(f_out%get_pdg())) &
+                               .or. n_onshell_photons (flv_born (n_in + 1 :, :)) > 0)
     end select
 
     call term%connected%setup_subevt (term%isolated%sf_chain_eff, &
@@ -16527,9 +16536,13 @@ BLHA-based OLP, so for \texttt{GoSam} we assume the same structure.
        if (pcm_work%real_sub%requires_spin_correlations () &
             .and. term%nlo_type == NLO_REAL) then
           select type (core)
-          class is (prc_blha_t)
+          class is (prc_external_t)
              select type (pcm => term%pcm)
              type is (pcm_nlo_t)
+                select type (core)
+                type is (prc_recola_t)
+                   pcm_work%real_sub%rcl_spin_c = .true.
+                end select
                 n_flv = term%connected%trace%get_qn_index_n_flv ()
                 n_sub_color = term%get_n_sub_color ()
                 n_sub_spin = term%get_n_sub_spin ()
@@ -16567,7 +16580,7 @@ BLHA-based OLP, so for \texttt{GoSam} we assume the same structure.
              end select
           class default
              call msg_fatal &
-                  ("Spin correlations so far only supported by OpenLoops.")
+                  ("Spin correlations so far not supported by OMega.")
           end select
        end if
     end select
@@ -17249,6 +17262,7 @@ only compute one and use the [[eqv_index]] determined by the
     real(default), dimension(:), allocatable :: sqme_spin_c
     real(default), dimension(6) :: sqme_spin_c_tmp
     real(default), dimension(OLP_RESULTS_LIMIT) :: sqme_spin_c_gosam
+    real(default), dimension(0:3) :: k_perp
     integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off
     integer :: i_flv, i_hel, i_sub, i_color_c, i_color_c_eqv, &
          i_spin_c, i_spin_c_eqv
@@ -17257,6 +17271,8 @@ only compute one and use the [[eqv_index]] determined by the
     integer :: idl, idh
     logical :: bad_point, bp
     logical, dimension(:,:), allocatable :: eqv_me_evaluated
+    logical :: subl_cp
+    subl_cp = .false.
     if (debug_on) call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_external_tree")
     allocate (sqme_color_c (blha_result_array_size &
@@ -17274,6 +17290,25 @@ only compute one and use the [[eqv_index]] determined by the
           i_hel_eqv = core%data%eqv_hel_index(i_hel)
           if (.not. eqv_me_evaluated(i_flv_eqv, i_hel_eqv)) then
              select type (core)
+             class is (prc_recola_t)
+                if (term%nlo_type /= NLO_REAL .or. term%is_subtraction ()) then
+                   select type (pcm => term%pcm)
+                   type is (pcm_nlo_t)
+                      subl_cp = pcm%settings%nlo_correction_type == "EW" .and. &
+                         pcm%region_data%alphas_power > 0 .and. &
+                         .not. query_coupling_powers (pcm%region_data%flv_born(i_flv)%flst, &
+                         pcm%region_data%alpha_power, pcm%region_data%alphas_power)
+                   end select
+                end if
+                call core%update_alpha_s (term%core_state, term%get_ren_scale ())
+                call core%compute_sqme_rcl (i_flv, i_hel, term%p_hard, &
+                     term%get_ren_scale (), subl_cp, &
+                     sqme, bad_point)
+                call term%pcm_work%set_bad_point (bad_point)
+                associate (i_int => term%int_hard%get_qn_index &
+                     (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
+                  term%amp(i_int) = cmplx (sqme, 0, default)
+                end associate
              class is (prc_external_t)
                 call core%update_alpha_s (term%core_state, term%get_ren_scale ())
                 call core%compute_sqme (i_flv, i_hel, term%p_hard, &
@@ -17392,6 +17427,50 @@ only compute one and use the [[eqv_index]] determined by the
                          term%amp(i_spin_c) = cmplx &
                               (sqme_spin_c(i_sub), 0, default)
                       end do
+                   type is (prc_recola_t)
+                      select type (pcm => term%pcm)
+                      type is (pcm_nlo_t)
+                         select type (pcm_work => term%pcm_work)
+                         type is (pcm_nlo_workspace_t)
+                            do i_emitter = 1, pcm%region_data%n_emitters
+                               emitter = pcm%region_data%emitters(i_emitter)
+                               if (emitter > 0) then
+                                  if (emitter > pcm%region_data%n_in) then
+                                     k_perp = real_subtraction_compute_k_perp_fsr ( &
+                                        pcm_work%real_kinematics%p_born_lab%get_momentum(1, emitter), &
+                                        pcm_work%real_kinematics%phi)
+                                  else
+                                     k_perp = real_subtraction_compute_k_perp_isr ( &
+                                        pcm_work%real_kinematics%p_born_lab%get_momentum(1, emitter), &
+                                        pcm_work%real_kinematics%phi)
+                                  end if
+                                  if (pcm%region_data%flv_born(i_flv)%flst(emitter) == 22 .or. &
+                                     pcm%region_data%flv_born(i_flv)%flst(emitter) == 21) then
+                                     call core%compute_sqme_spin_c &
+                                          (i_flv, &
+                                          i_hel, &
+                                          emitter, &
+                                          term%p_hard, &
+                                          term%get_ren_scale (), &
+                                          k_perp, &
+                                          subl_cp, &
+                                          sqme_spin_c_tmp, &
+                                          bp)
+                                  else
+                                     sqme_spin_c_tmp = zero
+                                  end if
+                                  sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
+                                  bad_point = bad_point .or. bp
+                               end if
+                            end do
+                         end select
+                      end select
+                      do i_sub = 1, n_sub_spin
+                         i_spin_c = term%int_hard%get_qn_index (i_flv, i_hel, &
+                              i_sub + n_pdf_off + n_sub_color)
+                         term%amp(i_spin_c) = cmplx &
+                              (sqme_spin_c(i_sub), 0, default)
+                      end do
                    end select
                    deallocate (sqme_spin_c)
                 end if
@@ -17476,6 +17555,7 @@ only compute one and use the [[eqv_index]] determined by the
     real(default), dimension(:), allocatable :: sqme_color_c
     real(default) :: es_scale
     logical :: bad_point
+    logical :: subl_cp
     logical, dimension(:,:), allocatable :: eqv_me_evaluated
     if (debug_on) call msg_debug (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_external_loop")
@@ -17486,6 +17566,7 @@ only compute one and use the [[eqv_index]] determined by the
     n_sub = term%int_hard%get_qn_index_n_sub ()
     allocate (eqv_me_evaluated(n_flv,n_hel))
     eqv_me_evaluated = .false.
+    subl_cp = .false.
     i_virt = 1
     do i_flv = 1, n_flv
        if (.not. term%passed_array(i_flv) .and. term%passed) cycle
@@ -17500,10 +17581,26 @@ only compute one and use the [[eqv_index]] determined by the
                 else
                    es_scale = term%get_ren_scale ()
                 end if
-                call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
-                     term%get_ren_scale (), es_scale, &
-                     term%pcm%blha_defaults%loop_method, &
-                     sqme_virt, bad_point)
+                select type (core)
+                class is (prc_recola_t)
+                   select type (pcm  => term%pcm)
+                   type is (pcm_nlo_t)
+                      subl_cp = pcm%settings%nlo_correction_type == "EW" .and. &
+                         pcm%region_data%alphas_power > 0 .and. &
+                         .not. query_coupling_powers (pcm%region_data%flv_born(i_flv)%flst, &
+                         pcm%region_data%alpha_power, pcm%region_data%alphas_power)
+                   end select
+                   call core%compute_sqme_virt_rcl (i_flv, i_hel, term%p_hard, &
+                        term%get_ren_scale (), es_scale, &
+                        term%pcm%blha_defaults%loop_method, &
+                        subl_cp, &
+                        sqme_virt, bad_point)
+                class is (prc_external_t)
+                   call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
+                        term%get_ren_scale (), es_scale, &
+                        term%pcm%blha_defaults%loop_method, &
+                        sqme_virt, bad_point)
+                end select
                 call term%pcm_work%set_bad_point (bad_point)
              end select
              associate (i_born => term%int_hard%get_qn_index (i_flv, i_hel = i_hel, i_sub = 0), &

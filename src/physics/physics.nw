@@ -2863,7 +2863,7 @@ momentum $1$ and $2$ can be determined to be
     real(default), intent(inout), optional :: jac
     type(lorentz_transformation_t) :: L
     type(vector4_t) :: p1_rest, p2_rest
-    real(default) :: m, msq, msq1, msq2
+    real(default) :: m, msq, msq1, msq2, msq_in_update
     real(default) :: E1, E2, p
     real(default) :: lda, rlda_soft
 
@@ -2892,13 +2892,14 @@ momentum $1$ and $2$ can be determined to be
     L = boost (p_origin, p_origin**1)
     p1_out = L  * p1_out
     p2_out = L  * p2_out
+    msq_in_update = (p1_in + p2_in)**2
 
     if (present (jac) .and. present (msq_in)) then
        jac = jac * sqrt(lda) / msq
-       rlda_soft = sqrt (lambda (msq_in, msq1, msq2))
+       rlda_soft = sqrt (lambda (msq_in_update, msq1, msq2))
        !!! We have to undo the Jacobian which has already been
        !!! supplied by the Born phase space.
-       jac = jac * msq_in / rlda_soft
+       jac = jac * msq_in_update / rlda_soft
     end if
 
   contains
