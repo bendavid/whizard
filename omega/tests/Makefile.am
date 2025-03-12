@@ -163,7 +163,6 @@ test_omega95_bispinors.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
 omega_testtools.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
-
 test_omega_api.f90: $(top_srcdir)/omega/src/omegalib.nw
 	$(NOTANGLE) -R[[$@]] $< | $(CPIF) $@
 
@@ -1093,6 +1092,7 @@ clean-macosx:
 	-rm -rf ects.dSYM
 	-rm -rf test_omega95.dSYM
 	-rm -rf test_omega95_bispinors.dSYM
+	-rm -rf test_omega_api.dSYM
 	-rm -rf test_qed_eemm.dSYM
 	-rm -rf ward.dSYM
 .PHONY: clean-macosx
@@ -1104,7 +1104,7 @@ clean-local: clean-macosx
 		fermi.f90 fermi_UFO.f90 compare_*.f90 \
 		parameters_SM_UFO.f90 keystones_omegalib.f90 keystones_UFO.f90 \
 		keystones_UFO_bispinors.f90 keystones_omegalib_bispinors.f90 \
-		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
+		omega_testtools.f90 test_omega*.f90 benchmark*.f90 \
 		parameters_UFO_SMEFT.f90 \
 		*.hbc *wrappers.f90 cascade exotic_color phase_space \
 		output.rcl recola.log \
