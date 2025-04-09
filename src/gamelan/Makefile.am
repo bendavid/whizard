@@ -29,7 +29,7 @@
 GML=whizard-gml
 gmlexeclibdir = $(pkglibdir)/gamelan
 gmlexecbindir = $(bindir)
-dist_gmlexecbin_SCRIPTS = $(GML)
+nodist_gmlexecbin_SCRIPTS = $(GML)
 
 ## Install the gml MetaPost code here:
 gmllibdir = $(pkglibdir)/gamelan
