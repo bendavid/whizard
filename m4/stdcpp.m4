@@ -182,8 +182,18 @@ case `(uname -sr) 2>/dev/null` in
       ;;
 esac
 fi # test "x$CXXLIBS" = "x"
+## Filter out -lto_library out for XCode >= 16.3
+case $host in
+   *-darwin*)
+     if test "$XCODE_LONGVERSION" -ge "23785"; then
+	cxxlibs_tmp=`echo $ac_cv_cxxlibs | sed -e 's/-lto_library//'`
+        ac_cv_cxxlibs="$cxxlibs_tmp"
+     fi
+     ;;
+esac
+
 ])
-CXXLIBS="$ac_cv_cxxlibs"             
+CXXLIBS="$ac_cv_cxxlibs"
 AC_SUBST(CXXLIBS)
 AC_LANG_POP(C++)dnl
 ])# AC_CXX_LIBRARY_LDFLAGS

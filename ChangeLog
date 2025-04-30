@@ -4,6 +4,10 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.6.1
 
+2025-04-30
+	Minimal compiler versions: OCaml 4.11, gfortran 11.1.0
+	Compatibility with macOS 15.4 and XCode 16.3
+
 ##################################################################
 
 2025-03-20

@@ -227,7 +227,7 @@ case $host in
 	fi
 	AC_SUBST(DEVELOPER_DIR)
 
-	XCODEPLIST=$DEVELOPER_DIR/Applications/Xcode.app/Contents/version.plist
+	XCODEPLIST=$DEVELOPER_DIR/../version.plist
 	if test -r "$XCODEPLIST"; then
 	  AC_MSG_CHECKING(Xcode version)
 	  if test "x$DEFAULTS" != "x"; then
@@ -237,6 +237,14 @@ case $host in
 	  fi
 	  AC_MSG_RESULT([$XCODE_VERSION])
 	  AC_SUBST(XCODE_VERSION)
+	  AC_MSG_CHECKING(Xcode integer version)
+	  if test "x$DEFAULTS" != "x"; then
+	    XCODE_LONGVERSION=`$DEFAULTS read $DEVELOPER_DIR/Applications/Xcode.app/Contents/version CFBundleVersion`
+	  else
+	    XCODE_LONGVERSION=`tr -d '\r\n' < $XCODEPLIST | sed -e 's/.*<key>CFBundleVersion<\/key>.<string>\([[0-9.]]*\)<\/string>.*/\1/'`
+	  fi
+	  AC_MSG_RESULT([$XCODE_LONGVERSION])
+	  AC_SUBST(XCODE_LONGVERSION)
 	fi
 
 	AC_MSG_NOTICE([checking for Security Integrity Protocol (SIP)])
