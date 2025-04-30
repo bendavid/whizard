@@ -64,10 +64,6 @@ module auto_components
 <<Auto components: sub interfaces>>
   end interface
 
-contains
-
-<<Auto components: main procedures>>
-
 end module auto_components
 @ %def auto_components
 @
@@ -180,12 +176,16 @@ during the splitting algorithm.
   end type split_constraints_t
 
 @ %def split_constraints_t
-@ Gfortran 7/8/9 bug: has to remain in the main module.
-Initialize the constraints set with a specific number of elements.
+@ Initialize the constraints set with a specific number of elements.
 <<Auto components: split constraints: TBP>>=
   procedure :: init => split_constraints_init
-<<Auto components: main procedures>>=
-  subroutine split_constraints_init (constraints, n)
+<<Auto components: sub interfaces>>=
+    module subroutine split_constraints_init (constraints, n)
+      class(split_constraints_t), intent(out) :: constraints
+      integer, intent(in) :: n
+    end subroutine split_constraints_init
+<<Auto components: procedures>>=
+  module subroutine split_constraints_init (constraints, n)
     class(split_constraints_t), intent(out) :: constraints
     integer, intent(in) :: n
     allocate (constraints%cc (n))
@@ -4350,10 +4350,6 @@ module eval_trees
   interface
 <<Eval trees: sub interfaces>>
   end interface
-
-contains
-
-<<Eval trees: main procedures>>
 
 end module eval_trees
 @ %def eval_trees
@@ -12863,11 +12859,15 @@ matching factory type and build method.
 @ %def eval_tree_factory_init
 @ Factory method: allocate expression with correct eval tree type.  If the
 stored parse node is not associate, don't allocate.
-Gfortran 7/8/9 bug, has to remain in the module.
 <<Eval trees: eval tree factory: TBP>>=
   procedure :: build => eval_tree_factory_build
-<<Eval trees: main procedures>>=
-  subroutine eval_tree_factory_build (expr_factory, expr)
+<<Eval trees: sub interfaces>>=
+    module subroutine eval_tree_factory_build (expr_factory, expr)
+      class(eval_tree_factory_t), intent(in) :: expr_factory
+      class(expr_t), intent(out), allocatable :: expr
+    end subroutine eval_tree_factory_build
+<<Eval trees: procedures>>=
+  module subroutine eval_tree_factory_build (expr_factory, expr)
     class(eval_tree_factory_t), intent(in) :: expr_factory
     class(expr_t), intent(out), allocatable :: expr
     if (associated (expr_factory%pn)) then
@@ -13261,10 +13261,6 @@ module models
 <<Models: sub interfaces>>
   end interface
 
-contains
-
-<<Models: main procedures>>
-
 end module models
 @ %def models
 @
@@ -13401,9 +13397,23 @@ This implementation supports only real parameters and real values.
 @ %def parameter_init_independent_value
 @ %def parameter_init_external
 @ %def parameter_init_unused
-@ Gfortran 7/8/9 bug: these have to remain in the main module.
-<<Models: main procedures>>= 
-  subroutine parameter_init_independent (par, par_data, name, pn)
+@
+<<Models: sub interfaces>>=
+    module subroutine parameter_init_independent (par, par_data, name, pn)
+      class(parameter_t), intent(out) :: par
+      class(modelpar_data_t), intent(in), target :: par_data
+      type(string_t), intent(in) :: name
+      type(parse_node_t), intent(in), target :: pn
+    end subroutine parameter_init_independent
+    module subroutine parameter_init_derived (par, par_data, name, pn, var_list)
+      class(parameter_t), intent(out) :: par
+      class(modelpar_data_t), intent(in), target :: par_data
+      type(string_t), intent(in) :: name
+      type(parse_node_t), intent(in), target :: pn
+      type(var_list_t), intent(in), target :: var_list
+    end subroutine parameter_init_derived
+<<Models: procedures>>=
+  module subroutine parameter_init_independent (par, par_data, name, pn)
     class(parameter_t), intent(out) :: par
     class(modelpar_data_t), intent(in), target :: par_data
     type(string_t), intent(in) :: name
@@ -13419,7 +13429,7 @@ This implementation supports only real parameters and real values.
     call par%data%init (name, par%expr%get_real (), .true.)
   end subroutine parameter_init_independent
 
-  subroutine parameter_init_derived (par, par_data, name, pn, var_list)
+  module subroutine parameter_init_derived (par, par_data, name, pn, var_list)
     class(parameter_t), intent(out) :: par
     class(modelpar_data_t), intent(in), target :: par_data
     type(string_t), intent(in) :: name

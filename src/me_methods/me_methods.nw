@@ -909,10 +909,6 @@ module prc_template_me
 <<Template matrix elements: sub interfaces>>
   end interface
 
-contains
-
-<<Template matrix elements: main procedures>>
-
 end module prc_template_me
 @ %def prc_template_me
 @
@@ -963,11 +959,19 @@ For the process definition we implement an extension of the
 @ %def template_me_def_type_string
 @ Initialization: allocate the writer for the template matrix element.
 Also set any data for this process that the writer needs.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Template matrix elements: template ME def: TBP>>=
   procedure :: init => template_me_def_init
-<<Template matrix elements: main procedures>>=
-  subroutine template_me_def_init &
+<<Template matrix elements: sub interfaces>>=
+    module subroutine template_me_def_init &
+         (object, model, prt_in, prt_out, unity, gg_had)
+      class(template_me_def_t), intent(out) :: object
+      class(model_data_t), intent(in), target :: model
+      type(string_t), dimension(:), intent(in) :: prt_in
+      type(string_t), dimension(:), intent(in) :: prt_out
+      logical, intent(in) :: unity, gg_had
+    end subroutine template_me_def_init
+<<Template matrix elements: procedures>>=
+  module subroutine template_me_def_init &
        (object, model, prt_in, prt_out, unity, gg_had)
     class(template_me_def_t), intent(out) :: object
     class(model_data_t), intent(in), target :: model
@@ -1019,11 +1023,16 @@ Gfortran 7/8/9 bug, has to remain in the main module.
 
 @ %def template_me_def_read
 @ Allocate the driver for template matrix elements.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Template matrix elements: template ME def: TBP>>=
   procedure :: allocate_driver => template_me_def_allocate_driver
-<<Template matrix elements: main procedures>>=
-  subroutine template_me_def_allocate_driver (object, driver, basename)
+<<Template matrix elements: sub interfaces>>=
+    module subroutine template_me_def_allocate_driver (object, driver, basename)
+      class(template_me_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine template_me_def_allocate_driver
+<<Template matrix elements: procedures>>=
+  module subroutine template_me_def_allocate_driver (object, driver, basename)
     class(template_me_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -1986,11 +1995,21 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
 \subsection{High-level process definition}
 This procedure wraps the details filling a process-component
 definition entry as appropriate for an template matrix element.
-Gfortran 7/8/9 bug, remains in main module.
 <<Template matrix elements: public>>=
   public :: template_me_make_process_component
-<<Template matrix elements: main procedures>>=
-  subroutine template_me_make_process_component (entry, component_index, &
+<<Template matrix elements: sub interfaces>>=
+    module subroutine template_me_make_process_component (entry, component_index, &
+           model, model_name, prt_in, prt_out, unity, gg_had)
+      class(process_def_entry_t), intent(inout) :: entry
+      integer, intent(in) :: component_index
+      type(string_t), intent(in) :: model_name
+      class(model_data_t), intent(in), target :: model
+      type(string_t), dimension(:), intent(in) :: prt_in
+      type(string_t), dimension(:), intent(in) :: prt_out
+      logical, intent(in) :: unity, gg_had
+    end subroutine template_me_make_process_component
+<<Template matrix elements: procedures>>=
+  module subroutine template_me_make_process_component (entry, component_index, &
          model, model_name, prt_in, prt_out, unity, gg_had)
     class(process_def_entry_t), intent(inout) :: entry
     integer, intent(in) :: component_index
@@ -2079,11 +2098,15 @@ value in this context.
 
 @
 @ Allocate the workspace with the above specific type. 
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: allocate_workspace => prc_template_me_allocate_workspace
-<<Template matrix elements: main procedures>>=
-  subroutine prc_template_me_allocate_workspace (object, core_state)
+<<Template matrix elements: sub interfaces>>=
+    module subroutine prc_template_me_allocate_workspace (object, core_state)
+      class(prc_template_me_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_template_me_allocate_workspace
+<<Template matrix elements: procedures>>=
+  module subroutine prc_template_me_allocate_workspace (object, core_state)
     class(prc_template_me_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (template_me_state_t :: core_state)
@@ -2837,10 +2860,6 @@ module prc_omega
 <<Omega interface: sub interfaces>>
   end interface
 
-contains
-
-<<Omega interface: main procedures>>
-
 end module prc_omega
 @ %def prc_omega
 @
@@ -2894,11 +2913,31 @@ For the process definition we implement an extension of the
 Initialization: allocate the writer for the \oMega\ matrix element.
 The writer type depends on the settings of the [[ufo]] and [[ovm]] flags.
 Also set any data for this process that the writer needs.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Omega interface: omega def: TBP>>=
   procedure :: init => omega_def_init
-<<Omega interface: main procedures>>=
-  subroutine omega_def_init (object, &
+<<Omega interface: sub interfaces>>=
+    module subroutine omega_def_init (object, &
+         model_name, prt_in, prt_out, &
+         ovm, ufo, ufo_path, &
+         restrictions, cms_scheme, &
+         openmp_support, report_progress, write_phs_output, extra_options, diags, diags_color)
+      class(omega_def_t), intent(out) :: object
+      type(string_t), intent(in) :: model_name
+      type(string_t), dimension(:), intent(in) :: prt_in
+      type(string_t), dimension(:), intent(in) :: prt_out
+      logical, intent(in) :: ovm
+      logical, intent(in) :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      type(string_t), intent(in), optional :: restrictions
+      logical, intent(in), optional :: cms_scheme
+      logical, intent(in), optional :: openmp_support
+      logical, intent(in), optional :: report_progress
+      logical, intent(in), optional :: write_phs_output
+      type(string_t), intent(in), optional :: extra_options
+      logical, intent(in), optional :: diags, diags_color
+    end subroutine omega_def_init
+<<Omega interface: procedures>>=
+  module subroutine omega_def_init (object, &
        model_name, prt_in, prt_out, &
        ovm, ufo, ufo_path, &
        restrictions, cms_scheme, &
@@ -2977,11 +3016,16 @@ Gfortran 7/8/9 bug, has to remain in the main module.
 
 @ %def omega_def_read
 @ Allocate the driver for \oMega matrix elements.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Omega interface: omega def: TBP>>=
   procedure :: allocate_driver => omega_def_allocate_driver
-<<Omega interface: main procedures>>=
-  subroutine omega_def_allocate_driver (object, driver, basename)
+<<Omega interface: sub interfaces>>=
+    module subroutine omega_def_allocate_driver (object, driver, basename)
+      class(omega_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine omega_def_allocate_driver
+<<Omega interface: procedures>>=
+  module subroutine omega_def_allocate_driver (object, driver, basename)
     class(omega_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -3928,11 +3972,30 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
 This procedure wraps the details filling a process-component
 definition entry as appropriate for an
 \oMega\ matrix element.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Omega interface: public>>=
   public :: omega_make_process_component
-<<Omega interface: main procedures>>=
-  subroutine omega_make_process_component (entry, component_index, &
+<<Omega interface: sub interfaces>>=
+    module subroutine omega_make_process_component (entry, component_index, &
+           model_name, prt_in, prt_out, &
+           ufo, ufo_path, restrictions, cms_scheme, &
+           openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
+      class(process_def_entry_t), intent(inout) :: entry
+      integer, intent(in) :: component_index
+      type(string_t), intent(in) :: model_name
+      type(string_t), dimension(:), intent(in) :: prt_in
+      type(string_t), dimension(:), intent(in) :: prt_out
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      type(string_t), intent(in), optional :: restrictions
+      logical, intent(in), optional :: cms_scheme
+      logical, intent(in), optional :: openmp_support
+      logical, intent(in), optional :: report_progress
+      logical, intent(in), optional :: write_omega_output
+      type(string_t), intent(in), optional :: extra_options
+      logical, intent(in), optional :: diags, diags_color
+    end subroutine omega_make_process_component
+<<Omega interface: procedures>>=
+  module subroutine omega_make_process_component (entry, component_index, &
          model_name, prt_in, prt_out, &
          ufo, ufo_path, restrictions, cms_scheme, &
          openmp_support, report_progress, write_omega_output, extra_options, diags, diags_color)
@@ -4043,11 +4106,15 @@ value in this context.
 
 @ %def omega_state_reset_new_kinematics
 @ Allocate the workspace with the above specific type.
-Gfortran 7/8/9 bug, has to remain in main module.
 <<Omega interface: prc omega: TBP>>=
   procedure :: allocate_workspace => prc_omega_allocate_workspace
-<<Omega interface: main procedures>>=
-  subroutine prc_omega_allocate_workspace (object, core_state)
+<<Omega interface: sub interfaces>>=
+    module subroutine prc_omega_allocate_workspace (object, core_state)
+      class(prc_omega_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_omega_allocate_workspace
+<<Omega interface: procedures>>=
+  module subroutine prc_omega_allocate_workspace (object, core_state)
     class(prc_omega_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (omega_state_t :: core_state)
@@ -4113,11 +4180,20 @@ only if active.)
 @ Temporarily store the parameter array inside the [[prc_omega]]
 object, so we can use it later during the actual initialization.  Also
 store threshold and cutoff for helicity selection.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<Omega interface: prc omega: TBP>>=
   procedure :: set_parameters => prc_omega_set_parameters
-<<Omega interface: main procedures>>=
-  subroutine prc_omega_set_parameters (prc_omega, model, &
+<<Omega interface: sub interfaces>>=
+    module subroutine prc_omega_set_parameters (prc_omega, model, &
+         helicity_selection, qcd, use_color_factors)
+      class(prc_omega_t), intent(inout) :: prc_omega
+      class(model_data_t), intent(in), target, optional :: model
+      type(helicity_selection_t), intent(in), optional :: helicity_selection
+      type(qcd_t), intent(in), optional :: qcd
+      type(qed_t) :: qed
+      logical, intent(in), optional :: use_color_factors
+    end subroutine prc_omega_set_parameters
+<<Omega interface: procedures>>=
+  module subroutine prc_omega_set_parameters (prc_omega, model, &
        helicity_selection, qcd, use_color_factors)
     class(prc_omega_t), intent(inout) :: prc_omega
     class(model_data_t), intent(in), target, optional :: model
@@ -5741,10 +5817,6 @@ module prc_external
 <<Prc external: sub interfaces>>
   end interface
 
-contains
-
-<<Prc external: main procedures>>
-
 end module prc_external
 @ %def prc_external
 @
@@ -6317,11 +6389,18 @@ Used for testing.
   end subroutine prc_external_compute_eff_kinematics
 
 @ %def prc_external_compute_eff_kinematics
-@ Gfortran 7/8/9 bug, has to remain in the main module.
+@
 <<Prc external: prc external: TBP>>=
   procedure :: set_parameters => prc_external_set_parameters
-<<Prc external: main procedures>>=
-  subroutine prc_external_set_parameters (object, qcd, model)
+<<Prc external: sub interfaces>>=
+    module subroutine prc_external_set_parameters (object, qcd, model)
+      class(prc_external_t), intent(inout) :: object
+      type(qcd_t), intent(in) :: qcd
+      type(qed_t) :: qed
+      class(model_data_t), intent(in), target, optional :: model
+    end subroutine prc_external_set_parameters
+<<Prc external: procedures>>=
+  module subroutine prc_external_set_parameters (object, qcd, model)
     class(prc_external_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
     type(qed_t) :: qed
@@ -7114,11 +7193,18 @@ A external test definition.
   end type prc_external_test_def_t
 
 @ %def prc_external_test_def_t
-@ Gfortran 7/8/9 bug, has to remain in the main module.
+@
 <<Prc external: external test def: TBP>>=
   procedure :: init => prc_external_test_def_init
-<<Prc external: main procedures>>=
-  subroutine prc_external_test_def_init (object, basename, model_name, &
+<<Prc external: sub interfaces>>=
+    module subroutine prc_external_test_def_init (object, basename, model_name, &
+         prt_in, prt_out)
+      class(prc_external_test_def_t), intent(inout) :: object
+      type(string_t), intent(in) :: basename, model_name
+      type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    end subroutine prc_external_test_def_init
+<<Prc external: procedures>>=
+  module subroutine prc_external_test_def_init (object, basename, model_name, &
        prt_in, prt_out)
     class(prc_external_test_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
@@ -7176,11 +7262,17 @@ A external test definition.
   end subroutine prc_external_test_def_read
 
 @ %def prc_external_test_def_read
-@ Gfortran 7/8/9 bug, has to remain in the main module.
+@
 <<Prc external: external test def: TBP>>=
   procedure :: allocate_driver => prc_external_test_def_allocate_driver
-<<Prc external: main procedures>>=
-  subroutine prc_external_test_def_allocate_driver (object, driver, basename)
+<<Prc external: sub interfaces>>=
+    module subroutine prc_external_test_def_allocate_driver (object, driver, basename)
+      class(prc_external_test_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine prc_external_test_def_allocate_driver
+<<Prc external: procedures>>=
+  module subroutine prc_external_test_def_allocate_driver (object, driver, basename)
     class(prc_external_test_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -7273,11 +7365,16 @@ result of the integration is the n-particle-phase-space volume.
   end function prc_external_test_compute_amplitude
 
 @ %def prc_external_test_compute_amplitude
-@ Gfortran 7/8/9 bug, has to remain in the main module.
+@
 <<Prc external: prc test: TBP>>=
   procedure :: allocate_workspace => prc_external_test_allocate_workspace
-<<Prc external: main procedures>>=
-  subroutine prc_external_test_allocate_workspace (object, core_state)
+<<Prc external: sub interfaces>>=
+    module subroutine prc_external_test_allocate_workspace (object, core_state)
+      class(prc_external_test_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_external_test_allocate_workspace
+<<Prc external: procedures>>=
+  module subroutine prc_external_test_allocate_workspace (object, core_state)
     class(prc_external_test_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (prc_external_test_state_t :: core_state)
@@ -7369,10 +7466,6 @@ module prc_threshold
   interface
 <<Prc threshold: sub interfaces>>
   end interface
-
-contains
-
-<<Prc threshold: main procedures>>
 
 end module prc_threshold
 @ %def prc_threshold
@@ -7704,11 +7797,22 @@ end submodule prc_threshold_s
   end type threshold_def_t
 
 @ %def threshold_def_t
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc threshold: threshold def: TBP>>=
   procedure :: init => threshold_def_init
-<<Prc threshold: main procedures>>=
-  subroutine threshold_def_init (object, basename, model_name, &
+<<Prc threshold: sub interfaces>>=
+    module subroutine threshold_def_init (object, basename, model_name, &
+         prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions)
+      class(threshold_def_t), intent(inout) :: object
+      type(string_t), intent(in) :: basename, model_name
+      type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      integer, intent(in) :: nlo_type
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      type(string_t), intent(in), optional :: restrictions
+    end subroutine threshold_def_init
+<<Prc threshold: procedures>>=
+  module subroutine threshold_def_init (object, basename, model_name, &
        prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions)
     class(threshold_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
@@ -7773,11 +7877,17 @@ end submodule prc_threshold_s
   end subroutine threshold_def_read
 
 @ %def threshold_def_read
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc threshold: threshold def: TBP>>=
   procedure :: allocate_driver => threshold_def_allocate_driver
-<<Prc threshold: main procedures>>=
-  subroutine threshold_def_allocate_driver (object, driver, basename)
+<<Prc threshold: sub interfaces>>=
+    module subroutine threshold_def_allocate_driver (object, driver, basename)
+      class(threshold_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine threshold_def_allocate_driver
+<<Prc threshold: procedures>>=
+  module subroutine threshold_def_allocate_driver (object, driver, basename)
     class(threshold_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -7957,11 +8067,16 @@ This core type has the beam polarization as an extra parameter.
   end function prc_threshold_compute_amplitude
 
 @ %def prc_threshold_compute_amplitude
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc threshold: prc threshold: TBP>>=
   procedure :: allocate_workspace => prc_threshold_allocate_workspace
-<<Prc threshold: main procedures>>=
-  subroutine prc_threshold_allocate_workspace (object, core_state)
+<<Prc threshold: sub interfaces>>=
+    module subroutine prc_threshold_allocate_workspace (object, core_state)
+      class(prc_threshold_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_threshold_allocate_workspace
+<<Prc threshold: procedures>>=
+  module subroutine prc_threshold_allocate_workspace (object, core_state)
     class(prc_threshold_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (threshold_state_t :: core_state)

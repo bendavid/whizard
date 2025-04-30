@@ -28,10 +28,6 @@ module vegas
 <<Vegas: sub interfaces>>
   end interface
 
-contains
-
-<<Vegas: main procedures>>
-
 end module vegas
 @ %def vegas
 @
@@ -1535,11 +1531,16 @@ But, also, the opposite is possible, see [[vamp2_equivalences]].
 
 @ %def vegas_get_distribution, vegas_set_distribution
 @ Allocate result handler from VEGAS integrator object.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MPI: Vegas: vegas: TBP>>=
   procedure, public :: allocate_handler => vegas_allocate_handler
-<<MPI: Vegas: main procedures>>=
-  subroutine vegas_allocate_handler (self, handler_id, handler)
+<<MPI: Vegas: sub interfaces>>=
+    module subroutine vegas_allocate_handler (self, handler_id, handler)
+      class(vegas_t), intent(in), target :: self
+      integer, intent(in) :: handler_id
+      class(request_handler_t), pointer, intent(out) :: handler
+    end subroutine vegas_allocate_handler
+<<MPI: Vegas: procedures>>=
+  module subroutine vegas_allocate_handler (self, handler_id, handler)
     class(vegas_t), intent(in), target :: self
     integer, intent(in) :: handler_id
     class(request_handler_t), pointer, intent(out) :: handler
@@ -3358,10 +3359,6 @@ module vamp2
 <<VAMP2: sub interfaces>>
   end interface
 
-contains
-
-<<VAMP2: main procedures>>
-
 end module vamp2
 @ %def vamp2
 @
@@ -4283,14 +4280,23 @@ chained weights in [[vamp2_adapt_weights]].
 
 @ %def vamp2_set_equivalences
 @ Move allocated (and prepared!) request object into VAMP2.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<MPI: VAMP2: vamp2: TBP>>=
   generic, public :: allocate_request => allocate_request_by_method, &
      allocate_request_by_object
   procedure, private :: allocate_request_by_method => vamp2_allocate_request_by_method
   procedure, private :: allocate_request_by_object => vamp2_allocate_request_by_object
-<<MPI: VAMP2: main procedures>>=
-  subroutine vamp2_allocate_request_by_method (self, method)
+<<MPI: VAMP2: sub interfaces>>=
+    module subroutine vamp2_allocate_request_by_method (self, method)
+      class(vamp2_t), intent(inout) :: self
+      character(len=*), intent(in) :: method
+    end subroutine vamp2_allocate_request_by_method
+  
+    module subroutine vamp2_allocate_request_by_object (self, request)
+      class(vamp2_t), intent(inout) :: self
+      class(request_base_t), allocatable, intent(inout) :: request
+    end subroutine vamp2_allocate_request_by_object
+<<MPI: VAMP2: procedures>>=
+  module subroutine vamp2_allocate_request_by_method (self, method)
     class(vamp2_t), intent(inout) :: self
     character(len=*), intent(in) :: method
     class(request_base_t), allocatable :: request
@@ -4311,7 +4317,7 @@ Gfortran 7/8/9 bug, has to remain in the main module.
     call self%allocate_request_by_object (request)
   end subroutine vamp2_allocate_request_by_method
 
-  subroutine vamp2_allocate_request_by_object (self, request)
+  module subroutine vamp2_allocate_request_by_object (self, request)
     class(vamp2_t), intent(inout) :: self
     class(request_base_t), allocatable, intent(inout) :: request
     !! Only output in case of "parallel" integration.
@@ -4843,13 +4849,16 @@ When we received a genuine request, then, we proceed as prophisied.
 @ Prepeare current integration's iteration.
 
 Prepare iteration, i.e. provide weights and grids to function object.
-Gfortran 7/8/9 bug, only for the MPI version, has to remain in the
-main module:
 <<VAMP2: vamp2: TBP>>=
   procedure, private :: prepare_integrate_iteration => &
        vamp2_prepare_integrate_iteration
-<<VAMP2: main procedures>>=
-  subroutine vamp2_prepare_integrate_iteration (self, func)
+<<VAMP2: sub interfaces>>=
+    module subroutine vamp2_prepare_integrate_iteration (self, func)
+      class(vamp2_t), intent(inout) :: self
+      class(vamp2_func_t), intent(inout) :: func
+    end subroutine vamp2_prepare_integrate_iteration
+<<VAMP2: procedures>>=
+  module subroutine vamp2_prepare_integrate_iteration (self, func)
     class(vamp2_t), intent(inout) :: self
     class(vamp2_func_t), intent(inout) :: func
   <<VAMP2: vamp2 prepare integrate iteration: body>>
@@ -6683,10 +6692,6 @@ module request_simple
 <<Request simple: sub interfaces>>
   end interface
 
-contains
-
-<<Request simple: main procedures>>
-
 end module request_simple
 @ %def request_simple
 @
@@ -6721,10 +6726,15 @@ end submodule request_simple_s
 
 @ %def request_simple_t
 @
-Gfortran 7/8/9 bug, has to remain in main module:
 <<Request simple: simple: TBP>>=
   procedure :: init => request_simple_init
-<<Request simple: main procedures>>=
+<<Request simple: sub interfaces>>=
+    module subroutine request_simple_init (req, comm, n_channels)
+      class(request_simple_t), intent(out) :: req
+      type(MPI_COMM), intent(in) :: comm
+      integer, intent(in) :: n_channels
+    end subroutine request_simple_init
+<<Request simple: procedures>>=
   module subroutine request_simple_init (req, comm, n_channels)
     class(request_simple_t), intent(out) :: req
     type(MPI_COMM), intent(in) :: comm
@@ -6968,10 +6978,6 @@ module request_caller
 <<Request caller: sub interfaces>>
   end interface
 
-contains
-
-<<Request caller: main procedures>>
-
 end module request_caller
 @ %def request_caller
 @
@@ -7006,11 +7012,16 @@ end submodule request_caller_s
 
 @ %def request_caller_t
 @
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Request caller: caller: TBP>>=
   procedure :: init => request_caller_init
-<<Request caller: main procedures>>=
-  subroutine request_caller_init (req, comm, n_channels)
+<<Request caller: sub interfaces>>=
+    module subroutine request_caller_init (req, comm, n_channels)
+      class(request_caller_t), intent(out) :: req
+      type(MPI_COMM), intent(in) :: comm
+      integer, intent(in) :: n_channels
+    end subroutine request_caller_init
+<<Request caller: procedures>>=
+  module subroutine request_caller_init (req, comm, n_channels)
     class(request_caller_t), intent(out) :: req
     type(MPI_COMM), intent(in) :: comm
     integer, intent(in) :: n_channels

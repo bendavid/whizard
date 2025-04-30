@@ -480,10 +480,6 @@ module rt_data
 <<RT data: sub interfaces>>
   end interface
 
-contains
-
-<<RT data: main procedures>>
-
 end module rt_data
 @ %def rt_data
 @
@@ -1142,11 +1138,14 @@ environment, we should reverse the assignment.  Then the added stack
 elements will end up on the global stack.  (This should be
 reconsidered in a parallel environment.)
 
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<RT data: rt data: TBP>>=
   procedure :: activate => rt_data_activate
-<<RT data: main procedures>>=
-  subroutine rt_data_activate (local)
+<<RT data: sub interfaces>>=
+     module subroutine rt_data_activate (local)
+       class(rt_data_t), intent(inout), target :: local
+     end subroutine rt_data_activate
+<<RT data: procedures>>=
+  module subroutine rt_data_activate (local)
     class(rt_data_t), intent(inout), target :: local
     class(rt_data_t), pointer :: global
     global => local%context
@@ -3591,10 +3590,6 @@ module dispatch_me_methods
 <<Dispatch ME methods: sub interfaces>>
   end interface
 
-contains
-
-<<Dispatch ME methods: main procedures>>
-
 end module dispatch_me_methods
 @ %def dispatch_me_methods
 @
@@ -3616,11 +3611,22 @@ end submodule dispatch_me_methods_s
 \subsection{Process Core Definition}
 The [[prc_core_def_t]] abstract type can be instantiated by providing a
 [[$method]] string variable.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Dispatch ME methods: public>>=
   public :: dispatch_core_def
-<<Dispatch ME methods: main procedures>>=
-  subroutine dispatch_core_def (core_def, prt_in, prt_out, &
+<<Dispatch ME methods: sub interfaces>>=
+    module subroutine dispatch_core_def (core_def, prt_in, prt_out, &
+         model, var_list, id, nlo_type, method)
+      class(prc_core_def_t), allocatable, intent(out) :: core_def
+      type(string_t), dimension(:), intent(in) :: prt_in
+      type(string_t), dimension(:), intent(in) :: prt_out
+      class(model_t), pointer, intent(in) :: model
+      type(var_list_t), intent(in) :: var_list
+      type(string_t), intent(in), optional :: id
+      integer, intent(in), optional :: nlo_type
+      type(string_t), intent(in), optional :: method
+    end subroutine dispatch_core_def
+<<Dispatch ME methods: procedures>>=
+  module subroutine dispatch_core_def (core_def, prt_in, prt_out, &
        model, var_list, id, nlo_type, method)
     class(prc_core_def_t), allocatable, intent(out) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
@@ -3795,11 +3801,22 @@ Here we allocate an object of abstract type [[prc_core_t]] with a concrete
 type that matches a process definition.  The [[prc_omega_t]] extension
 will require the current parameter set, so we take the opportunity to
 grab it from the model.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Dispatch ME methods: public>>=
   public :: dispatch_core
-<<Dispatch ME methods: main procedures>>=
-  subroutine dispatch_core (core, core_def, model, &
+<<Dispatch ME methods: sub interfaces>>=
+     module subroutine dispatch_core (core, core_def, model, &
+          helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+       class(prc_core_t), allocatable, intent(inout) :: core
+       class(prc_core_def_t), intent(in) :: core_def
+       class(model_data_t), intent(in), target, optional :: model
+       type(helicity_selection_t), intent(in), optional :: helicity_selection
+       type(qcd_t), intent(in), optional :: qcd
+       logical, intent(in), optional :: use_color_factors
+       logical, intent(in), optional :: has_beam_pol
+       integer, intent(in), optional :: gfermi_scheme
+     end subroutine dispatch_core
+<<Dispatch ME methods: procedures>>=
+  module subroutine dispatch_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
@@ -6364,10 +6381,6 @@ module integrations
 <<Integrations: sub interfaces>>
   end interface
 
-contains
-
-<<Integrations: main procedures>>
-
 end module integrations
 @ %def integrations
 @
@@ -6443,11 +6456,16 @@ applies to a single process.
 \subsection{Initialization}
 Initialization, first part: Create a process entry.
 Push it on the stack if the [[global]] environment is supplied.
-Gfortran7/8/9 bug, has to remain in the main module:
 <<Integrations: integration: TBP>>=
   procedure :: create_process => integration_create_process
-<<Integrations: main procedures>>=
-  subroutine integration_create_process (intg, process_id, global)
+<<Integrations: sub interfaces>>=
+     module subroutine integration_create_process (intg, process_id, global)
+       class(integration_t), intent(out) :: intg
+       type(rt_data_t), intent(inout), optional, target :: global
+       type(string_t), intent(in) :: process_id
+     end subroutine integration_create_process
+<<Integrations: procedures>>=
+  module subroutine integration_create_process (intg, process_id, global)
     class(integration_t), intent(out) :: intg
     type(rt_data_t), intent(inout), optional, target :: global
     type(string_t), intent(in) :: process_id
@@ -9256,10 +9274,6 @@ module restricted_subprocesses
 <<Restricted subprocesses: sub interfaces>>
   end interface
 
-contains
-
-<<Restricted subprocesses: main procedures>>
-
 end module restricted_subprocesses
 @ %def restricted_subprocesses
 @
@@ -9320,11 +9334,21 @@ the base type will be finalized and deallocated.
 The current implementation will generate a LO process, the optional
 [[nlo_process]] is unset.  (It is not obvious
 whether the construction makes sense beyond LO.)
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Restricted subprocesses: restricted process configuration: TBP>>=
   procedure :: init_resonant_process
-<<Restricted subprocesses: main procedures>>=
-  subroutine init_resonant_process &
+<<Restricted subprocesses: sub interfaces>>=
+     module subroutine init_resonant_process &
+          (prc_config, prc_name, prt_in, prt_out, res_history, model, var_list)
+       class(restricted_process_configuration_t), intent(out) :: prc_config
+       type(string_t), intent(in) :: prc_name
+       type(prt_spec_t), dimension(:), intent(in) :: prt_in
+       type(prt_spec_t), dimension(:), intent(in) :: prt_out
+       type(resonance_history_t), intent(in) :: res_history
+       class(model_t), intent(in), target :: model
+       type(var_list_t), intent(in), target :: var_list
+     end subroutine init_resonant_process
+<<Restricted subprocesses: procedures>>=
+  module subroutine init_resonant_process &
        (prc_config, prc_name, prt_in, prt_out, res_history, model, var_list)
     class(restricted_process_configuration_t), intent(out) :: prc_config
     type(string_t), intent(in) :: prc_name
@@ -18872,10 +18896,6 @@ module commands
 <<Commands: sub interfaces>>
   end interface
 
-contains
-
-<<Commands: main procedures>>
-
 end module commands
 @ %def commands
 @
@@ -18975,8 +18995,7 @@ deallocate.  If not, the local environment is just a pointer.
 @ Allocate a command with the appropriate concrete type.  Store the
 parse node pointer in the command object, so we can reference to it
 when compiling.
-Gfortran 7/8/9 bug, has to remain in the main module:
-<<Commands: main procedures>>=
+<<Commands: procedures>>=
   subroutine dispatch_command (command, pn)
     class(command_t), intent(inout), pointer :: command
     type(parse_node_t), intent(in), target :: pn
@@ -26279,11 +26298,15 @@ By simply copying the node, we copy all pointers and inherit the
 targets from the original.  During execution, we should replace the
 rhs by the stored rhs pointers (the list elements), one by one, then
 (re)compile the redefined node.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Commands: cmd scan: TBP>>=
   procedure :: compile => cmd_scan_compile
-<<Commands: main procedures>>=
-  recursive subroutine cmd_scan_compile (cmd, global)
+<<Commands: sub interfaces>>=
+     recursive module subroutine cmd_scan_compile (cmd, global)
+       class(cmd_scan_t), intent(inout) :: cmd
+       type(rt_data_t), intent(inout), target :: global
+     end subroutine cmd_scan_compile
+<<Commands: procedures>>=
+  recursive module subroutine cmd_scan_compile (cmd, global)
     class(cmd_scan_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     type(var_list_t), pointer :: var_list
@@ -27185,11 +27208,16 @@ Transform a parse tree into a command list.  Initialization is assumed
 to be done.
 
 After each command, we set a breakpoint.
-Gfortran 7/8/9 bug: has to remain in the main module:
 <<Commands: command list: TBP>>=
   procedure :: compile => command_list_compile
-<<Commands: main procedures>>=
-  recursive subroutine command_list_compile (cmd_list, pn, global)
+<<Commands: sub interfaces>>=
+     recursive module subroutine command_list_compile (cmd_list, pn, global)
+       class(command_list_t), intent(inout), target :: cmd_list
+       type(parse_node_t), intent(in), target :: pn
+       type(rt_data_t), intent(inout), target :: global
+     end subroutine command_list_compile
+<<Commands: procedures>>=
+  recursive module subroutine command_list_compile (cmd_list, pn, global)
     class(command_list_t), intent(inout), target :: cmd_list
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(inout), target :: global

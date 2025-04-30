@@ -480,7 +480,7 @@ WO_CONFIGURE_SECTION([Objective Caml checks])
 ### Check for ocamlc and its relatives
 AC_PROG_OCAML()
 if test "$enable_ocaml" != "no"; then
-   AC_OCAML_VERSION_CHECK(408000)
+   AC_OCAML_VERSION_CHECK(411000)
    AC_PROG_OCAMLLEX()
    AC_PROG_OCAMLYACC()
    AC_PROG_OCAMLCP()

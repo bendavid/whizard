@@ -3531,10 +3531,6 @@ module process
 <<Process: sub interfaces>>
   end interface
 
-contains
-
-<<Process: main procedures>>
-
 end module process
 @ %def process
 @
@@ -4113,11 +4109,21 @@ is to allocate the component array and to determine the component categories
 TODO wk 2018: The [[pcm]] dispatcher should be provided by the caller, if we
 eventually want to eliminate dependencies on concrete [[pcm_t]] extensions.
 
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Process: process: TBP>>=
   procedure :: init => process_init
-<<Process: main procedures>>=
-  subroutine process_init &
+<<Process: sub interfaces>>=
+    module subroutine process_init &
+         (process, proc_id, lib, os_data, model, var_list, beam_structure)
+      class(process_t), intent(out) :: process
+      type(string_t), intent(in) :: proc_id
+      type(process_library_t), intent(in), target :: lib
+      type(os_data_t), intent(in) :: os_data
+      class(model_t), intent(in), target :: model
+      type(var_list_t), intent(inout), target, optional :: var_list
+      type(beam_structure_t), intent(in), optional :: beam_structure
+    end subroutine process_init
+<<Process: procedures>>=
+  module subroutine process_init &
        (process, proc_id, lib, os_data, model, var_list, beam_structure)
     class(process_t), intent(out) :: process
     type(string_t), intent(in) :: proc_id
@@ -4162,9 +4168,13 @@ We thus can start with a single logical for steering the dispatcher.
 
 TODO wk 2018: Eventually, we may eliminate all references to the extensions of
 [[pcm_t]] from this module and therefore move this outside the module as well.
-Gfortran 7/8/9 bug, has to be in the main module:
-<<Process: main procedures>>=
-  subroutine dispatch_pcm (pcm, is_nlo)
+<<Process: sub interfaces>>=
+    module subroutine dispatch_pcm (pcm, is_nlo)
+      class(pcm_t), allocatable, intent(out) :: pcm
+      logical, intent(in) :: is_nlo
+    end subroutine dispatch_pcm
+<<Process: procedures>>=
+  module subroutine dispatch_pcm (pcm, is_nlo)
     class(pcm_t), allocatable, intent(out) :: pcm
     logical, intent(in) :: is_nlo
     if (.not. is_nlo) then
@@ -7713,11 +7723,38 @@ Prepare the process core with type [[test_me]], or otherwise the externally
 provided [[type_string]] version.  The toy dispatchers as a procedure
 argument come handy, knowing that we need to support only the [[test_me]] and
 [[template]] matrix-element types.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Process: process: TBP>>=
   procedure :: setup_test_cores => process_setup_test_cores
-<<Process: main procedures>>=
-  subroutine dispatch_test_me_core (core, core_def, model, &
+<<Process: sub interfaces>>=
+    module subroutine dispatch_test_me_core (core, core_def, model, &
+         helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+      class(prc_core_t), allocatable, intent(inout) :: core
+      class(prc_core_def_t), intent(in) :: core_def
+      class(model_data_t), intent(in), target, optional :: model
+      type(helicity_selection_t), intent(in), optional :: helicity_selection
+      type(qcd_t), intent(in), optional :: qcd
+      logical, intent(in), optional :: use_color_factors
+      logical, intent(in), optional :: has_beam_pol
+      integer, intent(in), optional :: gfermi_scheme
+    end subroutine dispatch_test_me_core
+    module subroutine dispatch_template_core (core, core_def, model, &
+         helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+      class(prc_core_t), allocatable, intent(inout) :: core
+      class(prc_core_def_t), intent(in) :: core_def
+      class(model_data_t), intent(in), target, optional :: model
+      type(helicity_selection_t), intent(in), optional :: helicity_selection
+      type(qcd_t), intent(in), optional :: qcd
+      logical, intent(in), optional :: use_color_factors
+      logical, intent(in), optional :: has_beam_pol
+      integer, intent(in), optional :: gfermi_scheme
+    end subroutine dispatch_template_core
+    module subroutine process_setup_test_cores (process, type_string)
+      class(process_t), intent(inout) :: process
+      class(prc_core_t), allocatable :: core
+      type(string_t), intent(in), optional :: type_string
+    end subroutine process_setup_test_cores
+<<Process: procedures>>=
+  module subroutine dispatch_test_me_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     use prc_test_core, only: test_t
     class(prc_core_t), allocatable, intent(inout) :: core
@@ -7731,7 +7768,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     allocate (test_t :: core)
   end subroutine dispatch_test_me_core
 
-  subroutine dispatch_template_core (core, core_def, model, &
+  module subroutine dispatch_template_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
     use prc_template_me, only: prc_template_me_t
     class(prc_core_t), allocatable, intent(inout) :: core
@@ -7749,7 +7786,7 @@ Gfortran 7/8/9 bug, has to remain in the main module:
     end select
   end subroutine dispatch_template_core
 
-  subroutine process_setup_test_cores (process, type_string)
+  module subroutine process_setup_test_cores (process, type_string)
     class(process_t), intent(inout) :: process
     class(prc_core_t), allocatable :: core
     type(string_t), intent(in), optional :: type_string
@@ -8176,10 +8213,6 @@ module process_config
 <<Process config: sub interfaces>>
   end interface
 
-contains
-
-<<Process config: main procedures>>
-
 end module process_config
 @ %def process_config
 @
@@ -8449,11 +8482,16 @@ We initialize the QCD object, unless the environment information is unavailable
 (unit tests).
 
 The RNG factory object is imported by moving the allocation.
-Gfortran 7/8/9 bug: has to remain in the main module:
 <<Process config: process config data: TBP>>=
   procedure :: init => process_config_data_init
-<<Process config: main procedures>>=
-  subroutine process_config_data_init (config, meta, env)
+<<Process config: sub interfaces>>=
+    module subroutine process_config_data_init (config, meta, env)
+      class(process_config_data_t), intent(out) :: config
+      type(process_metadata_t), intent(in) :: meta
+      type(process_environment_t), intent(in) :: env
+    end subroutine process_config_data_init
+<<Process config: procedures>>=
+  module subroutine process_config_data_init (config, meta, env)
     class(process_config_data_t), intent(out) :: config
     type(process_metadata_t), intent(in) :: meta
     type(process_environment_t), intent(in) :: env
@@ -11755,10 +11793,6 @@ module pcm
 <<PCM: sub interfaces>>
   end interface
 
-contains
-
-<<PCM: main procedures>>
-
 end module pcm
 @ %def pcm
 @
@@ -11805,11 +11839,16 @@ corresponding instance.  The default version is trivial.
   end type pcm_default_t
 
 @ %def pcm_default_t
-Gfortran 7/8/9 bug, has to remain in the main module:
+@
 <<PCM: pcm default: TBP>>=
   procedure :: allocate_workspace => pcm_default_allocate_workspace
-<<PCM: main procedures>>=
-  subroutine pcm_default_allocate_workspace (pcm, work)
+<<PCM: sub interfaces>>=
+    module subroutine pcm_default_allocate_workspace (pcm, work)
+      class(pcm_default_t), intent(in) :: pcm
+      class(pcm_workspace_t), intent(inout), allocatable :: work
+    end subroutine pcm_default_allocate_workspace
+<<PCM: procedures>>=
+  module subroutine pcm_default_allocate_workspace (pcm, work)
     class(pcm_default_t), intent(in) :: pcm
     class(pcm_workspace_t), intent(inout), allocatable :: work
     allocate (pcm_default_workspace_t :: work)
@@ -12955,11 +12994,14 @@ TODO wk 2018: check whether [[phs_entry]] needs to be intent(inout).
 @ %def pcm_nlo_setup_region_data
 @ After region data are set up, we allocate and configure the
 [[real_partition]] objects, if requested.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<PCM: pcm nlo: TBP>>=
   procedure :: setup_real_partition => pcm_nlo_setup_real_partition
-<<PCM: main procedures>>=
-  subroutine pcm_nlo_setup_real_partition (pcm)
+<<PCM: sub interfaces>>=
+    module subroutine pcm_nlo_setup_real_partition (pcm)
+      class(pcm_nlo_t), intent(inout) :: pcm
+    end subroutine pcm_nlo_setup_real_partition
+<<PCM: procedures>>=
+  module subroutine pcm_nlo_setup_real_partition (pcm)
     class(pcm_nlo_t), intent(inout) :: pcm
     if (pcm%use_real_partition) then
        if (.not. allocated (pcm%real_partition)) then
@@ -13206,11 +13248,16 @@ not have to be the case when different components are generated at LO})
   end function pcm_nlo_get_mass_info
 
 @ %def pcm_nlo_get_mass_info
-@ Gfortran 7/8/9 bug, has to remain in the main module:
+@
 <<PCM: pcm nlo: TBP>>=
   procedure :: allocate_workspace => pcm_nlo_allocate_workspace
-<<PCM: main procedures>>=
-  subroutine pcm_nlo_allocate_workspace (pcm, work)
+<<PCM: sub interfaces>>=
+    module subroutine pcm_nlo_allocate_workspace (pcm, work)
+      class(pcm_nlo_t), intent(in) :: pcm
+      class(pcm_workspace_t), intent(inout), allocatable :: work
+    end subroutine pcm_nlo_allocate_workspace
+<<PCM: procedures>>=
+  module subroutine pcm_nlo_allocate_workspace (pcm, work)
     class(pcm_nlo_t), intent(in) :: pcm
     class(pcm_workspace_t), intent(inout), allocatable :: work
     allocate (pcm_nlo_workspace_t :: work)
@@ -13260,11 +13307,15 @@ not have to be the case when different components are generated at LO})
   end subroutine pcm_nlo_init_qn
 
 @ %def pcm_nlo_init_qn
-@ Gfortran 7/8/9 bug, has to remain in the main module:
+@
 <<PCM: pcm nlo: TBP>>=
   procedure :: allocate_ps_matching => pcm_nlo_allocate_ps_matching
-<<PCM: main procedures>>=
-  subroutine pcm_nlo_allocate_ps_matching (pcm)
+<<PCM: sub interfaces>>=
+    module subroutine pcm_nlo_allocate_ps_matching (pcm)
+      class(pcm_nlo_t), intent(inout) :: pcm
+    end subroutine pcm_nlo_allocate_ps_matching
+<<PCM: procedures>>=
+  module subroutine pcm_nlo_allocate_ps_matching (pcm)
     class(pcm_nlo_t), intent(inout) :: pcm
     if (.not. allocated (pcm%real_partition)) then
        allocate (powheg_damping_simple_t :: pcm%real_partition)
@@ -15020,10 +15071,6 @@ module instances
   interface
 <<Instances: sub interfaces>>
   end interface
-
-contains
-
-<<Instances: main procedures>>
 
 end module instances
 @ %def instances
@@ -17701,12 +17748,16 @@ Eqs.~(2.35)-(2.42).
 
 Obviously, it is completely irrelevant, which beam is treated.
 It becomes problematic when handling $ep$ collisions.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Instances: term instance: TBP>>=
   procedure :: evaluate_scaled_sf_chains => &
        term_instance_evaluate_scaled_sf_chains
-<<Instances: main procedures>>=
-  subroutine term_instance_evaluate_scaled_sf_chains (term, kin)
+<<Instances: sub interfaces>>=
+    module subroutine term_instance_evaluate_scaled_sf_chains (term, kin)
+      class(term_instance_t), intent(inout) :: term
+      type(kinematics_t), intent(inout) :: kin
+    end subroutine term_instance_evaluate_scaled_sf_chains
+<<Instances: procedures>>=
+  module subroutine term_instance_evaluate_scaled_sf_chains (term, kin)
     class(term_instance_t), intent(inout) :: term
     type(kinematics_t), intent(inout) :: kin
     class(sf_rescale_t), allocatable :: sf_rescale

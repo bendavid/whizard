@@ -617,10 +617,6 @@ module prclib_interfaces
 <<Prclib interfaces: sub interfaces>>
   end interface
 
-contains
-
-<<Prclib interfaces: main procedures>>
-
 end module prclib_interfaces
 @ %def prclib_interfaces
 @
@@ -694,13 +690,16 @@ writer type.  This must be implemented by all extensions.
 @ %def get_const_string
 @ Return the name of a procedure that implements a given feature, as
 it is provided by the external matrix-element code.  For a reasonable
-default, we take the feature name unchanged. Due to a bug of bind(C)
-features with submodules in gfortran 7/8/9 (and maybe together with
-MPI) this needs to be in the module, not the submodule.
+default, we take the feature name unchanged.
 <<Prclib interfaces: prc writer: TBP>>=
   procedure, nopass :: get_procname => prc_writer_get_procname
-<<Prclib interfaces: main procedures>>=
-  function prc_writer_get_procname (feature) result (name)
+<<Prclib interfaces: sub interfaces>>=
+    module function prc_writer_get_procname (feature) result (name)
+      type(string_t) :: name
+      type(string_t), intent(in) :: feature
+    end function prc_writer_get_procname
+<<Prclib interfaces: procedures>>=
+  module function prc_writer_get_procname (feature) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: feature
     name = feature
@@ -712,13 +711,17 @@ the bind(C) property, so it can be accessed via a C procedure pointer and
 handled by dlopen.  We need this for all special features of a matrix
 element, since the interface has to return a C function pointer for it.
 For a default implementation, we prefix the external procedure name by
-the process ID. Due to a bug of bind(C) features with submodules in
-gfortran 7/8/9 (and maybe together with MPI) this needs to be in the
-module, not the submodule.
+the process ID.
 <<Prclib interfaces: prc writer: TBP>>=
   procedure :: get_c_procname => prc_writer_get_c_procname
-<<Prclib interfaces: main procedures>>=
-  function prc_writer_get_c_procname (writer, id, feature) result (name)
+<<Prclib interfaces: sub interfaces>>=
+    module function prc_writer_get_c_procname (writer, id, feature) result (name)
+      class(prc_writer_t), intent(in) :: writer
+      type(string_t), intent(in) :: id, feature
+      type(string_t) :: name
+    end function prc_writer_get_c_procname
+<<Prclib interfaces: procedures>>=
+  module function prc_writer_get_c_procname (writer, id, feature) result (name)
     class(prc_writer_t), intent(in) :: writer
     type(string_t), intent(in) :: id, feature
     type(string_t) :: name
@@ -814,13 +817,16 @@ for a specific matrix-element variant.
 
 @ %def prc_writer_f_module_t
 @ Return the name of the Fortran module.  As a default implementation,
-we take the process ID unchanged. Due to a bug of bind(C) features
-with submodules in gfortran 7/8/9 (and maybe together with MPI) this
-needs to be in the module, not the submodule.
+we take the process ID unchanged.
 <<Prclib interfaces: prc writer f module: TBP>>=
   procedure, nopass :: get_module_name => prc_writer_get_module_name
-<<Prclib interfaces: main procedures>>=
-  function prc_writer_get_module_name (id) result (name)
+<<Prclib interfaces: sub interfaces>>=
+    module function prc_writer_get_module_name (id) result (name)
+      type(string_t) :: name
+      type(string_t), intent(in) :: id
+    end function prc_writer_get_module_name
+<<Prclib interfaces: procedures>>=
+  module function prc_writer_get_module_name (id) result (name)
     type(string_t) :: name
     type(string_t), intent(in) :: id
     name = id
@@ -949,13 +955,17 @@ bug.
   end subroutine prclib_driver_record_write
 
 @ %def prclib_driver_record_write
-@ Get the C procedure name for a feature. Due to a bug of bind(C)
-features with submodules in gfortran 7/8/9 (and maybe together with
-MPI) this needs to be in the module, not the submodule.
+@ Get the C procedure name for a feature.
 <<Prclib interfaces: prclib driver record: TBP>>=
   procedure :: get_c_procname => prclib_driver_record_get_c_procname
-<<Prclib interfaces: main procedures>>=
-  function prclib_driver_record_get_c_procname (record, feature) result (name)
+<<Prclib interfaces: sub interfaces>>=
+    module function prclib_driver_record_get_c_procname (record, feature) result (name)
+      type(string_t) :: name
+      class(prclib_driver_record_t), intent(in) :: record
+      type(string_t), intent(in) :: feature
+    end function prclib_driver_record_get_c_procname
+<<Prclib interfaces: procedures>>=
+  module function prclib_driver_record_get_c_procname (record, feature) result (name)
     type(string_t) :: name
     class(prclib_driver_record_t), intent(in) :: record
     type(string_t), intent(in) :: feature
@@ -1272,13 +1282,17 @@ The default version of [[dispatch_prclib_static]] resides in the
 [[prebuilt]] section of the \whizard\ tree, in a separate
 library.  It does nothing, but can be replaced by a different
 procedure that allocates a static library driver if requested by name.
-Due to a bug of bind(C) features with submodules in gfortran 7/8/9
-(and maybe together with MPI) this needs to be in the module, not the
-submodule.
 <<Prclib interfaces: public>>=
   public :: dispatch_prclib_driver
-<<Prclib interfaces: main procedures>>=
-  subroutine dispatch_prclib_driver &
+<<Prclib interfaces: sub interfaces>>=
+    module subroutine dispatch_prclib_driver &
+         (driver, basename, modellibs_ldflags)
+      class(prclib_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+      type(string_t), intent(in), optional :: modellibs_ldflags
+    end subroutine dispatch_prclib_driver
+<<Prclib interfaces: procedures>>=
+  module subroutine dispatch_prclib_driver &
        (driver, basename, modellibs_ldflags)
     class(prclib_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -10789,10 +10803,6 @@ module prc_test
 <<Test ME: sub interfaces>>
   end interface
 
-contains
-
-<<Test ME: main procedures>>
-
 end module prc_test
 @ %def prc_test
 @
@@ -10909,13 +10919,17 @@ For the process definition we implement an extension of the
 @ %def prc_test_def_read
 @ Allocate the driver for test ME matrix elements.  We get the
 actual component ID (basename), and we can transfer all
-process-specific data from the process definition.Due to a bug of
-bind(C) features with submodules in gfortran 7/8/9 (and maybe together
-with MPI) this needs to be in the module, not the submodule.
+process-specific data from the process definition.
 <<Test ME: test me def: TBP>>=
   procedure :: allocate_driver => prc_test_def_allocate_driver
-<<Test ME: main procedures>>=
-  subroutine prc_test_def_allocate_driver (object, driver, basename)
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_def_allocate_driver (object, driver, basename)
+      class(prc_test_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine prc_test_def_allocate_driver
+<<Test ME: procedures>>=
+  module subroutine prc_test_def_allocate_driver (object, driver, basename)
     class(prc_test_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -11060,13 +11074,19 @@ hard-wire the amplitude method as a type-bound procedure.
 Since this module is there for testing purposes, we set up a
 subroutine that does all the work at once: create a library with the
 two processes (scattering and decay), configure and load, and set up
-the driver. Due to a bug of bind(C) features with submodules in
-gfortran 7/8/9 (and maybe together with MPI) this needs to be in the
-module, not the submodule.
+the driver.
 <<Test ME: public>>=
   public :: prc_test_create_library
-<<Test ME: main procedures>>=
-  subroutine prc_test_create_library &
+<<Test ME: sub interfaces>>=
+    module subroutine prc_test_create_library &
+         (libname, lib, scattering, decay, procname1, procname2)
+      type(string_t), intent(in) :: libname
+      type(process_library_t), intent(out) :: lib
+      logical, intent(in), optional :: scattering, decay
+      type(string_t), intent(in), optional :: procname1, procname2
+    end subroutine prc_test_create_library
+<<Test ME: procedures>>=
+  module subroutine prc_test_create_library &
        (libname, lib, scattering, decay, procname1, procname2)
     type(string_t), intent(in) :: libname
     type(process_library_t), intent(out) :: lib

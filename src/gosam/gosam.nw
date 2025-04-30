@@ -56,10 +56,6 @@ module prc_gosam
 <<Prc gosam: sub interfaces>>
   end interface
 
-contains
-
-<<Prc gosam: main procedures>>
-
 end module prc_gosam
 
 @
@@ -159,11 +155,24 @@ end submodule prc_gosam_s
   end type gosam_state_t
 
 @ %def gosam_state_t
-@ Gfortran 7/8/9 bug: has to remain in main module.
+@
 <<Prc gosam: gosam def: TBP>>=
   procedure :: init => gosam_def_init
-<<Prc gosam: main procedures>>=
-  subroutine gosam_def_init (object, basename, model_name, &
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_def_init (object, basename, model_name, &
+       prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions, var_list)
+      class(gosam_def_t), intent(inout) :: object
+      type(string_t), intent(in) :: basename
+      type(string_t), intent(in) :: model_name
+      type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      integer, intent(in) :: nlo_type
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      type(string_t), intent(in), optional :: restrictions
+      type(var_list_t), intent(in) :: var_list
+    end subroutine gosam_def_init
+<<Prc gosam: procedures>>=
+  module subroutine gosam_def_init (object, basename, model_name, &
      prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions, var_list)
     class(gosam_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename
@@ -271,19 +280,25 @@ end submodule prc_gosam_s
   end subroutine gosam_def_read
 
 @ %def gosam_def_read
-@ Gfortran 7/8/9 bug: has to remain in main module.
+@
 <<Prc gosam: gosam def: TBP>>=
   procedure :: allocate_driver => gosam_def_allocate_driver
-<<Prc gosam: main procedures>>=
-  subroutine gosam_def_allocate_driver (object, driver, basename)
+<<Prc gosam: sub interfaces>>=
+    module subroutine gosam_def_allocate_driver (object, driver, basename)
+      class(gosam_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine gosam_def_allocate_driver
+<<Prc gosam: procedures>>=
+  module subroutine gosam_def_allocate_driver (object, driver, basename)
     class(gosam_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
     if (.not. allocated (driver)) allocate (gosam_driver_t :: driver)
   end subroutine gosam_def_allocate_driver
 
-@
 @ %def gosam_def_allocate_driver
+@
 <<Prc gosam: gosam writer: TBP>>=
   procedure, nopass :: type_name => gosam_writer_type_name
 <<Prc gosam: sub interfaces>>=
@@ -1020,11 +1035,16 @@ spin-correlated matrix elements. However, this is not supported on the
   end subroutine prc_gosam_compute_sqme_spin_c_blha
 
 @ %def prc_gosam_compute_sqme_spin_c_blha
-@ Gfortran 7/8/9 bug, has to remain in main module.
+@
 <<Prc gosam: prc gosam: TBP>>=
   procedure :: allocate_workspace => prc_gosam_allocate_workspace
-<<Prc gosam: main procedures>>=
-  subroutine prc_gosam_allocate_workspace (object, core_state)
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_allocate_workspace (object, core_state)
+      class(prc_gosam_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_gosam_allocate_workspace
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_allocate_workspace (object, core_state)
     class(prc_gosam_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (gosam_state_t :: core_state)

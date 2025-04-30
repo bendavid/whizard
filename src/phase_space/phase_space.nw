@@ -97,10 +97,6 @@ module phs_base
 <<PHS base: sub interfaces>>
   end interface
 
-contains
-
-<<PHS base: main procedures>>
-
 end module phs_base
 @ %def phs_base
 @
@@ -402,11 +398,15 @@ default setting is to leave the properties empty.)
 
 @ %def phs_channel_write
 @ Identify the channel with an s-channel resonance.
-Gfortran 7/8/9 bug: has to remain in the main module.
 <<PHS base: phs channel: TBP>>=
   procedure :: set_resonant => channel_set_resonant
-<<PHS base: main procedures>>=
-  subroutine channel_set_resonant (channel, mass, width)
+<<PHS base: sub interfaces>>=
+    module subroutine channel_set_resonant (channel, mass, width)
+      class(phs_channel_t), intent(inout) :: channel
+      real(default), intent(in) :: mass, width
+    end subroutine channel_set_resonant
+<<PHS base: procedures>>=
+  module subroutine channel_set_resonant (channel, mass, width)
     class(phs_channel_t), intent(inout) :: channel
     real(default), intent(in) :: mass, width
     allocate (resonance_t :: channel%prop)
@@ -419,11 +419,15 @@ Gfortran 7/8/9 bug: has to remain in the main module.
 
 @ %def channel_set_resonant
 @ Identify the channel with an on-shell particle.
-Gfortran 7/8/9 bug: has to remain in the main module.
 <<PHS base: phs channel: TBP>>=
   procedure :: set_on_shell => channel_set_on_shell
-<<PHS base: main procedures>>=
-  subroutine channel_set_on_shell (channel, mass)
+<<PHS base: sub interfaces>>=
+    module subroutine channel_set_on_shell (channel, mass)
+      class(phs_channel_t), intent(inout) :: channel
+      real(default), intent(in) :: mass
+    end subroutine channel_set_on_shell
+<<PHS base: procedures>>=
+  module subroutine channel_set_on_shell (channel, mass)
     class(phs_channel_t), intent(inout) :: channel
     real(default), intent(in) :: mass
     allocate (on_shell_t :: channel%prop)
@@ -2455,10 +2459,6 @@ module phs_none
 <<PHS none: sub interfaces>>
   end interface
 
-contains
-
-<<PHS none: main procedures>>
-
 end module phs_none
 @ %def phs_none
 @
@@ -2576,11 +2576,14 @@ does nothing.
 
 @ %def phs_none_config_startup_message
 @ Allocate an instance: the actual phase-space object.
-Gfortran 7/8/9 bug: has to remain in the main module.
 <<PHS none: phs none config: TBP>>=
   procedure, nopass :: allocate_instance => phs_none_config_allocate_instance
-<<PHS none: main procedures>>=
-  subroutine phs_none_config_allocate_instance (phs)
+<<PHS none: sub interfaces>>=
+    module subroutine phs_none_config_allocate_instance (phs)
+      class(phs_t), intent(inout), pointer :: phs
+    end subroutine phs_none_config_allocate_instance
+<<PHS none: procedures>>=
+  module subroutine phs_none_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_none_t :: phs)
   end subroutine phs_none_config_allocate_instance
@@ -2831,10 +2834,6 @@ module phs_single
 <<PHS single: sub interfaces>>
   end interface
 
-contains
-
-<<PHS single: main procedures>>
-
 end module phs_single
 @ %def phs_single
 @
@@ -2978,11 +2977,14 @@ second parameter is the azimuthal angle, which may be a flat dimension.
 
 @ %def phs_single_config_startup_message
 @ Allocate an instance: the actual phase-space object.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<PHS single: phs single config: TBP>>=
   procedure, nopass :: allocate_instance => phs_single_config_allocate_instance
-<<PHS single: main procedures>>=
-  subroutine phs_single_config_allocate_instance (phs)
+<<PHS single: sub interfaces>>=
+    module subroutine phs_single_config_allocate_instance (phs)
+      class(phs_t), intent(inout), pointer :: phs
+    end subroutine phs_single_config_allocate_instance
+<<PHS single: procedures>>=
+  module subroutine phs_single_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_single_t :: phs)
   end subroutine phs_single_config_allocate_instance
@@ -3681,10 +3683,6 @@ module phs_rambo
 <<PHS rambo: sub interfaces>>
   end interface
 
-contains
-
-<<PHS rambo: main procedures>>
-
 end module phs_rambo
 @ %def phs_rambo
 @
@@ -3823,11 +3821,14 @@ end submodule phs_rambo_s
 
 @ %def phs_rambo_config_startup_message
 @ Allocate an instance: the actual phase-space object.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<PHS rambo: phs rambo config: TBP>>=
   procedure, nopass :: allocate_instance => phs_rambo_config_allocate_instance
-<<PHS rambo: main procedures>>=
-  subroutine phs_rambo_config_allocate_instance (phs)
+<<PHS rambo: sub interfaces>>=
+    module subroutine phs_rambo_config_allocate_instance (phs)
+      class(phs_t), intent(inout), pointer :: phs
+    end subroutine phs_rambo_config_allocate_instance
+<<PHS rambo: procedures>>=
+  module subroutine phs_rambo_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_rambo_t :: phs)
   end subroutine phs_rambo_config_allocate_instance
@@ -10510,7 +10511,8 @@ an elemental subroutine.
 
 @ %def equivalence_list_final
 @ Make a deep copy of the equivalence list.  This allows for deep
-copies of groves and forests.
+copies of groves and forests. This triggers double free corruption
+with the Intel compiler and hence has to remain in the main module.
 <<PHS forests: interfaces>>=
   interface assignment(=)
      module procedure equivalence_list_assign
@@ -17851,7 +17853,8 @@ associated with these nodes.
   end subroutine k_node_list_get_nodes
 
 @ %def k_node_list_get_nodes
-Gfortran 7/8/9 bug, has to remain in the main module:
+Intel ifort 2023 bug (double free corruption), has to 
+remain in the main module.
 <<Cascades2: f node list: TBP>>=
   procedure :: final => f_node_list_final
 <<Cascades2: main procedures>>=
@@ -18133,7 +18136,8 @@ arrange the groves. Each [[grove]] contains again a linked list of
   end type grove_list_t
 
 @ %def grove_list_t
-Gfortran 7/8/9 bug, has to remain in the main module:
+Intel ifort 2023 bug (double free corruption), has to 
+remain in the main module.
 <<Cascades2: grove list: TBP>>=
   procedure :: final => grove_list_final
 <<Cascades2: main procedures>>=
@@ -18185,7 +18189,8 @@ subtrees or complete [[kingraphs]].
 
 @ %def feyngraph_set_t
 @ This final procedure contains calls to all other necessary final
-procedures. Gfortran 7/8/9 bug, has to remain in the main module:
+procedures. Intel ifort 2023 bug (double free corruption), has to 
+remain in the main module.
 <<Cascades2: feyngraph set: TBP>>=
   procedure :: final => feyngraph_set_final
 <<Cascades2: main procedures>>=
@@ -22876,10 +22881,6 @@ module phs_wood
 <<PHS wood: sub interfaces>>
   end interface
 
-contains
-
-<<PHS wood: main procedures>>
-
 end module phs_wood
 @ %def phs_wood
 @
@@ -23757,11 +23758,14 @@ If successful, read the PHS file.
 
 @ %def phs_wood_config_startup_message
 @ Allocate an instance: the actual phase-space object.
-Gfortran 7/8/9 bug, has to remain in the main module.
 <<PHS wood: phs wood config: TBP>>=
   procedure, nopass :: allocate_instance => phs_wood_config_allocate_instance
-<<PHS wood: main procedures>>=
-  subroutine phs_wood_config_allocate_instance (phs)
+<<PHS wood: sub interfaces>>=
+    module subroutine phs_wood_config_allocate_instance (phs)
+      class(phs_t), intent(inout), pointer :: phs
+    end subroutine phs_wood_config_allocate_instance
+<<PHS wood: procedures>>=
+  module subroutine phs_wood_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_wood_t :: phs)
   end subroutine phs_wood_config_allocate_instance
@@ -24947,10 +24951,6 @@ module phs_fks
 <<PHS fks: sub interfaces>>
   end interface
 
-contains
-
-<<PHS fks: main procedures>>
-
 end module phs_fks
 
 @ %def phs_fks
@@ -25888,11 +25888,15 @@ matching is computed.
   end subroutine phs_fks_config_startup_message
 
 @ %def phs_fks_config_startup_message
-@ Gfortran 7/8/9 bug, has to remain in the main module:
+@
 <<PHS fks: fks config: TBP>>=
   procedure, nopass :: allocate_instance => phs_fks_config_allocate_instance
-<<PHS fks: main procedures>>=
-  subroutine phs_fks_config_allocate_instance (phs)
+<<PHS fks: sub interfaces>>=
+    module subroutine phs_fks_config_allocate_instance (phs)
+      class(phs_t), intent(inout), pointer :: phs
+    end subroutine phs_fks_config_allocate_instance
+<<PHS fks: procedures>>=
+  module subroutine phs_fks_config_allocate_instance (phs)
     class(phs_t), intent(inout), pointer :: phs
     allocate (phs_fks_t :: phs)
   end subroutine phs_fks_config_allocate_instance

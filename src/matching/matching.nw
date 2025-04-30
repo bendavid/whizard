@@ -1582,10 +1582,6 @@ module powheg_matching
 <<POWHEG matching: sub interfaces>>
   end interface
 
-contains
-
-<<POWHEG matching: main procedures>>
-
 end module powheg_matching
 @ %def powheg_matching
 @
@@ -3985,11 +3981,14 @@ the POWHEG hook, we can load them from file here.
 @ Sets up the Sudakovs and chooses the correct UBF type.
 To determine the UBF type, we check for massive or initial state emitters
 for each ALR. For consistency, we thus also check the eeqq case for each ALR.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<POWHEG matching: powheg matching: TBP>>=
   procedure :: setup_sudakovs => powheg_matching_setup_sudakovs
-<<POWHEG matching: main procedures>>=
-  subroutine powheg_matching_setup_sudakovs (powheg)
+<<POWHEG matching: sub interfaces>>=
+    module subroutine powheg_matching_setup_sudakovs (powheg)
+      class(powheg_matching_t), intent(inout), target :: powheg
+    end subroutine powheg_matching_setup_sudakovs
+<<POWHEG matching: procedures>>=
+  module subroutine powheg_matching_setup_sudakovs (powheg)
     class(powheg_matching_t), intent(inout), target :: powheg
     integer :: alr, ubf_type, n_in, emitter
     logical :: is_fsr, is_massive, is_eeqq

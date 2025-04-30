@@ -61,7 +61,8 @@ TRANSFORMS_SUBMODULES = \
   shower_sub.f90 \
   evt_nlo_sub.f90 \
   events_sub.f90 \
-  eio_raw_sub.f90
+  eio_raw_sub.f90 \
+  dispatch_transforms_sub.f90
 
 libtransforms_ut_la_SOURCES = \
   event_transforms_uti.f90 event_transforms_ut.f90 \
@@ -186,6 +187,7 @@ shower_sub.lo: shower.lo
 evt_nlo_sub.lo: evt_nlo.lo
 events_sub.lo: events.lo
 eio_raw_sub.lo: eio_raw.lo
+dispatch_transforms_sub.lo: dispatch_transforms.lo
 
 ########################################################################
 ## Default Fortran compiler options

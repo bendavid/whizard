@@ -4634,10 +4634,6 @@ module sf_mappings
 <<SF mappings: sub interfaces>>
   end interface
 
-contains
-
-<<SF mappings: main procedures>>
-
 end module sf_mappings
 @ %def sf_mappings
 @
@@ -7673,11 +7669,17 @@ structure-function entries, therefore it is not a type-bound procedure.
 
 @ %def sf_channel_activate_mapping
 @ This sets an s-channel multichannel mapping.  The parameter indices
-are not yet set. Gfortran 7/8/9 bug, has to remain in module.
+are not yet set.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_s_mapping => sf_channel_set_s_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_s_mapping (channel, i_sf, power)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_s_mapping (channel, i_sf, power)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: power
+    end subroutine sf_channel_set_s_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_s_mapping (channel, i_sf, power)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: power
@@ -7690,12 +7692,18 @@ are not yet set. Gfortran 7/8/9 bug, has to remain in module.
   end subroutine sf_channel_set_s_mapping
 
 @ %def sf_channel_set_s_mapping
-@ This sets an s-channel resonance multichannel mapping. Gfortran 7/8/9
-bug, has to remain in module.
+@ This sets an s-channel resonance multichannel mapping.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_res_mapping => sf_channel_set_res_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_res_mapping (channel, i_sf, m, w, single)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_res_mapping (channel, i_sf, m, w, single)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in) :: m, w
+      logical, intent(in) :: single
+    end subroutine sf_channel_set_res_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_res_mapping (channel, i_sf, m, w, single)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in) :: m, w
@@ -7720,11 +7728,18 @@ bug, has to remain in module.
 @ %def sf_channel_set_res_mapping
 @ This sets an s-channel on-shell multichannel mapping.  The length of the
 [[i_sf]] array must be 2.  (The first parameter actually becomes an
-irrelevant dummy.) Gfortran 7/8/9 bug, has to remain in module.
+irrelevant dummy.)
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_os_mapping => sf_channel_set_os_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_os_mapping (channel, i_sf, m, single)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_os_mapping (channel, i_sf, m, single)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in) :: m
+      logical, intent(in) :: single
+    end subroutine sf_channel_set_os_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_os_mapping (channel, i_sf, m, single)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in) :: m
@@ -7749,12 +7764,17 @@ irrelevant dummy.) Gfortran 7/8/9 bug, has to remain in module.
 @ %def sf_channel_set_os_mapping
 @ This sets an s-channel endpoint mapping.  The parameter $a$ is the
 slope parameter (default 1); increasing it moves the endpoint region
-(at $x=1$ to lower values in the input parameter) even more. Gfortran
-7/8/9 bug, has to remain in the module.
+(at $x=1$ to lower values in the input parameter) even more.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_ep_mapping => sf_channel_set_ep_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_ep_mapping (channel, i_sf, a)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_ep_mapping (channel, i_sf, a)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: a
+    end subroutine sf_channel_set_ep_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_ep_mapping (channel, i_sf, a)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: a
@@ -7767,12 +7787,17 @@ slope parameter (default 1); increasing it moves the endpoint region
   end subroutine sf_channel_set_ep_mapping
 
 @ %def sf_channel_set_ep_mapping
-@ This sets a resonant endpoint mapping. Gfortran
-7/8/9 bug, has to remain in the module.
+@ This sets a resonant endpoint mapping.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_epr_mapping => sf_channel_set_epr_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_epr_mapping (channel, i_sf, a, m, w)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_epr_mapping (channel, i_sf, a, m, w)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in) :: a, m, w
+    end subroutine sf_channel_set_epr_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_epr_mapping (channel, i_sf, a, m, w)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in) :: a, m, w
@@ -7785,12 +7810,17 @@ slope parameter (default 1); increasing it moves the endpoint region
   end subroutine sf_channel_set_epr_mapping
 
 @ %def sf_channel_set_epr_mapping
-@ This sets an on-shell endpoint mapping. Gfortran
-7/8/9 bug, has to remain in the module.
+@ This sets an on-shell endpoint mapping.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_epo_mapping => sf_channel_set_epo_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_epo_mapping (channel, i_sf, a, m)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_epo_mapping (channel, i_sf, a, m)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in) :: a, m
+    end subroutine sf_channel_set_epo_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_epo_mapping (channel, i_sf, a, m)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in) :: a, m
@@ -7805,11 +7835,17 @@ slope parameter (default 1); increasing it moves the endpoint region
 @ %def sf_channel_set_epo_mapping
 @ This sets an s-channel power mapping, regulating a singularity of
 type $(1-x)^{-1+\epsilon}$.  The parameter $\epsilon$ depends on the
-structure function. Gfortran 7/8/9 bug, has to remain in the module.
+structure function.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_ip_mapping => sf_channel_set_ip_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_ip_mapping (channel, i_sf, eps)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_ip_mapping (channel, i_sf, eps)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: eps
+    end subroutine sf_channel_set_ip_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_ip_mapping (channel, i_sf, eps)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: eps
@@ -7825,11 +7861,17 @@ structure function. Gfortran 7/8/9 bug, has to remain in the module.
 @ This sets an s-channel resonant power mapping, regulating a
 singularity of type $(1-x)^{-1+\epsilon}$ in the presence of an
 s-channel resonance.  The parameter $\epsilon$ depends on the
-structure function. Gfortran 7/8/9 bug, has to remain in the module.
+structure function.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_ipr_mapping => sf_channel_set_ipr_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_ipr_mapping (channel, i_sf, eps, m, w)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_ipr_mapping (channel, i_sf, eps, m, w)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: eps, m, w
+    end subroutine sf_channel_set_ipr_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_ipr_mapping (channel, i_sf, eps, m, w)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: eps, m, w
@@ -7845,11 +7887,17 @@ structure function. Gfortran 7/8/9 bug, has to remain in the module.
 @ This sets an on-shell power mapping, regulating a
 singularity of type $(1-x)^{-1+\epsilon}$ for the production of a
 single on-shell particle..  The parameter $\epsilon$ depends on the
-structure function. Gfortran 7/8/9 bug: has to remain in module.
+structure function.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_ipo_mapping => sf_channel_set_ipo_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_ipo_mapping (channel, i_sf, eps, m)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_ipo_mapping (channel, i_sf, eps, m)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: eps, m
+    end subroutine sf_channel_set_ipo_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_ipo_mapping (channel, i_sf, eps, m)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: eps, m
@@ -7862,12 +7910,17 @@ structure function. Gfortran 7/8/9 bug: has to remain in module.
   end subroutine sf_channel_set_ipo_mapping
 
 @ %def sf_channel_set_ipo_mapping
-@ This sets a combined endpoint/ISR mapping. Gfortran 7/8/9 bug, remains
-in module.
+@ This sets a combined endpoint/ISR mapping.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_ei_mapping => sf_channel_set_ei_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_ei_mapping (channel, i_sf, a, eps)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_ei_mapping (channel, i_sf, a, eps)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: a, eps
+    end subroutine sf_channel_set_ei_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_ei_mapping (channel, i_sf, a, eps)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: a, eps
@@ -7880,12 +7933,17 @@ in module.
   end subroutine sf_channel_set_ei_mapping
 
 @ %def sf_channel_set_ei_mapping
-@ This sets a combined endpoint/ISR mapping with resonance. Gfortran
-7/8/9 bug, remains in module.
+@ This sets a combined endpoint/ISR mapping with resonance.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_eir_mapping => sf_channel_set_eir_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_eir_mapping (channel, i_sf, a, eps, m, w)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_eir_mapping (channel, i_sf, a, eps, m, w)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: a, eps, m, w
+    end subroutine sf_channel_set_eir_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_eir_mapping (channel, i_sf, a, eps, m, w)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: a, eps, m, w
@@ -7898,12 +7956,17 @@ in module.
   end subroutine sf_channel_set_eir_mapping
 
 @ %def sf_channel_set_eir_mapping
-@ This sets a combined endpoint/ISR mapping, on-shell. Gfortran 7/8/9 bug,
-remains in module.
+@ This sets a combined endpoint/ISR mapping, on-shell.
 <<SF mappings: sf channel: TBP>>=
   procedure :: set_eio_mapping => sf_channel_set_eio_mapping
-<<SF mappings: main procedures>>=
-  subroutine sf_channel_set_eio_mapping (channel, i_sf, a, eps, m)
+<<SF mappings: sub interfaces>>=
+    module subroutine sf_channel_set_eio_mapping (channel, i_sf, a, eps, m)
+      class(sf_channel_t), intent(inout) :: channel
+      integer, dimension(:), intent(in) :: i_sf
+      real(default), intent(in), optional :: a, eps, m
+    end subroutine sf_channel_set_eio_mapping
+<<SF mappings: procedures>>=
+  module subroutine sf_channel_set_eio_mapping (channel, i_sf, a, eps, m)
     class(sf_channel_t), intent(inout) :: channel
     integer, dimension(:), intent(in) :: i_sf
     real(default), intent(in), optional :: a, eps, m
@@ -15445,10 +15508,6 @@ module sf_isr
 <<SF isr: sub interfaces>>
   end interface
 
-contains
-
-<<SF isr: main procedures>>
-
 end module sf_isr
 @ %def sf_isr
 @
@@ -15800,12 +15859,16 @@ structure-function parameters.
   end function isr_data_get_eps
 
 @ %def isr_data_get_eps
-@ Allocate the interaction record. Gfortran 7/8/9 bug, has to remain
-in the module.
+@ Allocate the interaction record.
 <<SF isr: isr data: TBP>>=
   procedure :: allocate_sf_int => isr_data_allocate_sf_int
-<<SF isr: main procedures>>=
-  subroutine isr_data_allocate_sf_int (data, sf_int)
+<<SF isr: sub interfaces>>=
+    module subroutine isr_data_allocate_sf_int (data, sf_int)
+      class(isr_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine isr_data_allocate_sf_int
+<<SF isr: procedures>>=
+  module subroutine isr_data_allocate_sf_int (data, sf_int)
     class(isr_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (isr_t :: sf_int)
@@ -16923,10 +16986,6 @@ module sf_epa
 <<SF epa: sub interfaces>>
   end interface
 
-contains
-
-<<SF epa: main procedures>>
-
 end module sf_epa
 @ %def sf_epa
 @
@@ -17293,12 +17352,16 @@ the photon while the radiated particle is identical to the incoming one.
   end subroutine epa_data_get_pdg_out
 
 @ %def epa_data_get_pdg_out
-@ Allocate the interaction record. Gfortran 7/8/9 bug, has to remain
-in module.
+@ Allocate the interaction record.
 <<SF epa: epa data: TBP>>=
   procedure :: allocate_sf_int => epa_data_allocate_sf_int
-<<SF epa: main procedures>>=
-  subroutine epa_data_allocate_sf_int (data, sf_int)
+<<SF epa: sub interfaces>>=
+    module subroutine epa_data_allocate_sf_int (data, sf_int)
+      class(epa_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine epa_data_allocate_sf_int
+<<SF epa: procedures>>=
+  module subroutine epa_data_allocate_sf_int (data, sf_int)
     class(epa_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (epa_t :: sf_int)
@@ -18384,10 +18447,6 @@ module sf_ewa
 <<SF ewa: sub interfaces>>
   end interface
 
-contains
-
-<<SF ewa: main procedures>>
-
 end module sf_ewa
 @ %def sf_ewa
 @
@@ -18822,12 +18881,16 @@ is a charged-current or neutral-current interaction.
   end subroutine ewa_data_get_pdg_out
 
 @ %def ewa_data_get_pdg_out
-@ Allocate the interaction record. Due to a gfortran 7/8/9 bug, this
-has to remain in the main module.
+@ Allocate the interaction record.
 <<SF ewa: ewa data: TBP>>=
   procedure :: allocate_sf_int => ewa_data_allocate_sf_int
-<<SF ewa: main procedures>>=
-  subroutine ewa_data_allocate_sf_int (data, sf_int)
+<<SF ewa: sub interfaces>>=
+    module subroutine ewa_data_allocate_sf_int (data, sf_int)
+      class(ewa_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine ewa_data_allocate_sf_int
+<<SF ewa: procedures>>=
+  module subroutine ewa_data_allocate_sf_int (data, sf_int)
     class(ewa_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (ewa_t :: sf_int)
@@ -20018,10 +20081,6 @@ module sf_escan
 <<SF escan: sub interfaces>>
   end interface
 
-contains
-
-<<SF escan: main procedures>>
-
 end module sf_escan
 @ %def sf_escan
 @
@@ -20167,12 +20226,16 @@ the incoming particle, where we use two indices for the two beams.
   end subroutine escan_data_get_pdg_out
 
 @ %def escan_data_get_pdg_out
-@ Allocate the interaction record. Due to a gfortran 7/8/9 this has to
-remain in the main module.
+@ Allocate the interaction record.
 <<SF escan: escan data: TBP>>=
   procedure :: allocate_sf_int => escan_data_allocate_sf_int
-<<SF escan: main procedures>>=
-  subroutine escan_data_allocate_sf_int (data, sf_int)
+<<SF escan: sub interfaces>>=
+    module subroutine escan_data_allocate_sf_int (data, sf_int)
+      class(escan_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine escan_data_allocate_sf_int
+<<SF escan: procedures>>=
+  module subroutine escan_data_allocate_sf_int (data, sf_int)
     class(escan_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (escan_t :: sf_int)
@@ -20713,10 +20776,6 @@ module sf_gaussian
 <<SF gaussian: sub interfaces>>
   end interface
 
-contains
-
-<<SF gaussian: main procedures>>
-
 end module sf_gaussian
 @ %def sf_gaussian
 @
@@ -20837,12 +20896,16 @@ generator factory.
   end subroutine gaussian_data_get_pdg_out
 
 @ %def gaussian_data_get_pdg_out
-@ Allocate the interaction record. Due to a gfortran 7/8/9 bug has to
-remain in the main module.
+@ Allocate the interaction record.
 <<SF gaussian: gaussian data: TBP>>=
   procedure :: allocate_sf_int => gaussian_data_allocate_sf_int
-<<SF gaussian: main procedures>>=
-  subroutine gaussian_data_allocate_sf_int (data, sf_int)
+<<SF gaussian: sub interfaces>>=
+    module subroutine gaussian_data_allocate_sf_int (data, sf_int)
+      class(gaussian_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine gaussian_data_allocate_sf_int
+<<SF gaussian: procedures>>=
+  module subroutine gaussian_data_allocate_sf_int (data, sf_int)
     class(gaussian_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (gaussian_t :: sf_int)
@@ -21444,10 +21507,6 @@ module sf_beam_events
 <<SF beam events: sub interfaces>>
   end interface
 
-contains
-
-<<SF beam events: main procedures>>
-
 end module sf_beam_events
 @ %def sf_beam_events
 @
@@ -21582,12 +21641,16 @@ This is public only for the unit tests.
   end subroutine beam_events_data_get_pdg_out
 
 @ %def beam_events_data_get_pdg_out
-@ Allocate the interaction record. Due to a gfortran 7/8/9 bug has to
-remain in the main module.
+@ Allocate the interaction record.
 <<SF beam events: beam events data: TBP>>=
   procedure :: allocate_sf_int => beam_events_data_allocate_sf_int
-<<SF beam events: main procedures>>=
-  subroutine beam_events_data_allocate_sf_int (data, sf_int)
+<<SF beam events: sub interfaces>>=
+    module subroutine beam_events_data_allocate_sf_int (data, sf_int)
+      class(beam_events_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine beam_events_data_allocate_sf_int
+<<SF beam events: procedures>>=
+  module subroutine beam_events_data_allocate_sf_int (data, sf_int)
     class(beam_events_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (beam_events_t :: sf_int)
@@ -22350,10 +22413,6 @@ module sf_circe1
 <<SF circe1: sub interfaces>>
   end interface
 
-contains
-
-<<SF circe1: main procedures>>
-
 end module sf_circe1
 @ %def sf_circe1
 @
@@ -22670,12 +22729,16 @@ flag. There are two entries for the two beams.
   end function circe1_data_get_pdg_int
 
 @ %def circe1_data_get_pdg_int
-@ Allocate the interaction record. Due to the gfortran 7/8/9 bug this
-has to remain in the main module.
+@ Allocate the interaction record.
 <<SF circe1: circe1 data: TBP>>=
   procedure :: allocate_sf_int => circe1_data_allocate_sf_int
-<<SF circe1: main procedures>>=
-  subroutine circe1_data_allocate_sf_int (data, sf_int)
+<<SF circe1: sub interfaces>>=
+    module subroutine circe1_data_allocate_sf_int (data, sf_int)
+      class(circe1_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine circe1_data_allocate_sf_int
+<<SF circe1: procedures>>=
+  module subroutine circe1_data_allocate_sf_int (data, sf_int)
     class(circe1_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (circe1_t :: sf_int)
@@ -23613,10 +23676,6 @@ module sf_circe2
 <<SF circe2: sub interfaces>>
   end interface
 
-contains
-
-<<SF circe2: main procedures>>
-
 end module sf_circe2
 @ %def sf_circe2
 @
@@ -23931,12 +23990,16 @@ incoming ones.
   end subroutine circe2_data_get_pdg_out
 
 @ %def circe2_data_get_pdg_out
-@ Allocate the interaction record. Due to gfortran 7/8/9 bug has to
-remain in the main module.
+@ Allocate the interaction record.
 <<SF circe2: circe2 data: TBP>>=
   procedure :: allocate_sf_int => circe2_data_allocate_sf_int
-<<SF circe2: main procedures>>=
-  subroutine circe2_data_allocate_sf_int (data, sf_int)
+<<SF circe2: sub interfaces>>=
+    module subroutine circe2_data_allocate_sf_int (data, sf_int)
+      class(circe2_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine circe2_data_allocate_sf_int
+<<SF circe2: procedures>>=
+  module subroutine circe2_data_allocate_sf_int (data, sf_int)
     class(circe2_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (circe2_t :: sf_int)
@@ -24785,10 +24848,6 @@ module sf_pdf_builtin
 <<SF pdf builtin: sub interfaces>>
   end interface
 
-contains
-
-<<SF pdf builtin: main procedures>>
-
 end module sf_pdf_builtin
 @ %def sf_pdf_builtin
 @
@@ -25013,12 +25072,16 @@ applying the PDF will generate the corresponding flavor on output.
   end subroutine pdf_builtin_data_get_pdg_out
 
 @ %def pdf_builtin_data_get_pdg_out
-@ Allocate the interaction record. Due to gfortran 7/8/9 bug this has
-to remain in the main module.
+@ Allocate the interaction record.
 <<SF pdf builtin: pdf builtin data: TBP>>=
   procedure :: allocate_sf_int => pdf_builtin_data_allocate_sf_int
-<<SF pdf builtin: main procedures>>=
-  subroutine pdf_builtin_data_allocate_sf_int (data, sf_int)
+<<SF pdf builtin: sub interfaces>>=
+    module subroutine pdf_builtin_data_allocate_sf_int (data, sf_int)
+      class(pdf_builtin_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine pdf_builtin_data_allocate_sf_int
+<<SF pdf builtin: procedures>>=
+  module subroutine pdf_builtin_data_allocate_sf_int (data, sf_int)
     class(pdf_builtin_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (pdf_builtin_t :: sf_int)
@@ -25824,10 +25887,6 @@ module sf_lhapdf
 <<SF lhapdf: sub interfaces>>
   end interface
 
-contains
-
-<<SF lhapdf: main procedures>>
-
 end module sf_lhapdf
 @ %def sf_lhapdf
 @
@@ -26530,12 +26589,16 @@ applying the PDF will generate the corresponding flavor on output.
   end subroutine lhapdf_data_get_pdg_out
 
 @ %def lhapdf_data_get_pdg_out
-@ Allocate the interaction record. Due to a gfortran 7/8/9 bug this
-has to remain in the main module.
+@ Allocate the interaction record.
 <<SF lhapdf: lhapdf data: TBP>>=
   procedure :: allocate_sf_int => lhapdf_data_allocate_sf_int
-<<SF lhapdf: main procedures>>=
-  subroutine lhapdf_data_allocate_sf_int (data, sf_int)
+<<SF lhapdf: sub interfaces>>=
+    module subroutine lhapdf_data_allocate_sf_int (data, sf_int)
+      class(lhapdf_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine lhapdf_data_allocate_sf_int
+<<SF lhapdf: procedures>>=
+  module subroutine lhapdf_data_allocate_sf_int (data, sf_int)
     class(lhapdf_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
     allocate (lhapdf_t :: sf_int)
@@ -27546,10 +27609,6 @@ module dispatch_beams
 <<Dispatch beams: sub interfaces>>
   end interface
 
-contains
-
-<<Dispatch beams: main procedures>>
-
 end module dispatch_beams
 @ %def dispatch_beams
 @
@@ -27595,11 +27654,27 @@ to the upstream structure function or the beam array.  This will be
 checked for the structure function in question and replaced by the
 outgoing flavors.  The [[pdg_prc]] array is the array of incoming
 flavors (beam index, component index) for the hard process.
-Due to a bug in gfortran 7/8/9 this has to remain in the main module.
 <<Dispatch beams: public>>=
   public :: dispatch_sf_data
-<<Dispatch beams: main procedures>>=
-  subroutine dispatch_sf_data (data, sf_method, i_beam, sf_prop, &
+<<Dispatch beams: sub interfaces>>=
+    module subroutine dispatch_sf_data (data, sf_method, i_beam, sf_prop, &
+         var_list, var_list_global, model, &
+         os_data, sqrts, pdg_in, pdg_prc, polarized)
+      class(sf_data_t), allocatable, intent(inout) :: data
+      type(string_t), intent(in) :: sf_method
+      integer, dimension(:), intent(in) :: i_beam
+      type(pdg_array_t), dimension(:), intent(inout) :: pdg_in
+      type(pdg_array_t), dimension(:,:), intent(in) :: pdg_prc
+      type(sf_prop_t), intent(inout) :: sf_prop
+      type(var_list_t), intent(in) :: var_list
+      type(var_list_t), intent(inout) :: var_list_global
+      class(model_data_t), target, intent(in) :: model
+      type(os_data_t), intent(in) :: os_data
+      real(default), intent(in) :: sqrts
+      logical, intent(in) :: polarized
+    end subroutine dispatch_sf_data
+<<Dispatch beams: procedures>>=
+  module subroutine dispatch_sf_data (data, sf_method, i_beam, sf_prop, &
        var_list, var_list_global, model, &
        os_data, sqrts, pdg_in, pdg_prc, polarized)
     class(sf_data_t), allocatable, intent(inout) :: data
@@ -28084,11 +28159,16 @@ each matrix-element call.
 Also fetch the [[alphas_nf]] variable from the list and store it in
 the QCD record.  This is not used in the $\alpha_s$ calculation, but
 the QCD record thus becomes a messenger for this user parameter.
-Gfortran 7/8/9 bug: has to be part of main module.
 <<Dispatch beams: public>>=
   public :: dispatch_qcd
-<<Dispatch beams: main procedures>>=
-  subroutine dispatch_qcd (qcd, var_list, os_data)
+<<Dispatch beams: sub interfaces>>=
+    module subroutine dispatch_qcd (qcd, var_list, os_data)
+      type(qcd_t), intent(inout) :: qcd
+      type(var_list_t), intent(in) :: var_list
+      type(os_data_t), intent(in) :: os_data
+    end subroutine dispatch_qcd
+<<Dispatch beams: procedures>>=
+  module subroutine dispatch_qcd (qcd, var_list, os_data)
     type(qcd_t), intent(inout) :: qcd
     type(var_list_t), intent(in) :: var_list
     type(os_data_t), intent(in) :: os_data
@@ -28187,11 +28267,16 @@ Gfortran 7/8/9 bug: has to be part of main module.
   end subroutine init_alpha
 
 @
-@ Same for QED. Gfortran 7/8/9: has to be part of main module.
+@ Same for QED.
 <<Dispatch beams: public>>=
   public :: dispatch_qed
-<<Dispatch beams: main procedures>>=
-  subroutine dispatch_qed (qed, var_list)
+<<Dispatch beams: sub interfaces>>=
+    module subroutine dispatch_qed (qed, var_list)
+      type(qed_t), intent(inout) :: qed
+      type(var_list_t), intent(in) :: var_list
+    end subroutine dispatch_qed
+<<Dispatch beams: procedures>>=
+  module subroutine dispatch_qed (qed, var_list)
     type(qed_t), intent(inout) :: qed
     type(var_list_t), intent(in) :: var_list
     logical :: fixed, from_me, analytic

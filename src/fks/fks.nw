@@ -222,10 +222,6 @@ module fks_regions
 <<FKS regions: sub interfaces>>
   end interface
 
-contains
-
-<<FKS regions: main procedures>>
-
 end module fks_regions
 
 @ %def fks_regions
@@ -2637,11 +2633,16 @@ $\sum_\alpha S_\alpha = 1$.
   end type region_data_t
 
 @ %def region_data_t
-@ Gfortran 7/8/9/ bug, has to remain in the main module:
+@
 <<FKS regions: reg data: TBP>>=
   procedure :: allocate_fks_mappings => region_data_allocate_fks_mappings
-<<FKS regions: main procedures>>=
-  subroutine region_data_allocate_fks_mappings (reg_data, mapping_type)
+<<FKS regions: sub interfaces>>=
+    module subroutine region_data_allocate_fks_mappings (reg_data, mapping_type)
+      class(region_data_t), intent(inout) :: reg_data
+      integer, intent(in) :: mapping_type
+    end subroutine region_data_allocate_fks_mappings
+<<FKS regions: procedures>>=
+  module subroutine region_data_allocate_fks_mappings (reg_data, mapping_type)
     class(region_data_t), intent(inout) :: reg_data
     integer, intent(in) :: mapping_type
     select case (mapping_type)

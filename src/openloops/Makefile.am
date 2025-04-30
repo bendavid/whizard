@@ -30,35 +30,32 @@
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = liboloops.la
 
-### As long as we have to work around the gfortran 7/8/9 submodule bug,
-### the MPI dependence is within the module, not the submodule
-
 COMMON_F90 = \
-  prc_openloops_sub.f90
-MPI_F90 = \
-  prc_openloops.f90_mpi
-SERIAL_F90 = \
-  prc_openloops.f90_serial
+  prc_openloops.f90
+MPI_SUBMODULES = \
+  prc_openloops_sub.f90_mpi
+SERIAL_SUBMODULES = \
+  prc_openloops_sub.f90_serial
 
-OPENLOOPS_SUBMODULES = \
+OPENLOOPS_MODULES = \
   $(COMMON_F90)
 
 EXTRA_DIST = \
-  $(OPENLOOPS_SUBMODULES) \
-  $(SERIAL_F90) \
-  $(MPI_F90)
+  $(OPENLOOPS_MODULES) \
+  $(SERIAL_SUBMODULES) \
+  $(MPI_SUBMODULES)
 
 nodist_liboloops_la_SOURCES = \
   $(COMMON_F90) \
-  prc_openloops.f90
+  prc_openloops_sub.f90
 
-DISTCLEANFILES = prc_openloops.f90
+DISTCLEANFILES = prc_openloops_sub.f90
 
 if FC_USE_MPI
-prc_openloops.f90: prc_openloops.f90_mpi
+prc_openloops_sub.f90: prc_openloops_sub.f90_mpi
 	-cp -f $< $@
 else
-prc_openloops.f90: prc_openloops.f90_serial
+prc_openloops_sub.f90: prc_openloops_sub.f90_serial
 	-cp -f $< $@
 endif
 
@@ -188,15 +185,15 @@ openloops.stamp: $(PRELUDE) $(srcdir)/openloops.nw $(POSTLUDE)
 	for src in $(COMMON_F90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
-	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	for src in $(SERIAL_SUBMODULES:.f90_serial=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
-	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	for src in $(MPI_SUBMODULES:.f90_mpi=.f90); do \
 	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f openloops.tmp openloops.stamp
 
-$(COMMON_F90) $(SERIAL_F90) $(MPI_F90): openloops.stamp
+$(COMMON_F90) $(SERIAL_SUBMODULES) $(MPI_SUBMODULES): openloops.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f openloops.stamp; \

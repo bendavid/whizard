@@ -416,11 +416,17 @@ mapping parameter.
   end subroutine qed_pdf_evolve_qed_pdf
 
 @ %def qed_pdf_evolve_qed_pdf
-@ Gfortran 7/8/9 bug, has to remain in the main module:
+@
 <<Electron PDFs: QED PDF: TBP>>=
   procedure :: allocate_aqed => qed_pdf_allocate_aqed
+<<Electron PDFs: sub interfaces>>=
+    module subroutine qed_pdf_allocate_aqed (qed, order, n_f, nlep, running)
+      class(qed_pdf_t), intent(inout) :: qed
+      integer, intent(in) :: order, n_f, nlep
+      logical, intent(in) :: running
+    end subroutine qed_pdf_allocate_aqed
 <<Electron PDFs: main procedures>>=
-  subroutine qed_pdf_allocate_aqed (qed, order, n_f, nlep, running)
+  module subroutine qed_pdf_allocate_aqed (qed, order, n_f, nlep, running)
     class(qed_pdf_t), intent(inout) :: qed
     integer, intent(in) :: order, n_f, nlep
     logical, intent(in) :: running

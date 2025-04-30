@@ -2103,10 +2103,6 @@ module prc_recola
 <<Prc recola: sub interfaces>>
   end interface
 
-contains
-
-<<Prc recola: main procedures>>
-
 end module prc_recola
 @ %def prc_recola
 @
@@ -2234,11 +2230,26 @@ methods.  Here, we introduce only RECOLA-specific procedures, in
 addition.
 
 The NLO flag is true only for virtual matrix elements.
-Gfortran 7/8/9 bug: has to remain in the main module.
 <<Prc recola: recola def: TBP>>=
-  procedure :: init => recola_def_init
-<<Prc recola: main procedures>>=
-  subroutine recola_def_init (object, basename, model_name, &
+  procedure :: init => recola_def_init  
+<<Prc recola: sub interfaces>>=
+    module subroutine recola_def_init (object, basename, model_name, &
+         prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
+         correction_type, ufo, ufo_path, restrictions, var_list)
+      class(recola_def_t), intent(inout) :: object
+      type(string_t), intent(in) :: basename, model_name
+      type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      integer, intent(in) :: nlo_type
+      integer, intent(in) :: alpha_power
+      integer, intent(in) :: alphas_power
+      type(string_t), intent(in) :: correction_type
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      type(string_t), intent(in), optional :: restrictions
+      type(var_list_t), intent(in) :: var_list
+    end subroutine recola_def_init
+<<Prc recola: procedures>>=
+  module subroutine recola_def_init (object, basename, model_name, &
        prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
        correction_type, ufo, ufo_path, restrictions, var_list)
     class(recola_def_t), intent(inout) :: object
@@ -2565,11 +2576,17 @@ load any external dynamical libraries, so this is a dummy.
   end type recola_driver_t
 
 @ %def recola_driver_t
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@ 
 <<Prc recola: recola def: TBP>>=
   procedure :: allocate_driver => recola_def_allocate_driver
-<<Prc recola: main procedures>>=
-  subroutine recola_def_allocate_driver (object, driver, basename)
+<<Prc recola: sub interfaces>>=
+    module subroutine recola_def_allocate_driver (object, driver, basename)
+      class(recola_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine recola_def_allocate_driver
+<<Prc recola: procedures>>=
+  module subroutine recola_def_allocate_driver (object, driver, basename)
     class(recola_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -2687,11 +2704,16 @@ This must be implemented, but is unused.
   end subroutine recola_state_write
 
 @ %def recola_state_write
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc recola: prc recola: TBP>>=
   procedure :: allocate_workspace => prc_recola_allocate_workspace
-<<Prc recola: main procedures>>=
-  subroutine prc_recola_allocate_workspace (object, core_state)
+<<Prc recola: sub interfaces>>=
+    module subroutine prc_recola_allocate_workspace (object, core_state)
+      class(prc_recola_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_recola_allocate_workspace
+<<Prc recola: procedures>>=
+  module subroutine prc_recola_allocate_workspace (object, core_state)
     class(prc_recola_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (recola_state_t :: core_state)

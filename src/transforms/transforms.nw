@@ -6665,10 +6665,6 @@ module decays
 <<Decays: sub interfaces>>
   end interface
 
-contains
-
-<<Decays: main procedures>>
-
 end module decays
 
 @ %def decays
@@ -6875,11 +6871,20 @@ possibly, differing flavor content.
 whether the particle is stable.  The second index of the flavor array runs
 over alternatives for each decay product; alternatives are allowed only if the
 decay product is itself stable.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Decays: decay term config: TBP>>=
   procedure :: init => decay_term_config_init
-<<Decays: main procedures>>=
-  recursive subroutine decay_term_config_init &
+<<Decays: sub interfaces>>=
+    recursive module subroutine decay_term_config_init &
+         (term, flv, stable, model, process_stack, var_list)
+      class(decay_term_config_t), intent(out) :: term
+      type(flavor_t), dimension(:,:), intent(in) :: flv
+      logical, dimension(:), intent(in) :: stable
+      class(model_data_t), intent(in), target :: model
+      type(process_stack_t), intent(in), optional :: process_stack
+      type(var_list_t), intent(in), optional :: var_list
+    end subroutine decay_term_config_init
+<<Decays: procedures>>=
+  recursive module subroutine decay_term_config_init &
        (term, flv, stable, model, process_stack, var_list)
     class(decay_term_config_t), intent(out) :: term
     type(flavor_t), dimension(:,:), intent(in) :: flv
@@ -7023,11 +7028,15 @@ Only unstable products are allocated as child particles.
 @ Initialization, using the configuration object.  We allocate
 particle objects in parallel to the particle configuration objects
 which we use to initialize them, one at a time.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Decays: decay term: TBP>>=
   procedure :: init => decay_term_init
-<<Decays: main procedures>>=
-  recursive subroutine decay_term_init (term, config)
+<<Decays: sub interfaces>>=
+    recursive module subroutine decay_term_init (term, config)
+      class(decay_term_t), intent(out) :: term
+      type(decay_term_config_t), intent(in), target :: config
+    end subroutine decay_term_init
+<<Decays: procedures>>=
+  recursive module subroutine decay_term_init (term, config)
     class(decay_term_t), intent(out) :: term
     type(decay_term_config_t), intent(in), target :: config
     integer :: i
@@ -12137,10 +12146,6 @@ module events
 <<Events: sub interfaces>>
   end interface
 
-contains
-
-<<Events: main procedures>>
-
 end module events
 @ %def events
 @
@@ -12538,11 +12543,16 @@ rejection.  (By default, this factor is unity and can be ignored.)
 
 We also allocate the trivial event transform, which is always the
 first one.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<Events: event: TBP>>=
   procedure :: basic_init => event_init
-<<Events: main procedures>>=
-  subroutine event_init (event, var_list, n_alt)
+<<Events: sub interfaces>>=
+    module subroutine event_init (event, var_list, n_alt)
+      class(event_t), intent(out) :: event
+      type(var_list_t), intent(in), optional :: var_list
+      integer, intent(in), optional :: n_alt
+    end subroutine event_init
+<<Events: procedures>>=
+  module subroutine event_init (event, var_list, n_alt)
     class(event_t), intent(out) :: event
     type(var_list_t), intent(in), optional :: var_list
     integer, intent(in), optional :: n_alt
@@ -15341,10 +15351,6 @@ An event transform is responsible for dressing a partonic event.
 Since event transforms are not mutually exclusive but are
 concatenated, we provide individual dispatchers for each of them.
 
-Due to the gfortran 7/8/9 bug that leads to segmentation violation if
-polymorphic user-defined derived types are allocated in routines within
-submodules, this module remains without submodule until we can switch
-to gfortran v10 or newer.
 <<[[dispatch_transforms.f90]]>>=
 <<File header>>
 
@@ -15354,11 +15360,7 @@ module dispatch_transforms
 <<Use strings>>
   use process
   use variables
-  use system_defs, only: LF
-  use system_dependencies, only: LHAPDF6_AVAILABLE
-  use sf_lhapdf, only: lhapdf_initialize
   use pdf, only: pdf_data_t
-  use diagnostics
   use models
   use os_interface
   use beam_structures
@@ -15366,9 +15368,6 @@ module dispatch_transforms
   use instances, only: process_instance_t, process_instance_hook_t
 
   use event_base, only: event_callback_t, event_callback_nop_t
-  use hepmc3_interface, only: HEPMC3_MODE_HEPMC2, HEPMC3_MODE_HEPMC3
-  use hepmc3_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_ROOTTREE
-  use hepmc3_interface, only: HEPMC3_MODE_HEPEVT
   use eio_base
   use eio_raw
   use eio_checkpoints
@@ -15402,17 +15401,46 @@ module dispatch_transforms
 
 <<Dispatch transforms: public>>
 
-contains
-
-<<Dispatch transforms: procedures>>
+  interface
+<<Dispatch transforms: sub interfaces>>
+  end interface
 
 end module dispatch_transforms
 @ %def dispatch_transforms
 @
+<<[[dispatch_transforms_sub.f90]]>>=
+<<File header>>
+
+submodule (dispatch_transforms) dispatch_transforms_s
+
+<<Use debug>>
+  use system_dependencies, only: LHAPDF6_AVAILABLE
+  use system_defs, only: LF
+  use diagnostics
+  use sf_lhapdf, only: lhapdf_initialize
+  use hepmc3_interface, only: HEPMC3_MODE_HEPMC2, HEPMC3_MODE_HEPMC3
+  use hepmc3_interface, only: HEPMC3_MODE_ROOT, HEPMC3_MODE_ROOTTREE
+  use hepmc3_interface, only: HEPMC3_MODE_HEPEVT
+
+  implicit none
+
+contains
+
+<<Dispatch transforms: procedures>>
+
+end submodule dispatch_transforms_s
+
+@ %def dispatch_transforms_s
+@
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_nlo
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_nlo (evt, keep_failed_events)
+      class(evt_t), intent(out), pointer :: evt
+      logical, intent(in) :: keep_failed_events
+    end subroutine dispatch_evt_nlo
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_nlo (evt, keep_failed_events)
+  module subroutine dispatch_evt_nlo (evt, keep_failed_events)
     class(evt_t), intent(out), pointer :: evt
     logical, intent(in) :: keep_failed_events
     call msg_message ("Simulate: activating fixed-order NLO events")
@@ -15429,8 +15457,15 @@ end module dispatch_transforms
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_resonance
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_resonance (evt, var_list, res_history_set, libname)
+      class(evt_t), intent(out), pointer :: evt
+      type(var_list_t), intent(in) :: var_list
+      type(resonance_history_set_t), dimension(:), intent(in) :: res_history_set
+      type(string_t), intent(in) :: libname
+    end subroutine dispatch_evt_resonance
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_resonance (evt, var_list, res_history_set, libname)
+  module subroutine dispatch_evt_resonance (evt, var_list, res_history_set, libname)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
     type(resonance_history_set_t), dimension(:), intent(in) :: res_history_set
@@ -15458,8 +15493,13 @@ needed at a time.  However, if both handlers are active, the current
 implementation requires the handler modes of ISR and EPA to coincide.
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_isr_epa_handler
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_isr_epa_handler (evt, var_list)
+      class(evt_t), intent(out), pointer :: evt
+      type(var_list_t), intent(in) :: var_list
+    end subroutine dispatch_evt_isr_epa_handler
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_isr_epa_handler (evt, var_list)
+  module subroutine dispatch_evt_isr_epa_handler (evt, var_list)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
     logical :: isr_recoil
@@ -15535,8 +15575,13 @@ implementation requires the handler modes of ISR and EPA to coincide.
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_decay
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_decay (evt, var_list)
+      class(evt_t), intent(out), pointer :: evt
+      type(var_list_t), intent(in), target :: var_list
+    end subroutine dispatch_evt_decay
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_decay (evt, var_list)
+  module subroutine dispatch_evt_decay (evt, var_list)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in), target :: var_list
     logical :: allow_decays
@@ -15557,8 +15602,18 @@ implementation requires the handler modes of ISR and EPA to coincide.
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_shower
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_shower (evt, var_list, model, fallback_model, &
+         os_data, beam_structure, process)
+      class(evt_t), intent(out), pointer :: evt
+      type(var_list_t), intent(in) :: var_list
+      class(model_t), pointer, intent(in) :: model, fallback_model
+      type(os_data_t), intent(in) :: os_data
+      type(beam_structure_t), intent(in) :: beam_structure
+      type(process_t), intent(in), optional :: process
+    end subroutine dispatch_evt_shower
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_shower (evt, var_list, model, fallback_model, &
+  module subroutine dispatch_evt_shower (evt, var_list, model, fallback_model, &
        os_data, beam_structure, process)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
@@ -15621,8 +15676,18 @@ implementation requires the handler modes of ISR and EPA to coincide.
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_shower_hook
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_shower_hook &
+         (hook, var_list, process_instance, beam_structure, pdf_set)
+      class(process_instance_hook_t), pointer, intent(out) :: hook
+      type(var_list_t), intent(in) :: var_list
+      class(process_instance_t), intent(in), target :: process_instance
+      type(beam_structure_t), intent(in) :: beam_structure
+      integer, intent(in) :: pdf_set
+    end subroutine dispatch_evt_shower_hook
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_shower_hook (hook, var_list, process_instance, beam_structure, pdf_set)
+  module subroutine dispatch_evt_shower_hook &
+       (hook, var_list, process_instance, beam_structure, pdf_set)
     class(process_instance_hook_t), pointer, intent(out) :: hook
     type(var_list_t), intent(in) :: var_list
     class(process_instance_t), intent(in), target :: process_instance
@@ -15640,7 +15705,8 @@ implementation requires the handler modes of ISR and EPA to coincide.
           if (LHAPDF6_AVAILABLE) then
              lhapdf_dir = var_list%get_sval (var_str ("$lhapdf_dir"))
              lhapdf_file = var_list%get_sval (var_str ("$lhapdf_file"))
-             call lhapdf_initialize (1, lhapdf_dir, lhapdf_file, lhapdf_member, pdf_data%pdf)
+             call lhapdf_initialize &
+                  (1, lhapdf_dir, lhapdf_file, lhapdf_member, pdf_data%pdf)
           end if
           call pdf_data%setup ("Shower", beam_structure, lhapdf_member, pdf_set)
           call hook%init (var_list, process_instance, pdf_data)
@@ -15654,8 +15720,18 @@ implementation requires the handler modes of ISR and EPA to coincide.
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_matching
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_matching &
+         (evt, settings, var_list, process_name, pdf_data)
+      class(evt_t), intent(inout) :: evt
+      type(shower_settings_t), intent(in) :: settings
+      type(var_list_t), intent(in) :: var_list
+      type(string_t), intent(in) :: process_name
+      type(pdf_data_t), intent(in), optional :: pdf_data
+    end subroutine dispatch_matching
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_matching (evt, settings, var_list, process_name, pdf_data)
+  module subroutine dispatch_matching &
+       (evt, settings, var_list, process_name, pdf_data)
     class(evt_t), intent(inout) :: evt
     type(shower_settings_t), intent(in) :: settings
     type(var_list_t), intent(in) :: var_list
@@ -15695,8 +15771,14 @@ implementation requires the handler modes of ISR and EPA to coincide.
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_hadrons
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_evt_hadrons (evt, var_list, fallback_model)
+      class(evt_t), intent(out), pointer :: evt
+      type(var_list_t), intent(in) :: var_list
+      class(model_t), pointer, intent(in) :: fallback_model
+    end subroutine dispatch_evt_hadrons
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_evt_hadrons (evt, var_list, fallback_model)
+  module subroutine dispatch_evt_hadrons (evt, var_list, fallback_model)
     class(evt_t), intent(out), pointer :: evt
     type(var_list_t), intent(in) :: var_list
     class(model_t), pointer, intent(in) :: fallback_model
@@ -15731,8 +15813,17 @@ implementation requires the handler modes of ISR and EPA to coincide.
 which is defined here.
 <<Dispatch transforms: public>>=
   public :: dispatch_eio
+<<Dispatch transforms: sub interfaces>>=
+    module subroutine dispatch_eio (eio, method, var_list, fallback_model, &
+           event_callback)
+      class(eio_t), allocatable, intent(inout) :: eio
+      type(string_t), intent(in) :: method
+      type(var_list_t), intent(in) :: var_list
+      type(model_t), target, intent(in) :: fallback_model
+      class(event_callback_t), allocatable, intent(in) :: event_callback
+    end subroutine dispatch_eio
 <<Dispatch transforms: procedures>>=
-  subroutine dispatch_eio (eio, method, var_list, fallback_model, &
+  module subroutine dispatch_eio (eio, method, var_list, fallback_model, &
          event_callback)
     class(eio_t), allocatable, intent(inout) :: eio
     type(string_t), intent(in) :: method

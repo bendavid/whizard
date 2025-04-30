@@ -30,8 +30,6 @@ module prc_openloops
   use blha_config
   use blha_olp_interfaces
 
-<<Use mpi f08>>
-
 <<Standard module head>>
 
 <<Prc openloops: public>>
@@ -45,10 +43,6 @@ module prc_openloops
   interface
 <<Prc openloops: sub interfaces>>
   end interface
-
-contains
-
-<<Prc openloops: main procedures>>
 
 end module prc_openloops
 @ %def module prc_openloops
@@ -67,6 +61,8 @@ submodule (prc_openloops) prc_openloops_s
   use sm_physics, only: top_width_sm_lo, top_width_sm_qcd_nlo_jk
   use sm_qcd
   use prclib_interfaces
+
+<<Use mpi f08>>
 
   implicit none
 
@@ -252,11 +248,23 @@ end submodule prc_openloops_s
   end function openloops_writer_type_name
 
 @ %def openloops_writer_type_name
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc openloops: openloops def: TBP>>=
   procedure :: init => openloops_def_init
-<<Prc openloops: main procedures>>=
-  subroutine openloops_def_init (object, basename, model_name, &
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_def_init (object, basename, model_name, &
+       prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions, var_list)
+      class(openloops_def_t), intent(inout) :: object
+      type(string_t), intent(in) :: basename, model_name
+      type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+      integer, intent(in) :: nlo_type
+      logical, intent(in), optional :: ufo
+      type(string_t), intent(in), optional :: ufo_path
+      type(string_t), intent(in), optional :: restrictions
+      type(var_list_t), intent(in) :: var_list
+    end subroutine openloops_def_init
+<<Prc openloops: procedures>>=
+  module subroutine openloops_def_init (object, basename, model_name, &
      prt_in, prt_out, nlo_type, ufo, ufo_path, restrictions, var_list)
     class(openloops_def_t), intent(inout) :: object
     type(string_t), intent(in) :: basename, model_name
@@ -552,11 +560,17 @@ filenames do not clash.
   end subroutine openloops_def_read
 
 @ %def openloops_def_read
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc openloops: openloops def: TBP>>=
   procedure :: allocate_driver => openloops_def_allocate_driver
-<<Prc openloops: main procedures>>=
-  subroutine openloops_def_allocate_driver (object, driver, basename)
+<<Prc openloops: sub interfaces>>=
+    module subroutine openloops_def_allocate_driver (object, driver, basename)
+      class(openloops_def_t), intent(in) :: object
+      class(prc_core_driver_t), intent(out), allocatable :: driver
+      type(string_t), intent(in) :: basename
+    end subroutine openloops_def_allocate_driver
+<<Prc openloops: procedures>>=
+  module subroutine openloops_def_allocate_driver (object, driver, basename)
     class(openloops_def_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
     type(string_t), intent(in) :: basename
@@ -579,11 +593,16 @@ filenames do not clash.
   end subroutine openloops_state_write
 
 @ %def prc_openloops_state_write
-@ Gfortran 7/8/9 bug: has to remain in the main module.
+@
 <<Prc openloops: prc openloops: TBP>>=
   procedure :: allocate_workspace => prc_openloops_allocate_workspace
-<<Prc openloops: main procedures>>=
-  subroutine prc_openloops_allocate_workspace (object, core_state)
+<<Prc openloops: sub interfaces>>=
+    module subroutine prc_openloops_allocate_workspace (object, core_state)
+      class(prc_openloops_t), intent(in) :: object
+      class(prc_core_state_t), intent(inout), allocatable :: core_state
+    end subroutine prc_openloops_allocate_workspace
+<<Prc openloops: procedures>>=
+  module subroutine prc_openloops_allocate_workspace (object, core_state)
     class(prc_openloops_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
     allocate (openloops_state_t :: core_state)

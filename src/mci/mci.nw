@@ -5284,10 +5284,6 @@ module mci_none
 <<MCI none: sub interfaces>>
   end interface
 
-contains
-
-<<MCI none: main procedures>>
-
 end module mci_none
 @ %def mci_none
 @
@@ -5462,11 +5458,15 @@ encountered.  This is required for event generation.
 
 @ %def mci_none_ignore_equivalences
 @ Allocate instance with matching type.
-Gfortran 7/8/9 bug: has to remain in the main module.
 <<MCI none: mci none: TBP>>=
   procedure :: allocate_instance => mci_none_allocate_instance
-<<MCI none: main procedures>>=
-  subroutine mci_none_allocate_instance (mci, mci_instance)
+<<MCI none: sub interfaces>>=
+    module subroutine mci_none_allocate_instance (mci, mci_instance)
+      class(mci_none_t), intent(in) :: mci
+      class(mci_instance_t), intent(out), pointer :: mci_instance
+    end subroutine mci_none_allocate_instance
+<<MCI none: procedures>>=
+  module subroutine mci_none_allocate_instance (mci, mci_instance)
     class(mci_none_t), intent(in) :: mci
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_none_instance_t :: mci_instance)
@@ -5880,10 +5880,6 @@ module mci_midpoint
 <<MCI midpoint: sub interfaces>>
   end interface
 
-contains
-
-<<MCI midpoint: main procedures>>
-
 end module mci_midpoint
 @ %def mci_midpoint
 @
@@ -6125,11 +6121,15 @@ encountered.  This is required for event generation.
 
 @ %def mci_midpoint_ignore_equivalences
 @ Allocate instance with matching type.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI midpoint: mci midpoint: TBP>>=
   procedure :: allocate_instance => mci_midpoint_allocate_instance
-<<MCI midpoint: main procedures>>=
-  subroutine mci_midpoint_allocate_instance (mci, mci_instance)
+<<MCI midpoint: sub interfaces>>=
+    module subroutine mci_midpoint_allocate_instance (mci, mci_instance)
+      class(mci_midpoint_t), intent(in) :: mci
+      class(mci_instance_t), intent(out), pointer :: mci_instance
+    end subroutine mci_midpoint_allocate_instance
+<<MCI midpoint: procedures>>=
+  module subroutine mci_midpoint_allocate_instance (mci, mci_instance)
     class(mci_midpoint_t), intent(in) :: mci
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_midpoint_instance_t :: mci_instance)
@@ -7538,10 +7538,6 @@ module mci_vamp
 <<MCI vamp: sub interfaces>>
   end interface
 
-contains
-
-<<MCI vamp: main procedures>>
-
 end module mci_vamp
 @ %def mci_vamp
 @
@@ -8607,11 +8603,15 @@ provided by the phase-space module.  Here, we translate this into the
 
 @ %def mci_vamp_declare_equivalences
 @ Allocate instance with matching type.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: allocate_instance => mci_vamp_allocate_instance
-<<MCI vamp: main procedures>>=
-  subroutine mci_vamp_allocate_instance (mci, mci_instance)
+<<MCI vamp: sub interfaces>>=
+    module subroutine mci_vamp_allocate_instance (mci, mci_instance)
+      class(mci_vamp_t), intent(in) :: mci
+      class(mci_instance_t), intent(out), pointer :: mci_instance
+    end subroutine mci_vamp_allocate_instance
+<<MCI vamp: procedures>>=
+  module subroutine mci_vamp_allocate_instance (mci, mci_instance)
     class(mci_vamp_t), intent(in) :: mci
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_vamp_instance_t :: mci_instance)
@@ -9309,8 +9309,18 @@ gracefully.  Of course, VAMP should be able to resume from the dump.
 
 In the current implementation, we handle the exception in place and terminate
 immediately.  The incomplete current integration pass is lost.
-<<MCI vamp: main procedures>>=
-  function vamp_sampling_function &
+<<MCI vamp: sub interfaces>>=
+    module function vamp_sampling_function &
+         (xi, data, weights, channel, grids) result (f)
+      real(default) :: f
+      real(default), dimension(:), intent(in) :: xi
+      class(vamp_data_t), intent(in) :: data
+      real(default), dimension(:), intent(in), optional :: weights
+      integer, intent(in), optional :: channel
+      type(vamp_grid), dimension(:), intent(in), optional :: grids
+    end function vamp_sampling_function
+<<MCI vamp: procedures>>=
+  module function vamp_sampling_function &
        (xi, data, weights, channel, grids) result (f)
     real(default) :: f
     real(default), dimension(:), intent(in) :: xi
@@ -9351,9 +9361,14 @@ This is supposed to be the mapping between integration channels.
 The VAMP event generating procedures technically require it, but it is
 meaningless in our setup where all transformations happen inside the
 sampler object.  So, this implementation is trivial:
-Gfortran 7/8/9 bug, has to remain in the main module:
-<<MCI vamp: main procedures>>=
-  pure function phi_trivial (xi, channel_dummy) result (x)
+<<MCI vamp: sub interfaces>>=
+    pure module function phi_trivial (xi, channel_dummy) result (x)
+      real(default), dimension(:), intent(in) :: xi
+      integer, intent(in) :: channel_dummy
+      real(default), dimension(size(xi)) :: x
+    end function phi_trivial
+<<MCI vamp: procedures>>=
+  pure module function phi_trivial (xi, channel_dummy) result (x)
     real(default), dimension(:), intent(in) :: xi
     integer, intent(in) :: channel_dummy
     real(default), dimension(size(xi)) :: x
@@ -9367,11 +9382,16 @@ selects a channel based on the channel weights multiplied by the
 (previously recorded) maximum integrand value of the channel.  The
 MCI weight is renormalized accordingly, to cancel this effect on the
 result.
-Gfortran 7/8/9/ bug, has to remain in the main module:
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: generate_weighted_event => mci_vamp_generate_weighted_event
-<<MCI vamp: main procedures>>=
-  subroutine mci_vamp_generate_weighted_event (mci, instance, sampler)
+<<MCI vamp: sub interfaces>>=
+    module subroutine mci_vamp_generate_weighted_event (mci, instance, sampler)
+      class(mci_vamp_t), intent(inout) :: mci
+      class(mci_instance_t), intent(inout), target :: instance
+      class(mci_sampler_t), intent(inout), target :: sampler
+    end subroutine mci_vamp_generate_weighted_event
+<<MCI vamp: procedures>>=
+  module subroutine mci_vamp_generate_weighted_event (mci, instance, sampler)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
     class(mci_sampler_t), intent(inout), target :: sampler
@@ -9413,12 +9433,18 @@ Gfortran 7/8/9/ bug, has to remain in the main module:
 
 @ %def mci_vamp_generate_weighted_event
 @ Generate unweighted event.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: generate_unweighted_event => &
        mci_vamp_generate_unweighted_event
-<<MCI vamp: main procedures>>=
-  subroutine mci_vamp_generate_unweighted_event &
+<<MCI vamp: sub interfaces>>=
+    module subroutine mci_vamp_generate_unweighted_event &
+         (mci, instance, sampler)
+      class(mci_vamp_t), intent(inout) :: mci
+      class(mci_instance_t), intent(inout), target :: instance
+      class(mci_sampler_t), intent(inout), target :: sampler
+    end subroutine mci_vamp_generate_unweighted_event
+<<MCI vamp: procedures>>=
+  module subroutine mci_vamp_generate_unweighted_event &
        (mci, instance, sampler)
     class(mci_vamp_t), intent(inout) :: mci
     class(mci_instance_t), intent(inout), target :: instance
@@ -9929,11 +9955,14 @@ recalculating the weight array.  The parameter
 If the number of calls in a given channel falls below a user-defined threshold,
 the weight is not lowered further but kept at this threshold.  The other
 channel weights are reduced accordingly.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI vamp: mci vamp instance: TBP>>=
   procedure :: adapt_weights => mci_vamp_instance_adapt_weights
-<<MCI vamp: main procedures>>=
-  subroutine mci_vamp_instance_adapt_weights (instance)
+<<MCI vamp: sub interfaces>>=
+    module subroutine mci_vamp_instance_adapt_weights (instance)
+      class(mci_vamp_instance_t), intent(inout) :: instance
+    end subroutine mci_vamp_instance_adapt_weights
+<<MCI vamp: procedures>>=
+  module subroutine mci_vamp_instance_adapt_weights (instance)
     class(mci_vamp_instance_t), intent(inout) :: instance
     real(default) :: w_sum, w_avg_ch, sum_w_underflow, w_min
     real(default), dimension(:), allocatable :: weights
@@ -10002,11 +10031,18 @@ object thus becomes the workspace of the sampling function.
 Note: in the current implementation, the random-number generator must
 be the TAO generator.  This explicit dependence should be removed from
 the VAMP implementation.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI vamp: mci vamp instance: TBP>>=
   procedure :: sample_grids => mci_vamp_instance_sample_grids
-<<MCI vamp: main procedures>>=
-  subroutine mci_vamp_instance_sample_grids &
+<<MCI vamp: sub interfaces>>=
+    module subroutine mci_vamp_instance_sample_grids &
+         (instance, rng, sampler, eq)
+      class(mci_vamp_instance_t), intent(inout), target :: instance
+      class(rng_t), intent(inout) :: rng
+      class(mci_sampler_t), intent(inout), target :: sampler
+      type(vamp_equivalences_t), intent(in), optional :: eq
+    end subroutine mci_vamp_instance_sample_grids
+<<MCI vamp: procedures>>=
+  module subroutine mci_vamp_instance_sample_grids &
        (instance, rng, sampler, eq)
     class(mci_vamp_instance_t), intent(inout), target :: instance
     class(rng_t), intent(inout) :: rng
@@ -10282,8 +10318,7 @@ error message.
 
 An external signal could raise a fatal exception, but this should be delayed and
 handled by the correct termination routine.
-Gfortran 7/8/9 bug, has to remain in the main module:
-<<MCI vamp: main procedures>>=
+<<MCI vamp: procedures>>=
   subroutine handle_vamp_exception (exc, verbose)
     type(exception), intent(in) :: exc
     logical, intent(in) :: verbose
@@ -12521,10 +12556,6 @@ module mci_vamp2
 <<MCI vamp2: sub interfaces>>
   end interface
 
-contains
-
-<<MCI vamp2: main procedures>>
-
 end module mci_vamp2
 @ %def mci_vamp2
 @
@@ -13686,11 +13717,15 @@ We adjust the maximum number of bins [[n_bins_max]] according to [[n_calls]]
 
 @ %def mci_vamp2_declare_quivalences
 @ Allocate instance with matching type.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI vamp2: mci vamp2: TBP>>=
   procedure, public :: allocate_instance => mci_vamp2_allocate_instance
-<<MCI vamp2: main procedures>>=
-  subroutine mci_vamp2_allocate_instance (mci, mci_instance)
+<<MCI vamp2: sub interfaces>>=
+    module subroutine mci_vamp2_allocate_instance (mci, mci_instance)
+      class(mci_vamp2_t), intent(in) :: mci
+      class(mci_instance_t), intent(out), pointer :: mci_instance
+    end subroutine mci_vamp2_allocate_instance
+<<MCI vamp2: procedures>>=
+  module subroutine mci_vamp2_allocate_instance (mci, mci_instance)
     class(mci_vamp2_t), intent(in) :: mci
     class(mci_instance_t), intent(out), pointer :: mci_instance
     allocate (mci_vamp2_instance_t :: mci_instance)
@@ -14645,11 +14680,15 @@ with [[event_rescale_f_max]].
 
 @ %def mci_vamp2_instance_final
 @ Initializer.
-Gfortran 7/8/9 bug, has to remain in the main module:
 <<MCI vamp2: mci vamp2 instance: TBP>>=
   procedure, public :: init => mci_vamp2_instance_init
-<<MCI vamp2: main procedures>>=
-  subroutine mci_vamp2_instance_init (mci_instance, mci)
+<<MCI vamp2: sub interfaces>>=
+    module subroutine mci_vamp2_instance_init (mci_instance, mci)
+      class(mci_vamp2_instance_t), intent(out) :: mci_instance
+      class(mci_t), intent(in), target :: mci
+    end subroutine mci_vamp2_instance_init
+<<MCI vamp2: procedures>>=
+  module subroutine mci_vamp2_instance_init (mci_instance, mci)
     class(mci_vamp2_instance_t), intent(out) :: mci_instance
     class(mci_t), intent(in), target :: mci
     call mci_instance%base_init (mci)

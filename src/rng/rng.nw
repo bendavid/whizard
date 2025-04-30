@@ -976,10 +976,6 @@ module rng_tao
 <<RNG tao: sub interfaces>>
   end interface
 
-contains
-
-<<RNG tao: main procedures>>
-
 end module rng_tao
 @ %def rng_tao
 @
@@ -1176,13 +1172,16 @@ starting with zero.
   end subroutine rng_tao_factory_init
 
 @ %def rng_tao_factory_init
-@ Due to a bug of allocating polymorphic types with submodules in
-gfortran 7/8/9  (and maybe together with MPI) this needs to be in the
-module, not the submodule.
+@
 <<RNG tao: rng tao factory: TBP>>=
   procedure :: make => rng_tao_factory_make
-<<RNG tao: main procedures>>=
-  subroutine rng_tao_factory_make (factory, rng)
+<<RNG tao: sub interfaces>>=
+    module subroutine rng_tao_factory_make (factory, rng)
+      class(rng_tao_factory_t), intent(inout) :: factory
+      class(rng_t), intent(out), allocatable :: rng
+    end subroutine rng_tao_factory_make
+<<RNG tao: procedures>>=
+  module subroutine rng_tao_factory_make (factory, rng)
     class(rng_tao_factory_t), intent(inout) :: factory
     class(rng_t), intent(out), allocatable :: rng
     allocate (rng_tao_t :: rng)
@@ -1413,10 +1412,6 @@ module rng_stream
   interface
 <<RNG stream: sub interfaces>>
   end interface
-
-contains
-
-<<RNG stream: main procedures>>
 
 end module rng_stream
 @ %def rng_stream
@@ -1844,13 +1839,15 @@ larger set of number in the representation of real numbers.
 
 @ %def rng_stream_factory_init
 @ Allocate a new RNG and different stream states, accordingly.
-Due to a bug of allocating polymorphic types with submodules in
-gfortran 7/8/9  (and maybe together with MPI) this needs to be in the
-module, not the submodule.
 <<RNG stream: rng stream factory: TBP>>=
   procedure, public :: make => rng_stream_factory_make
-<<RNG stream: main procedures>>=
-  subroutine rng_stream_factory_make (factory, rng)
+<<RNG stream: sub interfaces>>=
+    module subroutine rng_stream_factory_make (factory, rng)
+      class(rng_stream_factory_t), intent(inout) :: factory
+      class(rng_t), intent(out), allocatable :: rng
+    end subroutine rng_stream_factory_make
+<<RNG stream: procedures>>=
+  module subroutine rng_stream_factory_make (factory, rng)
     class(rng_stream_factory_t), intent(inout) :: factory
     class(rng_t), intent(out), allocatable :: rng
     allocate (rng_stream_t :: rng)

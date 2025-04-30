@@ -158,15 +158,15 @@ AC_SUBST([FC_MAJOR_VERSION])
 
 ### Veto old versions of gfortran < 7.x
 if test "$wo_cv_fc_vendor" = "gfortran"; then
-  if test "$wo_cv_fc_major_version" = "4" -o "$wo_cv_fc_major_version" = "5" -o "$wo_cv_fc_major_version" = "6"; then
-    FC_IS_GFORTRAN_LT_9="yes"
+  if test "$wo_cv_fc_major_version" = "4" -o "$wo_cv_fc_major_version" = "5" -o "$wo_cv_fc_major_version" = "6" -o "$wo_cv_fc_major_version" = "7" -o "$wo_cv_fc_major_version" = "8" -o "$wo_cv_fc_major_version" = "9" -o "$wo_cv_fc_major_version" = "10"; then
+    FC_IS_GFORTRAN_LT_11="yes"
   else
-    FC_IS_GFORTRAN_LT_9="no"
+    FC_IS_GFORTRAN_LT_11="no"
   fi
 else
-  FC_IS_GFORTRAN_LT_9="no"
+  FC_IS_GFORTRAN_LT_11="no"
 fi
-AC_SUBST([FC_IS_GFORTRAN_LT_9])
+AC_SUBST([FC_IS_GFORTRAN_LT_11])
 AC_SUBST([FC_IS_NAG])
 
 ### Veto old versions of ifort < 21.x
@@ -192,11 +192,11 @@ AC_SUBST([FC_IS_IFORT21012])
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
 
-AC_DEFUN([WO_FC_VETO_GFORTRAN_LT_9],
+AC_DEFUN([WO_FC_VETO_GFORTRAN_LT_11],
 [dnl
-if test "$FC_IS_GFORTRAN_LT_9" = "yes"; then
+if test "$FC_IS_GFORTRAN_LT_11" = "yes"; then
 AC_MSG_NOTICE([error: ******************************************])
-AC_MSG_NOTICE([error: gfortran < 9.x is too old, please upgrade.])
+AC_MSG_NOTICE([error: gfortran < 11.x is too old, please upgrade.])
 AC_MSG_ERROR([******************************************])
 fi 
 ])
