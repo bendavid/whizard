@@ -48,10 +48,6 @@ module electron_pdfs
 <<Electron PDFs: sub interfaces>>
   end interface
 
-contains
-
-<<Electron PDFs: main procedures>>
-
 end module electron_pdfs
 @ %def electron_pdfs
 @
@@ -425,7 +421,7 @@ mapping parameter.
       integer, intent(in) :: order, n_f, nlep
       logical, intent(in) :: running
     end subroutine qed_pdf_allocate_aqed
-<<Electron PDFs: main procedures>>=
+<<Electron PDFs: procedures>>=
   module subroutine qed_pdf_allocate_aqed (qed, order, n_f, nlep, running)
     class(qed_pdf_t), intent(inout) :: qed
     integer, intent(in) :: order, n_f, nlep

@@ -58,10 +58,6 @@ module particle_specifiers
 <<Particle specifiers: sub interfaces>>
   end interface
 
-contains
-
-<<Particle specifiers: main procedures>>
-
 end module particle_specifiers
 @ %def particle_specifiers
 @
@@ -153,11 +149,15 @@ make variadic arrays.
 
 @ %def prt_expr_to_string
 @ Allocate the expression as a particle specifier and copy the value.
-Due to compiler bugs in gfortran 7-9 not in submodule.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: init_spec => prt_expr_init_spec
-<<Particle specifiers: main procedures>>=
-  subroutine prt_expr_init_spec (object, spec)
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_expr_init_spec (object, spec)
+      class(prt_expr_t), intent(out) :: object
+      type(prt_spec_t), intent(in) :: spec
+    end subroutine prt_expr_init_spec
+<<Particle specifiers: procedures>>=
+  module subroutine prt_expr_init_spec (object, spec)
     class(prt_expr_t), intent(out) :: object
     type(prt_spec_t), intent(in) :: spec
     allocate (prt_spec_t :: object%x)
@@ -169,12 +169,20 @@ Due to compiler bugs in gfortran 7-9 not in submodule.
 
 @ %def prt_expr_init_spec
 @ Allocate as a list/sum and allocate for a given length
-Due to compiler bugs in gfortran 7-9 not in submodule.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: init_list => prt_expr_init_list
   procedure :: init_sum => prt_expr_init_sum
-<<Particle specifiers: main procedures>>=
-  subroutine prt_expr_init_list (object, n)
+<<Particle specifiers: sub interfaces>>=
+    module subroutine prt_expr_init_list (object, n)
+      class(prt_expr_t), intent(out) :: object
+      integer, intent(in) :: n
+    end subroutine prt_expr_init_list
+    module subroutine prt_expr_init_sum (object, n)
+      class(prt_expr_t), intent(out) :: object
+      integer, intent(in) :: n
+    end subroutine prt_expr_init_sum
+<<Particle specifiers: procedures>>=
+  module subroutine prt_expr_init_list (object, n)
     class(prt_expr_t), intent(out) :: object
     integer, intent(in) :: n
     allocate (prt_spec_list_t :: object%x)
@@ -184,7 +192,7 @@ Due to compiler bugs in gfortran 7-9 not in submodule.
     end select
   end subroutine prt_expr_init_list
 
-  subroutine prt_expr_init_sum (object, n)
+  module subroutine prt_expr_init_sum (object, n)
     class(prt_expr_t), intent(out) :: object
     integer, intent(in) :: n
     allocate (prt_spec_sum_t :: object%x)
@@ -688,9 +696,13 @@ components as direct members of the current list.
 
 @ %def prt_spec_list_flatten
 @ Convert a list of sums into a sum of lists.  (Subexpressions which are not
-sums are left untouched.) Due to compiler bug in gfortran 7-9 not in submodule.
-<<Particle specifiers: main procedures>>=
-  subroutine distribute_prt_spec_list (object)
+sums are left untouched.)
+<<Particle specifiers: sub interfaces>>=
+    module subroutine distribute_prt_spec_list (object)
+      class(prt_spec_expr_t), intent(inout), allocatable :: object
+    end subroutine distribute_prt_spec_list
+<<Particle specifiers: procedures>>=
+  module subroutine distribute_prt_spec_list (object)
     class(prt_spec_expr_t), intent(inout), allocatable :: object
     class(prt_spec_expr_t), allocatable :: new_object
     integer, dimension(:), allocatable :: n, ii
@@ -883,11 +895,14 @@ Note that the precedence of comma and plus are opposite to this expansion, so
 the parentheses in the final expression are necessary.
 
 We assume that subexpressions are filled, i.e., arrays are allocated.
-Do to compiler bug in gfortran 7-9 not in submodule.
 <<Particle specifiers: prt expr: TBP>>=
   procedure :: expand => prt_expr_expand
-<<Particle specifiers: main procedures>>=
-  recursive subroutine prt_expr_expand (expr)
+<<Particle specifiers: sub interfaces>>=
+    recursive module subroutine prt_expr_expand (expr)
+      class(prt_expr_t), intent(inout) :: expr
+    end subroutine prt_expr_expand
+<<Particle specifiers: procedures>>=
+  recursive module subroutine prt_expr_expand (expr)
     class(prt_expr_t), intent(inout) :: expr
     if (allocated (expr%x)) then
        call distribute_prt_spec_list (expr%x)
