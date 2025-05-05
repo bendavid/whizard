@@ -386,8 +386,8 @@ AC_PROG_F77([$FC])
 ### Determine compiler vendor and version
 WO_FC_GET_VENDOR_AND_VERSION()
 
-### Veto against old gfortran < 9.x versions
-WO_FC_VETO_GFORTRAN_LT_9()
+### Veto against old gfortran < 11.x versions
+WO_FC_VETO_GFORTRAN_LT_11()
 
 ### Veto against old ifort < 21.x versions
 WO_FC_VETO_IFORT_LT_21()

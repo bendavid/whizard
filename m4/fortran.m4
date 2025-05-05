@@ -156,7 +156,7 @@ AC_CACHE_CHECK([the major version],
 FC_MAJOR_VERSION="$wo_cv_fc_major_version"
 AC_SUBST([FC_MAJOR_VERSION])
 
-### Veto old versions of gfortran < 7.x
+### Veto old versions of gfortran < 11.x
 if test "$wo_cv_fc_vendor" = "gfortran"; then
   if test "$wo_cv_fc_major_version" = "4" -o "$wo_cv_fc_major_version" = "5" -o "$wo_cv_fc_major_version" = "6" -o "$wo_cv_fc_major_version" = "7" -o "$wo_cv_fc_major_version" = "8" -o "$wo_cv_fc_major_version" = "9" -o "$wo_cv_fc_major_version" = "10"; then
     FC_IS_GFORTRAN_LT_11="yes"

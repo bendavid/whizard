@@ -905,7 +905,7 @@ You need the additional prerequisites:
   details).
 \item
   The \ocaml\ system.  \ocaml\ is a functional and object-oriented
-  language.  Version 4.02.3 or newer is required to compile all
+  language.  Version 4.11.0 or newer is required to compile all
   components of \whizard. The package is freely available either as a
   debian/RPM package on your system (it might be necessary to install
   it from the usual repositories), or you can obtain it directly from
@@ -920,7 +920,10 @@ You need the additional prerequisites:
     versions (3.11.x works). This has been fixed in versions
     2.0.3 and later. See also
     Sec.~\ref{sec:buildproblems}. \whizard\ versions up to 2.7.1 were
-    still backwards compatible with \ocaml\ 3.12.0}.
+    still backwards compatible with \ocaml\ 3.12.0. Until
+    \whizard\ version 2.8.1 With the start of \whizard\ series 3,
+    \ocaml\ 4.05.0 and newer had to be used until \whizard\ version
+    3.1.6, where \ocaml\ 4.08.0 or newer became mandatory.}. 
 \end{itemize}
 The following optional external packages are not required, but used
 for certain purposes.  Make sure to check whether you will need any of
@@ -1072,18 +1075,19 @@ subset of the \fortranOThree\ standard.  At the time of this writing,
 this subset is supported by, at least, the following compilers:
 \begin{itemize}
 \item
-  \ttt{gfortran} (GNU, Open Source).  You will need version 9.5.0
-  or higher~\footnote{Some versions 9.x.x before 9.5.0 do work, but some are
-  known to have problematic bugs or regressions. Note that
-  \whizard\ versions 2.0.0 until 2.3.1 compiled 
+  \ttt{gfortran} (GNU, Open Source).  You will need version 11.5.0
+  or higher~\footnote{Some versions 11.x.x before 11.5.0 do work, but
+  to be on the safe side we recommend not using anything older than
+  11.5.0. Note that \whizard\ versions 2.0.0 until 2.3.1 compiled 
   with \ttt{gfortran} 4.7.4, but the object-oriented
   refactoring of the \whizard\ code from 2.4.0 on until version 2.6.5
   made a switch to \ttt{gfortran} 4.8.4 or higher necessary. In the
   same way, since version 2.7.0, \ttt{gfortran} 5.1.0 or newer is
   needed, Before \whizard\ version 3.1.3, \ttt{gfortran} 7 and 8
-  could be used.}. 
+  could be used, while until \whizard\ version 3.1.6, \ttt{gfortran}
+  9 and 10 could be used.}. 
 \item
-  \ttt{nagfor} (NAG).  You will need version 7.1 or higher.
+  \ttt{nagfor} (NAG).  You will need version 7.2 or higher.
 \item
   \ttt{ifort} (Intel). You will need version 21.10 or
   higher
@@ -1267,6 +1271,8 @@ With version 2.8.1, \whizard\ supports both the "classical" version 2
 as well as the newly designed version 3 (release 2019). The configure
 step can successfully recognize the two  different versions, the user
 do not have to specify which version is installed.
+Note that from \whizard\ \texttt{v3.1.5+} on, both \hepmctwo\ and
+\hepmcthree\ can be linked in parallel.
 
 \hepmc\ is a \cpp\ class library for handling collider scattering
 events.  In particular, it provides a portable format for event files.
@@ -1341,9 +1347,6 @@ well as whether \hepmcthree\ has been built with support for the
 \ROOT\ and \ttt{RootTree} writer classes. This is an easy option to
 use \whizard\ to write out \ROOT\ events. For more information see
 Sec.~\ref{sec:root}.
-
-Note that from \whizard\ \texttt{v3.1.5+} on, both \hepmctwo\ and
-\hepmcthree\ can be linked in parallel.
 
 %%%%%
 
