@@ -1750,6 +1750,7 @@ end module pythia8_uti
     call pythia%read_string (var_str ("Beams:frameType = 5"))
     call pythia%read_string (var_str ("Random:setSeed = on"))
     call pythia%read_string (var_str ("Random:seed = 1234"))
+    call pythia%read_string (var_str ("PartonLevel:MPI = off"))
 
     write (u, "(A)")
     write (u, "(A)") &

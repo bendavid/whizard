@@ -1396,6 +1396,9 @@ If the \pythiaeight\ library is linked with the installation, \whizard\ will
 be able to use its hadronization and showering, once this is fully supported
 within \whizard.
 
+Note that it is expected that a version of \pythiaeight\ 8.160 or
+newer is expected to be linked.
+
 To link a \pythiaeight\ installation to \whizard, you should specify the flag
 \begin{quote}
 \ttt{--enable-pythia8}
@@ -1416,8 +1419,8 @@ configure:
 [....]
 checking for pythia8-config... /usr/local/bin/pythia8-config
 checking if PYTHIA8 is functional... yes
-checking PYTHIA8... yes
-configure: WARNING: PYTHIA8 configure is for testing purposes at the moment.
+checking for PYTHIA8... yes
+checking the PYTHIA8 version... 8.313
 configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
