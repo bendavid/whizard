@@ -15414,7 +15414,7 @@ relevant for a NLO algorithm.
     select type (core)
     class is (prc_external_t)
        call reduce_interaction (term%int_hard, &
-            core%includes_polarization (), .true., .false.)
+            core%includes_polarization (), .true., .true.)
        me_already_squared = .true.
        allocate (term%amp (term%int_hard%get_n_matrix_elements ()))
     class default
