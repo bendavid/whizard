@@ -55,6 +55,9 @@ contains
     integer, parameter :: scheme_gf_mw_mz = 2
     integer, parameter :: scheme_cms = 3
     integer, parameter :: scheme_complex_mass_scheme = 4
+    integer, parameter :: scheme_cms_1 = 5
+    integer, parameter :: scheme_cms_2 = 6
+    integer, parameter :: scheme_cms_3 = 7
     complex(default), dimension(27) :: cmass2, cmass
     complex(default) :: csin2thw, csinthw, ccos2thw, ccosthw
     integer :: i
@@ -136,7 +139,21 @@ contains
        cmass(i) = sqrt (cmass2(i))
     end do
     vev = par%v
-    e = par%ee
+    select case (scheme)
+    case (scheme_default, scheme_gf_mw_mz)
+       e = par%ee
+    case (scheme_cms, scheme_complex_mass_scheme)
+       e = par%ee
+    case (scheme_cms_1)
+       e = 2.0_default * sqrt(sqrt(2.0_default) * par%gf * &
+            real(cmass2(24)) * (1 - real(cmass2(24))/real(cmass2(23))))
+    case (scheme_cms_2)
+       e = 2.0_default * sqrt(sqrt(2.0_default) * par%gf * &
+            abs(cmass2(24) * (1 - cmass2(24)/cmass2(23))))
+    case (scheme_cms_3)
+       e = 2.0_default * sqrt(sqrt(2.0_default) * par%gf * &
+            real(cmass2(24)))
+    end select
     sinthw = par%sw
     sin2thw = par%sw**2
     costhw = par%cw
@@ -160,7 +177,7 @@ contains
        gnclep(2) = - g / 2 / costhw * ( - 0.5_default)
        gncup(2)  = - g / 2 / costhw * ( + 0.5_default)
        gncdwn(2) = - g / 2 / costhw * ( - 0.5_default)
-    case (scheme_cms, scheme_complex_mass_scheme)
+    case (scheme_cms, scheme_complex_mass_scheme, scheme_cms_1, scheme_cms_2, scheme_cms_3)
        gcc = - e / 2 / sqrt (2.0_default) / csinthw
        gncneu(1) = - e / 2 / csinthw / ccosthw * ( + 0.5_default)
        gnclep(1) = - e / 2 / csinthw / ccosthw * ( - 0.5_default - 2 * qelep * csin2thw)
@@ -186,7 +203,7 @@ contains
        gh4 = - 3 * mass(25)**2 / vev**2
        ghhww = g**2 / 2.0_default
        ghhzz = g**2 / 2.0_default / costhw**2
-    case (scheme_cms, scheme_complex_mass_scheme)
+    case (scheme_cms, scheme_complex_mass_scheme, scheme_cms_1, scheme_cms_2, scheme_cms_3)
        gzww = e * ccosthw / csinthw
        gwww = e / csinthw
        ghww = e * cmass(24) / csinthw
@@ -209,7 +226,7 @@ contains
        ghcc = - mass(4) / vev
        ghtautau = - mass(15) / vev
        ghmm = - mass(13) / vev
-    case (scheme_cms, scheme_complex_mass_scheme)
+    case (scheme_cms, scheme_complex_mass_scheme, scheme_cms_1, scheme_cms_2, scheme_cms_3)
        ghtt = - e * cmass(6) / 2 / cmass(24) / csinthw
        ghbb = - e * cmass(5) / 2 / cmass(24) / csinthw
        ghcc = - e * cmass(4) / 2 / cmass(24) / csinthw

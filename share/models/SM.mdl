@@ -1,7 +1,7 @@
 ########################################################################
 # Standard Model with trivial CKM matrix 
 model "SM"
-schemes = "default", "GF_MW_MZ", "CMS", "Complex_Mass_Scheme"
+schemes = "default", "GF_MW_MZ", "CMS", "Complex_Mass_Scheme", "CMS_1", "CMS_2", "CMS_3"
 
 # Independent parameters
 ### DO NOT CHANGE THE ORDER OF THESE PARAMETERS
