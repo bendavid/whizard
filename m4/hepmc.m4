@@ -154,7 +154,7 @@ dnl and HEPMC_LIBS are set
 AC_DEFUN([ACX_CHECK_HEPMC3],
 [
 dnl ckeck if a directory is specified for HepMC
-AC_ARG_WITH(HepMC,
+AC_ARG_WITH(hepmc,
             [AS_HELP_STRING([--with-hepmc=dir],
                             [assume the given directory for HepMC])])
 
