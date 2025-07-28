@@ -1,4 +1,4 @@
-%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: beams and beam structure
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Beams}
@@ -9959,6 +9959,7 @@ The status codes are public.
     if (object%qmax_defined) &
          write (u, "(3x,A,1x," // FMT_19 // ")")  "q_max     =", object%qmax
     call object%interaction_t%basic_write (u, testflag = testflag)
+    ! call object%interaction_t%basic_write (u, verbose = .true., testflag = testflag)
   end subroutine sf_int_base_write
 
 @ %def sf_int_base_write
@@ -12091,6 +12092,10 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
     if (chain%status >= SF_DONE_KINEMATICS) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
+             if (debug2_active (D_BEAMS)) then             
+                print *, "inside sf_chain_instance_evaluate"
+                print *, "size sf_chain = ", size (chain%sf)
+             end if
              do i_beam = 1, size (chain%sf)
                 associate (sf => chain%sf(i_beam))
                    if (rescale) then
@@ -12112,6 +12117,9 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
                          end select
                       end do
                    else
+                      if (debug2_active (D_BEAMS)) then                      
+                         print *, "applying sf%int%apply"
+                      end if
                       call sf%int%apply (scale, negative_sf, i_sub = n_sub)
                    end if
                    if (sf%int%status <= SF_FAILED_EVALUATION) then
@@ -12122,6 +12130,11 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
                 end associate
              end do
              out_int => chain%get_out_int_ptr ()
+             if (debug2_active (D_BEAMS)) then
+                print *, "out_int = "
+                call out_int%write_state_matrix ()
+                ! stop
+             end if
              sf_sum = real (out_int%sum ())
              call chain%config%trace &
                   (chain%selected_channel, chain%p, chain%x, chain%f, sf_sum)
@@ -17761,7 +17774,7 @@ otherwise.
       m2 = data%mass ** 2
       qminsq = max (x ** 2 / xb * data%mass ** 2, data%q_min ** 2)
       select case (data%mode)
-      case (0)
+      case (EPA_MODE_DEFAULT)
          qmaxsq = min (4 * xb * E ** 2, data%q_max ** 2)
          if (qminsq < qmaxsq) then
             f = data%a / x &
@@ -17772,7 +17785,7 @@ otherwise.
          else
             f = 0
          end if
-      case (1)
+      case (EPA_MODE_BUDNEV_616E)
          qmaxsq = min (4 * xb * E ** 2, data%q_max ** 2)
          if (qminsq < qmaxsq) then
             f = data%a / x &
@@ -17781,7 +17794,7 @@ otherwise.
          else
             f = 0
          end if
-      case (2)
+      case (EPA_MODE_LOG_POWER)
          qmaxsq = data%q_max ** 2
          if (data%mass ** 2 < qmaxsq) then
             f = data%a / x &
@@ -17790,7 +17803,7 @@ otherwise.
          else
             f = 0
          end if
-      case (3)
+      case (EPA_MODE_LOG_SIMPLE)
          qmaxsq = data%q_max ** 2
          if (data%mass ** 2 < qmaxsq) then
             f = data%a / x &
@@ -17799,7 +17812,7 @@ otherwise.
          else
             f = 0
          end if
-      case (4)
+      case (EPA_MODE_LOG)
          qmaxsq = data%q_max ** 2
          if (data%mass ** 2 < qmaxsq) then
             f = data%a / x &
@@ -18463,6 +18476,7 @@ submodule (sf_ewa) sf_ewa_s
   use physics_defs, only: W_BOSON, Z_BOSON
   use lorentz
   use colors
+  use helicities
 
   implicit none
 
@@ -18579,6 +18593,22 @@ to the common prefactors $g/2 = e/2/\sin\theta_W$.
 In principle, for EWA it would make sense to allow the user to also
 set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
 <<SF ewa: public>>=
+  public :: EWA_MODE_DEFAULT
+  public :: EWA_MODE_LOG
+  public :: EWA_MODE_LOG_PT
+  public :: EWA_MODE_LOG_NLP
+  public :: EWA_MODE_LEGACY
+<<SF ewa: parameters>>=
+  integer, parameter :: EWA_MODE_DEFAULT = 0
+  integer, parameter :: EWA_MODE_LOG = 1
+  integer, parameter :: EWA_MODE_LOG_PT = 2
+  integer, parameter :: EWA_MODE_LOG_NLP = 3
+  integer, parameter :: EWA_MODE_LEGACY = 99
+
+@ %def EWA_MODE_DEFAULT EWA_MODE_LOG EWA_MODE_LOG_NLP
+@ %def EWA_MODE_LOG_PT EWA_MODE_LEGACY
+@
+<<SF ewa: public>>=
   public :: ewa_data_t
 <<SF ewa: types>>=
   type, extends(sf_data_t) :: ewa_data_t
@@ -18600,6 +18630,8 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
      real(default) :: mW
      real(default) :: mZ
      real(default) :: coeff
+     logical :: beam_polarized = .false.
+     integer :: mode = EWA_MODE_DEFAULT
      logical :: mass_set = .false.
      logical :: recoil = .false.
      logical :: keep_energy = .false.
@@ -18625,29 +18657,33 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
 <<SF ewa: ewa data: TBP>>=
   procedure :: init => ewa_data_init
 <<SF ewa: sub interfaces>>=
-    module subroutine ewa_data_init (data, model, pdg_in, x_min, pt_max, &
-          sqrts, recoil, keep_energy, mass)
+    module subroutine ewa_data_init (data, model, mode, pdg_in, x_min, &
+          pt_max, sqrts, polarized, recoil, keep_energy, mass)
       class(ewa_data_t), intent(inout) :: data
       class(model_data_t), intent(in), target :: model
+      integer, intent(in) :: mode
       type(pdg_array_t), intent(in) :: pdg_in
       real(default), intent(in) :: x_min, pt_max, sqrts
-      logical, intent(in) :: recoil, keep_energy
+      logical, intent(in) :: polarized, recoil, keep_energy
       real(default), intent(in), optional :: mass
     end subroutine ewa_data_init
 <<SF ewa: procedures>>=
-  module subroutine ewa_data_init (data, model, pdg_in, x_min, pt_max, &
-        sqrts, recoil, keep_energy, mass)
+  module subroutine ewa_data_init (data, model, mode, pdg_in, x_min, &
+        pt_max, sqrts, polarized, recoil, keep_energy, mass)
     class(ewa_data_t), intent(inout) :: data
     class(model_data_t), intent(in), target :: model
+    integer, intent(in) :: mode
     type(pdg_array_t), intent(in) :: pdg_in
     real(default), intent(in) :: x_min, pt_max, sqrts
-    logical, intent(in) :: recoil, keep_energy
+    logical, intent(in) :: polarized, recoil, keep_energy
     real(default), intent(in), optional :: mass
     real(default) :: g, ee
     integer :: n_flv, i
     data%model => model
+    data%mode = mode
     if (.not. any (pdg_in .match. &
-         [1,2,3,4,5,6,11,13,15,-1,-2,-3,-4,-5,-6,-11,-13,-15])) then
+         [1,2,3,4,5,6,11,12,13,14,15,16, &
+         -1,-2,-3,-4,-5,-6,-11,-12,-13,-14,-15,-16])) then
        data%error = WRONG_PRT;  return
     end if
     n_flv = pdg_in%get_length ()
@@ -18658,6 +18694,7 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
     end do
     data%pt_max = pt_max
     data%sqrts = sqrts
+    data%beam_polarized = polarized
     data%x_min = x_min
     data%x_max = 1
     if (vanishes (data%x_min)) then
@@ -18718,7 +18755,11 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
     case (24)
        do i = 1, size (data%flv_in)
           pdg = data%flv_in(i)%get_pdg ()
-          isospin = data%flv_in(i)%get_isospin_type ()
+          if (data%model%is_ufo_model ()) then
+             isospin = data%sm_isospin (pdg)
+          else
+             isospin = data%flv_in(i)%get_isospin_type ()
+          end if
           if (isospin > 0) then
              !!! up-type quark or neutrinos
              if (data%flv_in(i)%is_antiparticle ()) then
@@ -18745,6 +18786,35 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
   end subroutine ewa_set_id
 
 @ %def ewa_set_id
+@ For UFO models, the isospin assigment used for the weak interactions
+is not available, so this has to be determined from the PDG numbers,
+assuming SM particle assigment for the SM fermions. (An alternative
+would be to fallback on the SM or hadronic SM model).
+<<SF ewa: ewa data: TBP>>=
+  procedure :: sm_isospin => ewa_data_sm_isospin
+<<SF ewa: sub interfaces>>=
+    module function ewa_data_sm_isospin &
+         (data, pdg) result (isospin)
+      class(ewa_data_t), intent(in) :: data
+      integer, intent(in) :: pdg
+      integer :: isospin
+    end function ewa_data_sm_isospin
+<<SF ewa: procedures>>=
+  module function ewa_data_sm_isospin &
+       (data, pdg) result (isospin)
+    class(ewa_data_t), intent(in) :: data
+    integer, intent(in) :: pdg
+    integer :: isospin
+    select case (pdg)
+    case (1,3,5,-2,-4,-6,11,13,15,-12,-14,-16)
+       isospin = -0.5_default
+    case (-1,-3,-5,2,4,6,-11,-13,-15,12,14,16)
+       isospin = 0.5_default
+    case default
+       isospin = 0
+    end select
+  end function ewa_data_sm_isospin
+@ %def ewa_data_sm_isospin
 @ Handle error conditions.  Should always be done after
 initialization, unless we are sure everything is ok.
 <<SF ewa: ewa data: TBP>>=
@@ -18823,6 +18893,7 @@ initialization, unless we are sure everything is ok.
        write (u, "(3x,A," // FMT_19 // ")") "  sinthw    = ", data%sinthw
        write (u, "(3x,A," // FMT_19 // ")") "  mZ        = ", data%mZ
        write (u, "(3x,A," // FMT_19 // ")") "  mW        = ", data%mW
+       write (u, "(3x,A,L2)")      "  beam pol. = ", data%beam_polarized
        write (u, "(3x,A,L2)")      "  recoil    = ", data%recoil
        write (u, "(3x,A,L2)")      "  keep en.  = ", data%keep_energy
        write (u, "(3x,A,I2)")      "  PDG (VB)  = ", data%id
@@ -18924,6 +18995,8 @@ to a down-type fermion, and the other way round.
      integer :: n_me = 0
      real(default), dimension(:), allocatable :: cv
      real(default), dimension(:), allocatable :: ca
+     logical, dimension(:), allocatable :: is_anti
+     logical, dimension(:), allocatable :: is_weyl
    contains
    <<SF ewa: ewa: TBP>>
   end type ewa_t
@@ -19001,11 +19074,18 @@ particles, therefore we need to probe only the first one.
     type(color_t) :: col0
     type(quantum_numbers_t) :: qn_hel, qn_z, qn_wp, qn_wm, qn, qn_rad, qn_w
     type(polarization_iterator_t) :: it_hel
-    integer :: i, isospin
+    type(helicity_t) :: hel
+    integer :: i, h, isospin
+    logical :: is_anti
     select type (data)
     type is (ewa_data_t)
-       mask = quantum_numbers_mask (.false., .false., &
-            mask_h = [.false., .false., .true.])
+       !!! This is a hack for the momentum to enable only for log_power
+       if (data%mode == EWA_MODE_LEGACY) then
+          mask = quantum_numbers_mask (.false., .false., &
+               mask_h = [.false., .false., .true.])
+       else
+          mask = quantum_numbers_mask (.false., .false., .false.)
+       end if
        hel_lock = [2, 1, 0]
        call col0%init ()
        select case (data%id)
@@ -19014,8 +19094,6 @@ particles, therefore we need to probe only the first one.
           call sf_int%base_init (mask, [data%mass**2], [data%mass**2], &
                [data%mZ**2], hel_lock = hel_lock)
           sf_int%data => data
-          call flv_z%init (Z_BOSON, data%model)
-          call qn_z%init (flv_z, col0)
           do i = 1, size (data%flv_in)
              call pol%init_generic (data%flv_in(i))
              call qn_fc(1)%init ( &
@@ -19027,7 +19105,18 @@ particles, therefore we need to probe only the first one.
                 qn = qn_hel .merge. qn_fc(1)
                 qn_rad = qn
                 call qn_rad%tag_radiated ()
-                call sf_int%add_state ([qn, qn_rad, qn_z])
+                if (data%mode /= EWA_MODE_LEGACY) then
+                   do h = -1, 1
+                      call hel%init (h)
+                      call flv_z%init (Z_BOSON, data%model)
+                      call qn_z%init (flv_z, col = col0, hel = hel)
+                      call sf_int%add_state ([qn, qn_rad, qn_z])
+                   end do
+                else
+                   call flv_z%init (Z_BOSON, data%model)
+                   call qn_z%init (flv_z, col0)
+                   call sf_int%add_state ([qn, qn_rad, qn_z])
+                end if
                 call it_hel%advance ()
              end do
              !  call pol%final ()
@@ -19038,25 +19127,13 @@ particles, therefore we need to probe only the first one.
           sf_int%data => data
           call flv_wp%init (W_BOSON, data%model)
           call flv_wm%init (- W_BOSON, data%model)
-          call qn_wp%init (flv_wp, col0)
-          call qn_wm%init (flv_wm, col0)
           do i = 1, size (data%flv_in)
-             isospin = data%flv_in(i)%get_isospin_type ()
-             if (isospin > 0) then
-                !!! up-type quark or neutrinos
-                if (data%flv_in(i)%is_antiparticle ()) then
-                   qn_w = qn_wm
-                else
-                   qn_w = qn_wp
-                end if
+             if (data%model%is_ufo_model ()) then
+                isospin = data%sm_isospin (data%flv_in(i)%get_pdg ())
              else
-                !!! down-type quark or lepton
-                if (data%flv_in(i)%is_antiparticle ()) then
-                   qn_w = qn_wp
-                else
-                   qn_w = qn_wm
-                end if
+                isospin = data%flv_in(i)%get_isospin_type ()
              end if
+             is_anti = data%flv_in(i)%is_antiparticle ()
              call pol%init_generic (data%flv_in(i))
              call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
@@ -19070,7 +19147,20 @@ particles, therefore we need to probe only the first one.
                 qn = qn_hel .merge. qn_fc(1)
                 qn_rad = qn_hel .merge. qn_fc_fin(1)
                 call qn_rad%tag_radiated ()
-                call sf_int%add_state ([qn, qn_rad, qn_w])
+                if (data%mode /= EWA_MODE_LEGACY) then
+                   do h = -1, 1
+                      call hel%init (h)
+                      call qn_wp%init (flv_wp, col = col0, hel = hel)
+                      call qn_wm%init (flv_wm, col = col0, hel = hel)
+                      qn_w = w_charge (isospin, is_anti, qn_wm, qn_wp)
+                      call sf_int%add_state ([qn, qn_rad, qn_w])
+                   end do
+                else
+                   call qn_wp%init (flv_wp, col0)
+                   call qn_wm%init (flv_wm, col0)
+                   qn_w = w_charge (isospin, is_anti, qn_wm, qn_wp)
+                   call sf_int%add_state ([qn, qn_rad, qn_w])
+                end if
                 call it_hel%advance ()
              end do
              ! call pol%final ()
@@ -19088,6 +19178,28 @@ particles, therefore we need to probe only the first one.
        call sf_int%set_radiated ([2])
        call sf_int%set_outgoing ([3])
     end select
+  contains
+    function w_charge (iso, anti, qwm, qwp) result (qw)
+      integer, intent(in) :: iso
+      logical, intent(in) :: anti
+      type(quantum_numbers_t), intent(in) :: qwm, qwp
+      type(quantum_numbers_t) :: qw
+      if (iso > 0) then
+         !!! up-type quark or neutrinos
+         if (anti) then
+            qw = qwm
+         else
+            qw = qwp
+         end if
+      else
+         !!! down-type quark or lepton
+         if (anti) then
+            qw = qwp
+         else
+            qw = qwm
+         end if
+      end if
+    end function w_charge
   end subroutine ewa_init
 
 @ %def ewa_init
@@ -19107,9 +19219,11 @@ the state matrix may be helicity-contracted.
     real(default) :: q, t3
     integer :: i
     sf_int%n_me = sf_int%get_n_matrix_elements ()
-    allocate (sf_int%cv (sf_int%n_me))
-    allocate (sf_int%ca (sf_int%n_me))
     associate (data => sf_int%data)
+      allocate (sf_int%cv (sf_int%n_me), sf_int%ca (sf_int%n_me))
+      allocate (sf_int%is_anti (sf_int%n_me), sf_int%is_weyl (sf_int%n_me))
+      sf_int%is_anti = .false.
+      sf_int%is_weyl = .false.
       select case (data%id)
       case (23)
          call it%init (sf_int%interaction_t%get_state_matrix_ptr ())
@@ -19117,11 +19231,17 @@ the state matrix may be helicity-contracted.
             i = it%get_me_index ()
             flv = it%get_flavor (1)
             q = flv%get_charge ()
-            t3 = flv%get_isospin ()
+            if (data%model%is_ufo_model ()) then
+               t3 = data%sm_isospin (flv%get_pdg ())
+            else
+               t3 = flv%get_isospin ()
+            end if
+            sf_int%is_weyl(i) = flv%is_left_handed () .or. flv%is_right_handed ()
             if (flv%is_antiparticle ()) then
                sf_int%cv(i) = - data%cv &
                     * (t3 - 2._default * q * data%sinthw**2) / data%costhw
                sf_int%ca(i) = data%ca *  t3 / data%costhw
+               sf_int%is_anti(i) = .true.
             else
                sf_int%cv(i) = data%cv &
                     * (t3 - 2._default * q * data%sinthw**2) / data%costhw
@@ -19134,9 +19254,11 @@ the state matrix may be helicity-contracted.
          do while (it%is_valid ())
             i = it%get_me_index ()
             flv = it%get_flavor (1)
+            sf_int%is_weyl(i) = flv%is_left_handed () .or. flv%is_right_handed ()
             if (flv%is_antiparticle ()) then
                sf_int%cv(i) = data%cv / sqrt(2._default)
                sf_int%ca(i) = - data%ca / sqrt(2._default)
+               sf_int%is_anti(i) = .true.
             else
                sf_int%cv(i) = data%cv / sqrt(2._default)
                sf_int%ca(i) = data%ca / sqrt(2._default)
@@ -19343,6 +19465,9 @@ need one.
 For obtaining splitting kinematics, we rely on the assumption that all
 in-particles are mass-degenerate (or there is only one), so the
 generated $x$ values are identical.
+
+We assume that neutrinos only appear as unique beam particles and not
+as constituents of a e.g. proton PDF.
 <<SF ewa: ewa: TBP>>=
   procedure :: apply => ewa_apply
 <<SF ewa: sub interfaces>>=
@@ -19360,41 +19485,195 @@ generated $x$ values are identical.
     logical, intent(in), optional :: negative_sf
     class(sf_rescale_t), intent(in), optional :: rescale
     integer, intent(in), optional :: i_sub
-    real(default) :: x, xb, pt2, c1, c2
-    real(default) :: cv, ca
-    real(default) :: f, fm, fp, fL
-    integer :: i
+    real(default) :: mu, x, xb, mV2, c1, c2
+    real(default) :: cv, ca, gL, gR
+    real(default) :: f, fm, fp, f0
+    real(default) :: fL_m, fL_p, fL_0, fR_m, fR_p, fR_0
+    real(default) :: fL0_m, fL0_p, fL0_0, fR0_m, fR0_p, fR0_0
+    real(default) :: eV
+    integer :: i, j
     associate (data => sf_int%data)
       x  = sf_int%x
       xb = sf_int%xb
-      pt2 = min ((data%pt_max)**2, (xb * data%sqrts / 2)**2)
-      select case (data%id)
-      case (23)
-         !!! Z boson structure function
-         c1 = log (1 + pt2 / (xb * (data%mZ)**2))
-         c2 = 1 / (1 + (xb * (data%mZ)**2) / pt2)
+      if (vanishes (data%pt_max)) then
+         mu = scale
+      else
+         mu = data%pt_max
+      end if
+      select case (data%id)         
+      case (23)         
+         mV2 = data%mZ**2
       case (24)
-         !!! W boson structure function
-         c1 = log (1 + pt2 / (xb * (data%mW)**2))
-         c2 = 1 / (1 + (xb * (data%mW)**2) / pt2)
+         mV2 = data%mW**2
+      case (default)
+         mV2 = 0
       end select
+      select case (data%mode)
+      case (EWA_MODE_LEGACY)
+         mu = min (mu, xb * data%sqrts / 2)
+         c1 = log (1 + mu**2 / (xb * mV2))
+         c2 = 1 / (1 + (xb * mV2) / mu**2)
+      case (EWA_MODE_DEFAULT)
+         c1 = log (1 + mu**2 / (xb * mV2))
+         c2 = 1 / (1 + (xb * mV2) / mu**2)
+      case (EWA_MODE_LOG)
+         c1 = log (mu**2 / mV2)
+         c2 = 0
+      case (EWA_MODE_LOG_PT)
+         c1 = log (mu**2 / (xb * mV2))
+         c2 = 0
+      case default
+         c1 = log (1 + mu**2 / (xb * mV2))
+         c2 = 1 / (1 + (xb * mV2) / mu**2)
+      end select
+      if (debug2_active (D_BEAMS)) then
+         print *, "########################"
+         print *, "# MEs: ", sf_int%n_me
+      end if
       do i = 1, sf_int%n_me
          cv = sf_int%cv(i)
          ca = sf_int%ca(i)
-         fm = data%coeff * &
-              ((cv + ca)**2 + ((cv - ca) * xb)**2) * (c1 - c2) / (2 * x)
-         fp = data%coeff * &
-              ((cv - ca)**2 + ((cv + ca) * xb)**2) * (c1 - c2) / (2 * x)
-         fL = data%coeff * &
-              (cv**2 + ca**2) * (2 * xb / x) * c2
-         f = fp + fm + fL
-         if (.not. vanishes (f)) then
-            fp = fp / f
-            fm = fm / f
-            fL = fL / f
+         gL = cv + ca
+         gR = cv - ca
+         select case (data%mode)
+         case (EWA_MODE_LEGACY)
+            fp = data%coeff * &
+                 (gR**2 + (gL * xb)**2) * (c1 - c2) / (2 * x)
+            fm = data%coeff * &
+                 (gL**2 + (gR * xb)**2) * (c1 - c2) / (2 * x)
+            f0 = data%coeff * &
+                 (cv**2 + ca**2) * (2 * xb / x) * c2
+         case (EWA_MODE_DEFAULT)
+            fL_p = data%coeff * (gL * xb)**2 * (c1 - c2) / x
+            fL_m = data%coeff * gL**2 * (c1 - c2) / x
+            fL_0 = data%coeff * gL**2 * (2 * xb / x) * c2
+            fR_p = data%coeff * gR**2 * (c1 - c2) / x
+            fR_m = data%coeff * (gR * xb)**2 * (c1 - c2) / x
+            fR_0 = data%coeff * gR**2 * (2 * xb / x) * c2
+            !!! Summing over initial fermion helicities
+            !!!   (averaging factor is taken into account in initial
+            !!!    state density matrix)
+            fp = fL_p + fR_p
+            fm = fL_m + fR_m
+            f0 = fL_0 + fR_0
+         case (EWA_MODE_LOG_NLP)
+            eV = energy (sf_int%get_momentum (3))
+            fL0_p = data%coeff * (gL * xb)**2 * (c1 - c2) / x
+            fL0_m = data%coeff * gL**2 * (c1 - c2) / x
+            fL0_0 = data%coeff * gL**2 * (2 * xb / x) * c2
+            fR0_p = data%coeff * gR**2 * (c1 - c2) / x
+            fR0_m = data%coeff * (gR * xb)**2 * (c1 - c2) / x
+            fR0_0 = data%coeff * gR**2 * (2 * xb / x) * c2
+            !!! Going from LP to NLP
+            fL_p = fL0_p * (1 - (1+xb)/xb * mV2 / eV**2) - &
+                 mu**2/4/eV**2 * (1+xb) * fL0_0
+            fR_p = fR0_p * (1 - (1+xb)/xb * mV2 / eV**2) - &
+                 mu**2/4/eV**2 * (1+xb) * fR0_0
+            fL_m = fL0_m * (1 - (1+xb) * mV2 / eV**2) - &
+                 mu**2/4/eV**2 * (1+xb)/xb * fL0_0
+            fR_m = fR0_m * (1 - (1+xb) * mV2 / eV**2) - &
+                 mu**2/4/eV**2 * (1+xb)/xb * fR0_0
+            fL_0 = fL0_0 - mV2 / 2 / eV**2 * (fL0_p + fL0_m)
+            fR_0 = fR0_0 - mV2 / 2 / eV**2 * (fR0_p + fR0_m)
+            !!! Summing over initial fermion helicities
+            !!!   (averaging factor is taken into account in initial
+            !!!    state density matrix)
+            fp = fL_p + fR_p
+            fm = fL_m + fR_m
+            f0 = fL_0 + fR_0
+         case default
+            fL_p = data%coeff * (gL * xb)**2 * c1 / x
+            fL_m = data%coeff * gL**2 * c1 / x
+            fL_0 = data%coeff * gL**2 * (2 * xb / x)
+            fR_p = data%coeff * gR**2 * c1 / x
+            fR_m = data%coeff * (gR * xb)**2 * c1 / x
+            fR_0 = data%coeff * gR**2 * (2 * xb / x)
+            !!! Summing over initial fermion helicities
+            !!!   (averaging factor is taken into account in initial
+            !!!    state density matrix)
+            fp = fL_p + fR_p
+            fm = fL_m + fR_m
+            f0 = fL_0 + fR_0
+         end select
+         f = fp + fm + f0
+         if (debug2_active (D_BEAMS)) then
+            print *, "gR = ", gR
+            print *, "gL = ", gL
+            print *, "x  = ", x
+            print *, "xb = ", xb
+            print *, "g/2= ", data%cv            
+            print *, "ptmax=", data%pt_max
+            print *, "scale=", scale
+            print *, "mW = ", data%mW
+            if (data%beam_polarized) then
+               print *, "is_anti = ", sf_int%is_anti (i)
+               print *, "fL_p = ", fL_p
+               print *, "fL_0 = ", fL_0
+               print *, "fL_m = ", fL_m
+               print *, "fR_p = ", fR_p
+               print *, "fR_0 = ", fR_0
+               print *, "fR_m = ", fR_m
+            else
+               print *, "is_anti = ", sf_int%is_anti (i)
+               print *, "fp = ", fp
+               print *, "f0 = ", f0
+               print *, "fm = ", fm
+            end if
          end if
-         call sf_int%set_matrix_element (i, cmplx (f, kind=default))
+         if (data%mode /= EWA_MODE_LEGACY) then
+            if (sf_int%is_weyl (i)) then
+               select case (mod (i, 3))
+               case (1)
+                  !!! Helicity -1, fm
+                  call sf_int%set_matrix_element (i, cmplx (fm, kind=default))
+               case (2)
+                  !!! Helicity 0, f0
+                  call sf_int%set_matrix_element (i, cmplx (f0, kind=default))
+               case (0)
+                  !!!  Helicity +1, fp
+                  call sf_int%set_matrix_element (i, cmplx (fp, kind=default))
+               end select
+            else if (data%beam_polarized) then
+               select case (mod (i, 6))
+               case (1)
+                  !!! Helicity -1, fm
+                  call sf_int%set_matrix_element (i, cmplx (fL_m, kind=default))
+               case (2)
+                  !!! Helicity 0, f0
+                  call sf_int%set_matrix_element (i, cmplx (fL_0, kind=default))
+               case (3)
+                  !!! Helicity +1, fp
+                  call sf_int%set_matrix_element (i, cmplx (fL_p, kind=default))
+               case (4)
+                  !!! Helicity -1, fm
+                  call sf_int%set_matrix_element (i, cmplx (fR_m, kind=default))
+               case (5)
+                  !!! Helicity 0, f0
+                  call sf_int%set_matrix_element (i, cmplx (fR_0, kind=default))
+               case (0)
+                  !!!  Helicity +1, fp
+                  call sf_int%set_matrix_element (i, cmplx (fR_p, kind=default))
+               end select
+            else
+               select case (mod (i, 3))
+               case (1)
+                  !!! Helicity -1, fm
+                  call sf_int%set_matrix_element (i, cmplx (fm, kind=default))
+               case (2)
+                  !!! Helicity 0, f0
+                  call sf_int%set_matrix_element (i, cmplx (f0, kind=default))
+               case (0)
+                  !!!  Helicity +1, fp
+                  call sf_int%set_matrix_element (i, cmplx (fp, kind=default))
+               end select
+            end if
+         else
+            call sf_int%set_matrix_element (i, cmplx (f, kind=default))
+         end if
       end do
+      if (debug2_active (D_BEAMS)) then
+         call sf_int%interaction_t%write_state_matrix ()
+      end if
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine ewa_apply
@@ -19496,8 +19775,9 @@ Construct and display a test structure function data object.
 
     select type (data)
     type is (ewa_data_t)
-       call data%init (model, pdg_in, 0.01_default, &
-            500._default, 5000._default, .false., .false.)
+       call data%init (model, EWA_MODE_LEGACY, pdg_in, &
+            0.01_default, 500._default, 5000._default, &
+            .false., .false., .false.)
        call data%set_id (23)
     end select
 
@@ -19518,8 +19798,9 @@ Construct and display a test structure function data object.
     allocate (ewa_data_t :: data)
     select type (data)
     type is (ewa_data_t)
-       call data%init (model, pdg_in, 0.01_default, &
-            500._default, 5000._default, .false., .false.)
+       call data%init (model, EWA_MODE_LEGACY, pdg_in, &
+             0.01_default, 500._default, 5000._default, &
+            .false., .false., .false.)
        call data%set_id (24)
     end select
 
@@ -19581,8 +19862,9 @@ structure function.
     allocate (ewa_data_t :: data)
     select type (data)
     type is (ewa_data_t)
-       call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000._default, .false., .true.)
+       call data%init (model, EWA_MODE_LEGACY, pdg_in, &
+             0.01_default, 500._default, 3000._default, &
+            .false., .false., .true.)
        call data%set_id (24)
     end select
 
@@ -19709,8 +19991,9 @@ structure function, applying the standard single-particle mapping.
     allocate (ewa_data_t :: data)
     select type (data)
     type is (ewa_data_t)
-       call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000._default, .false., .true.)
+       call data%init (model, EWA_MODE_LEGACY, pdg_in, &
+             0.01_default, 500._default, 3000._default, &
+            .false., .false., .true.)
        call data%set_id (24)
     end select
 
@@ -19837,8 +20120,9 @@ structure function.
     allocate (ewa_data_t :: data)
     select type (data)
     type is (ewa_data_t)
-       call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000.0_default, .true., .true.)
+       call data%init (model, EWA_MODE_LEGACY, pdg_in, &
+             0.01_default, 500._default, 3000.0_default, &
+            .false., .true., .true.)
        call data%set_id (24)
     end select
 
@@ -19966,8 +20250,9 @@ non-uniform quantum numbers.
     allocate (ewa_data_t :: data)
     select type (data)
     type is (ewa_data_t)
-       call data%init (model, pdg_in, 0.01_default, &
-            500._default, 3000._default, .false., .true.)
+       call data%init (model, EWA_MODE_LEGACY, pdg_in, &
+             0.01_default, 500._default, 3000._default, &
+            .false., .false., .true.)
        call data%set_id (24)
     end select
 
@@ -27696,8 +27981,8 @@ flavors (beam index, component index) for the hard process.
     logical :: isr_recoil, isr_keep_energy
     real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_q_max, epa_mass
     logical :: epa_recoil, epa_keep_energy
-    integer :: epa_int_mode
-    type(string_t) :: epa_mode
+    integer :: epa_int_mode, ewa_int_mode
+    type(string_t) :: epa_mode, ewa_mode
     real(default) :: ewa_x_min, ewa_pt_max, ewa_mass
     logical :: ewa_recoil, ewa_keep_energy
     type(pdg_array_t), dimension(:), allocatable :: pdg_prc1
@@ -27839,17 +28124,17 @@ flavors (beam index, component index) for the hard process.
        end if
        select case (char (epa_mode))
        case ("default", "Budnev_617")
-          epa_int_mode = 0
+          epa_int_mode = EPA_MODE_DEFAULT
        case ("Budnev_616e")
-          epa_int_mode = 1
+          epa_int_mode = EPA_MODE_BUDNEV_616E
        case ("log_power")
-          epa_int_mode = 2
+          epa_int_mode = EPA_MODE_LOG_POWER
           epa_q_max = sqrts
        case ("log_simple")
-          epa_int_mode = 3
+          epa_int_mode = EPA_MODE_LOG_SIMPLE
           epa_q_max = sqrts
        case ("log")
-          epa_int_mode = 4
+          epa_int_mode = EPA_MODE_LOG
           epa_q_max = sqrts
        case default
           call msg_fatal ("EPA: unsupported EPA mode; please choose " // &
@@ -27869,6 +28154,8 @@ flavors (beam index, component index) for the hard process.
        end select
     case ("ewa")
        allocate (ewa_data_t :: data)
+       ewa_mode = var_list%get_sval (var_str ("$ewa_mode"))
+       ewa_int_mode = 0
        allocate (pdg_prc1 (size (pdg_prc, 2)))
        pdg_prc1 = pdg_prc(i_beam(1),:)
        if (any (pdg_prc1%get_length () /= 1) &
@@ -27879,9 +28166,22 @@ flavors (beam index, component index) for the hard process.
        ewa_id = abs (pdg_prc1(1)%get (1))
        ewa_x_min = var_list%get_rval (var_str ("ewa_x_min"))
        ewa_pt_max = var_list%get_rval (var_str ("ewa_pt_max"))
-       if (vanishes (ewa_pt_max)) then
-          ewa_pt_max = sqrts
-       end if
+       select case (char (ewa_mode))
+       case ("default")
+          ewa_int_mode = EWA_MODE_DEFAULT
+       case ("log")
+          ewa_int_mode = EWA_MODE_LOG
+       case ("log_pt")
+          ewa_int_mode = EWA_MODE_LOG_PT
+       case ("log_nlp")
+          ewa_int_mode = EWA_MODE_LOG_NLP
+       case ("legacy")
+          ewa_int_mode = EWA_MODE_LEGACY
+       case default
+          call msg_fatal ("EWA: unsupported EWA mode; please choose " // &
+               "'default', 'legacy', 'log', 'log_nlp', or " // &
+               "'log_pt'")
+       end select
        ewa_mass = var_list%get_rval (var_str ("ewa_mass"))
        ewa_recoil = var_list%get_lval (&
             var_str ("?ewa_recoil"))
@@ -27890,8 +28190,8 @@ flavors (beam index, component index) for the hard process.
        select type (data)
        type is (ewa_data_t)
           call data%init &
-               (model, pdg_in (i_beam(1)), ewa_x_min, &
-               ewa_pt_max, sqrts, ewa_recoil, &
+               (model, ewa_int_mode, pdg_in (i_beam(1)), ewa_x_min, &
+               ewa_pt_max, sqrts, polarized, ewa_recoil, &
                ewa_keep_energy, ewa_mass)
           call data%set_id (ewa_id)
           call data%check ()

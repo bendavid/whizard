@@ -34,5 +34,7 @@ integrate (ewa_1_p1, ewa_1_p2) { iterations = 3:n:"g", 3:n }
 beams = "e-", "e+" => ewa
 ewa_x_min = 0.01
 ewa_mass = me
+ewa_pt_max = sqrts
+$ewa_mode = "legacy"
 integrate (ewa_1_p3, ewa_1_p4) { iterations = 5:n:"g", 3:n }
 

@@ -46,6 +46,8 @@ beams = p, Wp => pdf_builtin, none
 integrate (ep_3_q2)
 
 ewa_x_min = 0.01
+ewa_pt_max = sqrts
+$ewa_mode = "legacy"
 
 beams = "e+", p => ewa, pdf_builtin
 integrate (ep_3_p3)

@@ -30,6 +30,8 @@ int n = 1000
 
 ewa_x_min = 0.01
 ewa_mass = me
+ewa_pt_max = sqrts
+$ewa_mode = "legacy"
 
 beams = "e-", "e+" => circe1 => ewa
 $circe1_acc = "TESLA"

@@ -1,5 +1,5 @@
 #!/bin/sh
-### Check WHIZARD/O'Mega Circe/EPA setup
+### Check WHIZARD/O'Mega EWA setup
 echo "Running script $0"
 if test -f OCAML_FLAG; then
     script=`basename @script@`

@@ -210,6 +210,8 @@ Warning:  Phase space: Initial beam particle can decay
    1        100     7.934E+04   2.26E+04   28.46    2.85    15.6
 |=============================================================================|
 ewa_x_min =  1.00000E-02
+ewa_pt_max =  1.00000E+03
+$ewa_mode = "legacy"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process ep_3_p3:

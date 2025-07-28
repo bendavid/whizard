@@ -1,0 +1,70 @@
+# SINDARIN input for WHIZARD self-test
+# to test the different modes of the EVA
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+$method = "omega"
+process ewa_5a_p1 = Wp, Wm => t, tbar
+process ewa_5a_p2 = Z, Z => t, tbar
+process ewa_5b_p1 = Wp, Wm => t, tbar
+process ewa_5b_p2 = Z, Z => t, tbar
+process ewa_5c_p1 = Wp, Wm => t, tbar
+process ewa_5c_p2 = Z, Z => t, tbar
+process ewa_5d_p1 = Wp, Wm => t, tbar
+process ewa_5d_p2 = Z, Z => t, tbar
+
+compile
+
+$phs_method = "wood"
+$integration_method = "vamp"
+
+sqrts = 3000
+
+iterations = 1:1000
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+mmu = 0
+ewa_mass = 105.6 MeV
+ewa_x_min = 0.01
+
+beams = E2, e2 => ewa
+
+seed = 0
+$epa_mode = "default"
+integrate (ewa_5a_p1,ewa_5a_p2)
+seed = 0
+$epa_mode = "log_pt"
+integrate (ewa_5b_p1,ewa_5b_p2)
+seed = 0
+$epa_mode = "log"
+integrate (ewa_5c_p1,ewa_5c_p2)
+seed = 0
+$epa_mode = "log_nlp"
+integrate (ewa_5d_p1,ewa_5d_p2)
+seed = 0
+
+?keep_beams = true
+?keep_remnants = true
+
+$sample = "ewa_5a"
+sample_format = lhef
+simulate (ewa_5a_p1,ewa_5a_p2) { n_events = 2 }
+
+$sample = "ewa_5b"
+sample_format = lhef
+simulate (ewa_5b_p1,ewa_5b_p2) { n_events = 2 }
+
+$sample = "ewa_5c"
+sample_format = lhef
+simulate (ewa_5c_p1,ewa_5c_p2) { n_events = 2 }
+
+$sample = "ewa_5d"
+sample_format = lhef
+simulate (ewa_5d_p1,ewa_5d_p2) { n_events = 2 }
+

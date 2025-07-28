@@ -112,6 +112,8 @@ openmp_num_threads = 1
 |=============================================================================|
 ewa_x_min =  1.00000E-02
 ewa_mass =  5.10997E-04
+ewa_pt_max =  3.00000E+03
+$ewa_mode = "legacy"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process ewa_1_p3:

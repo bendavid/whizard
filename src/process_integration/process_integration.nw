@@ -1912,7 +1912,7 @@ we have to not consider [[sub]] as a quantum number.
     if (debug2_active (D_PROCESS_INTEGRATION)) then
        call src_int%basic_write ()
     end if
-
+    
     call state%trace%init_product (src_int, isolated%trace, &
          qn_mask_conn = mask, &
          qn_mask_rest = mask, &

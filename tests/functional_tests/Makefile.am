@@ -286,6 +286,7 @@ TESTS_REQ_OCAML = \
     ewa_2.run \
     ewa_3.run \
     ewa_4.run \
+    ewa_5.run \
     isr_1.run \
     isr_2.run \
     isr_3.run \

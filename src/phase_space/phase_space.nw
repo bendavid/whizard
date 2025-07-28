@@ -30586,7 +30586,11 @@ structure-function chain.
     case ("pdf_builtin, none => none, pdf_builtin => epa, none => none, epa", &
           "pdf_builtin, none => none, pdf_builtin => ewa, none => none, ewa", &
           "pdf_builtin, none => none, pdf_builtin => ewa, none => none, epa", &
-          "pdf_builtin, none => none, pdf_builtin => epa, none => none, ewa")
+          "pdf_builtin, none => none, pdf_builtin => epa, none => none, ewa", &
+          "lhapdf, none => none, lhapdf => epa, none => none, epa", &
+          "lhapdf, none => none, lhapdf => ewa, none => none, ewa", &
+          "lhapdf, none => none, lhapdf => ewa, none => none, epa", &
+          "lhapdf, none => none, lhapdf => epa, none => none, ewa")
        allocate (s_mapping (2), source = [1, 2])
        s_mapping_enable = .true.
        s_mapping_power = 2

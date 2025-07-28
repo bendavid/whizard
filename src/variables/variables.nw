@@ -3918,7 +3918,7 @@ procedure with type [[V_NONE]].
           description=var_str ('For the equivalent photon approximation ' // &
           '(EPA), this string variable defines the mode, i.e. the explicit ' // &
           'formula for the EPA distribution. For more details cf. the manual. ' // &
-          'Possible are \ttt{default} (\ttt{Budnev\_617}), \ttt{Budnev\_616e}, ' // &
+          'Possible are \ttt{default}, \ttt{Budnev\_617}), \ttt{Budnev\_616e}, ' // &
           '\ttt{log\_power}, \ttt{log\_simple}, and \ttt{log}. ' // &
           '(cf. also \ttt{epa}, \ttt{epa\_x\_min}, \ttt{epa\_mass}, \ttt{epa\_e\_max}, ' // &
           '\ttt{epa\_q\_min}, \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, ' // &
@@ -4016,6 +4016,15 @@ procedure with type [[V_NONE]].
           '(EWA). If not set, the mass for the initial beam particle is ' // &
           'taken from the model in use. (cf. also \ttt{ewa}, \ttt{ewa\_x\_min}, ' // &
           '\ttt{ewa\_pt\_max}, \ttt{?ewa\_keep\_energy}, \ttt{?ewa\_recoil})'))
+    call var_list%append_string (var_str ("$ewa_mode"), &
+          var_str ("default"), intrinsic=.true., &
+          description=var_str ('For the equivalent W approximation ' // &
+          '(EWA), this string variable defines the mode, i.e. the explicit ' // &
+          'formula for the EWA distribution. For more details cf. the manual. ' // &
+          'Possible are \ttt{default}, \ttt{log\_power}, \ttt{log\_simple}, ' // &
+          '\ttt{log}, and \ttt{log\_scale} (cf. also \ttt{ewa}, \ttt{ewa\_x\_min}, ' // &
+          '\ttt{ewa\_mass},  \ttt{?epa\_recoil}, \ttt{?epa\_keep\_energy}, ' // &
+          '\ttt{?epa\_handler}, \ttt{\$epa\_handler\_mode})'))
     call var_list%append_log (var_str ("?ewa_recoil"), .false., &
          intrinsic=.true., &
          description=var_str ('For the equivalent $W$ approximation (EWA), ' // &

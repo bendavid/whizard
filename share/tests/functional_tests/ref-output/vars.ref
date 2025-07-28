@@ -259,6 +259,7 @@ $pdf_builtin_set = "CTEQ6L"
 $isr_handler_mode = "trivial"
 $epa_mode = "default"
 $epa_handler_mode = "trivial"
+$ewa_mode = "default"
 $circe1_acc = "SBAND"
 [undefined] $circe2_file = [unknown string]
 $circe2_design = "*"

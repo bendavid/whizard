@@ -27,7 +27,8 @@ openmp_num_threads = 1
 int n = 1000
 
 beams = p, p => pdf_builtin => ewa
-ewa_x_min = 0.01
+ewa_x_min = 0.1
 ewa_mass = 0
+$ewa_mode = "legacy"
 n = 1000
 integrate (ewa_4_p1, ewa_4_p2) { iterations = 5:n:"g", 3:n }

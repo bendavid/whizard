@@ -678,6 +678,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/event_weights_1.ref \
     functional_tests/ref-output/event_weights_2.ref \
     functional_tests/ref-output/ewa_4.ref \
+    functional_tests/ref-output/ewa_5.ref \
     functional_tests/ref-output/extpar.ref \
     functional_tests/ref-output/fatal.ref \
     functional_tests/ref-output/fatal_beam_decay.ref \
@@ -1221,6 +1222,7 @@ MISC_TESTS_SIN = \
     functional_tests/ewa_2.sin \
     functional_tests/ewa_3.sin \
     functional_tests/ewa_4.sin \
+    functional_tests/ewa_5.sin \
     functional_tests/extpar.sin \
     functional_tests/fatal.sin \
     functional_tests/fatal_beam_decay.sin \

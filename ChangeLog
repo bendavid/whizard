@@ -4,6 +4,12 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.6.1
 
+2025-07-28
+	Major overhaul of EVA (equivalent vector boson approx.):
+	- revalidation of structure functions from Whizard v1.91
+	- EVA is available for polarized lepton beams
+	- Different EVA modes/approximations avail. (2507.19285)
+
 2025-07-01
 	Different variants of complex-mass scheme for O'Mega SM
 

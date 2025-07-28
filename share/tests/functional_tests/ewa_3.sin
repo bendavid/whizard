@@ -34,5 +34,7 @@ circe1_eps = 1e-5
 ?circe1_map = true
 ewa_x_min = 0.01
 ewa_mass = me
+ewa_pt_max = sqrts
+$ewa_mode = "legacy"
 n = 1000
 integrate (ewa_3_p1, ewa_3_p2) { iterations = 5:n:"g", 3:n }

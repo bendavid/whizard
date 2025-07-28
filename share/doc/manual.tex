@@ -6797,6 +6797,8 @@ adjusted when using the EPA inside \whizard:
 
 \centerline{\begin{tabular}{|l|l|l|}\hline
 Parameter & Default & Meaning \\\hline\hline
+\ttt{\$epa\_mode} & \ttt{default} & analytic form of EPA structure function
+\\\hline
 \ttt{epa\_alpha} & \ttt{0}/intrinsic & value of $\alpha_{QED}$ for EPA
 \\\hline
 \ttt{epa\_x\_min} & \ttt{0.} & soft photon cutoff in $x$ (mandatory)
@@ -6863,13 +6865,16 @@ found in Chap.~\ref{chap:hardint}.
 
 %%%%%%%%%%%%%%%
 
-\subsection{Effective $W$ approximation}
+\subsection{Equivalent Vector Boson approximation}
 \label{sec:ewa}
 
 An approach similar to the equivalent photon approximation (EPA)
 discussed in the previous section Sec.~\ref{sec:epa}, is the usage
 of a collinear splitting function for the radiation of massive
-electroweak vector bosons $W$/$Z$, the effective $W$ approximation
+electroweak vector bosons $W$/$Z$, the equivalent or effective
+vector-boson approximation (EVA). Though it comprises both $W$ and $Z$
+as on-shell partons within fermions, for historic reasons, in the code
+it is dubbed the effective $W$ approximation
 (EWA). It has been developed for the
 description of high-energy weak vector-boson fusion and scattering
 processes at hadron colliders, particularly the Superconducting
@@ -6885,6 +6890,9 @@ also different for transversal and longitudinal polarizations. Also, a
 truely collinear kinematics is never possible due to the finite $W$
 and $Z$ boson masses, which start becoming more and more negligible
 for energies larger than the nominal LHC energy of 14 TeV.
+
+For more details on the simulation of the EVA/EWA,
+cf.~\cite{Dahlen:2025udl}. 
 
 Though in principle all processes for which the EWA might be
 applicable are technically feasible in \whizard\ to be generated also
@@ -6921,6 +6929,8 @@ adapted for the EWA:
 
 \centerline{\begin{tabular}{|l|l|l|}\hline
 Parameter & Default & Meaning \\\hline\hline
+\ttt{\$ewa\_mode} & \ttt{default} & analytic form of EWA structure function
+\\\hline
 \ttt{ewa\_x\_min} & \ttt{0.} & soft $W$/$Z$ cutoff in $x$ (mandatory)
 \\\hline
 \ttt{ewa\_mass} & \ttt{0}/intrinsic & mass of the radiating fermion  \\\hline
@@ -6944,6 +6954,120 @@ of the electroweak boson, that can be set via
 \ttt{eta\_pt\_max}. Indeed, the transversal $W$/$Z$ structure function
 is logarithmically divergent in that variable. If it is not set by the
 user, it is estimated from $\sqrt{s}$ and the splitting kinematics.
+
+Like the case of the EPA, the user can switch between several
+different options for the EWA. For historic reasons in \whizard, the
+default contains all the $p_\perp$:
+\begin{align}
+  \label{eq:ewa_default}
+  F^{\text{``default''}}_{+}(x) &= \frac{1}{16\pi^2}\,\frac{(v-a)^2 + (v+a)^2\bar x^2}{x}
+  \left[
+  \ln\left(1 + \frac{p_{\perp,\textrm{max}}^2}{\bar x M_V^2}\right)
+  -
+  \frac{p_{\perp,\textrm{max}}^2}{p_{\perp,\textrm{max}}^2 + \bar x M_V^2}
+  \right]
+  \\
+  F^{\text{``default''}}_{-}(x) &= \frac{1}{16\pi^2}\,\frac{(v+a)^2 + (v-a)^2\bar x^2}{x}
+  \left[
+  \ln\left(1 + \frac{p_{\perp,\textrm{max}}^2}{\bar x M_V^2}\right)
+  -
+  \frac{p_{\perp,\textrm{max}}^2}{p_{\perp,\textrm{max}}^2 + \bar x M_V^2}
+  \right]
+  \\
+  F^{\text{``default''}}_0(x) &= \frac{v^2+a^2}{8\pi^2}\,\frac{2\bar x}{x}\,
+  \frac{p_{\perp,\textrm{max}}^2}{p_{\perp,\textrm{max}}^2 + \bar x M_V^2}
+\end{align}
+Here, $F_\pm$ and $F_0$ are the structure functions for the transverse
+and longitudinal weak gauge bosons, respectively, $v/a$ the
+corresponding vector and axial-vector couplings to fermions, $\bar x =
+1 - x$, and $p_{\perp,\textrm{max}}$ the kinematically maximally possible
+transverse momentum of the beam remnant in order to ensure onshellness
+of beam particle, remnant and EW vector ``parton''. This option can be
+explicitly demanded by
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$ewa_mode = "default"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+Setting the $p_{\perp,\textrm{max}}$ terms outside of the logarithms
+to zero as well as setting the explicit term one in the arguments of
+the logarithms to zero, is triggered with the option
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$ewa_mode = "log_pt"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+and yields:
+\begin{align}
+  \label{eq:ewa_log}
+  F^{\text{``log''}}_{+}(x) &= \frac{1}{16\pi^2}\,\frac{(v-a)^2 + (v+a)^2\bar x^2}{x}
+  \; \cdot \; 
+  \ln\left(\frac{p_{\perp,\textrm{max}}^2}{\bar x M_V^2}\right)
+  \\
+  F^{\text{``log''}}_{-}(x) &= \frac{1}{16\pi^2}\,\frac{(v+a)^2 + (v-a)^2\bar x^2}{x}
+  \; \cdot \; 
+  \ln\left(\frac{p_{\perp,\textrm{max}}^2}{\bar x M_V^2}\right)
+  \\
+  F^{\text{``log''}}_0(x) &= \frac{v^2+a^2}{8\pi^2}\,\frac{2\bar x}{x}\,
+  \frac{p_{\perp,\textrm{max}}^2}{p_{\perp,\textrm{max}}^2 + \bar x M_V^2}
+\end{align}
+The mode 
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$ewa_mode = "log"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+also removes the $\bar{x} = 1 -x$ from the argument of the logarithm
+to arrive at:
+\begin{align}
+  \label{eq:log_scale}
+  F^{\text{``log\_scale''}}_{+}(x) &= \frac{1}{16\pi^2}\,\frac{(v-a)^2 + (v+a)^2\bar x^2}{x}
+  \; \cdot \; 
+  \ln\left(\frac{\mu_F^2}{M_V^2}\right)
+  \\
+  F^{\text{``log\_scale''}}_{-}(x) &= \frac{1}{16\pi^2}\,\frac{(v+a)^2 + (v-a)^2\bar x^2}{x}
+  \; \cdot \; 
+  \ln\left(\frac{\mu_F^2}{M_V^2}\right)
+  \\
+  F^{\text{``log\_scale''}}_0(x) &=
+  \frac{v^2+a^2}{8\pi^2}\,\frac{2\bar x}{x} \; ,
+\end{align}
+where the factorization scale $\mu_F$ is set in \whizard\ via $p_{\perp,\textrm{max}}$.
+Furthermore, there is also an experimental implementation of the mode
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+$ewa_mode = "log_nlp"
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+which takes certain next-to-leading power corrections into account,
+cf.~\cite{Bigaran:2025rvb}. 
+\begin{align}
+  \label{eq:ewa_log_nlp}
+  F^{\text{``log\_nlp''}}_{+}(x) &= \left[ 1 + \frac{2-x}{1-x}
+    \frac{M_V^2}{E_V^2} \right] \; \cdot \;
+  F^{\text{``default''}}_{+}(x) - \left[
+    \frac{(2-x) p_{\perp,\textrm{max}}}{4 E_V^2} \right] \; \cdot \;
+  F^{\text{``default''}}_{0}(x)
+  \\
+  F^{\text{``log\_nlp''}}_{-}(x) &= \left[ 1 + (2-x)
+    \frac{M_V^2}{E_V^2} \right] \; \cdot \;
+  F^{\text{``default''}}_{+}(x) - \left[
+    \frac{2-x}{1-x} \frac{p_{\perp,\textrm{max}}}{4 E_V^2} \right] \;\cdot\;
+  F^{\text{``default''}}_{0}(x) 
+  \\
+  F^{\text{``log\_nlp''}}_0(x) &=
+  F^{\text{``default''}}_{0}(x)  - \frac{M_v^2}{2E_V^2} \;\cdot\;
+  \left[F^{\text{``default''}}_{+}(x) + F^{\text{``default''}}_{-}(x)
+    \right]
+\end{align}
 
 For the EWA, there is a flag to switch on a recoil for the
 electroweak boson against the radiating fermion,
@@ -16403,7 +16527,7 @@ directory \verb|fr_mhm| and are ready to be installed and used with
 \label{sec:ufo}
 
 In this section, we describe how to use the {\em Universal FeynRules
-Output} (\UFO, \cite{Degrande:2011ua}) format for physics models
+Output} (\UFO, \cite{Degrande:2011ua,Darme:2023jdn}) format for physics models
 inside \whizard. Please refer the manuals of e.g.~\FeynRules\ manual
 for details on how to generate a \UFO\ file for your favorite physics
 model. \UFO\ files are a collection of \python\ scripts that
@@ -19104,6 +19228,14 @@ respectively.
   [arXiv:1108.2040 [hep-ph]].
   %%CITATION = doi:10.1016/j.cpc.2012.01.022;%%
 
+%\cite{Darme:2023jdn}
+\bibitem{Darme:2023jdn}
+L.~Darm{\'e}, C.~Degrande, C.~Duhr, B.~Fuks, M.~Goodsell, G.~Heinrich, V.~Hirschi, S.~H{\"o}che, M.~H{\"o}fer and J.~Isaacson, \textit{et al.}
+%``UFO 2.0: the {\textquoteleft}Universal Feynman Output{\textquoteright} format,''
+Eur. Phys. J. C \textbf{83}, no.7, 631 (2023)
+doi:10.1140/epjc/s10052-023-11780-9
+[arXiv:2304.09883 [hep-ph]].
+  
 %\cite{Han:1998sg}
 \bibitem{Han:1998sg}
   T.~Han, J.~D.~Lykken and R.~-J.~Zhang,
@@ -19242,6 +19374,12 @@ J.~de Favereau \textit{et al.} [DELPHES 3],
 JHEP \textbf{02}, 057 (2014)
 doi:10.1007/JHEP02(2014)057
 [arXiv:1307.6346 [hep-ex]]
+
+%\cite{Bigaran:2025rvb}
+\bibitem{Bigaran:2025rvb}
+I.~Bigaran and R.~Ruiz,
+{\em Weak bosons as partons below 10 TeV partonic center-of-momentum}, 
+[arXiv:2502.07878 [hep-ph]].
 
 \end{thebibliography}
 

@@ -40,6 +40,7 @@ $epa_handler_mode = "trivial"
 ewa_x_min =  0.000000000000E+00
 ewa_pt_max =  0.000000000000E+00
 ewa_mass =  0.000000000000E+00
+$ewa_mode = "default"
 ?ewa_recoil = false
 ?ewa_keep_energy = false
 ?circe1_photon1 = false
