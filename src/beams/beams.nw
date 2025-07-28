@@ -9959,7 +9959,6 @@ The status codes are public.
     if (object%qmax_defined) &
          write (u, "(3x,A,1x," // FMT_19 // ")")  "q_max     =", object%qmax
     call object%interaction_t%basic_write (u, testflag = testflag)
-    ! call object%interaction_t%basic_write (u, verbose = .true., testflag = testflag)
   end subroutine sf_int_base_write
 
 @ %def sf_int_base_write
