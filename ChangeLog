@@ -4,6 +4,9 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.6.1
 
+2025-08-22
+	Bug fix: minor glitch in internal string handling
+
 2025-07-28
 	Major overhaul of EVA (equivalent vector boson approx.):
 	- revalidation of structure functions from Whizard v1.91

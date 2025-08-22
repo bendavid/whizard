@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode;  -*-
 % WHIZARD code as NOWEB source: model features
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Model Handling and Features}
@@ -2325,7 +2325,7 @@ submodule (radiation_generator) radiation_generator_s
   use io_units
   use diagnostics
   use physics_defs, only: PHOTON, GLUON
-  use string_utils, only: split_string, string_contains_word
+  use string_utils, only: split_string
   use flavors
 
   implicit none
