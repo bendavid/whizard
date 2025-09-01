@@ -2,7 +2,10 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use git log/svn log to see detailed changes.
 
-	Version 3.1.6.1
+	Version 3.1.7
+
+2025-09-03
+	RELEASE: version 3.1.7
 
 2025-08-22
 	Bug fix: minor glitch in internal string handling

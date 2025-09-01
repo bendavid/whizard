@@ -19078,7 +19078,6 @@ particles, therefore we need to probe only the first one.
     logical :: is_anti
     select type (data)
     type is (ewa_data_t)
-       !!! This is a hack for the momentum to enable only for log_power
        if (data%mode == EWA_MODE_LEGACY) then
           mask = quantum_numbers_mask (.false., .false., &
                mask_h = [.false., .false., .true.])
