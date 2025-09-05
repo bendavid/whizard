@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: matrix elements and process libraries
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{BLHA Interface}
@@ -138,11 +138,10 @@ possible options to ease the user's memory.
             (extra_cmd == var_str ('extra approx ') // known_methods(i))
     end do
     if (.not. found) &
-         call msg_fatal ("The given extra OpenLoops method is not kown ", &
-         [var_str ("Available commands are: "), &
-         var_str ("extra approx top (only WbWb signal),"), &
-         var_str ("extra approx stop (only WbWb singletop),"), &
-         var_str ("extra approx not (no top in WbWb).")])
+         call msg_warning ("Be cautious: extra OpenLoops commands ", &
+         [var_str ("might not have any effect when run in Whizard."), &
+	 var_str ('The syntax is $openloops_extra_cmd = "<param> <value>",'), &
+         var_str ('or $openloops_extra_cmd = "<par1> <val1>; <par2> <val2> ..."')])
   end subroutine check_extra_cmd
 
 @ %def check_extra_cmd
@@ -1622,6 +1621,7 @@ corrections are activated and off-shell (splitting) photons are present at LO.
     integer :: u
     logical :: full, nlo3
     type(string_t) :: buf
+    type(string_t), dimension(:), allocatable :: extra_cmd, cmdi
     type(blha_cfg_process_node_t), pointer :: node
     integer :: i, n_phot
     character(3) :: pdg_char
@@ -1758,7 +1758,25 @@ corrections are activated and off-shell (splitting) photons are present at LO.
                cfg%openloops_phs_tolerance
        end if
        call check_extra_cmd (cfg%openloops_extra_cmd)
-       write (u, '(A)') char (cfg%openloops_extra_cmd)
+       if (cfg%openloops_extra_cmd /= '') then
+          if (string_contains_word (cfg%openloops_extra_cmd, var_str (";"))) then
+             call msg_message &
+                  ("$openloops_extra_cmd contains more than one command.")
+          end if
+          call split_string &
+               (cfg%openloops_extra_cmd, var_str (";"), extra_cmd)
+          do i = 1, size (extra_cmd)
+             call split_string (extra_cmd (i), var_str (" "), cmdi)
+             if (size (cmdi) /= 2) then
+                call msg_fatal ("BLHA configuration write: wrong " // &
+                     "format of OpenLoops extra cmd: " // char (cmdi(1)))
+             end if
+             write (u, '(A25,A)') "extra " // char (cmdi(1)) // pad, &
+                  char (cmdi(2))
+          end do
+       else
+          write (u, '(A)') char (cfg%openloops_extra_cmd)
+       end if
        if (cfg%openloops_allowed_libs /= '') then
           write (u, '(A25,A)') "extra allowed_libs" // pad, &
                char (cfg%openloops_allowed_libs)

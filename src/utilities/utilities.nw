@@ -771,14 +771,10 @@ s = s // str(x(size(x))) // ']'
       type(string_t), intent(in) :: str, word
     end function string_contains_word
 <<String utils: procedures>>=
-  pure module function string_contains_word (str, word) result (val)
-    logical :: val
+  pure module function string_contains_word (str, word) result (flag)
+    logical :: flag
     type(string_t), intent(in) :: str, word
-    type(string_t) :: str_tmp, str_out
-    str_tmp = str
-    val = .false.
-    call split (str_tmp, str_out, word)
-    val = val .or. (str_tmp /= "")
+    flag = index (str, word) /= 0
   end function string_contains_word
 
 @ %def string_contains_word

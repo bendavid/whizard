@@ -6803,8 +6803,8 @@ procedure with type [[V_NONE]].
     call var_list%append_string (var_str ("$openloops_extra_cmd"), &
          var_str (""), intrinsic = .true., &
          description=var_str ('String variable to transfer customized ' // &
-         'special commands to \openloops. The three supported examples ' // &
-         '\ttt{\$openloops\_extra\_command = "extra approx top/stop/not"} ' // &
+         'special commands to \openloops. Special commands are e.g. ' // &
+         '\ttt{\$openloops\_extra\_command = "approx top/stop/not"} ' // &
          'are for selection of subdiagrams in top production. (cf. also ' // &
          '\ttt{\$method}, \ttt{openloos\_verbosity}, ' // &
          '\ttt{?openloops\_use\_cms}, \ttt{openloops\_stability\_log}, ' // &

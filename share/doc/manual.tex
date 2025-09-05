@@ -9368,6 +9368,21 @@ Several \sindarin\ options exist to control the behavior of \openloops.
    \end{itemize}
   \item \ttt{?openloops\_use\_collier}: Use Collier as the reduction
     method (default true).
+  \item \ttt{\$openloops\_extra\_cmd}:\\
+    String variable that allows to write any arbitrary extra command
+    into the BLHA contract file for \openloops. The syntax is
+    \begin{code}
+      $openloops_extra_cmd = "<param> <value>"
+    \end{code}
+    or
+    \begin{code}
+      $openloops_extra_cmd = "<option name>"
+    \end{code}
+    It is also possible to concatenate several extra
+    \openloops\ commands with a semicolon:
+    \begin{code}
+      $openloops_extra_cmd = "<cmd1> <val1>; <cmd2> <val2>; ..."
+    \end{code}
 \end{itemize}
 
 %%%%%
