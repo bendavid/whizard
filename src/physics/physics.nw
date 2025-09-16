@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode -*-
 % WHIZARD code as NOWEB source: physics and such
 \chapter{Physics}
 \includemodulegraph{physics}
@@ -2874,12 +2874,16 @@ momentum $1$ and $2$ can be determined to be
 
     lda = lambda (msq, msq1, msq2)
     if (lda < zero) then
-       print *, 'Encountered lambda < 0 in 1 -> 2 splitting! '
-       print *, 'lda: ', lda
-       print *, 'm: ', m, 'msq: ', msq
-       print *, 'm1: ', sqrt (msq1), 'msq1: ', msq1
-       print *, 'm2: ', sqrt (msq2), 'msq2: ', msq2
-       stop
+       if (lda < -epsilon(lda)) then
+          print *, 'Encountered lambda < 0 in 1 -> 2 splitting! '
+          print *, 'lda: ', lda
+          print *, 'm: ', m, 'msq: ', msq
+          print *, 'm1: ', sqrt (msq1), 'msq1: ', msq1
+          print *, 'm2: ', sqrt (msq2), 'msq2: ', msq2
+          stop
+       else
+          lda = zero
+       end if
     end if
     p = sqrt (lda) / (two * m)
 
