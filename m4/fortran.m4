@@ -27,7 +27,7 @@ wo_fc_grep_PGF90=`$GREP 'pgf90' conftest.log | head -1`
 wo_fc_grep_PGF95=`$GREP 'pgf95' conftest.log | head -1`
 wo_fc_grep_PGFORTRAN=`$GREP 'pgfortran' conftest.log | head -1`
 wo_fc_grep_PGHPF=`$GREP 'pghpf' conftest.log | head -1`
-wo_fc_grep_FLANG=`$GREP 'clang version' conftest.log | head -1`
+wo_fc_grep_FLANG=`$GREP 'flang version' conftest.log | head -1`
 wo_fc_grep_NVIDIA=`$GREP 'nvfortran' conftest.log | head -1`
 wo_fc_grep_default=`cat conftest.log | head -1`
 
@@ -110,6 +110,9 @@ AM_CONDITIONAL([FC_IS_GFORTRAN],
 AM_CONDITIONAL([FC_IS_NAG],
   [test "$FC_VENDOR" = NAG])
 
+AM_CONDITIONAL([FC_IS_FLANG],
+  [test "$FC_VENDOR" = flang])
+
 AC_CACHE_CHECK([the compiler version],
 [wo_cv_fc_version],
 [dnl
@@ -136,7 +139,7 @@ PGI)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/^[0-9]\{2\}//g;s/32.*\|64.*//g'`]
   ;;
 flang)
- wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*clang version \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
+ wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*flang version \([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 NVIDIA)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/^[0-9]\{2\}//g;s/32.*\|64.*//g'`]
@@ -188,6 +191,19 @@ FC_IS_IFORT21012="yes"
 FC_IS_IFORT21012="no"
 fi
 AC_SUBST([FC_IS_IFORT21012])
+
+### Veto old versions of flang < 20.x
+if test "$wo_cv_fc_vendor" = "flang"; then
+  if test "$wo_cv_fc_major_version" = "13" -o "$wo_cv_fc_major_version" = "14" -o "$wo_cv_fc_major_version" = "15" -o "$wo_cv_fc_major_version" = "16" -o "$wo_cv_fc_major_version" = "17" -o "$wo_cv_fc_major_version" = "18" -o "$wo_cv_fc_major_version" = "19"; then
+    FC_IS_FLANG_LT_20="yes"
+  else
+    FC_IS_FLANG_LT_20="no"
+  fi
+else
+  FC_IS_FLANG_LT_11="no"
+fi
+AC_SUBST([FC_IS_FLANG_LT_20])
+AC_SUBST([FC_IS_FLANG])
 
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION

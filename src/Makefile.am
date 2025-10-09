@@ -314,6 +314,10 @@ whizard_ut_c_LDADD += $(LDFLAGS_HOPPET)
 whizard_ut_c_LDADD += $(FASTJET_LIBS)
 whizard_ut_c_LDADD += $(LDFLAGS_LOOPTOOLS)
 
+if FC_IS_FLANG
+whizard_ut_c_LDADD += $(FCLIBS)
+endif
+
 ## -------------------------------------------------------------------
 ## Build a standalone program for running the C++ interface test
 
@@ -336,6 +340,10 @@ whizard_ut_cc_LDADD += $(LDFLAGS_LCIO)
 whizard_ut_cc_LDADD += $(LDFLAGS_HOPPET)
 whizard_ut_cc_LDADD += $(FASTJET_LIBS)
 whizard_ut_cc_LDADD += $(LDFLAGS_LOOPTOOLS)
+
+if FC_IS_FLANG
+whizard_ut_cc_LDADD += $(FCLIBS)
+endif
 
 ########################################################################
 ## Default Fortran compiler options

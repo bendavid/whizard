@@ -4,6 +4,9 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.7.1
 
+2025-10-09
+	Support for the LLVM-based flang compiler
+
 2025-09-05
 	Arbitrary BLHA extra commands for Openloops OLP supported
 
