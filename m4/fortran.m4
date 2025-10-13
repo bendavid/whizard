@@ -200,7 +200,7 @@ if test "$wo_cv_fc_vendor" = "flang"; then
     FC_IS_FLANG_LT_20="no"
   fi
 else
-  FC_IS_FLANG_LT_11="no"
+  FC_IS_FLANG_LT_20="no"
 fi
 AC_SUBST([FC_IS_FLANG_LT_20])
 AC_SUBST([FC_IS_FLANG])
@@ -214,6 +214,15 @@ if test "$FC_IS_GFORTRAN_LT_11" = "yes"; then
 AC_MSG_NOTICE([error: ******************************************])
 AC_MSG_NOTICE([error: gfortran < 11.x is too old, please upgrade.])
 AC_MSG_ERROR([******************************************])
+fi 
+])
+
+AC_DEFUN([WO_FC_VETO_FLANG_LT_20],
+[dnl
+if test "$FC_IS_FLANG_LT_20" = "yes"; then
+AC_MSG_NOTICE([error: ****************************************])
+AC_MSG_NOTICE([error: flang < 20.x is too old, please upgrade.])
+AC_MSG_ERROR([****************************************])
 fi 
 ])
 

@@ -395,6 +395,9 @@ WO_FC_VETO_IFORT_LT_21()
 ### Veto against ifort 21.0/1/2
 WO_FC_VETO_IFORT_21012()
 
+### Veto against old flang < 20.x versions
+WO_FC_VETO_FLANG_LT_20()
+
 ### Require extension '.f90' for all compiler checks
 AC_FC_SRCEXT([f90])
 
