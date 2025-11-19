@@ -1,0 +1,302 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$method = "recola"
+recola_gfermi_scheme = 0
+openmp_num_threads = 1
+| Process library 'recola_10_lib': recorded process 'recola_10_p1'
+seed = 1
+sqrts =  3.00000E+02
+| Integrate: current process library needs compilation
+| Process library 'recola_10_lib': compiling ...
+| Process library 'recola_10_lib': writing makefile
+| Process library 'recola_10_lib': removing old files
+| Process library 'recola_10_lib': writing driver
+| Process library 'recola_10_lib': creating source code
+| Process library 'recola_10_lib': compiling sources
+| Process library 'recola_10_lib': linking
+| Process library 'recola_10_lib': loading
+| Process library 'recola_10_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Initializing integration for process recola_10_p1:
+| Recola: registering processes for 'recola_10_p1_BORN'
+| Recola: process #1: W+ W- -> H H (LO)
+| Recola: preparing processes for integration
+| Beam structure: W+, W-
+|   polarization (beam 1):
+|     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization (beam 2):
+|     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization degree = 1.0000000, 1.0000000
+| Beam data (collision):
+|   W+  (mass = 8.0419000E+01 GeV)  polarized
+|   W-  (mass = 8.0419000E+01 GeV)  polarized
+|   sqrts = 3.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'recola_10_p1.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'recola_10_p1'
+|   Library name  = 'recola_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'recola_10_p1_i1':   W+, W- => H, H [recola]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: Using 16 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'recola_10_p1'
+| Integrate: iterations = 1:100
+| Integrator: 1 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     5.814E+01   3.87E+00    6.66    0.67    57.1
+|-----------------------------------------------------------------------------|
+   1        100     5.814E+01   3.87E+00    6.66    0.67    57.1
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process recola_10_p1:
+| Recola: registering processes for 'recola_10_p1_BORN'
+| Recola: process #2: W+ W- -> H H (LO)
+| Recola: preparing processes for integration
+| Beam structure: W+, W-
+|   polarization (beam 1):
+|     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization (beam 2):
+|     @(+0: +0: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization degree = 1.0000000, 1.0000000
+| Beam data (collision):
+|   W+  (mass = 8.0419000E+01 GeV)  polarized
+|   W-  (mass = 8.0419000E+01 GeV)  polarized
+|   sqrts = 3.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'recola_10_p1.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'recola_10_p1'
+|   Library name  = 'recola_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'recola_10_p1_i1':   W+, W- => H, H [recola]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: Using 16 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'recola_10_p1'
+| Integrate: iterations = 1:100
+| Integrator: 1 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     4.132E+00   2.87E-01    6.96    0.70    49.1
+|-----------------------------------------------------------------------------|
+   1        100     4.132E+00   2.87E-01    6.96    0.70    49.1
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Initializing integration for process recola_10_p1:
+| Recola: registering processes for 'recola_10_p1_BORN'
+| Recola: process #3: W+ W- -> H H (LO)
+| Recola: preparing processes for integration
+| Beam structure: W+, W-
+|   polarization (beam 1):
+|     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization (beam 2):
+|     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization degree = 1.0000000, 1.0000000
+| Beam data (collision):
+|   W+  (mass = 8.0419000E+01 GeV)  polarized
+|   W-  (mass = 8.0419000E+01 GeV)  polarized
+|   sqrts = 3.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'recola_10_p1.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'recola_10_p1'
+|   Library name  = 'recola_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'recola_10_p1_i1':   W+, W- => H, H [recola]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: Using 16 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'recola_10_p1'
+| Integrate: iterations = 1:100
+| Integrator: 1 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     1.824E+02   9.00E+00    4.93    0.49    65.1
+|-----------------------------------------------------------------------------|
+   1        100     1.824E+02   9.00E+00    4.93    0.49    65.1
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 4
+| Initializing integration for process recola_10_p1:
+| Recola: registering processes for 'recola_10_p1_BORN'
+| Recola: process #4: W+ W- -> H H (LO)
+| Recola: preparing processes for integration
+| Beam structure: W+, W-
+|   polarization (beam 1):
+|     @(+0: +0: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization (beam 2):
+|     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization degree = 1.0000000, 1.0000000
+| Beam data (collision):
+|   W+  (mass = 8.0419000E+01 GeV)  polarized
+|   W-  (mass = 8.0419000E+01 GeV)  polarized
+|   sqrts = 3.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'recola_10_p1.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'recola_10_p1'
+|   Library name  = 'recola_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'recola_10_p1_i1':   W+, W- => H, H [recola]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: Using 16 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'recola_10_p1'
+| Integrate: iterations = 1:100
+| Integrator: 1 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     3.586E+00   2.85E-01    7.95    0.79    42.9
+|-----------------------------------------------------------------------------|
+   1        100     3.586E+00   2.85E-01    7.95    0.79    42.9
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 5
+| Initializing integration for process recola_10_p1:
+| Recola: registering processes for 'recola_10_p1_BORN'
+| Recola: process #5: W+ W- -> H H (LO)
+| Recola: preparing processes for integration
+| Beam structure: W+, W-
+|   polarization (beam 1):
+|     @(+0: +0: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization (beam 2):
+|     @(+0: +0: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization degree = 1.0000000, 1.0000000
+| Beam data (collision):
+|   W+  (mass = 8.0419000E+01 GeV)  polarized
+|   W-  (mass = 8.0419000E+01 GeV)  polarized
+|   sqrts = 3.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'recola_10_p1.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'recola_10_p1'
+|   Library name  = 'recola_10_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'recola_10_p1_i1':   W+, W- => H, H [recola]
+| ------------------------------------------------------------------------
+| Phase space: 4 channels, 2 dimensions
+| Phase space: found 4 channels, collected in 1 grove.
+| Phase space: Using 16 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'recola_10_p1'
+| Integrate: iterations = 1:100
+| Integrator: 1 chains, 4 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     2.582E+04   1.78E+03    6.90    0.69    32.7
+|-----------------------------------------------------------------------------|
+   1        100     2.582E+04   1.78E+03    6.90    0.69    32.7
+|=============================================================================|
+| Process library 'recola_10_lib': unloading
+| Process library 'recola_10_lib': open
+| Process library 'recola_10_lib': recorded process 'recola_10_p2'
+| Integrate: current process library needs compilation
+| Process library 'recola_10_lib': compiling ...
+| Process library 'recola_10_lib': writing makefile
+| Process library 'recola_10_lib': removing old files
+| Process library 'recola_10_lib': writing driver
+| Process library 'recola_10_lib': creating source code
+| Process library 'recola_10_lib': compiling sources
+| Process library 'recola_10_lib': linking
+| Process library 'recola_10_lib': loading
+| Process library 'recola_10_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 6
+| Initializing integration for process recola_10_p2:
+| Recola: registering processes for 'recola_10_p2_BORN'
+| Recola: process #6: e- e+ -> mu- mu+ (LO)
+| Recola: preparing processes for integration
+| Beam structure: e-, e+
+|   polarization (beam 1):
+|     @(-1: -1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization (beam 2):
+|     @(+1: +1: ( 1.000000000000E+00, 0.000000000000E+00))
+|   polarization degree = 0.8000000, 0.3000000
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)  polarized
+|   e+  (mass = 5.1099700E-04 GeV)  polarized
+|   sqrts = 3.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'recola_10_p2.i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'recola_10_p2'
+|   Library name  = 'recola_10_lib'
+|   Process index = 2
+|   Process components:
+|     1: 'recola_10_p2_i1':   e-, e+ => mu-, mu+ [recola]
+| ------------------------------------------------------------------------
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'recola_10_p2'
+| Integrate: iterations = 1:100
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        100     1.743E+03   1.13E+02    6.48    0.65    43.1
+|-----------------------------------------------------------------------------|
+   1        100     1.743E+03   1.13E+02    6.48    0.65    43.1
+|=============================================================================|
+| There were no errors and    6 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

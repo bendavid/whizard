@@ -3767,8 +3767,9 @@ are requested (GoSam does not support polarized matrix elements).
   procedure :: compute_sqme => prc_blha_compute_sqme
 <<BLHA OLP interfaces: sub interfaces>>=
     module subroutine prc_blha_compute_sqme (object, i_flv, i_hel, p, &
-         ren_scale, sqme, bad_point)
+         ren_scale, hel_is, sqme, bad_point)
       class(prc_blha_t), intent(in) :: object
+      integer, dimension(:), intent(in), optional :: hel_is
       integer, intent(in) :: i_flv, i_hel
       type(vector4_t), intent(in), dimension(:) :: p
       real(default), intent(in) :: ren_scale
@@ -3777,8 +3778,9 @@ are requested (GoSam does not support polarized matrix elements).
     end subroutine prc_blha_compute_sqme
 <<BLHA OLP interfaces: procedures>>=
   module subroutine prc_blha_compute_sqme (object, i_flv, i_hel, p, &
-       ren_scale, sqme, bad_point)
+       ren_scale, hel_is, sqme, bad_point)
     class(prc_blha_t), intent(in) :: object
+    integer, dimension(:), intent(in), optional :: hel_is
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
@@ -4001,7 +4003,7 @@ are requested (GoSam does not support polarized matrix elements).
     real(default), dimension(:), allocatable :: r
     logical :: bad_point2
     real(default) :: born
-    integer, dimension(:), allocatable :: flavors
+    integer, dimension(:), allocatable :: flavors, hel_is
     if (debug2_active (D_REAL)) then
        call msg_debug2 (D_REAL, "use momenta: ")
        call vector4_write_set (p, show_mass = .true., &
@@ -4014,7 +4016,7 @@ are requested (GoSam does not support polarized matrix elements).
     select type (driver => object%driver)
     class is (blha_driver_t)
        if (allocated (object%i_tree)) then
-          call object%compute_sqme (i_flv, i_hel, p, ren_scale, born, bad_point2)
+          call object%compute_sqme (i_flv, i_hel, p, ren_scale, hel_is, born, bad_point2)
        else
           born = zero
        end if

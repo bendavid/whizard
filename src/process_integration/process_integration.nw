@@ -4245,6 +4245,7 @@ internal data.
               process%config%model, &
               helicity_selection, &
               process%config%qcd, &
+              process%is_nlo_calculation (), &
               use_color_factors, &
               has_beam_pol, &
               gfermi_scheme)
@@ -4261,12 +4262,14 @@ internal data.
 <<Process: interfaces>>=
   abstract interface
      subroutine dispatch_core_proc (core, core_def, model, &
-          helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+          helicity_selection, qcd, is_nlo, &
+          use_color_factors, has_beam_pol, gfermi_scheme)
        import
        class(prc_core_t), allocatable, intent(inout) :: core
        class(prc_core_def_t), intent(in) :: core_def
        class(model_data_t), intent(in), target, optional :: model
        type(helicity_selection_t), intent(in), optional :: helicity_selection
+       logical, intent(in), optional :: is_nlo
        type(qcd_t), intent(in), optional :: qcd
        logical, intent(in), optional :: use_color_factors
        logical, intent(in), optional :: has_beam_pol
@@ -7727,22 +7730,26 @@ argument come handy, knowing that we need to support only the [[test_me]] and
   procedure :: setup_test_cores => process_setup_test_cores
 <<Process: sub interfaces>>=
     module subroutine dispatch_test_me_core (core, core_def, model, &
-         helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+         helicity_selection, qcd, is_nlo, &
+         use_color_factors, has_beam_pol, gfermi_scheme)
       class(prc_core_t), allocatable, intent(inout) :: core
       class(prc_core_def_t), intent(in) :: core_def
       class(model_data_t), intent(in), target, optional :: model
       type(helicity_selection_t), intent(in), optional :: helicity_selection
+      logical, intent(in), optional :: is_nlo
       type(qcd_t), intent(in), optional :: qcd
       logical, intent(in), optional :: use_color_factors
       logical, intent(in), optional :: has_beam_pol
       integer, intent(in), optional :: gfermi_scheme
     end subroutine dispatch_test_me_core
     module subroutine dispatch_template_core (core, core_def, model, &
-         helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+         helicity_selection, qcd, is_nlo, &
+         use_color_factors, has_beam_pol, gfermi_scheme)
       class(prc_core_t), allocatable, intent(inout) :: core
       class(prc_core_def_t), intent(in) :: core_def
       class(model_data_t), intent(in), target, optional :: model
       type(helicity_selection_t), intent(in), optional :: helicity_selection
+      logical, intent(in), optional :: is_nlo
       type(qcd_t), intent(in), optional :: qcd
       logical, intent(in), optional :: use_color_factors
       logical, intent(in), optional :: has_beam_pol
@@ -7755,12 +7762,14 @@ argument come handy, knowing that we need to support only the [[test_me]] and
     end subroutine process_setup_test_cores
 <<Process: procedures>>=
   module subroutine dispatch_test_me_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+       helicity_selection, qcd, is_nlo, &
+       use_color_factors, has_beam_pol, gfermi_scheme)
     use prc_test_core, only: test_t
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
+    logical, intent(in), optional :: is_nlo
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
@@ -7769,13 +7778,15 @@ argument come handy, knowing that we need to support only the [[test_me]] and
   end subroutine dispatch_test_me_core
 
   module subroutine dispatch_template_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+       helicity_selection, qcd, is_nlo, &
+       use_color_factors, has_beam_pol, gfermi_scheme)
     use prc_template_me, only: prc_template_me_t
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
+    logical, intent(in), optional :: is_nlo
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
     integer, intent(in), optional :: gfermi_scheme
@@ -10570,10 +10581,7 @@ subtractions.
 
     subroutine setup_states_other_prc_external ()
       integer :: s, f, i, c, h
-      if (is_pol) &
-         call msg_fatal ("Polarized beams only supported by OpenLoops")
       i = 0
-      !!! n_sub = 0; if (nlo_t == NLO_VIRTUAL) n_sub = 1
       associate (data => term%data)
         do s = 0, n_sub
            do f = 1, data%n_flv
@@ -10588,7 +10596,12 @@ subtractions.
                     call color_init_from_array (col, &
                          data%col_state(:,:,c), data%ghost_flag(:,c))
                     call col(1:data%n_in)%invert ()
-                    call qn%init (flv, col, s)
+                    if (is_pol) then
+                       call hel%init (data%hel_state (:,h))
+                       call qn%init (flv, hel, col, s)
+                    else
+                       call qn%init (flv, col, s)
+                    end if
                     call qn%tag_hard_process ()
                     call term%int%add_state (qn)
                  end do
@@ -17304,16 +17317,20 @@ only compute one and use the [[eqv_index]] determined by the
        (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    type(helicity_t) :: hel
     real(default) :: sqme
     real(default), dimension(:), allocatable :: sqme_color_c
     real(default), dimension(:), allocatable :: sqme_spin_c
     real(default), dimension(6) :: sqme_spin_c_tmp
+    integer, dimension(:), allocatable :: hel_is
+    integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off, n_in
     real(default), dimension(OLP_RESULTS_LIMIT) :: sqme_spin_c_gosam
     real(default), dimension(0:3) :: k_perp
-    integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off
     integer :: i_flv, i_hel, i_sub, i_color_c, i_color_c_eqv, &
-         i_spin_c, i_spin_c_eqv
+         i_spin_c, i_spin_c_eqv, i
     integer :: i_flv_eqv, i_hel_eqv
+    integer :: h1, h2
     integer :: emitter, i_emitter
     integer :: idl, idh
     logical :: bad_point, bp
@@ -17330,6 +17347,8 @@ only compute one and use the [[eqv_index]] determined by the
     n_sub_spin = term%get_n_sub_spin ()
     allocate (eqv_me_evaluated(n_flv,n_hel))
     eqv_me_evaluated = .false.
+    n_in = term%int_hard%get_n_in ()
+    if (n_hel > 1) allocate (hel_is (n_in))
     do i_flv = 1, n_flv
        if (.not. term%passed_array(i_flv) .and. term%passed) cycle
        do i_hel = 1, n_hel
@@ -17348,18 +17367,30 @@ only compute one and use the [[eqv_index]] determined by the
                    end select
                 end if
                 call core%update_alpha_s (term%core_state, term%get_ren_scale ())
-                call core%compute_sqme_rcl (i_flv, i_hel, term%p_hard, &
-                     term%get_ren_scale (), subl_cp, &
-                     sqme, bad_point)
-                call term%pcm_work%set_bad_point (bad_point)
                 associate (i_int => term%int_hard%get_qn_index &
                      (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
+                  if (allocated (hel_is)) then
+                     do i = 1, n_in
+                        qn = term%int_hard%get_quantum_numbers (i_int)
+                        hel = quantum_numbers_get_helicity (qn (i))
+                        call hel%get_indices (h1, h2)
+                        hel_is (i) = h1
+                     end do
+                     call core%compute_sqme_rcl (i_flv, i_hel, term%p_hard, &
+                          term%get_ren_scale (), subl_cp, &
+                          hel_is, sqme = sqme, bad_point = bad_point)
+                  else
+                     call core%compute_sqme_rcl (i_flv, i_hel, term%p_hard, &
+                          term%get_ren_scale (), subl_cp, &
+                          sqme = sqme, bad_point = bad_point)
+                  end if
+                  call term%pcm_work%set_bad_point (bad_point)                
                   term%amp(i_int) = cmplx (sqme, 0, default)
                 end associate
              class is (prc_external_t)
                 call core%update_alpha_s (term%core_state, term%get_ren_scale ())
                 call core%compute_sqme (i_flv, i_hel, term%p_hard, &
-                     term%get_ren_scale (), sqme, bad_point)
+                     term%get_ren_scale (), hel_is, sqme, bad_point)
                 call term%pcm_work%set_bad_point (bad_point)
                 associate (i_int => term%int_hard%get_qn_index &
                      (i_flv = i_flv, i_hel = i_hel, i_sub = 0))
@@ -17595,9 +17626,12 @@ only compute one and use the [[eqv_index]] determined by the
        (term, core)
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in) :: core
-    integer :: n_hel, n_sub, n_flv
+    integer :: n_hel, n_sub, n_flv, n_in
     integer :: i, i_flv, i_hel, i_sub, i_virt, i_color_c, i_color_c_eqv
-    integer :: i_flv_eqv, i_hel_eqv
+    integer :: i_flv_eqv, i_hel_eqv, h1, h2
+    type(helicity_t) :: hel
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    integer, dimension(:), allocatable :: hel_is
     real(default), dimension(4) :: sqme_virt
     real(default), dimension(:), allocatable :: sqme_color_c
     real(default) :: es_scale
@@ -17610,11 +17644,13 @@ only compute one and use the [[eqv_index]] determined by the
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
     n_flv = term%int_hard%get_qn_index_n_flv ()
     n_hel = term%int_hard%get_qn_index_n_hel ()
+    n_in = term%int_hard%get_n_in ()
     n_sub = term%int_hard%get_qn_index_n_sub ()
     allocate (eqv_me_evaluated(n_flv,n_hel))
     eqv_me_evaluated = .false.
     subl_cp = .false.
     i_virt = 1
+    if (n_hel > 1) allocate (hel_is (n_in))
     do i_flv = 1, n_flv
        if (.not. term%passed_array(i_flv) .and. term%passed) cycle
        do i_hel = 1, n_hel
@@ -17637,11 +17673,28 @@ only compute one and use the [[eqv_index]] determined by the
                          .not. query_coupling_powers (pcm%region_data%flv_born(i_flv)%flst, &
                          pcm%region_data%alpha_power, pcm%region_data%alphas_power)
                    end select
-                   call core%compute_sqme_virt_rcl (i_flv, i_hel, term%p_hard, &
-                        term%get_ren_scale (), es_scale, &
-                        term%pcm%blha_defaults%loop_method, &
-                        subl_cp, &
-                        sqme_virt, bad_point)
+                   associate (i_int => term%int_hard%get_qn_index &
+                        (i_flv = i_flv, i_hel = i_hel, i_sub = i_virt))
+                     if (allocated (hel_is)) then
+                        do i = 1, n_in
+                           qn = term%int_hard%get_quantum_numbers (i_int)
+                           hel = quantum_numbers_get_helicity (qn (i))
+                           call hel%get_indices (h1, h2)
+                           hel_is (i) = h1
+                        end do
+                        call core%compute_sqme_virt_rcl (i_flv, i_hel, &
+                             term%p_hard, term%get_ren_scale (), es_scale, &
+                             term%pcm%blha_defaults%loop_method, &
+                             subl_cp, hel_is, &
+                             sqme = sqme_virt, bad_point = bad_point)                     
+                     else
+                        call core%compute_sqme_virt_rcl (i_flv, i_hel, &
+                             term%p_hard, term%get_ren_scale (), es_scale, &
+                             term%pcm%blha_defaults%loop_method, &
+                             subl_cp, &
+                             sqme = sqme_virt, bad_point = bad_point)
+                     end if
+                   end associate
                 class is (prc_external_t)
                    call core%compute_sqme_virt (i_flv, i_hel, term%p_hard, &
                         term%get_ren_scale (), es_scale, &

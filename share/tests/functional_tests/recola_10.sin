@@ -1,0 +1,43 @@
+# SINDARIN input for WHIZARD self-test
+# Testing integration of LO RECOLA matrix elements with polarized beams
+
+model = "SM"
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+$method = "recola"
+### numerical backwards compatibility with Recola 1.4.3
+recola_gfermi_scheme = 0
+
+!!! Tests should be run single-threaded
+openmp_num_threads = 1
+
+process recola_10_p1 = Wp, Wm => H, H
+
+seed = 1
+
+sqrts = 300 GeV
+iterations = 1:100
+
+beams = Wp, Wm
+beams_pol_density = @(+1), @(+1)
+integrate (recola_10_p1)
+beams_pol_density = @(+1), @(0)
+integrate (recola_10_p1)
+beams_pol_density = @(+1), @(-1)
+integrate (recola_10_p1)
+beams_pol_density = @(0), @(-1)
+integrate (recola_10_p1)
+beams_pol_density = @(0), @(0)
+integrate (recola_10_p1)
+
+process recola_10_p2 = e1, E1 => e2, E2
+
+beams = e1, E1
+beams_pol_density = @(-1), @(+1)
+beams_pol_fraction = 80%, 30%
+integrate (recola_10_p2)

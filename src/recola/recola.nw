@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: interface to Recola 1-loop library
 
 @
@@ -2081,6 +2081,7 @@ module prc_recola
   use variables, only: var_list_t
   use os_interface, only: os_data_t
   use sm_qcd, only: qcd_t
+  use flavors, only: flavor_t  
   use model_data, only: model_data_t
 
   use prc_core, only: prc_core_state_t
@@ -2488,7 +2489,6 @@ processes have been defined.
     type(string_t), dimension(:), allocatable :: particle_names
     type(string_t) :: process_string
     integer :: i_part
-    !!! TODO (cw-2016-08-08): Include helicities
     call msg_message ("Recola: registering processes for '" // char (writer%id) // "'")
     i_flv = 0
     n_tot = writer%n_in + writer%n_out
@@ -2571,6 +2571,7 @@ A core driver is required by design. However, we are not going to
 load any external dynamical libraries, so this is a dummy.
 <<Prc recola: types>>=
   type, extends (prc_external_driver_t) :: recola_driver_t
+     logical :: include_polarizations = .false.
   contains
   <<Prc recola: recola driver: TBP>>
   end type recola_driver_t
@@ -2615,15 +2616,21 @@ We create [[prc_recola_t]] as an extension of the [[prc_external_t]],
 which in turn inherits from [[prc_core_t]]. This way, we can use a lot of the
 existing interfaces in the actual code. However, we have to stick to the rules and
 implement the deferred type-bound procedures of [[prc_core_t]].
+For correct normalization in case of polarized processes, we keep
+track of the number of helicity states in the initial states.
 <<Prc recola: public>>=
   public :: prc_recola_t
 <<Prc recola: types>>=
   type, extends (prc_external_t) :: prc_recola_t
      integer, dimension(:), allocatable :: recola_ids
      integer, dimension(:,:), allocatable :: color_state
+     integer, dimension(:,:), allocatable :: helicity_state
      integer :: n_f = 0
+     integer :: n_hel_in = 1
      integer :: gfermi_scheme = 1
+     logical :: has_beam_pol = .false.
      logical :: helicity_and_color_arrays_are_replaced = .false.
+     class(model_data_t), pointer :: model => null ()
   contains
   <<Prc recola: prc recola: TBP>>
   end type prc_recola_t
@@ -2793,7 +2800,7 @@ obtain it, we need a type cast.
   module function prc_recola_includes_polarization (object) result (polarized)
     logical :: polarized
     class(prc_recola_t), intent(in) :: object
-    polarized = .false.
+    polarized = object%has_beam_pol
   end function prc_recola_includes_polarization
 
 @ %def prc_recola_includes_polarization
@@ -2872,9 +2879,14 @@ the Recola workflow, however.
     class(prc_recola_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
     class(model_data_t), intent(in), target, optional :: model
+    integer :: scheme
 
     if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: set_parameters")
+    if (.not. present (model)) then
+       call msg_fatal ("prc_recola_set_parameters called without model!")
+    end if
     object%qcd = qcd
+    object%model => model
     call rclwrap_set_dynamic_settings ()
     call rclwrap_set_pole_mass &
          (11, dble(model%get_real (var_str ('me'))), 0._double)
@@ -2885,6 +2897,9 @@ the Recola workflow, however.
 
     call rclwrap_set_pole_mass (1, 0._double, 0._double)
     call rclwrap_set_pole_mass (2, 0._double, 0._double)
+    !!! Whizard SM does not have u and d quark masses
+    ! call rclwrap_set_pole_mass (1, 0.083_double, 0._double)
+    ! call rclwrap_set_pole_mass (2, 0.062_double, 0._double)
 
     call rclwrap_set_pole_mass (3, dble(model%get_real (var_str ('ms'))), 0._double)
     call rclwrap_set_pole_mass (4, dble(model%get_real (var_str ('mc'))), 0._double)
@@ -2899,9 +2914,16 @@ the Recola workflow, however.
     call rclwrap_set_pole_mass (25, dble(model%get_real (var_str ('mH'))), &
          dble(model%get_real (var_str ('wH'))))
 
-    !!! TODO PB 03-03-2022: Automatize EW input schemes
-    call rclwrap_use_gfermi_scheme & 
-         (dble(model%get_real (var_str ('GF'))), object%gfermi_scheme)
+    !!! TODO PB 03-03-2022: Automatize EW input schemes    
+    scheme = model%get_scheme_num ()
+    select case (scheme)
+       case (5)
+          call rclwrap_use_alpha0_scheme &
+               (1._double / dble(model%get_real (var_str ('alpha_em_i'))))    
+       case default
+          call rclwrap_use_gfermi_scheme &
+               (dble(model%get_real (var_str ('GF'))), object%gfermi_scheme)
+    end select
     !!! TODO PB 03-03-2022: Automatize mass threshold for light fermions
     call rclwrap_set_light_fermions (0._double)
     !!! TODO PB 20-02-2023: Automatize onshell scheme activation
@@ -2920,6 +2942,25 @@ the Recola workflow, however.
   end subroutine prc_recola_set_mu_ir
 
 @ %def prc_recola_set_mu_ir
+@
+This core type has the beam polarization as an extra parameter.
+<<Prc recola: prc recola: TBP>>=
+  procedure :: set_beam_pol => prc_recola_set_beam_pol
+<<Prc recola: sub interfaces>>=
+    module subroutine prc_recola_set_beam_pol (object, has_beam_pol)
+      class(prc_recola_t), intent(inout) :: object
+      logical, intent(in), optional :: has_beam_pol
+    end subroutine prc_recola_set_beam_pol
+<<Prc recola: procedures>>=
+  module subroutine prc_recola_set_beam_pol (object, has_beam_pol)
+    class(prc_recola_t), intent(inout) :: object
+    logical, intent(in), optional :: has_beam_pol
+    if (present (has_beam_pol)) then
+       object%has_beam_pol = has_beam_pol
+    end if
+  end subroutine prc_recola_set_beam_pol
+
+@ %def prc_recola_set_beam_pol
 @
 Extend the base-type initialization method by Recola-specific
 initialization.
@@ -2952,11 +2993,24 @@ new Recola instance.
     class(prc_core_def_t), intent(in), target :: def
     type(process_library_t), intent(in), target :: lib
     type(string_t), intent(in) :: id
+    type(flavor_t) :: flv
     integer, intent(in) :: i_component
-    integer :: n_flv
+    integer, dimension(:), allocatable :: pdg
+    integer :: n_flv, f, n_in, n_hel_in
     if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: init process object")
     call object%base_init (def, lib, id, i_component)
     n_flv = size (object%data%flv_state, 2)
+    if (object%includes_polarization ()) then
+       n_in = object%data%n_in
+       allocate (pdg (n_in))
+       pdg = object%data%flv_state (1:n_in,1)
+       n_hel_in = object%n_hel_in
+       do f = 1, size (pdg)
+          call flv%init (pdg(f), object%model)
+          n_hel_in = n_hel_in * flv%get_multiplicity ()
+       end do
+       object%n_hel_in = n_hel_in
+    end if
     allocate (object%recola_ids(n_flv))
     select type (writer => object%def%writer)
     type is (recola_writer_t)
@@ -2983,9 +3037,8 @@ to be in its own format to do so.
     integer :: i
     if (debug_on)  call msg_debug &
          (D_ME_METHODS, "RECOLA: replace_helicity_and_color_arrays")
-    deallocate (object%data%hel_state)
     call rclwrap_get_helicity_configurations &
-         (object%recola_ids(1), object%data%hel_state)
+         (object%recola_ids(1), object%helicity_state)
     call rclwrap_get_color_configurations (object%recola_ids(1), col_recola)
     allocate (object%color_state (object%data%n_in + object%data%n_out, &
            size (col_recola, dim = 2)))
@@ -3055,7 +3108,7 @@ implementation can fail due to missing helicity initialization.
        call rclwrap_compute_process (object%recola_ids(f), p_recola, 'LO')
     end if
     call rclwrap_get_amplitude (object%recola_ids(f), 0, 'LO', &
-         object%color_state (:, c), object%data%hel_state (h, :), amp_dble)
+         object%color_state (:, c), object%helicity_state (h, :), amp_dble)
     amp = amp_dble
   end function prc_recola_compute_amplitude
 
@@ -3065,19 +3118,21 @@ implementation can fail due to missing helicity initialization.
   procedure :: compute_sqme_rcl => prc_recola_compute_sqme_rcl
 <<Prc recola: sub interfaces>>=
     module subroutine prc_recola_compute_sqme_rcl (object, i_flv, i_hel, p, &
-         ren_scale, subl_cp, sqme, bad_point)
+         ren_scale, subl_cp, hel_is, sqme, bad_point)
       class(prc_recola_t), intent(in) :: object
       integer, intent(in) :: i_flv, i_hel
       type(vector4_t), dimension(:), intent(in) :: p
       real(default), intent(in) :: ren_scale
+      integer, dimension(:), intent(in), optional :: hel_is
       logical, intent(in) :: subl_cp
       real(default), intent(out) :: sqme
       logical, intent(out) :: bad_point
     end subroutine prc_recola_compute_sqme_rcl
 <<Prc recola: procedures>>=
   module subroutine prc_recola_compute_sqme_rcl (object, i_flv, i_hel, p, &
-       ren_scale, subl_cp, sqme, bad_point)
+       ren_scale, subl_cp, hel_is, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
+    integer, dimension(:), intent(in), optional :: hel_is
     integer, intent(in) :: i_flv, i_hel
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale
@@ -3088,10 +3143,12 @@ implementation can fail due to missing helicity initialization.
     real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
          p_recola
     real(default) :: alpha_s
-    integer :: i
+    integer :: i, n_in
     integer :: alphas_power
     integer :: pow
-    ! TODO sbrass: Helicity for RECOLA
+    n_in = object%data%n_in
+    sqme = zero
+    sqme_dble = zero
     if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme")
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
@@ -3104,9 +3161,20 @@ implementation can fail due to missing helicity initialization.
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
     call rclwrap_set_mu_ir (dble (ren_scale))
     call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'LO')
-    call rclwrap_get_squared_amplitude &
-         (object%recola_ids(i_flv), pow, 'LO', sqme_dble)
-    sqme = real(sqme_dble, kind=default)
+    if (present (hel_is)) then
+       do i = 1, object%data%n_hel
+          if (.not. all (hel_is == object%helicity_state(:n_in,i))) cycle
+          call rclwrap_get_polarized_squared_amplitude &
+            (object%recola_ids(i_flv), pow, 'LO', &
+            object%helicity_state(:,i), sqme_dble)
+          sqme = sqme + real(sqme_dble, kind=default)
+       end do
+       if (object%includes_polarization ()) sqme = object%n_hel_in * sqme
+    else
+       call rclwrap_get_squared_amplitude &
+            (object%recola_ids(i_flv), pow, 'LO', sqme_dble)
+       sqme = real(sqme_dble, kind=default)
+    end if
     bad_point = .false.
   end subroutine prc_recola_compute_sqme_rcl
 
@@ -3116,8 +3184,9 @@ implementation can fail due to missing helicity initialization.
   procedure :: compute_sqme_virt_rcl => prc_recola_compute_sqme_virt_rcl
 <<Prc recola: sub interfaces>>=
     module subroutine prc_recola_compute_sqme_virt_rcl (object, i_flv, i_hel,  &
-         p, ren_scale, es_scale, loop_method, subl_cp, sqme, bad_point)
+         p, ren_scale, es_scale, loop_method, subl_cp, hel_is, sqme, bad_point)
       class(prc_recola_t), intent(in) :: object
+      integer, dimension(:), intent(in), optional :: hel_is
       integer, intent(in) :: i_flv, i_hel
       type(vector4_t), dimension(:), intent(in) :: p
       real(default), intent(in) :: ren_scale, es_scale
@@ -3129,9 +3198,10 @@ implementation can fail due to missing helicity initialization.
     end subroutine prc_recola_compute_sqme_virt_rcl
 <<Prc recola: procedures>>=
   module subroutine prc_recola_compute_sqme_virt_rcl (object, i_flv, i_hel,  &
-       p, ren_scale, es_scale, loop_method, subl_cp, sqme, bad_point)
+       p, ren_scale, es_scale, loop_method, subl_cp, hel_is, sqme, bad_point)
     class(prc_recola_t), intent(in) :: object
     integer, intent(in) :: i_flv, i_hel
+    integer, dimension(:), intent(in), optional :: hel_is
     type(vector4_t), dimension(:), intent(in) :: p
     real(default), intent(in) :: ren_scale, es_scale
     integer, intent(in) :: loop_method
@@ -3143,11 +3213,11 @@ implementation can fail due to missing helicity initialization.
          p_recola
     real(double) :: sqme_dble
     real(default) :: alpha_s
-    integer :: i, pow_lo, pow_nlo
+    integer :: i, pow_lo, pow_nlo, n_in
     logical :: ew_corr
-    ! TODO sbrass Helicity for RECOLA
     if (debug_on) call msg_debug2 (D_ME_METHODS, "prc_recola_compute_sqme_virt_rcl")
     sqme = zero
+    n_in = object%data%n_in
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
     end do
@@ -3165,12 +3235,27 @@ implementation can fail due to missing helicity initialization.
     if (subl_cp .and. pow_lo > 0) pow_lo = pow_lo - 1
     pow_nlo = object%get_alphas_power ()
     if (.not. ew_corr) pow_nlo = pow_nlo + 1
-    call rclwrap_get_squared_amplitude (object%recola_ids(i_flv), &
-         pow_nlo, 'NLO', sqme_dble)
-    sqme(3) = sqme_dble
-    call rclwrap_get_squared_amplitude &
-         (object%recola_ids(i_flv), pow_lo, 'LO', sqme_dble)
-    sqme(4) = sqme_dble
+    if (present (hel_is)) then
+       do i = 1, object%data%n_hel
+          if (.not. all (hel_is == object%helicity_state(:n_in,i))) cycle
+          call rclwrap_get_polarized_squared_amplitude &
+            (object%recola_ids(i_flv), pow_nlo, 'NLO', &
+            object%helicity_state(:,i), sqme_dble)
+          sqme(3) = sqme(3) + real(sqme_dble, kind=default)
+          call rclwrap_get_polarized_squared_amplitude &
+            (object%recola_ids(i_flv), pow_lo, 'LO', &
+            object%helicity_state(:,i), sqme_dble)
+          sqme(4) = sqme(4) + real(sqme_dble, kind=default)
+       end do
+       if (object%includes_polarization ()) sqme = object%n_hel_in * sqme
+    else
+       call rclwrap_get_squared_amplitude (object%recola_ids(i_flv), &
+            pow_nlo, 'NLO', sqme_dble)
+       sqme(3) = sqme_dble
+       call rclwrap_get_squared_amplitude &
+            (object%recola_ids(i_flv), pow_lo, 'LO', sqme_dble)
+       sqme(4) = sqme_dble
+    end if    
     bad_point = .false.
   end subroutine prc_recola_compute_sqme_virt_rcl
 

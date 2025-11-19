@@ -4,6 +4,9 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.7.1
 
+2025-11-19
+	Support polarized (LO, NLO partial) processes with Recola
+
 2025-10-15
 	Build tool update: libtool to 2.5.4, automake to 1.18
 

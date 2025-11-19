@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode -*-
 % WHIZARD main code as NOWEB source
 \includemodulegraph{whizard-core}
 \chapter{Integration and Simulation}
@@ -3805,24 +3805,28 @@ grab it from the model.
   public :: dispatch_core
 <<Dispatch ME methods: sub interfaces>>=
      module subroutine dispatch_core (core, core_def, model, &
-          helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+          helicity_selection, qcd, is_nlo, &
+          use_color_factors, has_beam_pol, gfermi_scheme)
        class(prc_core_t), allocatable, intent(inout) :: core
        class(prc_core_def_t), intent(in) :: core_def
        class(model_data_t), intent(in), target, optional :: model
        type(helicity_selection_t), intent(in), optional :: helicity_selection
        type(qcd_t), intent(in), optional :: qcd
+       logical, intent(in), optional :: is_nlo
        logical, intent(in), optional :: use_color_factors
        logical, intent(in), optional :: has_beam_pol
        integer, intent(in), optional :: gfermi_scheme
      end subroutine dispatch_core
 <<Dispatch ME methods: procedures>>=
   module subroutine dispatch_core (core, core_def, model, &
-       helicity_selection, qcd, use_color_factors, has_beam_pol, gfermi_scheme)
+       helicity_selection, qcd, is_nlo, &
+       use_color_factors, has_beam_pol, gfermi_scheme)
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
+    logical, intent(in), optional :: is_nlo
     logical, intent(in), optional :: use_color_factors
     logical, intent(in), optional :: has_beam_pol
     integer, intent(in), optional :: gfermi_scheme
@@ -3860,6 +3864,16 @@ grab it from the model.
       type is (prc_recola_t)
          call core%set_gfermi (gfermi_scheme)
          call core%set_parameters (qcd, model)
+         call core%set_beam_pol (has_beam_pol)
+         if (present (has_beam_pol)) then
+            if (has_beam_pol .and. is_nlo) then
+               call msg_warning ("", &
+                   [var_str ("*********************************************"), &
+                    var_str ("Polarized NLO processes with Recola "), &
+                    var_str ("not fully supported, results maybe incorrect."), &
+                    var_str ("*********************************************")])
+            end if
+         end if
       end select
     type is (prc_external_test_def_t)
       if (.not. allocated (core)) allocate (prc_external_test_t :: core)
