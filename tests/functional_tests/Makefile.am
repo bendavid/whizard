@@ -241,6 +241,7 @@ TESTS_REQ_OCAML = \
     recola_8.run \
     recola_9.run \
     recola_10.run \
+    recola_11.run \
     powheg_1.run \
     powheg_2.run \
     spincor_1.run \

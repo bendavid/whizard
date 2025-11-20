@@ -798,6 +798,7 @@ REF_OUTPUT_FILES_BASE = \
     functional_tests/ref-output/recola_8.ref \
     functional_tests/ref-output/recola_9.ref \
     functional_tests/ref-output/recola_10.ref \
+    functional_tests/ref-output/recola_11.ref \
     functional_tests/ref-output/resonances_5.ref \
     functional_tests/ref-output/resonances_6.ref \
     functional_tests/ref-output/resonances_7.ref \
@@ -1391,6 +1392,7 @@ MISC_TESTS_SIN = \
     functional_tests/recola_8.sin \
     functional_tests/recola_9.sin \
     functional_tests/recola_10.sin \
+    functional_tests/recola_11.sin \
     functional_tests/resonances_1.sin \
     functional_tests/resonances_2.sin \
     functional_tests/resonances_3.sin \

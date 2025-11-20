@@ -2165,6 +2165,7 @@ and parameters. Correction types are either QCD, EW, or full SM.
      type(string_t) :: order
      integer :: alpha_power = 0
      integer :: alphas_power = 0
+     logical :: loopinduced = .false.
      integer :: corr = RECOLA_UNDEFINED
   contains
   <<Prc recola: recola def: TBP>>
@@ -2269,6 +2270,7 @@ The NLO flag is true only for virtual matrix elements.
     object%basename = basename
     object%alpha_power = alpha_power
     object%alphas_power = alphas_power
+    object%loopinduced = var_list%get_lval (var_str ("?recola_loopinduced"))
     select case (char (correction_type))
     case ("QCD")
        object%corr = RECOLA_QCD
@@ -2281,7 +2283,11 @@ The NLO flag is true only for virtual matrix elements.
     select case (nlo_type)
     case (BORN)
        object%suffix = '_BORN'
-       object%order = "LO"
+       if (object%loopinduced) then
+          object%order = "NLO"
+       else
+          object%order = "LO"
+       end if
     case (NLO_REAL)
        object%suffix = '_REAL'
        object%order = "LO"
@@ -3081,6 +3087,8 @@ implementation can fail due to missing helicity initialization.
     integer, intent(in) :: j
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in) :: f, h, c
+    logical :: loopinduced
+    character(len=:), allocatable :: order
     real(default), intent(in) :: fac_scale, ren_scale
     real(default), intent(in), allocatable :: alpha_qcd_forced
     class(prc_core_state_t), intent(inout), allocatable, optional :: &
@@ -3105,9 +3113,20 @@ implementation can fail due to missing helicity initialization.
        do i = 1, object%data%n_in + object%data%n_out
           p_recola(:, i) = dble(p(i)%p)
        end do
-       call rclwrap_compute_process (object%recola_ids(f), p_recola, 'LO')
+       if (associated (object%def)) then
+          select type (def => object%def)
+          type is (recola_def_t)
+             loopinduced = def%loopinduced
+          end select
+       end if
+       if (loopinduced) then
+          order = 'NLO'
+       else
+          order = 'LO'
+       end if
+       call rclwrap_compute_process (object%recola_ids(f), p_recola, order)
     end if
-    call rclwrap_get_amplitude (object%recola_ids(f), 0, 'LO', &
+    call rclwrap_get_amplitude (object%recola_ids(f), 0, order, &
          object%color_state (:, c), object%helicity_state (h, :), amp_dble)
     amp = amp_dble
   end function prc_recola_compute_amplitude
@@ -3139,6 +3158,8 @@ implementation can fail due to missing helicity initialization.
     logical, intent(in) :: subl_cp
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
+    character(len=:), allocatable :: order
+    logical :: loopinduced
     real(double) :: sqme_dble
     real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
          p_recola
@@ -3154,25 +3175,36 @@ implementation can fail due to missing helicity initialization.
        p_recola(:, i) = dble(p(i)%p)
     end do
     pow = object%get_alphas_power ()
+    if (associated (object%def)) then
+       select type (def => object%def)
+       type is (recola_def_t)
+          loopinduced = def%loopinduced
+       end select
+    end if
+    if (loopinduced) then
+       order = 'NLO'
+    else
+       order = 'LO'
+    end if
     if (subl_cp .and. pow > 0) pow = pow - 1
     alpha_s = object%qcd%alpha%get (ren_scale)
     if (debug_on) call msg_debug2 (D_ME_METHODS, "alpha_s", alpha_s)
     if (debug_on) call msg_debug2 (D_ME_METHODS, "ren_scale", ren_scale)
     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%qcd%n_f)
     call rclwrap_set_mu_ir (dble (ren_scale))
-    call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, 'LO')
+    call rclwrap_compute_process (object%recola_ids(i_flv), p_recola, order)
     if (present (hel_is)) then
        do i = 1, object%data%n_hel
           if (.not. all (hel_is == object%helicity_state(:n_in,i))) cycle
           call rclwrap_get_polarized_squared_amplitude &
-            (object%recola_ids(i_flv), pow, 'LO', &
+            (object%recola_ids(i_flv), pow, order, &
             object%helicity_state(:,i), sqme_dble)
           sqme = sqme + real(sqme_dble, kind=default)
        end do
        if (object%includes_polarization ()) sqme = object%n_hel_in * sqme
     else
        call rclwrap_get_squared_amplitude &
-            (object%recola_ids(i_flv), pow, 'LO', sqme_dble)
+            (object%recola_ids(i_flv), pow, order, sqme_dble)
        sqme = real(sqme_dble, kind=default)
     end if
     bad_point = .false.

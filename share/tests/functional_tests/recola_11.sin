@@ -1,0 +1,52 @@
+# SINDARIN input for WHIZARD self-test
+# Testing integration for RECOLA loop-induced process
+
+model = "SM_Higgs_CKM"
+
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+
+$method = "recola"
+### numerical backwards compatibility with Recola 1.4.3
+recola_gfermi_scheme = 0
+
+!!! Tests should be run single-threaded
+openmp_num_threads = 1
+
+me = 0
+mmu = 0
+ms = 0
+mc = 0
+mb = 0
+mH = 125
+wH = 0 
+
+alpha_power = 4
+alphas_power = 0
+
+process recola_11_p1 = A, A => H, H { ?recola_loopinduced = true }
+
+seed = 1
+
+sqrts = 380 GeV
+iterations = 1:100
+integrate (recola_11_p1)
+
+seed = 1
+
+beams = A, A
+beams_pol_density = @(+1), @(+1)
+integrate (recola_11_p1)
+
+sample_format = debug
+?sample_pacify = true
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+n_events = 2
+simulate (recola_11_p1)

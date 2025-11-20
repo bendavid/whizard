@@ -234,6 +234,7 @@ seed = 2
 ?virtual_collinear_resonance_aware = true
 ?openloops_use_cms = true
 ?openloops_switch_off_muon_yukawa = false
+?recola_loopinduced = false
 ?disable_subtraction = false
 ?vis_fks_regions = false
 ?combined_nlo_integration = false
