@@ -6,7 +6,7 @@
 \chapter{Recola Interface}
 \section{Recola wrapper}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-<<[[recola_wrapper.f90]]>>=
+<<[[recola_wrapper.F90]]>>=
 <<File header>>
 
 module recola_wrapper
@@ -538,6 +538,22 @@ so RECOLA can initialize itself for integration.
   end subroutine rclwrap_use_gfermi_scheme
 
 @ %def rclwrap_use_gfermi_scheme
+@ This does not exist for Recola v1.4.4 (and easrlier).
+<<Recola wrapper: public>>=
+  public :: rclwrap_use_gfermi_mixed_scheme
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_use_gfermi_mixed_scheme (id, alpha_order)
+    integer, intent(in) :: id
+    integer, intent(in), optional :: alpha_order
+    integer :: order
+    if (debug_on) call msg_debug2 (D_ME_METHODS, "use_gfermi_mixed_scheme_rcl")
+    order = 0;  if (present (alpha_order))  order = alpha_order
+#if RECOLA_VERSION > 10404 && RECOLA_VERSION < 20000
+    call use_gfermi_mixed_scheme_rcl (id, order, 0, 0)
+#endif
+  end subroutine rclwrap_use_gfermi_mixed_scheme
+
+@ %def rclwrap_use_gfermi_mixed_scheme
 @
 <<Recola wrapper: public>>=
   public :: rclwrap_set_light_fermions
@@ -1474,6 +1490,16 @@ end module recola_wrapper
 @ %def rclwrap_use_gfermi_scheme
 @
 <<Recola wrapper dummy: public>>=
+  public :: rclwrap_use_gfermi_mixed_scheme
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_use_gfermi_mixed_scheme (id, alpha_order)
+    integer, intent(in) :: id
+    integer, intent(in), optional :: alpha_order
+  end subroutine rclwrap_use_gfermi_mixed_scheme
+
+@ %def rclwrap_use_gfermi_mixed_scheme
+@
+<<Recola wrapper dummy: public>>=
   public :: rclwrap_set_light_fermions
 <<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_set_light_fermions (m)
@@ -2165,6 +2191,7 @@ and parameters. Correction types are either QCD, EW, or full SM.
      type(string_t) :: order
      integer :: alpha_power = 0
      integer :: alphas_power = 0
+     integer :: gfermi_mixed_scheme = -1
      logical :: loopinduced = .false.
      integer :: corr = RECOLA_UNDEFINED
   contains
@@ -2271,6 +2298,8 @@ The NLO flag is true only for virtual matrix elements.
     object%alpha_power = alpha_power
     object%alphas_power = alphas_power
     object%loopinduced = var_list%get_lval (var_str ("?recola_loopinduced"))
+    object%gfermi_mixed_scheme = var_list%get_ival &
+         (var_str ("recola_gfermi_mixed_scheme"))
     select case (char (correction_type))
     case ("QCD")
        object%corr = RECOLA_QCD
@@ -3002,7 +3031,7 @@ new Recola instance.
     type(flavor_t) :: flv
     integer, intent(in) :: i_component
     integer, dimension(:), allocatable :: pdg
-    integer :: n_flv, f, n_in, n_hel_in
+    integer :: n_flv, f, n_in, n_hel_in, i
     if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: init process object")
     call object%base_init (def, lib, id, i_component)
     n_flv = size (object%data%flv_state, 2)
@@ -3021,6 +3050,15 @@ new Recola instance.
     select type (writer => object%def%writer)
     type is (recola_writer_t)
        call writer%register_processes (object%recola_ids)
+    end select
+    select type (rec_def => object%def)
+    type is (recola_def_t)
+       if (rec_def%gfermi_mixed_scheme >= 0) then
+          do i = 1, n_flv
+             call rclwrap_use_gfermi_mixed_scheme &
+                  (object%recola_ids (i), rec_def%gfermi_mixed_scheme)
+          end do
+       end if
     end select
     call rclwrap_generate_processes ()
     call object%replace_helicity_and_color_arrays ()
@@ -3705,6 +3743,7 @@ end module prc_recola_uti
     call rclwrap_add_process (2, var_str ('e+ e- -> mu+ mu- A'), var_str ('LO'))
     call rclwrap_define_processes ()
     write (u, "(A)") "* RECOLA: generate process"
+    call rclwrap_use_gfermi_mixed_scheme (2)
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (2, p, 'LO')
     call rclwrap_get_helicity_configurations (2, helicities)

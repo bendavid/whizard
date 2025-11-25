@@ -14,6 +14,7 @@ SM_Higgs_CKM.mH =>  1.25000E+02
 SM_Higgs_CKM.wH =>  0.00000E+00
 alpha_power = 4
 alphas_power = 0
+recola_gfermi_mixed_scheme = 0
 ?recola_loopinduced = true
 | Process library 'recola_11_lib': recorded process 'recola_11_p1'
 seed = 1

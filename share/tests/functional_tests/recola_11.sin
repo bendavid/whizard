@@ -27,6 +27,11 @@ wH = 0
 alpha_power = 4
 alphas_power = 0
 
+## Backwards compatibility between Recola 1.4.4 and 1.5.0
+## make sure all powers of alpha are the running ones
+## Needs to bet set before the process definition
+recola_gfermi_mixed_scheme = 0
+
 process recola_11_p1 = A, A => H, H { ?recola_loopinduced = true }
 
 seed = 1
