@@ -200,14 +200,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.F90 *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.F90 *.c || true
 endif
 .PHONY: clean-noweb
 
