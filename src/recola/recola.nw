@@ -1,5 +1,6 @@
 % -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: interface to Recola 1-loop library
+% version supports Recola2 (2HDM), June 20, 2025
 
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -48,9 +49,10 @@ process definition
 <<Recola wrapper: public>>=
   public :: get_recola_particle_string
 <<Recola wrapper: procedures>>=
-  elemental function get_recola_particle_string (pdg) result (name)
+  elemental function get_recola_particle_string (pdg, model_name) result (name)
     type(string_t) :: name
     integer, intent(in) :: pdg
+    type(string_t), intent(in), optional :: model_name
     select case (pdg)
     case (1)
        name = var_str ("d")
@@ -112,6 +114,9 @@ process definition
        name = var_str ("W-")
     case (25)
        name = var_str ("H")
+       if (present (model_name)) then
+          if (model_name == "THDM") name = var_str ("Hl")
+       end if
     end select
   end function get_recola_particle_string
 
@@ -342,6 +347,7 @@ allow this twice (skip silently), and skip anyway if there is no activation.
     if (rcl_controller%active) then
        if (.not. rcl_controller%done) then
           call msg_message ("Recola: preparing processes for integration")
+          call set_dynamic_settings_rcl (1)
           call generate_processes_rcl ()
           rcl_controller%done = .true.
        end if
@@ -508,6 +514,84 @@ so RECOLA can initialize itself for integration.
 @ %def rclwrap_set_pole_mass
 @
 <<Recola wrapper: public>>=
+  public :: rclwrap_set_pole_mass_hl_hh
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_pole_mass_hl_hh (mass_hl, width_hl, mass_hh, width_hh)
+    real(double), intent(in) :: mass_hl, width_hl, mass_hh, width_hh
+    call set_pole_mass_hl_hh_rcl (mass_hl, width_hl, mass_hh, width_hh)
+  end subroutine rclwrap_set_pole_mass_hl_hh
+
+@ %def rclwrap_set_pole_mass_hl_hh
+@
+<<Recola wrapper: public>>=
+  public :: rclwrap_set_pole_mass_ha
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_pole_mass_ha (mass, width)
+    real(double), intent(in) :: mass, width
+    call set_pole_mass_ha_rcl (mass, width)
+  end subroutine rclwrap_set_pole_mass_ha
+
+@ %def rclwrap_set_pole_mass_ha
+@
+<<Recola wrapper: public>>=
+  public :: rclwrap_set_pole_mass_hc
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_pole_mass_hc (mass, width)
+    real(double), intent(in) :: mass, width
+    call set_pole_mass_hc_rcl (mass, width)
+  end subroutine rclwrap_set_pole_mass_hc
+
+@ %def rclwrap_set_pole_mass_hc
+@
+<<Recola wrapper: public>>=
+  public :: rclwrap_set_add_thdm_parameters
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_add_thdm_parameters (z2type, tb, cab, l5)
+    integer, intent(in) :: z2type
+    real(double), intent(in) :: tb, cab, l5
+    call set_Z2_thdm_yukawa_type_rcl(z2type)
+    call set_tb_cab_rcl(tb, cab)
+    call set_l5_rcl(l5) 
+  end subroutine rclwrap_set_add_thdm_parameters
+
+@ %def rclwrap_set_add_thdm_parameters
+@
+<<Recola wrapper: public>>=
+  public :: rclwrap_set_thdm_scales
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_thdm_scales (muMS, muMS_BSM)
+    real(double), intent(in) :: muMS, muMS_BSM
+    call set_parameter_rcl('muMS', cmplx(muMS, 0.d0, kind=8))
+    call set_parameter_rcl('muMS_BSM', cmplx(muMS_BSM, 0.d0, kind=8))
+  end subroutine rclwrap_set_thdm_scales
+
+@ %def rclwrap_set_thdm_scales
+@
+<<Recola wrapper: public>>=
+  public :: rclwrap_set_add_thdm_os_schemes
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_add_thdm_os_schemes (alpha_os, beta_os)
+    type(string_t), intent(in) :: alpha_os, beta_os
+
+    call use_mixing_alpha_onshell_scheme_rcl(char(alpha_os))
+    call use_mixing_beta_onshell_scheme_rcl(char(beta_os))
+  end subroutine rclwrap_set_add_thdm_os_schemes
+
+@ %def rclwrap_set_add_thdm_os_schemes
+@
+<<Recola wrapper: public>>=
+  public :: rclwrap_set_add_thdm_msbar_schemes
+<<Recola wrapper: procedures>>=
+  subroutine rclwrap_set_add_thdm_msbar_schemes (alpha_msbar, beta_msbar)
+    type(string_t), intent(in) :: alpha_msbar, beta_msbar
+
+    call use_mixing_alpha_msbar_scheme_rcl(char(alpha_msbar))
+    call use_mixing_beta_msbar_scheme_rcl(char(beta_msbar))
+  end subroutine rclwrap_set_add_thdm_msbar_schemes
+
+@ %def rclwrap_set_add_thdm_msbar_schemes
+@
+<<Recola wrapper: public>>=
   public :: rclwrap_set_onshell_mass
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_set_onshell_mass (pdg_id, mass, width)
@@ -534,11 +618,15 @@ so RECOLA can initialize itself for integration.
     integer, intent(in), optional :: mode
     if (debug_on) call msg_debug2 (D_ME_METHODS, "use_gfermi_scheme_rcl", &
          real(gf, kind=default))
+#if RECOLA_VERSION > 20200
+    call use_gfermi_scheme_rcl (g = gf)
+#else
     call use_gfermi_scheme_rcl (g = gf, massesgf = mode)
+#endif
   end subroutine rclwrap_use_gfermi_scheme
 
 @ %def rclwrap_use_gfermi_scheme
-@ This does not exist for Recola v1.4.4 (and easrlier).
+@ This does not exist for Recola v1.4.4 (and earlier).
 <<Recola wrapper: public>>=
   public :: rclwrap_use_gfermi_mixed_scheme
 <<Recola wrapper: procedures>>=
@@ -670,14 +758,25 @@ so RECOLA can initialize itself for integration.
   end function rclwrap_get_alpha
 
 @ %def rclwrap_get_alpha
-@
+@ There is an issue with Recola 2 that helicity configurations from
+identical processes already defined come back as size zero arrays. As
+a workaround, we reduce the process ID incremently
 <<Recola wrapper: public>>=
   public :: rclwrap_get_helicity_configurations
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_get_helicity_configurations (id, hel)
     integer, intent(in) :: id
     integer, intent(inout), dimension(:,:), allocatable :: hel
+    integer :: i
     call get_helicity_configurations_rcl (id, hel)
+#if RECOLA_VERSION > 20200
+    i = id
+    do while (size (hel) == 0 .and. i > 1)
+       i = i-1
+       deallocate (hel)
+       call get_helicity_configurations_rcl (i, hel)
+    end do
+#endif
   end subroutine rclwrap_get_helicity_configurations
 
 @ %def rclwrap_get_helicity_configurations
@@ -1156,14 +1255,28 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_compute_color_correlation
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_compute_color_correlation (id, p, &
-     pow, i1, i2, sqme)
+       pow, i1, i2, sqme, model)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
     integer, intent(in) :: pow, i1, i2
     real(double), intent(out), optional :: sqme
+    type(string_t), intent(in), optional :: model
+    type(string_t) :: model_name
+    model_name = "SM"
+    if (present (model))  model_name = model
     if (debug_on) call msg_debug2 (D_ME_METHODS, "compute_colour_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call compute_colour_correlation_rcl (id, p, i1, i2, 'LO', sqme)
+    select case (char (model_name))
+    case ("SM")
+       call get_colour_correlation_rcl (id, pow, i1, i2, 'LO', sqme)
+    case default
+       call get_colour_correlation_rcl (id, [pow,0], i1, i2, 'LO', sqme)
+    end select
+#else
     call compute_colour_correlation_rcl (id, p, i1, i2, sqme)
     call get_colour_correlation_rcl (id, pow, i1, i2, sqme)
+#endif
   end subroutine rclwrap_compute_color_correlation
 
 @ %def rclwrap_compute_color_correlation
@@ -1187,7 +1300,11 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id, i1, i2
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "rescale_colour_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call rescale_colour_correlation_rcl (id, i1, i2, 'LO', sqme)
+#else
     call rescale_colour_correlation_rcl (id, i1, i2, sqme)
+#endif
   end subroutine rclwrap_rescale_color_correlation
 
 @ %def rclwrap_rescale_color_correlation
@@ -1210,7 +1327,11 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id, alphas_power, i1, i2
     real(double), intent(out) :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "get_colour_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call get_colour_correlation_rcl (id, alphas_power, i1, i2, 'LO', sqme)
+#else
     call get_colour_correlation_rcl (id, alphas_power, i1, i2, sqme)
+#endif
   end subroutine rclwrap_get_color_correlation
 
 @ %def rclwrap_get_color_correlation
@@ -1225,8 +1346,13 @@ the mass regulator in GeV to [[m]].
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "compute_spin_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call compute_spin_correlation_rcl (id, p, i_photon, pol, 'LO', sqme)
+    call get_spin_correlation_general_rcl (id, [pow, 0], 'LO', sqme)
+#else
     call compute_spin_correlation_rcl (id, p, i_photon, pol, sqme)
-    call get_spin_correlation_rcl (id, pow, sqme)
+    call get_spin_correlation_general_rcl (id, pow, sqme)    
+#endif
   end subroutine rclwrap_compute_spin_correlation
 
 @ %def rclwrap_compute_spin_correlation
@@ -1239,7 +1365,11 @@ the mass regulator in GeV to [[m]].
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "rescale_spin_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call rescale_spin_correlation_rcl (id, i_photon, pol, 'LO', sqme)
+#else
     call rescale_spin_correlation_rcl (id, i_photon, pol, sqme)
+#endif
   end subroutine rclwrap_rescale_spin_correlation
 
 @ %def rclwrap_rescale_spin_correlation
@@ -1251,7 +1381,11 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id, alphas_power
     real(double), intent(out) :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "get_spin_correlation_rcl")
-    call get_spin_correlation_rcl (id, alphas_power, sqme)
+#if RECOLA_VERSION > 20200
+    call get_spin_correlation_general_rcl (id, [alphas_power, 0], 'LO', sqme)
+#else
+    call get_spin_correlation_general_rcl (id, alphas_power, sqme)
+#endif
   end subroutine rclwrap_get_spin_correlation
 
 @ %def rclwrap_get_spin_correlation
@@ -1267,8 +1401,13 @@ the mass regulator in GeV to [[m]].
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "compute_spin_colour_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call compute_spin_colour_correlation_rcl (id, p, &
+         i_gluon, i_spectator, pol, 'LO', sqme)
+#else
     call compute_spin_colour_correlation_rcl (id, p, &
          i_gluon, i_spectator, pol, sqme)
+#endif
   end subroutine rclwrap_compute_spin_color_correlation
 
 @ %def rclwrap_compute_spin_color_correlation
@@ -1282,8 +1421,13 @@ the mass regulator in GeV to [[m]].
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "rescale_spin_colour_correlation_rcl")
+#if RECOLA_VERSION > 20200
+    call rescale_spin_colour_correlation_rcl (id, i_gluon, &
+         i_spectator, pol, 'LO', sqme)
+#else
     call rescale_spin_colour_correlation_rcl (id, i_gluon, &
          i_spectator, pol, sqme)
+#endif
   end subroutine rclwrap_rescale_spin_color_correlation
 
 @ %def rclwrap_rescale_spin_color_correlation
@@ -1296,8 +1440,13 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id, alphas_power, i_gluon, i_spectator
     real(double), intent(out) :: sqme
     if (debug_on) call msg_debug2 (D_ME_METHODS, "get_spin_colour_correlation_rcl")
-    call get_spin_colour_correlation_rcl (id, alphas_power, &
+#if RECOLA_VERSION > 20200
+    call get_spin_colour_correlation_general_rcl (id, [alphas_power,0], &
+         i_gluon, i_spectator, 'LO', sqme)
+#else
+    call get_spin_colour_correlation_general_rcl (id, alphas_power, &
          i_gluon, i_spectator, sqme)
+#endif
   end subroutine rclwrap_get_spin_color_correlation
 
 @ %def rclwrap_get_spin_color_correlation
@@ -1362,9 +1511,10 @@ end module recola_wrapper
 <<Recola wrapper dummy: public>>=
   public :: get_recola_particle_string
 <<Recola wrapper dummy: procedures>>=
-  elemental function get_recola_particle_string (pdg) result (name)
+  elemental function get_recola_particle_string (pdg, model_name) result (name)
     type(string_t) :: name
     integer, intent(in) :: pdg
+    type(string_t), intent(in), optional :: model_name
     name = var_str ("?")
   end function get_recola_particle_string
 
@@ -1468,6 +1618,70 @@ end module recola_wrapper
   end subroutine rclwrap_set_pole_mass
 
 @ %def rclwrap_set_pole_mass
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_pole_mass_hl_hh
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_pole_mass_hl_hh (mass_hl, width_hl, mass_hh, width_hh)
+    real(double), intent(in) :: mass_hl, width_hl, mass_hh, width_hh
+  end subroutine rclwrap_set_pole_mass_hl_hh
+
+@ %def rclwrap_set_pole_mass_hl_hh
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_pole_mass_ha
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_pole_mass_ha (mass, width)
+    real(double), intent(in) :: mass, width
+  end subroutine rclwrap_set_pole_mass_ha
+
+@ %def rclwrap_set_pole_mass_ha
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_add_thdm_parameters
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_add_thdm_parameters (z2type, tb, cab, l5)
+    integer, intent(in) :: z2type
+    real(double), intent(in) :: tb, cab, l5
+  end subroutine rclwrap_set_add_thdm_parameters
+
+@ %def rclwrap_set_add_thdm_parameters
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_pole_mass_hc
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_pole_mass_hc (mass, width)
+    real(double), intent(in) :: mass, width
+  end subroutine rclwrap_set_pole_mass_hc
+
+@ %def rclwrap_set_pole_mass_hc
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_add_thdm_msbar_schemes
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_add_thdm_msbar_schemes (alpha_msbar, beta_msbar)
+    type(string_t), intent(in) :: alpha_msbar, beta_msbar
+  end subroutine rclwrap_set_add_thdm_msbar_schemes
+
+@ %def rclwrap_set_add_thdm_msbar_schemes
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_thdm_scales
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_thdm_scales (muMS, muMS_BSM)
+    real(double), intent(in) :: muMS, muMS_BSM
+  end subroutine rclwrap_set_thdm_scales
+
+@ %def rclwrap_set_thdm_scales
+@
+<<Recola wrapper dummy: public>>=
+  public :: rclwrap_set_add_thdm_os_schemes
+<<Recola wrapper dummy: procedures>>=
+  subroutine rclwrap_set_add_thdm_os_schemes (alpha_os, beta_os)
+    type(string_t), intent(in) :: alpha_os, beta_os
+  end subroutine rclwrap_set_add_thdm_os_schemes
+
+@ %def rclwrap_set_add_thdm_os_schemes
 @
 <<Recola wrapper dummy: public>>=
   public :: rclwrap_set_onshell_mass
@@ -1952,11 +2166,12 @@ end module recola_wrapper
   public :: rclwrap_compute_color_correlation
 <<Recola wrapper dummy: procedures>>=
   subroutine rclwrap_compute_color_correlation (id, p, &
-     pow, i1, i2, sqme)
+     pow, i1, i2, sqme, model)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
     integer, intent(in) :: pow, i1, i2
     real(double), intent(out), optional :: sqme
+    type(string_t), intent(in), optional :: model
   end subroutine rclwrap_compute_color_correlation
 
 @ %def rclwrap_compute_color_correlation
@@ -2184,9 +2399,32 @@ and parameters. Correction types are either QCD, EW, or full SM.
 @ %def RECOLA_QCD RECOLA_EW RECOLA_FULL
 @
 <<Prc recola: public>>=
+  public :: recola_extra_settings_t
+<<Prc recola: types>>=
+  type :: recola_extra_settings_t
+     type(string_t) :: model_name
+     integer :: thdm_z2type = 0
+     real(default) :: thdm_tb
+     real(default) :: thdm_cab
+     real(default) :: thdm_l5
+     real(default) :: thdm_muMS
+     real(default) :: thdm_muMS_BSM
+     type(string_t) :: thdm_renormalise_scheme
+     type(string_t) :: thdm_alpha_os_scheme
+     type(string_t) :: thdm_alpha_msbar_scheme
+     type(string_t) :: thdm_beta_os_scheme
+     type(string_t) :: thdm_beta_msbar_scheme
+  contains
+<<Prc recola: recola extra settings: TBP>>
+  end type recola_extra_settings_t
+
+@ %def recola_extra_settings_t
+@
+<<Prc recola: public>>=
   public :: recola_def_t
 <<Prc recola: types>>=
   type, extends (prc_external_def_t) :: recola_def_t
+     type(recola_extra_settings_t) :: extra_settings
      type(string_t) :: suffix
      type(string_t) :: order
      integer :: alpha_power = 0
@@ -2245,6 +2483,7 @@ Not implemented yet.
 
 @ %def recola_def_read
 @
+
 The initializer has the responsibility to store all process- and
 method-specific parameters, such that they can be used later by the
 writer and by the driver for this process.  Also, it allocates the writer.
@@ -2259,8 +2498,9 @@ methods.  Here, we introduce only RECOLA-specific procedures, in
 addition.
 
 The NLO flag is true only for virtual matrix elements.
+
 <<Prc recola: recola def: TBP>>=
-  procedure :: init => recola_def_init  
+  procedure :: init => recola_def_init
 <<Prc recola: sub interfaces>>=
     module subroutine recola_def_init (object, basename, model_name, &
          prt_in, prt_out, nlo_type, alpha_power, alphas_power, &
@@ -2342,10 +2582,49 @@ The NLO flag is true only for virtual matrix elements.
        call writer%set_order (object%order)
        call writer%set_coupling_powers (object%alpha_power, object%alphas_power)
     end select
+    call object%extra_settings%init (model_name, var_list)
   end subroutine recola_def_init
 
 @ %def recola_def_init
 @
+<<Prc recola: recola extra settings: TBP>>=
+  procedure :: init => recola_extra_settings_init
+<<Prc recola: sub interfaces>>=
+    module subroutine recola_extra_settings_init &
+         (extra_settings, model_name, var_list)
+      class(recola_extra_settings_t), intent(inout) :: extra_settings
+      type(string_t), intent(in) :: model_name
+      type(var_list_t), intent(in) :: var_list
+    end subroutine recola_extra_settings_init
+<<Prc recola: procedures>>=
+  module subroutine recola_extra_settings_init &
+       (extra_settings, model_name, var_list)
+    class(recola_extra_settings_t), intent(inout) :: extra_settings
+    type(string_t), intent(in) :: model_name
+    type(var_list_t), intent(in) :: var_list
+    extra_settings%model_name = model_name
+    extra_settings%thdm_z2type = var_list%get_ival (var_str ("recola_thdm_z2type"))
+    extra_settings%thdm_tb = var_list%get_rval (var_str ("recola_thdm_tb"))
+    extra_settings%thdm_cab = var_list%get_rval (var_str ("recola_thdm_cab"))
+    extra_settings%thdm_l5 = var_list%get_rval (var_str ("recola_thdm_l5"))
+    extra_settings%thdm_muMS = var_list%get_rval (var_str ("recola_thdm_muMS"))
+    extra_settings%thdm_muMS_BSM = &
+         var_list%get_rval (var_str ("recola_thdm_muMS_BSM"))
+    extra_settings%thdm_renormalise_scheme = &
+         var_list%get_sval (var_str ("$recola_thdm_renormalise_scheme"))
+    extra_settings%thdm_alpha_os_scheme = &
+         var_list%get_sval (var_str ("$recola_thdm_alpha_os_scheme"))
+    extra_settings%thdm_alpha_msbar_scheme = &
+         var_list%get_sval (var_str ("$recola_thdm_alpha_msbar_scheme"))
+    extra_settings%thdm_beta_os_scheme = &
+         var_list%get_sval (var_str ("$recola_thdm_beta_os_scheme"))
+    extra_settings%thdm_beta_msbar_scheme = &
+         var_list%get_sval (var_str ("$recola_thdm_beta_msbar_scheme"))
+  end subroutine recola_extra_settings_init
+
+@ %def recola_extra_settings_init
+@
+
 \subsection{Writer object}
 The RECOLA writer takes the additional resposibility of transferring process
 information to RECOLA.
@@ -2541,10 +2820,11 @@ processes have been defined.
        if (index (writer%id, "REAL") > 0 .and. &
           .not. query_coupling_powers (pdg, writer%alpha_power, writer%alphas_power)) &
           cycle
+       !!! if (count (pdg (3:) == 22) == 0) cycle
        i_flv = i_flv + 1
        call rclwrap_get_new_recola_id (recola_id)
        recola_ids(i_flv) = recola_id
-       particle_names(:) = get_recola_particle_string (pdg)
+       particle_names(:) = get_recola_particle_string (pdg, writer%model_name)
        process_string = var_str ("")
        do i_part = 1, n_tot
           process_string = process_string // &
@@ -2612,7 +2892,7 @@ load any external dynamical libraries, so this is a dummy.
   end type recola_driver_t
 
 @ %def recola_driver_t
-@ 
+@
 <<Prc recola: recola def: TBP>>=
   procedure :: allocate_driver => recola_def_allocate_driver
 <<Prc recola: sub interfaces>>=
@@ -2769,6 +3049,7 @@ obtain it, we need a type cast.
 <<Prc recola: prc recola: TBP>>=
   procedure :: get_alpha_power => prc_recola_get_alpha_power
   procedure :: get_alphas_power => prc_recola_get_alphas_power
+  procedure :: get_model_name => prc_recola_get_model_name
 <<Prc recola: sub interfaces>>=
     module function prc_recola_get_alpha_power (object) result (p)
       class(prc_recola_t), intent(in) :: object
@@ -2778,6 +3059,10 @@ obtain it, we need a type cast.
       class(prc_recola_t), intent(in) :: object
       integer :: p
     end function prc_recola_get_alphas_power
+    module function prc_recola_get_model_name (object) result (p)
+      class(prc_recola_t), intent(in) :: object
+      type(string_t) :: p
+    end function prc_recola_get_model_name
 <<Prc recola: procedures>>=
   module function prc_recola_get_alpha_power (object) result (p)
     class(prc_recola_t), intent(in) :: object
@@ -2803,9 +3088,269 @@ obtain it, we need a type cast.
     end if
   end function prc_recola_get_alphas_power
 
+  module function prc_recola_get_model_name (object) result (p)
+    class(prc_recola_t), intent(in) :: object
+    type(string_t) :: p
+    p = "SM"
+    if (associated (object%def)) then
+       select type (def => object%def)
+       type is (recola_def_t)
+          p = def%get_model_name ()
+       end select
+    end if
+  end function prc_recola_get_model_name
+
 @ %def prc_recola_get_alpha_power
 @ %def prc_recola_get_alphas_power
+@ %def prc_recola_get_model_name
 @
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_model_name => recola_def_get_model_name
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_model_name (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      type(string_t) :: p
+    end function recola_def_get_model_name
+<<Prc recola: procedures>>=
+  module function recola_def_get_model_name (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    type(string_t) :: p
+    p = object%extra_settings%model_name
+  end function recola_def_get_model_name
+
+@ %def recola_def_get_model_name
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_z2type => recola_def_get_extra_thdm_z2type
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_z2type (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      integer :: p
+    end function recola_def_get_extra_thdm_z2type
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_z2type (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    integer :: p
+    p = object%extra_settings%thdm_z2type
+  end function recola_def_get_extra_thdm_z2type
+
+@ %def recola_def_get_extra_thdm_z2type
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_tb => recola_def_get_extra_thdm_tb
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_tb (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      real(double) :: p
+    end function recola_def_get_extra_thdm_tb
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_tb (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    real(double) :: p
+    p = object%extra_settings%thdm_tb
+  end function recola_def_get_extra_thdm_tb
+
+@ %def recola_def_get_extra_thdm_tb
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_cab => recola_def_get_extra_thdm_cab
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_cab (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      real(double) :: p
+    end function recola_def_get_extra_thdm_cab
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_cab (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    real(double) :: p
+    p = object%extra_settings%thdm_cab
+  end function recola_def_get_extra_thdm_cab
+
+@ %def recola_def_get_extra_thdm_cab
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_l5 => recola_def_get_extra_thdm_l5
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_l5 (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      real(double) :: p
+    end function recola_def_get_extra_thdm_l5
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_l5 (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    real(double) :: p
+    p = object%extra_settings%thdm_l5
+  end function recola_def_get_extra_thdm_l5
+
+@ %def recola_def_get_extra_thdm_l5
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_muMS => recola_def_get_extra_thdm_muMS
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_muMS (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      real(double) :: p
+    end function recola_def_get_extra_thdm_muMS
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_muMS (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    real(double) :: p
+    p = object%extra_settings%thdm_muMS
+  end function recola_def_get_extra_thdm_muMS
+
+@ %def recola_def_get_extra_thdm_muMS
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_muMS_BSM => recola_def_get_extra_thdm_muMS_BSM
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_muMS_BSM (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      real(double) :: p
+    end function recola_def_get_extra_thdm_muMS_BSM
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_muMS_BSM (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    real(double) :: p
+    p = object%extra_settings%thdm_muMS_BSM
+  end function recola_def_get_extra_thdm_muMS_BSM
+
+@ %def recola_def_get_extra_thdm_muMS_BSM
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_renormalise_scheme => recola_def_get_extra_thdm_renormalise_scheme
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_renormalise_scheme (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      type(string_t) :: p
+    end function recola_def_get_extra_thdm_renormalise_scheme
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_renormalise_scheme (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    type(string_t) :: p
+    p = object%extra_settings%thdm_renormalise_scheme
+  end function recola_def_get_extra_thdm_renormalise_scheme
+
+@ %def recola_def_get_extra_thdm_renormalise_scheme
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_alpha_os_scheme => recola_def_get_extra_thdm_alpha_os_scheme
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_alpha_os_scheme (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      type(string_t) :: p
+    end function recola_def_get_extra_thdm_alpha_os_scheme
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_alpha_os_scheme (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    type(string_t) :: p
+    p = object%extra_settings%thdm_alpha_os_scheme
+  end function recola_def_get_extra_thdm_alpha_os_scheme
+
+@ %def recola_def_get_extra_thdm_alpha_os_scheme
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_alpha_msbar_scheme => recola_def_get_extra_thdm_alpha_msbar_scheme
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_alpha_msbar_scheme (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      type(string_t) :: p
+    end function recola_def_get_extra_thdm_alpha_msbar_scheme
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_alpha_msbar_scheme (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    type(string_t) :: p
+    p = object%extra_settings%thdm_alpha_msbar_scheme
+  end function recola_def_get_extra_thdm_alpha_msbar_scheme
+
+@ %def recola_def_get_extra_thdm_alpha_msbar_scheme
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_beta_os_scheme => recola_def_get_extra_thdm_beta_os_scheme
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_beta_os_scheme (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      type(string_t) :: p
+    end function recola_def_get_extra_thdm_beta_os_scheme
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_beta_os_scheme (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    type(string_t) :: p
+    p = object%extra_settings%thdm_beta_os_scheme
+  end function recola_def_get_extra_thdm_beta_os_scheme
+
+@ %def recola_def_get_extra_thdm_beta_os_scheme
+@
+<<Prc recola: recola def: TBP>>=
+  procedure :: get_extra_thdm_beta_msbar_scheme => recola_def_get_extra_thdm_beta_msbar_scheme
+<<Prc recola: sub interfaces>>=
+    module function recola_def_get_extra_thdm_beta_msbar_scheme (object) result (p)
+      class(recola_def_t), intent(in) :: object
+      type(string_t) :: p
+    end function recola_def_get_extra_thdm_beta_msbar_scheme
+<<Prc recola: procedures>>=
+  module function recola_def_get_extra_thdm_beta_msbar_scheme (object) result (p)
+    class(recola_def_t), intent(in) :: object
+    type(string_t) :: p
+    p = object%extra_settings%thdm_beta_msbar_scheme
+  end function recola_def_get_extra_thdm_beta_msbar_scheme
+
+@ %def recola_def_get_extra_thdm_beta_msbar_scheme
+@
+<<Prc recola: prc recola: TBP>>=
+  procedure :: set_extra_parameters => prc_recola_set_extra_parameters
+<<Prc recola: sub interfaces>>=
+    module subroutine prc_recola_set_extra_parameters (object)
+      class(prc_recola_t), intent(in) :: object
+    end subroutine prc_recola_set_extra_parameters
+<<Prc recola: procedures>>=
+  module subroutine prc_recola_set_extra_parameters (object)
+    class(prc_recola_t), intent(in) :: object
+    type(string_t) :: model_name
+    integer :: thdm_z2type
+    real(double) :: thdm_tb, thdm_cab, thdm_l5, thdm_muMS, thdm_muMS_BSM
+    type(string_t) :: thdm_alpha_os_scheme, thdm_alpha_msbar_scheme, & 
+                      thdm_beta_os_scheme, thdm_beta_msbar_scheme, &
+                      thdm_renormalise_scheme
+    thdm_z2type = 0
+    thdm_tb = 0
+    thdm_cab = 0
+    thdm_l5 = 0
+    thdm_muMS = 91
+    thdm_muMS_BSM = 100
+    if (associated (object%def)) then
+       select type (def => object%def)
+       type is (recola_def_t)
+          thdm_z2type = def%get_extra_thdm_z2type ()
+          thdm_tb = def%get_extra_thdm_tb ()
+          thdm_cab = def%get_extra_thdm_cab ()
+          thdm_l5 = def%get_extra_thdm_l5 ()
+          thdm_muMS = def%get_extra_thdm_muMS ()
+          thdm_muMS_BSM = def%get_extra_thdm_muMS_BSM ()
+          model_name = def%get_model_name ()
+          thdm_renormalise_scheme = def%get_extra_thdm_renormalise_scheme()
+          thdm_alpha_os_scheme = def%get_extra_thdm_alpha_os_scheme()
+          thdm_alpha_msbar_scheme = def%get_extra_thdm_alpha_msbar_scheme()
+          thdm_beta_os_scheme = def%get_extra_thdm_beta_os_scheme()
+          thdm_beta_msbar_scheme = def%get_extra_thdm_beta_msbar_scheme()
+          if (char(model_name) == "THDM") then
+             call rclwrap_set_add_thdm_parameters (thdm_z2type, &
+                                thdm_tb, thdm_cab, thdm_l5)
+             call rclwrap_set_thdm_scales(thdm_muMS, thdm_muMS_BSM)
+             if (char(thdm_renormalise_scheme) == "OS") then
+                call rclwrap_set_add_thdm_os_schemes (thdm_alpha_os_scheme, &
+                     thdm_beta_os_scheme)
+             else if (char(thdm_renormalise_scheme) == "MSbar") then
+                call rclwrap_set_add_thdm_msbar_schemes &
+                     (thdm_alpha_msbar_scheme, thdm_beta_msbar_scheme)
+             end if
+          end if
+       end select
+    end if
+  end subroutine prc_recola_set_extra_parameters
+
+@ %def prc_recola_set_extra_parameters
+@
+
 <<Prc recola: prc recola: TBP>>=
   procedure :: compute_alpha_s => prc_recola_compute_alpha_s
 <<Prc recola: sub interfaces>>=
@@ -2914,6 +3459,9 @@ the Recola workflow, however.
     class(prc_recola_t), intent(inout) :: object
     type(qcd_t), intent(in) :: qcd
     class(model_data_t), intent(in), target, optional :: model
+    type(string_t) :: model_name
+    integer :: z2type
+    real(double) :: tb, cab, msb
     integer :: scheme
 
     if (debug_on) call msg_debug (D_ME_METHODS, "RECOLA: set_parameters")
@@ -2921,8 +3469,10 @@ the Recola workflow, however.
        call msg_fatal ("prc_recola_set_parameters called without model!")
     end if
     object%qcd = qcd
+    model_name = var_str ("SM")
+    if (present (model)) model_name = model%get_name ()
+!    call rclwrap_set_dynamic_settings ()
     object%model => model
-    call rclwrap_set_dynamic_settings ()
     call rclwrap_set_pole_mass &
          (11, dble(model%get_real (var_str ('me'))), 0._double)
     call rclwrap_set_pole_mass &
@@ -2946,8 +3496,19 @@ the Recola workflow, however.
          dble(model%get_real (var_str ('wZ'))))
     call rclwrap_set_pole_mass (24, dble(model%get_real (var_str ('mW'))), &
          dble(model%get_real (var_str ('wW'))))
-    call rclwrap_set_pole_mass (25, dble(model%get_real (var_str ('mH'))), &
-         dble(model%get_real (var_str ('wH'))))
+    if (model_name == var_str ("THDM")) then
+       call rclwrap_set_pole_mass_hl_hh (dble(model%get_real (var_str ('mHh'))), &
+            dble(model%get_real (var_str ('wHh'))), &
+            dble(model%get_real (var_str ('mHH'))), &
+            dble(model%get_real (var_str ('wHH'))))
+       call rclwrap_set_pole_mass_ha (dble(model%get_real (var_str ('mHA'))), &
+            dble(model%get_real (var_str ('wHA'))))
+       call rclwrap_set_pole_mass_hc (dble(model%get_real (var_str ('mHp'))), &
+            dble(model%get_real (var_str ('wHp'))))
+    else
+       call rclwrap_set_pole_mass (25, dble(model%get_real (var_str ('mH'))), &
+            dble(model%get_real (var_str ('wH'))))
+    end if
 
     !!! TODO PB 03-03-2022: Automatize EW input schemes    
     scheme = model%get_scheme_num ()
@@ -2958,9 +3519,11 @@ the Recola workflow, however.
        case default
           call rclwrap_use_gfermi_scheme &
                (dble(model%get_real (var_str ('GF'))), object%gfermi_scheme)
+          !    call rclwrap_use_alpha0_scheme (1._double / dble(model%get_real (var_str ('alpha_em_i'))))
     end select
     !!! TODO PB 03-03-2022: Automatize mass threshold for light fermions
     call rclwrap_set_light_fermions (0._double)
+!    call rclwrap_set_onshell_scheme
     !!! TODO PB 20-02-2023: Automatize onshell scheme activation
     call rclwrap_set_delta_ir (0._double, dble(pi**2 / 6))
   end subroutine prc_recola_set_parameters
@@ -3047,6 +3610,7 @@ new Recola instance.
        object%n_hel_in = n_hel_in
     end if
     allocate (object%recola_ids(n_flv))
+    call object%set_extra_parameters ()
     select type (writer => object%def%writer)
     type is (recola_writer_t)
        call writer%register_processes (object%recola_ids)
@@ -3062,6 +3626,7 @@ new Recola instance.
     end select
     call rclwrap_generate_processes ()
     call object%replace_helicity_and_color_arrays ()
+
   end subroutine prc_recola_init
 
 @ %def prc_recola_init
@@ -3077,7 +3642,7 @@ to be in its own format to do so.
 <<Prc recola: procedures>>=
   module subroutine prc_recola_replace_helicity_and_color_arrays (object)
     class(prc_recola_t), intent(inout) :: object
-    integer, dimension(:,:), allocatable :: col_recola
+    integer, dimension(:,:), allocatable :: hel_recola, col_recola
     integer :: i
     if (debug_on)  call msg_debug &
          (D_ME_METHODS, "RECOLA: replace_helicity_and_color_arrays")
@@ -3321,10 +3886,10 @@ implementation can fail due to missing helicity initialization.
     else
        call rclwrap_get_squared_amplitude (object%recola_ids(i_flv), &
             pow_nlo, 'NLO', sqme_dble)
-       sqme(3) = sqme_dble
+       sqme(3) = real(sqme_dble, kind=default)
        call rclwrap_get_squared_amplitude &
             (object%recola_ids(i_flv), pow_lo, 'LO', sqme_dble)
-       sqme(4) = sqme_dble
+       sqme(4) = real(sqme_dble, kind=default)
     end if    
     bad_point = .false.
   end subroutine prc_recola_compute_sqme_virt_rcl
@@ -3381,7 +3946,9 @@ fact that we are taking only one half of the symmetric matrix.
     integer :: i1, i2, i, n_tot, pow
     real(double) :: sqme_dble
     logical :: ew_corr
+    type(string_t) :: model_name
     ew_corr = .false.
+    model_name = object%get_model_name ()
     do i = 1, object%data%n_in + object%data%n_out
        p_recola(:, i) = dble(p(i)%p)
     end do
@@ -3398,8 +3965,8 @@ fact that we are taking only one half of the symmetric matrix.
     do i1 = 1, n_tot
        do i2 = 1, i1-1
           i = i + 1
-          call rclwrap_compute_color_correlation &
-               (object%recola_ids(i_flv), p_recola, pow, i1, i2, sqme_dble)
+          call rclwrap_compute_color_correlation (object%recola_ids(i_flv), &
+               p_recola, pow, i1, i2, sqme_dble, model_name)
           sqme_color_c(i) = real (sqme_dble, kind=default)
           select case (abs (object%data%flv_state (i1, i_flv)))
           case (1:6)

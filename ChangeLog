@@ -4,11 +4,14 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.7.1
 
+2025-12-03
+	Reenable either Recola1 and Recola2 with same interface
+
 2025-11-25
 	Support for Recola v1.5.0
 
 2025-11-20
-	Support loopinduced processes with and polarized processes
+	Support loopinduced processes and polarized processes
 	   (LO fully, NLO partially) with Recola OLP
 
 2025-10-15

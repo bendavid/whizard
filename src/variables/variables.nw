@@ -6828,6 +6828,60 @@ procedure with type [[V_NONE]].
          'renormalization scheme for $\alpha$ in \recola\. For the default, -1, ' // &
          'external onshell photons get $\alpha_0$ and off-shell, ' // &
          'photons a running $\alpha$. The integer $i$ value sets $\alpha^i_0$.'))
+    call var_list%append_int (var_str ("recola_thdm_z2type"), 1, &
+         description=var_str ('Integer variable that sets the ' // &
+         'yukawa type in the softly-broken Z2 symmetric THDM in ' // &
+         'in \recola\ v2 (THDM). For the default, 5, a SM approximation' // &
+         'of the 2HDM model in \recola\ v2 can be set.'))
+    call var_list%append_real (var_str ("recola_thdm_tb"), 1._default, &
+         description=var_str ('Real variable that sets the $\tan \beta$ ' // &
+          'parameter in \recola\ v2 (2HDM). For the default, 1, a SM approximation' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_real (var_str ("recola_thdm_cab"), 0._default, &
+          intrinsic = .true., &
+          description=var_str ('Real variable that sets the $\cos(\alpha-\beta)$ ' // &
+          'parameter in \recola\ v2 (2HDM). For the default, 0, a SM approximation' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_real (var_str ("recola_thdm_l5"), 0._default, &
+          intrinsic = .true., &
+          description=var_str ('Real variable that sets the lambda5' // &
+          'in \recola\ v2 (2HDM). For the default, 0, a SM approximation' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_real (var_str ("recola_thdm_muMS"), 91._default, &
+          intrinsic = .true., &
+          description=var_str ('Real variable that sets the muMS' // &
+          'in \recola\ v2 (2HDM). For the default, 91 GeV,' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_real (var_str ("recola_thdm_muMS_BSM"), 100._default, &
+          intrinsic = .true., &
+          description=var_str ('Real variable that sets the muMS\_BSM' // &
+          'in \recola\ v2 (2HDM). For the default, 100 GeV,' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_string (var_str ("$recola_thdm_renormalise_scheme"), var_str("OS"), &
+          intrinsic = .true., &
+          description=var_str ('String variable that sets the renormalisation scheme' // &
+          'in \recola\ v2 (2HDM). For the default, OS, renormalisation scheme' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_string (var_str ("$recola_thdm_alpha_os_scheme"), var_str("BFM"), &
+          intrinsic = .true., &
+          description=var_str ('String variable that sets the OS renormalisation scheme' // &
+          'of mixing angle alpha in \recola\ v2 (2HDM). For the default, BFM, scheme' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_string (var_str ("$recola_thdm_beta_os_scheme"), var_str("BFM"), &
+          intrinsic = .true., &
+          description=var_str ('String variable that sets the OS renormalisation scheme' // &
+          'of mixing angle beta in \recola\ v2 (2HDM). For the default, BFM, scheme' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_string (var_str ("$recola_thdm_alpha_msbar_scheme"), var_str("FJ"), &
+          intrinsic = .true., &
+          description=var_str ('String variable that sets the MSbar renormalisation scheme' // &
+          'of mixing angle alpha in \recola\ v2 (2HDM). For the default, FJ, scheme' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
+     call var_list%append_string (var_str ("$recola_thdm_beta_msbar_scheme"), var_str("FJ"), &
+          intrinsic = .true., &
+          description=var_str ('String variable that sets the MSbar renormalisation scheme' // &
+          'of mixing angle beta in \recola\ v2 (2HDM). For the default, FJ, scheme' // &
+          'of the 2HDM model in \recola\ v2 can be set.'))
     call var_list%append_log (var_str ("?recola_loopinduced"), .false., &
          intrinsic = .true., &
          description=var_str ('Flag that tells the OLP \recola, to ' // &

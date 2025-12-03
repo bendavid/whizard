@@ -18,6 +18,7 @@ openmp_num_threads = 1
 
 process recola_10_p1 = Wp, Wm => H, H
 
+
 seed = 1
 
 sqrts = 300 GeV
