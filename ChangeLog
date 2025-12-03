@@ -5,7 +5,7 @@ Use git log/svn log to see detailed changes.
 	Version 3.1.7.1
 
 2025-12-03
-	Reenable either Recola1 and Recola2 with same interface
+	Reenable either Recola1 or Recola2 with same interface
 
 2025-11-25
 	Support for Recola v1.5.0
