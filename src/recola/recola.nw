@@ -518,7 +518,9 @@ so RECOLA can initialize itself for integration.
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_set_pole_mass_hl_hh (mass_hl, width_hl, mass_hh, width_hh)
     real(double), intent(in) :: mass_hl, width_hl, mass_hh, width_hh
+#if RECOLA_VERSION > 20200
     call set_pole_mass_hl_hh_rcl (mass_hl, width_hl, mass_hh, width_hh)
+#endif
   end subroutine rclwrap_set_pole_mass_hl_hh
 
 @ %def rclwrap_set_pole_mass_hl_hh
@@ -528,7 +530,9 @@ so RECOLA can initialize itself for integration.
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_set_pole_mass_ha (mass, width)
     real(double), intent(in) :: mass, width
+#if RECOLA_VERSION > 20200
     call set_pole_mass_ha_rcl (mass, width)
+#endif
   end subroutine rclwrap_set_pole_mass_ha
 
 @ %def rclwrap_set_pole_mass_ha
@@ -538,7 +542,9 @@ so RECOLA can initialize itself for integration.
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_set_pole_mass_hc (mass, width)
     real(double), intent(in) :: mass, width
+#if RECOLA_VERSION > 20200
     call set_pole_mass_hc_rcl (mass, width)
+#endif
   end subroutine rclwrap_set_pole_mass_hc
 
 @ %def rclwrap_set_pole_mass_hc
@@ -549,9 +555,11 @@ so RECOLA can initialize itself for integration.
   subroutine rclwrap_set_add_thdm_parameters (z2type, tb, cab, l5)
     integer, intent(in) :: z2type
     real(double), intent(in) :: tb, cab, l5
+#if RECOLA_VERSION > 20200
     call set_Z2_thdm_yukawa_type_rcl(z2type)
     call set_tb_cab_rcl(tb, cab)
-    call set_l5_rcl(l5) 
+    call set_l5_rcl(l5)
+#endif
   end subroutine rclwrap_set_add_thdm_parameters
 
 @ %def rclwrap_set_add_thdm_parameters
@@ -561,8 +569,10 @@ so RECOLA can initialize itself for integration.
 <<Recola wrapper: procedures>>=
   subroutine rclwrap_set_thdm_scales (muMS, muMS_BSM)
     real(double), intent(in) :: muMS, muMS_BSM
+#if RECOLA_VERSION > 20200
     call set_parameter_rcl('muMS', cmplx(muMS, 0.d0, kind=8))
     call set_parameter_rcl('muMS_BSM', cmplx(muMS_BSM, 0.d0, kind=8))
+#endif
   end subroutine rclwrap_set_thdm_scales
 
 @ %def rclwrap_set_thdm_scales
@@ -573,8 +583,10 @@ so RECOLA can initialize itself for integration.
   subroutine rclwrap_set_add_thdm_os_schemes (alpha_os, beta_os)
     type(string_t), intent(in) :: alpha_os, beta_os
 
+#if RECOLA_VERSION > 20200
     call use_mixing_alpha_onshell_scheme_rcl(char(alpha_os))
     call use_mixing_beta_onshell_scheme_rcl(char(beta_os))
+#endif
   end subroutine rclwrap_set_add_thdm_os_schemes
 
 @ %def rclwrap_set_add_thdm_os_schemes
@@ -585,8 +597,10 @@ so RECOLA can initialize itself for integration.
   subroutine rclwrap_set_add_thdm_msbar_schemes (alpha_msbar, beta_msbar)
     type(string_t), intent(in) :: alpha_msbar, beta_msbar
 
+#if RECOLA_VERSION > 20200
     call use_mixing_alpha_msbar_scheme_rcl(char(alpha_msbar))
     call use_mixing_beta_msbar_scheme_rcl(char(beta_msbar))
+#endif
   end subroutine rclwrap_set_add_thdm_msbar_schemes
 
 @ %def rclwrap_set_add_thdm_msbar_schemes
@@ -1351,7 +1365,7 @@ the mass regulator in GeV to [[m]].
     call get_spin_correlation_general_rcl (id, [pow, 0], 'LO', sqme)
 #else
     call compute_spin_correlation_rcl (id, p, i_photon, pol, sqme)
-    call get_spin_correlation_general_rcl (id, pow, sqme)    
+    call get_spin_correlation_rcl (id, pow, sqme)
 #endif
   end subroutine rclwrap_compute_spin_correlation
 
@@ -1384,7 +1398,7 @@ the mass regulator in GeV to [[m]].
 #if RECOLA_VERSION > 20200
     call get_spin_correlation_general_rcl (id, [alphas_power, 0], 'LO', sqme)
 #else
-    call get_spin_correlation_general_rcl (id, alphas_power, sqme)
+    call get_spin_correlation_rcl (id, alphas_power, sqme)
 #endif
   end subroutine rclwrap_get_spin_correlation
 
@@ -1444,7 +1458,7 @@ the mass regulator in GeV to [[m]].
     call get_spin_colour_correlation_general_rcl (id, [alphas_power,0], &
          i_gluon, i_spectator, 'LO', sqme)
 #else
-    call get_spin_colour_correlation_general_rcl (id, alphas_power, &
+    call get_spin_colour_correlation_rcl (id, alphas_power, &
          i_gluon, i_spectator, sqme)
 #endif
   end subroutine rclwrap_get_spin_color_correlation
