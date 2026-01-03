@@ -5,10 +5,10 @@
 ### --------------------------------------------------------------------
 ### QED
 eeee     0.25  1E-30 100  1000 SM_Higgs scatter e+ e- -> e+ e-
-eemm     0.25  1E-30 100  1000 SM_Higgs scatter e+ e- -> mu+ mu-
-eeaa     0.25  1E-30 100  1000 SM_Higgs scatter e+ e- -> A A
-eeaaa    0.25  1E-30 100  1000 SM_Higgs scatter e+ e- -> A A A
-eeaaaa   0.25  1E-30 100  1000 SM_Higgs scatter e+ e- -> A A A A
+eemm     0.20  1E-30 100  1000 SM_Higgs scatter e+ e- -> mu+ mu-
+eeaa     0.05  1E-30 100  1000 SM_Higgs scatter e+ e- -> A A
+eeaaa    0.05  1E-30 100  1000 SM_Higgs scatter e+ e- -> A A A
+eeaaaa   0.05  1E-30 100  1000 SM_Higgs scatter e+ e- -> A A A A
 ### --------------------------------------------------------------------
 ### NC
 eezz     0.25  1E-30 100  1000 SM_Higgs scatter e+ e- -> Z Z
