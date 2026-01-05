@@ -1,6 +1,6 @@
 (* keystones_UFO_generate.ml --
 
-   Copyright (C) 2019-2025 by
+   Copyright (C) 2019-2026 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

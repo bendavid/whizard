@@ -1,6 +1,6 @@
 /* orders_parser.mly --
 
-   Copyright (C) 2023-2025 by
+   Copyright (C) 2023-2026 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

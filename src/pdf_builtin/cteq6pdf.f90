@@ -1,6 +1,3 @@
-! $Id: cteq6pdf.f90 7174 2015-08-26 06:24:53Z jr_reuter $
-!
-!
 ! ---- FORTRAN 90 ----
 ! 
 ! The contents of this file are identical to Cteq6Pdf-2007.f with a

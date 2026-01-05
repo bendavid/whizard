@@ -1,5 +1,3 @@
-! $Id: mstwpdf.f90 7176 2015-08-26 15:10:10Z jr_reuter $
-
 ! ---- FORTRAN 90 ----
 !
 ! This file is nearly identical with the official mstwpdf FORTRAN code.
