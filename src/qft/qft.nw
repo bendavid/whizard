@@ -2941,6 +2941,114 @@ This is a requirement for input mass parameters of OLPs.
     end subroutine model_data_set_non_zero_masses_as_input
 
 @ %def model_data_set_non_zero_masses_as_input
+@ Label widths of particles only as input if they are not zero.
+This is a requirement for input width parameters of OLPs.
+<<Model data: model data: TBP>>=
+  procedure :: set_non_zero_widths_as_input => model_data_set_non_zero_widths_as_input
+<<Model data: sub interfaces>>=
+    module subroutine model_data_set_non_zero_widths_as_input (model)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+    end subroutine model_data_set_non_zero_widths_as_input
+<<Model data: procedures>>=
+    module subroutine model_data_set_non_zero_widths_as_input (model)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+      integer :: i
+      fields => model%get_field_array_ptr ()
+      do i = 1, size (fields)
+         if (associated (fields(i)%width_data)) then
+            if (fields(i)%get_width () > 0 &
+               .and. fields(i)%width_data%is_input_par ()) then
+               call fields(i)%width_data%set_input_par (.true.)
+            else
+               call fields(i)%width_data%set_input_par (.false.)
+            end if
+         end if
+      end do
+    end subroutine model_data_set_non_zero_widths_as_input
+
+@ %def model_data_set_non_zero_widths_as_input
+@ Return a list of fields with input mass parameter set to zero. 
+This is needed by GoSam to generate the matrix element libraries correctly
+<<Model data: model data: TBP>>=
+  procedure :: get_massless_list => model_data_get_massless_list
+<<Model data: sub interfaces>>=
+    module function model_data_get_massless_list(model) result(massless)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+      integer, allocatable :: massless(:)
+    end function model_data_get_massless_list
+<<Model data: procedures>>=
+   module function model_data_get_massless_list(model) result(massless)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+      integer, allocatable :: massless(:)
+      integer :: i, j
+      fields => model%get_field_array_ptr ()
+
+      ! need to loop through fields twice to determine size of output array
+      j = 0
+      do i = 1, size (fields)
+         if (associated (fields(i)%mass_data)) then
+            if (.not.(fields(i)%get_mass() > 0).and.(fields(i)%mass_data%is_input_par())) j = j+1
+         end if
+      end do
+
+      allocate(massless(1:j))
+
+      j = 0  
+      do i = 1, size (fields)
+         if (associated (fields(i)%mass_data)) then
+            if (.not.(fields(i)%get_mass() > 0).and.(fields(i)%mass_data%is_input_par())) then
+               j = j+1
+               massless(j) = fields(i)%pdg
+            end if
+         end if
+      end do
+   end function model_data_get_massless_list
+
+@ %def model_data_get_massless_list
+@ Return a list of fields with input width parameter set to zero. 
+This is needed by GoSam to generate the matrix element libraries correctly
+<<Model data: model data: TBP>>=
+  procedure :: get_widthless_list => model_data_get_widthless_list
+<<Model data: sub interfaces>>=
+    module function model_data_get_widthless_list(model) result(widthless)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+      integer, allocatable :: widthless(:)
+    end function model_data_get_widthless_list
+<<Model data: procedures>>=
+   module function model_data_get_widthless_list(model) result(widthless)
+      class(model_data_t), intent(in), target :: model
+      type(field_data_t), dimension(:), pointer :: fields
+      integer, allocatable :: widthless(:)
+      integer :: i, j
+      fields => model%get_field_array_ptr ()
+
+      ! need to loop through fields twice to determine size of output array
+      j = 0
+      do i = 1, size (fields)
+         if (associated (fields(i)%width_data)) then
+            if (.not.(fields(i)%get_width() > 0).and.(fields(i)%width_data%is_input_par())) j = j+1
+         end if
+      end do
+
+      allocate(widthless(1:j))
+
+      j = 0  
+      do i = 1, size (fields)
+         if (associated (fields(i)%width_data)) then
+            if (.not.(fields(i)%get_width() > 0).and.(fields(i)%width_data%is_input_par())) then
+               j = j+1
+               widthless(j) = fields(i)%pdg
+            end if
+         end if
+      end do
+   end function model_data_get_widthless_list
+
+@ %def model_data_get_widthless_list
 @ Mark a particle as unstable and provide a list of names for its
 decay processes.  In contrast with the previous subroutine which is
 for internal use, we address the particle by its PDG code.  If the

@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: GoSam interface
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{GoSam Interface}
@@ -70,7 +70,7 @@ submodule (prc_gosam) prc_gosam_s
   use io_units
   use constants
   use numeric_utils
-  use system_defs, only: TAB
+  use system_defs, only: TAB, BLANK
   use system_dependencies
   use file_utils
   use string_utils
@@ -97,16 +97,11 @@ end submodule prc_gosam_s
 <<Prc gosam: types>>=
   type, extends (prc_blha_writer_t) :: gosam_writer_t
     type(string_t) :: gosam_dir
-    type(string_t) :: golem_dir
-    type(string_t) :: samurai_dir
-    type(string_t) :: ninja_dir
-    type(string_t) :: form_dir
-    type(string_t) :: qgraf_dir
-    type(string_t) :: filter_lo, filter_nlo
+    type(string_t) :: filter_lo, filter_nlo, filter_ct
     type(string_t) :: symmetries
+    type(string_t) :: extra_cmd
     integer :: form_threads
     integer :: form_workspace
-    type(string_t) :: fc
   contains
   <<Prc gosam: gosam writer: TBP>>
   end type gosam_writer_t
@@ -202,14 +197,14 @@ end submodule prc_gosam_s
       call writer%init (model_name, prt_in, prt_out, ufo, ufo_path, restrictions)
       writer%filter_lo = var_list%get_sval (var_str ("$gosam_filter_lo"))
       writer%filter_nlo = var_list%get_sval (var_str ("$gosam_filter_nlo"))
+      writer%filter_ct = var_list%get_sval (var_str ("$gosam_filter_ct"))
+      writer%extra_cmd =  var_list%get_sval (var_str ("$gosam_extra_cmd"))
       writer%symmetries = &
            var_list%get_sval (var_str ("$gosam_symmetries"))
       writer%form_threads = &
            var_list%get_ival (var_str ("form_threads"))
       writer%form_workspace = &
            var_list%get_ival (var_str ("form_workspace"))
-      writer%fc = &
-           var_list%get_sval (var_str ("$gosam_fc"))
     end select
   end subroutine gosam_def_init
 
@@ -335,11 +330,6 @@ end submodule prc_gosam_s
     type(string_t), intent(in), optional :: ufo_path
     type(string_t), intent(in), optional :: restrictions
     writer%gosam_dir = GOSAM_DIR
-    writer%golem_dir = GOLEM_DIR
-    writer%samurai_dir = SAMURAI_DIR
-    writer%ninja_dir = NINJA_DIR
-    writer%form_dir = FORM_DIR
-    writer%qgraf_dir = QGRAF_DIR
     call writer%base_init (model_name, prt_in, prt_out, ufo, ufo_path)
   end subroutine gosam_writer_init
 
@@ -401,7 +391,7 @@ end submodule prc_gosam_s
     type(dlaccess_t), intent(out) :: dlaccess
     logical, intent(out) :: success
     type(string_t) :: libname, msg_buffer
-    libname = object%olp_dir // '/.libs/libgolem_olp.' // &
+    libname = object%olp_dir // '/build/libgolem_olp.' // &
       os_data%shrlib_ext
     msg_buffer = "One-Loop-Provider: Using Gosam"
     call msg_message (char(msg_buffer))
@@ -427,69 +417,40 @@ end submodule prc_gosam_s
        (object, unit)
     class(gosam_writer_t), intent(in) :: object
     integer, intent(in) :: unit
-    type(string_t) :: fc_bin
-    type(string_t) :: form_bin, qgraf_bin, haggies_bin
-    type(string_t) :: fcflags_golem, ldflags_golem
-    type(string_t) :: fcflags_samurai, ldflags_samurai
-    type(string_t) :: fcflags_ninja, ldflags_ninja
-    type(string_t) :: ldflags_avh_olo, ldflags_qcdloop
-    fc_bin = DEFAULT_FC
-    form_bin = object%form_dir // '/bin/tform'
-    qgraf_bin = object%qgraf_dir // '/bin/qgraf'
-    if (object%gosam_dir /= "") then
-       haggies_bin = '/usr/bin/java -jar ' // object%gosam_dir // &
-            '/share/golem/haggies/haggies.jar'
-    else
-       call msg_fatal ("generate_configuration_file: At least " // &
-            "the GoSam Directory has to be specified!")
-    end if
-    if (object%golem_dir /= "") then
-       fcflags_golem = "-I" // object%golem_dir // "/include/golem95"
-       ldflags_golem = "-L" // object%golem_dir // "/lib -lgolem"
-    end if
-    if (object%samurai_dir /= "") then
-       fcflags_samurai = "-I" // object%samurai_dir // "/include/samurai"
-       ldflags_samurai = "-L" // object%samurai_dir // "/lib -lsamurai"
-       ldflags_avh_olo = "-L" // object%samurai_dir // "/lib -lavh_olo"
-       ldflags_qcdloop = "-L" // object%samurai_dir // "/lib -lqcdloop"
-    end if
-    if (object%ninja_dir /= "") then
-       fcflags_ninja = "-I" // object%ninja_dir // "/include/ninja " &
-            // "-I" // object%ninja_dir // "/include"
-       ldflags_ninja = "-L" // object%ninja_dir // "/lib -lninja"
-    end if
-    write (unit, "(A)") "#+avh_olo.ldflags=" &
-         // char (ldflags_avh_olo)
-    write (unit, "(A)") "reduction_programs=golem95, samurai, ninja"
-    write (unit, "(A)") "extensions=autotools"
-    write (unit, "(A)") "#+qcdloop.ldflags=" &
-         // char (ldflags_qcdloop)
-    write (unit, "(A)") "#+zzz.extensions=qcdloop, avh_olo"
-    write (unit, "(A)") "#fc.bin=" // char (fc_bin)
-    write (unit, "(A)") "form.bin=" // char (form_bin)
-    write (unit, "(A)") "qgraf.bin=" // char (qgraf_bin)
-    write (unit, "(A)") "#golem95.fcflags=" // char (fcflags_golem)
-    write (unit, "(A)") "#golem95.ldflags=" // char (ldflags_golem)
-    write (unit, "(A)") "haggies.bin=" // char (haggies_bin)
-    write (unit, "(A)") "#samurai.fcflags=" // char (fcflags_samurai)
-    write (unit, "(A)") "#samurai.ldflags=" // char (ldflags_samurai)
-    write (unit, "(A)") "#ninja.fcflags=" // char (fcflags_ninja)
-    write (unit, "(A)") "#ninja.ldflags=" // char (ldflags_ninja)
-    !!! This might collide with the mass-setup in the order-file
-    !!! write (unit, "(A)") "zero=mU,mD,mC,mS,mB"
-    !!! This is covered by the BLHA2 interface
+    type(string_t), dimension(:), allocatable :: extra_cmd, cmdi
+    character(len=25), parameter :: pad = ""
+    integer :: i
+    write (unit, "(A)") "reduction_programs=golem95, ninja"
     write (unit, "(A)") "PSP_check=False"
     write (unit, "(A)") "all_mandelstam=True"
     if (char (object%filter_lo) /= "") &
        write (unit, "(A)") "filter.lo=" // char (object%filter_lo)
     if (char (object%filter_nlo) /= "") &
        write (unit, "(A)") "filter.nlo=" // char (object%filter_nlo)
+    if (char (object%filter_ct) /= "") &
+       write (unit, "(A)") "filter.ct=" // char (object%filter_ct)
     if (char (object%symmetries) /= "") &
        write (unit, "(A)") "symmetries=" // char(object%symmetries)
     write (unit, "(A,I0)") "form.threads=", object%form_threads
     write (unit, "(A,I0)") "form.workspace=", object%form_workspace
-    if (char (object%fc) /= "") &
-       write (unit, "(A)") "fc.bin=" // char(object%fc)
+    if (object%extra_cmd /= '') then
+       if (string_contains_word (object%extra_cmd, var_str ("\"))) then
+          call msg_message &
+               ("$gosam_extra_cmd contains more than one command.")
+       end if
+       call split_string &
+            (object%extra_cmd, var_str ("\"), extra_cmd)
+       do i = 1, size (extra_cmd)
+          if (string_contains_word (extra_cmd (i), var_str (BLANK))) then
+             call msg_fatal ("GoSam extra commands " // &
+                  "must not contain whitespace.")
+          end if
+          call msg_message ("GoSam extra cmd: " // char (extra_cmd (i)))
+          write (unit, '(A)') char (extra_cmd (i))
+       end do
+    else
+       write (unit, '(A)') char (object%extra_cmd)
+    end if
   end subroutine gosam_writer_generate_configuration_file
 
 @ %def gosam_writer_generate_configuration_file
@@ -511,14 +472,15 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     write (unit, "(2A)")  "OLP_FILE = ", char (object%olp_file)
     write (unit, "(2A)")  "OLP_DIR = ", char (object%olp_dir)
     write (unit, "(A)")
-    write (unit, "(A)")   "all: $(OLP_DIR)/.libs/libgolem_olp.so"
+    write (unit, "(A)")   "all: $(OLP_DIR)/build/libgolem_olp.so"
     write (unit, "(A)")
-    write (unit, "(3A)")  "$(OLP_DIR)/.libs/libgolem_olp.so: "
-    write (unit, "(4A)")  TAB, char (object%gosam_dir // "/bin/gosam.py "), &
+    write (unit, "(3A)")  "$(OLP_DIR)/build/libgolem_olp.so: "
+    write (unit, "(5A)")  TAB, char (object%gosam_dir // "/gosam.py "), &
+                             "--ignore-empty-subprocess ", &
                              "--olp $(OLP_FILE) --destination=$(OLP_DIR)", &
                              " -f -z"
-    write (unit, "(3A)")  TAB, "cd $(OLP_DIR); ./autogen.sh --prefix=", &
-         "$(dir $(abspath $(lastword $(MAKEFILE_LIST)))); make install"
+    write (unit, "(3A)")  TAB, "cd $(OLP_DIR); ./build_olp_library.sh ", &
+         "$(dir $(abspath $(lastword $(MAKEFILE_LIST))))"
   end subroutine gosam_driver_write_makefile
 @ %def gosam_driver_write_makefile
 @
@@ -600,6 +562,28 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   end subroutine gosam_driver_set_weinberg_angle
 
 @ %def gosam_driver_set_weinberg_angle
+@
+<<Prc gosam: prc gosam: TBP>>=
+  procedure :: set_eftcount => prc_gosam_set_eftcount
+<<Prc gosam: sub interfaces>>=
+    module subroutine prc_gosam_set_eftcount (object, gosameft)
+      class(prc_gosam_t), intent(inout) :: object
+      integer, intent(in) :: gosameft
+    end subroutine prc_gosam_set_eftcount
+<<Prc gosam: procedures>>=
+  module subroutine prc_gosam_set_eftcount (object, gosameft)
+    class(prc_gosam_t), intent(inout) :: object
+    integer, intent(in) :: gosameft
+    integer :: ierr
+    select type (driver => object%driver)
+    type is (gosam_driver_t)
+       call driver%blha_olp_set_parameter (c_char_'EFTcount'//c_null_char, &
+        dble(gosameft), 0._double, ierr)
+       if (ierr == 0) call msg_fatal ("Gosam's EFTcount parameter could not be set by OLP.")
+    end select
+  end subroutine prc_gosam_set_eftcount
+
+@ %def prc_gosam_set_eftcount
 @
 <<Prc gosam: gosam driver: TBP>>=
   procedure :: set_ufo_parameter => gosam_driver_set_ufo_parameter
@@ -704,7 +688,8 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     call core%start ()
     call core%read_contract_file (flv_states)
     if (model%is_ufo_model ()) then
-       call core%set_ufo_parameters (model)
+       call core%set_ufo_parameters (model, BLHA_MODE_GOSAM)
+       call core%set_eftcount (var_list%get_ival (var_str ("gosam_eftcount")))
     else
        call core%set_particle_properties (model)
        call core%set_electroweak_parameters (model)
@@ -1082,44 +1067,32 @@ declared massless. These must appear again here.
   module subroutine prc_gosam_set_particle_properties (object, model)
     class(prc_gosam_t), intent(inout) :: object
     class(model_data_t), intent(in), target :: model
+    type(field_data_t), dimension(:), pointer :: fields
+    integer, allocatable :: massless_list(:), widthless_list(:)
     integer :: i, i_pdg
-    type(flavor_t) :: flv
-    real(default) :: mass, width
-    integer :: ierr
-    real(default) :: top_yukawa
-    do i = 1, OLP_N_MASSIVE_PARTICLES
-       i_pdg = OLP_MASSIVE_PARTICLES(i)
-       if (i_pdg < 0) cycle
-       call flv%init (i_pdg, model)
-       mass = flv%get_mass (); width = flv%get_width ()
-       select type (driver => object%driver)
-       class is (blha_driver_t)
-          if (mass > 0) then
-             if (flv%mass_is_input () .and. flv%width_is_input ()) then
-                call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
-             else if (flv%mass_is_input () .and. .not. flv%width_is_input ()) then
-                call driver%set_mass_and_width (i_pdg, mass = mass)
-             else if (.not. flv%mass_is_input () .and. flv%width_is_input ()) then
-                call driver%set_mass_and_width (i_pdg, width = width)
-             end if
-          end if
-          if (i_pdg == 5) call driver%blha_olp_set_parameter &
-             ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
-          if (i_pdg == 6) then
-             if (driver%external_top_yukawa > 0._default) then
-                top_yukawa = driver%external_top_yukawa
-             else
-                top_yukawa = mass
-             end if
-             call driver%blha_olp_set_parameter &
-                ('yuk(6)'//c_null_char, dble(top_yukawa), 0._double, ierr)
-          end if
-          if (driver%switch_off_muon_yukawas) then
-             if (i_pdg == 13) call driver%blha_olp_set_parameter &
-                ('yuk(13)' //c_null_char, 0._double, 0._double, ierr)
-          end if
-       end select
-    end do
+
+    select type (driver => object%driver)
+      class is (blha_driver_t)        
+
+         call model%set_non_zero_masses_as_input()
+         call model%set_non_zero_widths_as_input()
+      
+         massless_list = model%get_massless_list()
+         widthless_list = model%get_widthless_list()
+      
+         fields => model%get_field_array_ptr()
+         do i = 1, size (fields)
+            i_pdg = fields(i)%get_pdg()
+            if (any(massless_list.eq.i_pdg)) cycle
+            if (fields(i)%mass_is_input()) then 
+               call driver%set_mass_and_width (i_pdg, mass = fields(i)%get_mass())
+            end if
+            if (any(widthless_list.eq.i_pdg)) cycle
+            if (fields(i)%width_is_input()) then 
+               call driver%set_mass_and_width (i_pdg, width = fields(i)%get_width())
+            end if
+         end do
+      end select
   end subroutine prc_gosam_set_particle_properties
 
 @ %def prc_gosam_set_particle_properties

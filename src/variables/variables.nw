@@ -7022,12 +7022,18 @@ procedure with type [[V_NONE]].
          var_str (""), intrinsic = .true., &
          description=var_str ('The filter string given to \gosam\ in order to ' // &
          'filter out tree-level diagrams. (cf. also \ttt{\$gosam\_filter\_nlo}, ' // &
-         '\ttt{\$gosam\_symmetries})'))
+         '\ttt{\$gosam\_filter\_ct}, \ttt{\$gosam\_symmetries})'))
     call var_list%append_string (var_str ("$gosam_filter_nlo"), &
          var_str (""), intrinsic = .true., &
          description=var_str ('The same as \ttt{\$gosam\_filter\_lo}, but for ' // &
-         'loop matrix elements. (cf. also \ttt{\$gosam\_filter\_nlo}, ' // &
-         '\ttt{\$gosam\_symmetries})'))
+         'loop matrix elements. (cf. also \ttt{\$gosam\_filter\_lo}, ' // &
+         '\ttt{\$gosam\_filter\_ct}, \ttt{\$gosam\_symmetries})'))
+    call var_list%append_string (var_str ("$gosam_filter_ct"), &
+         var_str (""), intrinsic = .true., &
+         description=var_str ('The same as \ttt{\$gosam\_filter\_lo}, but for ' // &
+         'Wilson coefficient counterterm diagrams (only works for certain UFO ' // &
+         'models). (cf. also \ttt{\$gosam\_filter\_lo}, ' // &
+         '\ttt{\$gosam\_filter\_nlo}, \ttt{\$gosam\_symmetries})'))
     call var_list%append_string (var_str ("$gosam_symmetries"), &
          var_str ("family,generation"), intrinsic = .true., &
          description=var_str ('String variable that is transferred to \gosam\ ' // &
@@ -7046,6 +7052,14 @@ procedure with type [[V_NONE]].
     call var_list%append_string (var_str ("$gosam_fc"), &
          var_str (""), intrinsic = .true., &
          description=var_str ('The Fortran compiler used by \gosam.'))
+    call var_list%append_string (var_str ("$gosam_extra_cmd"), &
+         var_str (""), intrinsic = .true., &
+         description=var_str ('Additional commands to be passed to \gosam ' // &
+	       'through the golem.in config file'))
+    call var_list%append_int (var_str ("gosam_eftcount"), &
+         0, intrinsic = .true., &
+         description=var_str ('\gosam specific parameter steering the ' // &
+	       'truncation order in EFT calculations'))	 
     call var_list%append_real (&
          var_str ("mult_call_real"), 1._default, &
          intrinsic = .true., &

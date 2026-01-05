@@ -1028,7 +1028,7 @@ This types control the creation of BLHA-interface files
     integer, intent(in) :: blha_mode
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: amp_type
-    integer :: i, n_cp_loopind
+    integer :: i, n_cp_loopind, blha_irreg
 
     allocate (amp_type (size (blha_flavor)))
     n_cp_loopind = 0
@@ -1046,8 +1046,14 @@ This types control the creation of BLHA-interface files
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
          blha_flavor, amp_type)
+    select case (blha_mode)
+    case (BLHA_MODE_GOSAM)
+      blha_irreg = BLHA_IRREG_THV
+    case default
+      blha_irreg = BLHA_IRREG_CDR
+    end select
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
-         irreg = BLHA_IRREG_CDR, alphas_power = asp, &
+         irreg = blha_irreg, alphas_power = asp, &
          alpha_power = ap, ew_scheme = ew_scheme, &
          debug = blha_mode == BLHA_MODE_GOSAM)
   end subroutine blha_init_born
@@ -1064,7 +1070,7 @@ This types control the creation of BLHA-interface files
     integer, intent(in) :: blha_mode
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, blha_irreg
 
     allocate (amp_type (size (blha_flavor) * 2))
     do i = 1, size (blha_flavor)
@@ -1075,8 +1081,14 @@ This types control the creation of BLHA-interface files
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
          blha_flavor, amp_type)
+    select case (blha_mode)
+    case (BLHA_MODE_GOSAM)
+      blha_irreg = BLHA_IRREG_THV
+    case default
+      blha_irreg = BLHA_IRREG_CDR
+    end select    
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
-         irreg = BLHA_IRREG_CDR, &
+         irreg = blha_irreg, &
          alphas_power = asp, &
          alpha_power = ap, &
          ew_scheme = ew_scheme, &
@@ -1095,7 +1107,7 @@ This types control the creation of BLHA-interface files
     integer, intent(in) :: blha_mode
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, blha_irreg
 
     allocate (amp_type (size (blha_flavor) * 2))
     do i = 1, size (blha_flavor)
@@ -1106,8 +1118,14 @@ This types control the creation of BLHA-interface files
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
          blha_flavor, amp_type)
+    select case (blha_mode)
+    case (BLHA_MODE_GOSAM)
+      blha_irreg = BLHA_IRREG_THV
+    case default
+      blha_irreg = BLHA_IRREG_CDR
+    end select
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
-         irreg = BLHA_IRREG_CDR, &
+         irreg = blha_irreg, &
          alphas_power = asp, &
          alpha_power = ap, &
          ew_scheme = ew_scheme, &
@@ -1126,7 +1144,7 @@ This types control the creation of BLHA-interface files
     integer, intent(in) :: blha_mode
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, blha_irreg
 
     allocate (amp_type (size (blha_flavor) * 3))
     do i = 1, size (blha_flavor)
@@ -1138,8 +1156,14 @@ This types control the creation of BLHA-interface files
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
          blha_flavor, amp_type)
+    select case (blha_mode)
+    case (BLHA_MODE_GOSAM)
+      blha_irreg = BLHA_IRREG_THV
+    case default
+      blha_irreg = BLHA_IRREG_CDR
+    end select
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
-         irreg = BLHA_IRREG_CDR, &
+         irreg = blha_irreg, &
          alphas_power = asp, &
          alpha_power = ap, &
          ew_scheme = ew_scheme, &
@@ -1159,7 +1183,7 @@ This types control the creation of BLHA-interface files
     integer, intent(in) :: blha_mode
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: amp_type
-    integer :: i
+    integer :: i, blha_irreg
 
     allocate (amp_type (size (blha_flavor)))
     do i = 1, size (blha_flavor)
@@ -1177,9 +1201,14 @@ This types control the creation of BLHA-interface files
          model, blha_mode)
     call blha_configuration_append_processes (blha_cfg, n_in, &
          blha_flavor, amp_type)
-
+    select case (blha_mode)
+    case (BLHA_MODE_GOSAM)
+      blha_irreg = BLHA_IRREG_THV
+    case default
+      blha_irreg = BLHA_IRREG_CDR
+    end select
     call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
-         irreg = BLHA_IRREG_CDR, &
+         irreg = blha_irreg, &
          alphas_power = ap_qcd, &
          alpha_power = ap_ew, &
          ew_scheme = ew_scheme, &
@@ -1618,6 +1647,7 @@ corrections are activated and off-shell (splitting) photons are present at LO.
     logical, intent(in), optional :: internal, no_version
     type(string_t), intent(in) :: suffix
     integer, dimension(:), allocatable :: pdg_flv
+    integer, allocatable :: massless_list(:), widthless_list(:)
     integer :: u
     logical :: full, nlo3
     type(string_t) :: buf
@@ -1628,9 +1658,9 @@ corrections are activated and off-shell (splitting) photons are present at LO.
     character(5) :: pdg_char_extra
     character(4) :: hel_char
     character(6) :: suffix_char
+    character(len=50) :: zero_mass, zero_width
     character(len=25), parameter :: pad = ""
     logical :: write_process, no_v, loop_ind
-    type(flavor_t) :: flv
     no_v = .false. ; if (present (no_version))  no_v = no_version
     u = given_output_unit (unit); if (u < 0) return
     full = .true.; if (present (internal)) full = .not. internal
@@ -1668,7 +1698,7 @@ corrections are activated and off-shell (splitting) photons are present at LO.
        loop_ind = node%amplitude_type == BLHA_AMP_LOOPINDUCED
        node => node%next
     end do
-    if (.not. loop_ind) then
+    if (.not. loop_ind .or. cfg%mode == BLHA_MODE_GOSAM) then
        select case (cfg%correction_type)
           case (BLHA_CT_QCD); buf = "QCD"
           case (BLHA_CT_EW); buf = "EW"
@@ -1695,8 +1725,6 @@ corrections are activated and off-shell (splitting) photons are present at LO.
        case (BLHA_MPS_ONSHELL); buf = "OnShell"
        case default; buf = cfg%massive_particle_scheme_other
     end select
-    if (cfg%mode == BLHA_MODE_GOSAM) &
-         write (u,'(A25,A)') "MassiveParticleScheme" // pad, char (buf)
     select case (cfg%version)
     case (1)
       if (cfg%alphas_power >= 0) write (u,'(A25,A)') &
@@ -1732,17 +1760,6 @@ corrections are activated and off-shell (splitting) photons are present at LO.
        write (u, '(A25, A)') "ewscheme " // pad, char (buf)
     end select
     select case (cfg%mode)
-    case (BLHA_MODE_GOSAM)
-       write (u, '(A25)', advance='no') "MassiveParticles " // pad
-       do i = 1, size (OLP_MASSIVE_PARTICLES)
-          if (OLP_MASSIVE_PARTICLES(i) > 0) then
-             call flv%init (OLP_MASSIVE_PARTICLES(i), cfg%model)
-             if (flv%get_mass () > 0._default) then
-                write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
-             end if
-          end if
-       end do
-       write (u,*)
     case (BLHA_MODE_OPENLOOPS)
        if (cfg%openloops_use_cms) then
           write (u, '(A25,I1)') "extra use_cms " // pad, 1
@@ -1929,6 +1946,40 @@ corrections are activated and off-shell (splitting) photons are present at LO.
        deallocate (pdg_flv)
        node => node%next
     end do
+
+    select case (cfg%mode)
+    case (BLHA_MODE_GOSAM)
+      zero_mass = ""
+      massless_list = cfg%model%get_massless_list()
+      do i = 1, size(massless_list)
+        if (trim(zero_mass) .eq. "") then
+          zero_mass = int2char(massless_list(i))
+        else
+          zero_mass = trim(zero_mass)//";"//int2char(massless_list(i))
+        end if
+      end do
+      zero_width = "" 
+      widthless_list = cfg%model%get_widthless_list()
+      do i = 1, size(widthless_list) 
+        if (trim(zero_width) .eq. "") then
+          zero_width = int2char(widthless_list(i))
+        else
+          zero_width = trim(zero_width)//";"//int2char(widthless_list(i))
+        end if
+      end do
+
+      if ((trim(zero_mass) .ne. "").and.(trim(zero_width) .ne. "")) then
+        buf = "mass("//trim(zero_mass)//"),width("//trim(zero_width)//")"
+        write (u,'(A25,A)') "#@ zero " // pad, char(buf)
+      else if (trim(zero_mass) .ne. "") then
+        buf = "mass("//trim(zero_mass)//")"
+        write (u,'(A25,A)') "#@ zero " // pad, char(buf)
+      else if (trim(zero_width) .ne. "") then
+        buf = "width("//trim(zero_width)//")"
+        write (u,'(A25,A)') "#@ zero " // pad, char(buf)
+      end if     
+
+    end select
   end subroutine blha_configuration_write
 
 @ %def blha_configuration_write
@@ -3349,18 +3400,23 @@ Obviously, this process-core type uses the BLHA interface.
   procedure :: set_ufo_parameters => &
        prc_blha_set_ufo_parameters
 <<BLHA OLP interfaces: sub interfaces>>=
-    module subroutine prc_blha_set_ufo_parameters (object, model)
+    module subroutine prc_blha_set_ufo_parameters (object, model, method)
       class(prc_blha_t), intent(inout) :: object
       type(model_data_t), intent(in), target :: model
+      integer, intent(in) :: method
     end subroutine prc_blha_set_ufo_parameters
 <<BLHA OLP interfaces: procedures>>=
-  module subroutine prc_blha_set_ufo_parameters (object, model)
+  module subroutine prc_blha_set_ufo_parameters (object, model, method)
      class(prc_blha_t), intent(inout) :: object
      type(model_data_t), intent(in), target :: model
+     integer, intent(in) :: method
      class(modelpar_data_t), pointer :: par
      type(string_t) :: name
-     integer :: i, ierr
+     integer :: i
      call model%set_non_zero_masses_as_input ()
+     if (method.eq.BLHA_MODE_GOSAM) then
+        call model%set_non_zero_widths_as_input ()
+     end if
      do i = 1, model%get_n_real ()
         par => model%get_par_real_ptr (i)
         if (par%is_input_par ()) then

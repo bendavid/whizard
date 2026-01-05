@@ -14,12 +14,10 @@ OLP-File content for loop matrix elements
 # model: SM
 InterfaceVersion         BLHA2
 CorrectionType           QCD
-IRregularisation         CDR
-MassiveParticleScheme    OnShell
+IRregularisation         tHV
 CouplingPower QCD        0
 CouplingPower QED        4
 EWScheme                 alphaGF
-MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -41,12 +39,10 @@ OLP-File content for subtraction matrix elements
 # model: SM
 InterfaceVersion         BLHA2
 CorrectionType           QCD
-IRregularisation         CDR
-MassiveParticleScheme    OnShell
+IRregularisation         tHV
 CouplingPower QCD        0
 CouplingPower QED        4
 EWScheme                 alphaGF
-MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -71,12 +67,10 @@ OLP-File content for real matrix elements
 # model: SM
 InterfaceVersion         BLHA2
 CorrectionType           QCD
-IRregularisation         CDR
-MassiveParticleScheme    OnShell
+IRregularisation         tHV
 CouplingPower QCD        1
 CouplingPower QED        4
 EWScheme                 alphaGF
-MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 
@@ -95,12 +89,10 @@ OLP-File content for born matrix elements
 # model: SM
 InterfaceVersion         BLHA2
 CorrectionType           QCD
-IRregularisation         CDR
-MassiveParticleScheme    OnShell
+IRregularisation         tHV
 CouplingPower QCD        0
 CouplingPower QED        4
 EWScheme                 alphaGF
-MassiveParticles          5  6 13 15 23 24 25
 
 # Process definitions
 

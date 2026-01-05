@@ -325,6 +325,7 @@ Parameter & Value & Default & Description \\
   Timothy L. Barklow, %
   Mikael Berggren, %
   Simon Bra\ss, %
+  Jens Braun, %
   Pia Mareen Bredt, %
   Bijan Chokouf\'{e} Nejad, %
   Oliver Fischer, %
@@ -1149,7 +1150,7 @@ output (for \lhapdf\ version 6 or newer),
    configure:
    checking for lhapdf... /usr/local/bin/lhapdf
    checking for lhapdf-config... /usr/local/bin/lhapdf-config
-   checking the LHAPDF version... 6.2.1
+   checking the LHAPDF version... 6.5.5
    checking the major version... 6
    checking the LHAPDF pdfsets path... /usr/local/share/LHAPDF
    checking the standard PDF sets...  all standard PDF sets installed
@@ -1272,7 +1273,7 @@ the \hoppet\ manual.
 With version 2.8.1, \whizard\ supports both the "classical" version 2
 as well as the newly designed version 3 (release 2019). The configure
 step can successfully recognize the two  different versions, the user
-do not have to specify which version is installed.
+does not have to specify which version to be installed.
 Note that from \whizard\ \texttt{v3.1.5+} on, both \hepmctwo\ and
 \hepmcthree\ can be linked in parallel.
 
@@ -1295,7 +1296,7 @@ able to read and write files in the \hepmc\ format.
 
 Detailed information on the installation and usage can be found on the
 \hepmc\ homepage. We give here only some brief details relevant for
-the usage with \whizard: For the compilation of HepMC one needs a
+the usage with \whizard: For the compilation of \hepmctwo\ one needs a
 \cpp\ compiler. Then the procedure is the same as for the
 \whizard\ package, namely configure HepMC:
 \begin{interaction}
@@ -1337,7 +1338,7 @@ checking for HepMC3-config... /usr/local/bin/HepMC3-config
 checking if HepMC3 is built with ROOT interface... yes
 checking if HepMC3 is functional... yes
 checking for HepMC3... yes
-checking the HepMC3 version... 3.02.05
+checking the HepMC3 version... 3.03.01
 configure: looking for HepMC2 ... 
 checking the HepMC2 version... 2.06.11
 checking for GenEvent class in -lHepMC... yes
@@ -1465,7 +1466,7 @@ configure:
 checking for fastjet-config... /usr/local/bin/fastjet-config
 checking if FastJet is functional... yes
 checking FastJet... yes
-checking the FastJet version... 3.3.4
+checking the FastJet version... 3.5.1
 configure: --------------------------------------------------------------
 \end{verbatim}
 \end{footnotesize}
@@ -1709,7 +1710,7 @@ The most important options are
   \ttt{HOPPET\_DIR} (variable): The location of the optional \hoppet\
   package, if non-default.
 \item
-  \ttt{HEPMC\_DIR} (variable): The location of the optional \hepmc\ package, if
+  \ttt{HEPMC2\_DIR} (variable): The location of the optional \hepmctwo\ package, if
   non-default.
 \item
   \ttt{LCIO}/\ttt{LCIO\_DIR} (variable): The location of the optional
@@ -9237,34 +9238,29 @@ A full NLO computation requires virtual matrix elements obtained from
 loop diagrams. Since \oMega\ cannot calculate such diagrams, external
 programs are used.  \whizard\ has a generic interface to matrix-element
 generators that are BLHA-compatible.
-Explicit implementations exist for \gosam, \openloops\ and \recola.
+Explicit implementations exist for \gosam, \openloops\ and \recola,
+where both \gosam\ and \openloops\ use extensions of the BLHA2
+interface, while \recola\ is interfaced independent of the BLHA
+standard. 
 
 %%%%%
 
 \subsubsection{Setting up \gosam}
 
-The installation of \gosam\ is detailed on the HepForge page
-\url{https://gosam/hepforge.org}.  We mention here some of the steps
-necessary to get it to be linked with \whizard.
+Since \whizard\ v3.1.8, the support for the legacy \gosam\ version 2
+has been retired, and \gosam\ version 3.x is the minimum requirement
+to be used with \whizard. 
+The installation of \gosam\ is detailed on the Github page
+\url{https://github.com/gudrunhe/gosam}.  We mention here some of the
+steps necessary to get it to be linked with \whizard.
 
-{\bf Bug in \gosam\ installation scripts:} In many versions of
-\gosam\ there is a bug in the installation scripts that is only
-relevant if \gosam\ is installed with superuser privileges. Then all
-files in \ttt{\$installdir/share/golem} do not have read privileges
-for normal users. These privileges must be given manually to all files
-in that directory.
-
-Prerequisites for \gosam\ to produce code for one-loop matrix elements
-are the scientific algebra program \ttt{form} and the generator of
-loop topologies and diagrams, \ttt{qgraf}.
-These can be accessed via their respective webpages
-\url{http://www.nikhef.nl/~form/} and
-\url{http://cfif.ist.utl.pt/~paulo/qgraf.html}. Note also that both
-\ttt{Java} and the Java runtime environment have to be installed in
-order for \gosam\ to properly work.  Furthermore, \ttt{libtool}
-needs to be installed.  A more convenient way to install \gosam, is the
-automatic installation script
-\url{https://gosam.hepforge.org/gosam_installer.py}.
+The installation script of \gosam\ takes care automatically of all
+needed prerequisites for \gosam. (Some of the prerequisites for
+\gosam\ to produce code for one-loop matrix elements are the
+scientific algebra program \ttt{form} and the generator of loop
+topologies and diagrams, \ttt{qgraf}.) It uses \texttt{Meson} as a
+build tool. Instructions for building and installing \gosam\ can be
+found in its \texttt{Readme.md} file.
 
 %%%%%
 
@@ -9279,12 +9275,12 @@ Please note that at the moment, \openloops\ cannot be installed such
 that in almost all cases the explicit \openloops\ package directory
 has to be set via \ttt{--with-openloops=<openloops\_dir>}.
 
-\openloops\ can be checked out with
+\openloops\ can be checked out from the Gitlab page with
 \begin{code}
   git clone https://gitlab.com/openloops/OpenLoops.git
 \end{code}
 Note that \whizard\ only supports \openloops\ version that are at
-least 2.1.1 or newer. Alternatively, one can use the public beta
+least 2.1.4 or newer. Alternatively, one can use the public beta
 version of \openloops, which can be checked out by the command
 \begin{code}
   git clone -b public_beta https://gitlab.com/openloops/OpenLoops.git
@@ -9390,10 +9386,17 @@ Several \sindarin\ options exist to control the behavior of \openloops.
 \subsubsection{Setting up \recola}
 \label{sec:recola-setup}
 
-The installation of \recola\ is explained in detail on the HepForge page
-\url{https://recola.hepforge.org}. In the following the main steps for
+The installation of \recola\ is explained in detail on the Gitlab page
+\url{https://recola.gitlab.io/}. In the following the main steps for
 usage with \whizard\ are summarized. The minimal required version number
-of \recola\ is 1.3.0.
+of \recola\ is 1.4.4. Note that since \whizard\ v3.1.8, both
+\recola\ version 1.4.4 and newer as well as the release series
+\recola\ version 2.1.x (2.1.4 and newer) can be linked. The
+\recola\ release series 1 only supports the SM, while \recola\ version
+2.x allows certain specific BSM models (scalar sector extensions like
+the 2HDM and effective field theories like [subsets of] SMEFT). For
+the moment, either one of them can be linked to \whizard, but not both
+simultaneously.
 
 \recola\ can be linked to \whizard\ during configuration by including
 \begin{code}
@@ -10508,7 +10511,7 @@ string command \ttt{\$omega\_flags = "<expr>"}.
 One of the supported methods for automated matrix elements from
 external providers is for the \gosam\ package. This program package
 which is a combination of \python\ scripts and \fortran\ libraries,
-allows both for tree and one-loop matrix elements (which is leading or
+allows both for tree and one-loop matrix elements (which are leading or
 next-to-leading order, depending on whether the corresponding process
 is allowed at the tree level or not). In principle, the advanced
 version of \gosam\ also allows for the evaluation of two-loop virtual
@@ -10518,7 +10521,7 @@ matrix elements, however, this is currently not supported in
   $method = "gosam"
 \end{code}
 Of course, this will only work correctly of \gosam\ with all its
-subcomponents has been correctly found during configuration of
+prerequisites has been correctly found during configuration of
 \whizard\ and then subsequently correctly linked.
 
 In order to generate the tables for spin, flavor and color states for
@@ -10527,18 +10530,22 @@ the  corresponding process, first \oMega\ is called to provide
 process(es) to be evaluated. Next, the \gosam\ \python\ script is
 automatically invoked that first checks for the necessary ingredients
 to produce, compile and link the \gosam\ matrix elements. These are
-the the \ttt{Qgraf} topology generator for the diagrams, \ttt{Form} to
-perform algebra, the \ttt{Samurai}, \ttt{AVHLoop}, \ttt{QCDLoop} and
-\ttt{Ninja} libraries for Passarino-Veltman reduction, one-loop tensor
-integrals etc. As a next step, \gosam\ automatically writes and
-executes a \ttt{configure} script, and then it exchanges the Binoth
-Les Houches accord (BLHA) contract files between \whizard\ and
+e.g. \ttt{pkg-config} and its internal components for diagram
+generation, for Passarino-Veltman tensor reduction, libraries for
+master integrals etc.  As a next step, \gosam\ automatically
+initializes its setup; it uses information from 
+the Binoth Les Houches accord (BLHA) contract files between \whizard\ and
 itself~\cite{Binoth:2010xt,Alioli:2013nda} to check whether it
-actually generate code for the demanded process at the given
+actually generates code for the demanded process at the given
 order. Note that the contract and answer files do not have to be
 written by the user by hand, but are generated automatically within
 the program work flow initiated by the original
-\sindarin\ script. \gosam\ then generates \fortran\ code for the
+\sindarin\ script. Specific commands can be transferred to
+\gosam\ outside of the BLHA framework via the
+\ttt{\$gosam\_extra\_cmd} string variable. This can contain a list of
+command instructions for \gosam, separated by a backslash (\ttt{\textbackslash}),
+where each separate command must not contain any whitespace.
+\gosam\ then generates \fortran\ code for the
 different components of the processes, compiles it and links it into a
 library, which is then automatically accessible (as an external
 process library) from inside \whizard. The phase space setup and the
@@ -10555,7 +10562,7 @@ element method for those components via the keywords
 keywords overwrite the master switch of the \ttt{\$method} keyword.
 
 For more information on the switches and details of the functionality
-of \gosam, cf. \url{http://gosam.hepforge.org}.
+of \gosam, cf. \url{https://github.com/gudrunhe/gosam}.
 
 %%%%%
 
