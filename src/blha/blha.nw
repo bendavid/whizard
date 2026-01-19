@@ -886,30 +886,30 @@ This types control the creation of BLHA-interface files
   procedure :: setup_additional_features => blha_master_setup_additional_features
 <<BLHA config: sub interfaces>>=
     module subroutine blha_master_setup_additional_features (master, &
-           phs_tolerance, use_cms, stability_log, extra_cmd, &
+           phs_tolerance, use_cms, stability_log, circe2_pol, extra_cmd, &
            allowed_libs, beam_structure)
       class(blha_master_t), intent(inout) :: master
       integer, intent(in) :: phs_tolerance
-      logical, intent(in) :: use_cms
+      logical, intent(in) :: use_cms, circe2_pol
       type(string_t), intent(in), optional :: extra_cmd, allowed_libs
       integer, intent(in) :: stability_log
       type(beam_structure_t), intent(in), optional :: beam_structure
     end subroutine blha_master_setup_additional_features
 <<BLHA config: procedures>>=
   module subroutine blha_master_setup_additional_features (master, &
-         phs_tolerance, use_cms, stability_log, extra_cmd, &
+         phs_tolerance, use_cms, stability_log, circe2_pol, extra_cmd, &
          allowed_libs, beam_structure)
     class(blha_master_t), intent(inout) :: master
     integer, intent(in) :: phs_tolerance
-    logical, intent(in) :: use_cms
+    logical, intent(in) :: use_cms, circe2_pol
     type(string_t), intent(in), optional :: extra_cmd, allowed_libs
     integer, intent(in) :: stability_log
     type(beam_structure_t), intent(in), optional :: beam_structure
     integer :: i_file
     logical :: polarized, throw_warning
-    
+
     polarized = .false.
-    if (present (beam_structure)) polarized = beam_structure%has_polarized_beams ()
+    if (present (beam_structure)) polarized = beam_structure%has_polarized_beams (circe2_pol)
     
     throw_warning = .false.
     if (use_cms) then
@@ -4414,7 +4414,7 @@ end module blha_uti
        end do
     end if
     call blha_master%setup_additional_features &
-         (openloops_phs_tolerance, .false., 0)
+         (openloops_phs_tolerance, .false., 0, .false.)
 
     call test_output (u)
 

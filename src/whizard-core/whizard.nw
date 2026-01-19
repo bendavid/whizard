@@ -6699,7 +6699,8 @@ to register processes.
       intg%use_color_factors = &
            var_list%get_lval (var_str ("?read_color_factors"))
       intg%has_beam_pol = &
-           local%beam_structure%has_polarized_beams ()
+           local%beam_structure%has_polarized_beams &
+           (var_list%get_lval (var_str ("?circe2_polarized")))
       intg%helicity_selection = &
            local%get_helicity_selection ()
       intg%rebuild_phs = &

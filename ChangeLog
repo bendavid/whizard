@@ -4,6 +4,10 @@ Use git log/svn log to see detailed changes.
 
 	Version 3.1.7.1
 
+2026-01-19
+	Loop-induced process event generation with polarized
+	   CIRCE2 spectra supported (e.g. for photon collider)
+
 2026-01-05
 	Support for GoSam v3; GoSam v2 support is retired
 

@@ -4323,7 +4323,7 @@ environment variables.
     class(process_t), intent(inout) :: process
     integer :: alpha_power, alphas_power
     integer :: openloops_phs_tolerance, openloops_stability_log
-    logical :: use_cms
+    logical :: use_cms, circe2_log
     type(string_t) :: ew_scheme, correction_type
     type(string_t) :: openloops_extra_cmd, openloops_allowed_libs
     type(blha_master_t) :: blha_master
@@ -4341,6 +4341,7 @@ environment variables.
               openloops_phs_tolerance, &
               use_cms, &
               openloops_stability_log, &
+              circe2_log, &
               extra_cmd = openloops_extra_cmd, &
               allowed_libs = openloops_allowed_libs, &
               beam_structure = process%env%get_beam_structure ())
@@ -4370,6 +4371,7 @@ environment variables.
            var_list%get_sval (var_str ("$openloops_extra_cmd"))
       openloops_allowed_libs = &
            var_list%get_sval (var_str ("$openloops_allowed_libs"))
+      circe2_log = var_list%get_lval (var_str ("?circe2_polarized"))
     end subroutine collect_configuration_parameters
   end subroutine process_create_blha_interface
 
@@ -8945,7 +8947,9 @@ recompiled, etc.
   module function process_environment_has_polarized_beams (env) result (flag)
     class(process_environment_t), intent(in) :: env
     logical :: flag
-    flag = env%beam_structure%has_polarized_beams ()
+    logical :: circe2_pol
+    circe2_pol = env%var_list%get_lval (var_str ("?circe2_polarized"))
+    flag = env%beam_structure%has_polarized_beams (circe2_pol)
   end function process_environment_has_polarized_beams
 
 @ %def process_environment_has_polarized_beams

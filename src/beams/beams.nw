@@ -471,20 +471,28 @@ constructed.
 <<Beam structures: beam structure: TBP>>=
   procedure :: has_polarized_beams => beam_structure_has_polarized_beams
 <<Beam structures: sub interfaces>>=
-    elemental module function beam_structure_has_polarized_beams &
-         (beam_structure) result (pol)
+    module function beam_structure_has_polarized_beams &
+         (beam_structure, circe2_pol) result (pol)
+      logical, intent(in) :: circe2_pol
       logical :: pol
       class(beam_structure_t), intent(in) :: beam_structure
     end function beam_structure_has_polarized_beams
 <<Beam structures: procedures>>=
-  elemental module function beam_structure_has_polarized_beams &
-       (beam_structure) result (pol)
+  module function beam_structure_has_polarized_beams &
+       (beam_structure, circe2_pol) result (pol)
+    logical, intent(in) :: circe2_pol
     logical :: pol
+    logical :: has_circe2
     class(beam_structure_t), intent(in) :: beam_structure
     if (allocated (beam_structure%pol_f)) then
        pol = any (beam_structure%pol_f /= 0)
     else
-       pol = .false.
+       has_circe2 = beam_structure%contains ("circe2")
+       if (has_circe2) then
+          pol = circe2_pol
+       else
+          pol = .false.
+       end if
     end if
   end function beam_structure_has_polarized_beams
 
