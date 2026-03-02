@@ -18,6 +18,7 @@ openmp_num_threads = 1
 SM.me =>  0.00000E+00
 isr_mass =  5.11000E-04
 ?isr_recoil = false
+?isr_legacy = true
 seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0

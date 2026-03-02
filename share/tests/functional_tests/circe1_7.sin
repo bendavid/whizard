@@ -36,6 +36,10 @@ circe1_chat = 2
 
 integrate (circe1_7_p3) { iterations = 3:n:"g", 3:n }
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", "e+" => circe1 => isr
 cuts = sqrts_hat > 200
 integrate (circe1_7_p4) { iterations = 5:n:"g", 3:n }

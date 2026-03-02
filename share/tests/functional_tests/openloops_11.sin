@@ -22,6 +22,10 @@ $method = "openloops"
 !!! Tests should be run single-threaded
 openmp_num_threads = 1
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 process openloops_11_p1 = e1, E1 => jet, jet
 beams = e1, E1 => isr
 seed = 42

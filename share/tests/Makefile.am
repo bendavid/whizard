@@ -546,12 +546,21 @@ REF_OUTPUT_FILES_BASE = \
     unit_tests/ref-output/sf_isr_3.ref \
     unit_tests/ref-output/sf_isr_4.ref \
     unit_tests/ref-output/sf_isr_5.ref \
+    unit_tests/ref-output/sf_isr_6.ref \
+    unit_tests/ref-output/sf_isr_7.ref \
+    unit_tests/ref-output/sf_isr_8.ref \
+    unit_tests/ref-output/sf_isr_9.ref \
     unit_tests/ref-output/sf_lhapdf5_1.ref \
     unit_tests/ref-output/sf_lhapdf5_2.ref \
     unit_tests/ref-output/sf_lhapdf5_3.ref \
     unit_tests/ref-output/sf_lhapdf6_1.ref \
     unit_tests/ref-output/sf_lhapdf6_2.ref \
     unit_tests/ref-output/sf_lhapdf6_3.ref \
+    unit_tests/ref-output/sf_lpdf_1.ref \
+    unit_tests/ref-output/sf_lpdf_2.ref \
+    unit_tests/ref-output/sf_lpdf_3.ref \
+    unit_tests/ref-output/sf_lpdf_4.ref \
+    unit_tests/ref-output/sf_lpdf_5.ref \
     unit_tests/ref-output/sf_mappings_1.ref \
     unit_tests/ref-output/sf_mappings_2.ref \
     unit_tests/ref-output/sf_mappings_3.ref \

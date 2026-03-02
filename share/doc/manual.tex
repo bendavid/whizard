@@ -6358,6 +6358,7 @@ Parameter & Default & Meaning \\\hline\hline
 emission \\\hline
 \ttt{isr\_mass} & \ttt{0}/intrinsic & mass of the radiating lepton  \\\hline
 \ttt{isr\_q\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for ISR \\\hline
+\ttt{?isr\_legacy} & \ttt{false} & \ttt{Whizard 2} legacy mode \\\hline
 \hline
 \ttt{?isr\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$
 (\emph{deprecated})\\\hline
@@ -6411,7 +6412,85 @@ cf.\ Sec.~\ref{sec:isr-photon-handler}.
   energy/momentum non-conservation, applied to both beams separately,
   can lead to unexpected and unphysical effects, and (ii) the modified
   momenta enter the hard process, so the collinear approximation used
-  in the ISR structure function computation does not hold.  }
+  in the ISR structure function computation does not hold.
+
+  The \whizard\ \texttt{v2} implementation of the ISR structure
+  function contained a slightly inconsistent factorization of the
+  analytic expression for the ISR structure function that led to
+  minimally different numerical results, usually within the expected
+  theory uncertainty from the leading-log (LL) approximation. This
+  error was fixed for version \texttt{v3.1.8}, in full agreement with
+  the completely new implementation in \texttt{lpdf}. In order to
+  numerically reproduce results for the release series \texttt{v2},
+  there is the flag \ttt{?isr\_legacy.}}
+
+%%%%%%%%%%%%%%%
+
+\subsection{Lepton PDFs}
+\label{sec:lepton_pdf}
+
+Lepton PDFs is conceptually similar to the ISR structure functions in
+Sec.~\ref{sec:lepton_isr}, historically a structure function is
+derived simply from a kinematic approximation, while a PDF follows
+from a strict collinear factorization, where the PDF -- built upon a
+collinear lepton splitting function -- obeys a DGLAP evolution
+equation. For lepton PDFs this was derived at LL approximation
+in~\cite{Skrzypek:1990qs,Cacciari:1992pz} and for NLL
+in~\cite{Frixione:2019lga,Bertone:2019hks}. In order to support NLL
+lepton PDFs, a new implementation was done for \whizard, including the
+LL approximation which is numerically compatible to the ISR structure
+function in~\ref{sec:lepton_isr}. This new implementation can be
+switched on by the following statement:
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+beams = e1, E1 => lpdf
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+As the lepton PDF is a single-beam structure function,
+this expression is synonymous for
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+beams = e1, E1 => lpdf, lpdf
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+Like the ISR structure function, the lepton PDF can again be applied
+to only one of the two beams, e.g. in a HERA-like setup:
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+beams = e1, p => lpdf, pdf_builtin
+\end{Verbatim}
+\end{footnotesize}
+\end{quote}
+
+Their are several options for the lepton PDFs that are summarized in
+the following:
+
+\vspace{2mm}
+
+\centerline{\begin{tabular}{|l|l|l|}\hline
+Parameter & Default & Meaning \\\hline\hline
+\ttt{isr\_alpha} & \ttt{0}/intrinsic & value of $\alpha_{QED}$ for
+lepton PDF
+\\\hline
+\ttt{?isr\_running\_coupling} & \ttt{false} & fixed vs. running QED
+coupling \\\hline
+\ttt{isr\_order} & \ttt{3} & max. order of hard-collinear photon
+emission \\\hline
+\ttt{isr\_log\_order} & \ttt{0} & logarithmic order (0 = LL, 1 = NLL)
+\\\hline
+\ttt{isr\_mass} & \ttt{0}/intrinsic & mass of the radiating lepton  \\\hline
+\ttt{isr\_nlep} & \ttt{1} & number of active lepton flavors  \\\hline
+\ttt{isr\_q\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for lepton PDF \\\hline
+\end{tabular}}\mbox{}
+
+In principle, it is even possible to use the \ttt{lpdf} QED lepton PDF
+with the analytic implmentation of the old ISR structure function,
+with help of the flag \ttt{?epdf\_isr\_mode}.
 
 %%%%%%%%%%%%%%%
 
@@ -18625,6 +18704,32 @@ respectively.
     structure function in QED},
   Z.\ Phys.\ C {\bf 49}, 577 (1991).
   %%CITATION = ZEPYA,C49,577;%%
+
+%\cite{Cacciari:1992pz}
+\bibitem{Cacciari:1992pz}
+M.~Cacciari, A.~Deandrea, G.~Montagna and O.~Nicrosini,
+{\em `QED structure functions: A Systematic approach}, 
+EPL \textbf{17}, 123-128 (1992)
+doi:10.1209/0295-5075/17/2/007
+
+%\cite{Frixione:2019lga}
+\bibitem{Frixione:2019lga}
+S.~Frixione,
+{\em Initial conditions for electron and photon structure and
+  fragmentation functions}, 
+JHEP \textbf{11}, 158 (2019)
+doi:10.1007/JHEP11(2019)158
+[arXiv:1909.03886 [hep-ph]].
+
+%\cite{Bertone:2019hks}
+\bibitem{Bertone:2019hks}
+V.~Bertone, M.~Cacciari, S.~Frixione and G.~Stagnitto,
+{\em The partonic structure of the electron at the next-to-leading
+  logarithmic accuracy in QED}, 
+JHEP \textbf{03}, 135 (2020)
+[erratum: JHEP \textbf{08}, 108 (2022)]
+doi:10.1007/JHEP03(2020)135
+[arXiv:1911.12040 [hep-ph]].
 
 %\cite{Schulte:1998au}
 \bibitem{Schulte:1998au}

@@ -19,6 +19,10 @@ sqrts = 500 GeV
 !!! Tests should be run single-threaded
 openmp_num_threads = 1
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1
 integrate (ilc_zh)
 

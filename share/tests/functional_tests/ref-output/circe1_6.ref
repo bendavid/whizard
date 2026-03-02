@@ -19,6 +19,7 @@ $integration_method = "vamp"
 sqrts =  5.00000E+02
 openmp_num_threads = 1
 [user variable] n = 1000
+?isr_legacy = true
 seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0

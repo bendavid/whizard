@@ -1,0 +1,158 @@
+* Test output: sf_lpdf_4
+*   Purpose: initialize and fill test structure function object
+
+* Initialize configuration data
+
+ map(1,2): isr (eps = 6.40976E-02)
+
+* Initialize structure-function object
+
+* Initialize incoming momenta with E=500
+
+ E =   5.000000000000E+02
+ P =   0.000000000000E+00  0.000000000000E+00  4.999999999997E+02
+ E =   5.000000000000E+02
+ P =   0.000000000000E+00  0.000000000000E+00 -4.999999999997E+02
+
+* Set kinematics for p=[0.7,0.4], collinear
+
+p =  7.00000E-01  4.00000E-01
+pb=  3.00000E-01  6.00000E-01
+r =  9.99918E-01  9.99999E-01
+rb=  8.21293E-05  1.28323E-06
+fm=  1.08553E-07
+
+x =  9.99918E-01  9.99999E-01
+xb=  8.21293E-05  1.28323E-06
+f =  1.00000E+00  1.00000E+00
+
+* Invert kinematics
+
+p =  7.00000E-01  4.00000E-01
+pb=  3.00000E-01  6.00000E-01
+r =  9.99918E-01  9.99999E-01
+rb=  8.21293E-05  1.28323E-06
+fm=  1.08553E-07
+
+* Evaluate QEDPDF structure function
+
+* Structure function #1
+
+ QEDPDF data:
+     ePDF ISR mode     = F
+     ISR legacy mode = F
+     running         = F
+     flavor =  f(11)
+     alpha    =  7.299270072993E-03
+     q_max    =  5.000000000000E+02
+     mass     =  5.110000000000E-04
+     eps      =  6.409761598985E-02
+     log      =  2.758749813237E+01
+     n        =  1
+     order    =  3
+ SF parameters:
+   x = 9.99917871E-01
+   xb= 8.21293342E-05
+ SF instance: [evaluated]
+   beam      = 1
+   incoming  = 1
+   radiated  = 2
+   outgoing  = 3
+ Interaction: 1
+ Incoming:
+ Particle 1
+ E =   5.000000E+02
+ P =   0.000000E+00  0.000000E+00  5.000000E+02
+ mask [fch] = [FFgF]
+ internal links: X => 2 3
+ helicity lock: 3
+ Outgoing:
+ Particle 2
+ E =   4.106467E-02
+ P =   0.000000E+00  0.000000E+00  4.106467E-02
+ mask [fch] = [FFgT]
+ internal links: 1 => X
+ Particle 3
+ E =   4.999589E+02
+ P =   0.000000E+00  0.000000E+00  4.999589E+02
+ mask [fch] = [FFgF]
+ internal links: 1 => X
+ helicity lock: 1
+ State matrix:  norm =  1.0000000000E+00
+ [f(11) h(-1)]
+   [f(22*)]
+     [f(11) h(-1)] => ME(1) = ( 4.2115078335E+02, 0.0000000000E+00)
+ [f(11) h(-1|1)]
+   [f(22*)]
+     [f(11) h(-1|1)] => ME(2) = ( 0.0000000000E+00, 0.0000000000E+00)
+ [f(11) h(1|-1)]
+   [f(22*)]
+     [f(11) h(1|-1)] => ME(3) = ( 0.0000000000E+00, 0.0000000000E+00)
+ [f(11) h(1)]
+   [f(22*)]
+     [f(11) h(1)] => ME(4) = ( 0.0000000000E+00, 0.0000000000E+00)
+
+* Structure function #2
+
+ QEDPDF data:
+     ePDF ISR mode     = F
+     ISR legacy mode = F
+     running         = F
+     flavor =  f(11)
+     alpha    =  7.299270072993E-03
+     q_max    =  5.000000000000E+02
+     mass     =  5.110000000000E-04
+     eps      =  6.409761598985E-02
+     log      =  2.758749813237E+01
+     n        =  1
+     order    =  3
+ SF parameters:
+   x = 9.99998717E-01
+   xb= 1.28323405E-06
+ SF instance: [evaluated]
+   beam      = 2
+   incoming  = 1
+   radiated  = 2
+   outgoing  = 3
+ Interaction: 2
+ Incoming:
+ Particle 1
+ E =   5.000000E+02
+ P =   0.000000E+00  0.000000E+00 -5.000000E+02
+ mask [fch] = [FFgF]
+ internal links: X => 2 3
+ helicity lock: 3
+ Outgoing:
+ Particle 2
+ E =   6.416170E-04
+ P =   0.000000E+00  0.000000E+00 -6.416170E-04
+ mask [fch] = [FFgT]
+ internal links: 1 => X
+ Particle 3
+ E =   4.999994E+02
+ P =   0.000000E+00  0.000000E+00 -4.999994E+02
+ mask [fch] = [FFgF]
+ internal links: 1 => X
+ helicity lock: 1
+ State matrix:  norm =  1.0000000000E+00
+ [f(11) h(-1)]
+   [f(22*)]
+     [f(11) h(-1)] => ME(1) = ( 2.1301039320E+04, 0.0000000000E+00)
+ [f(11) h(-1|1)]
+   [f(22*)]
+     [f(11) h(-1|1)] => ME(2) = ( 0.0000000000E+00, 0.0000000000E+00)
+ [f(11) h(1|-1)]
+   [f(22*)]
+     [f(11) h(1|-1)] => ME(3) = ( 0.0000000000E+00, 0.0000000000E+00)
+ [f(11) h(1)]
+   [f(22*)]
+     [f(11) h(1)] => ME(4) = ( 0.0000000000E+00, 0.0000000000E+00)
+
+* Structure-function value, default order
+
+f_qedpdf         =  8.97095E+06
+f_qedpdf * f_map =  9.73824E-01
+
+* Cleanup
+
+* Test output end: sf_lpdf_4

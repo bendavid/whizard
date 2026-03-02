@@ -32,6 +32,10 @@ sqrts = 250 GeV
 integrate (tauola_2_dec1)  { iterations = 1:10 error_threshold = 1E-8 }
 integrate (tauola_2_dec2) { iterations = 1:10 error_threshold = 1E-8 }
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => beam_events => isr
 $beam_events_file = "uniform_spread_2.5%.dat"
 beams_pol_density = @(-1), @(+1)

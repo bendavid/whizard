@@ -40,6 +40,7 @@ BEAMS_MODULES = \
   sf_aux.f90 \
   sf_base.f90 \
   sf_isr.f90 \
+  sf_qedpdf.f90 \
   sf_epa.f90 \
   sf_ewa.f90 \
   sf_escan.f90 \
@@ -60,6 +61,7 @@ BEAMS_SUBMODULES = \
   sf_aux_sub.f90 \
   sf_base_sub.f90 \
   sf_isr_sub.f90 \
+  sf_qedpdf_sub.f90 \
   sf_epa_sub.f90 \
   sf_ewa_sub.f90 \
   sf_escan_sub.f90 \
@@ -79,6 +81,7 @@ libbeams_ut_la_SOURCES = \
   sf_mappings_uti.f90 sf_mappings_ut.f90 \
   sf_base_uti.f90 sf_base_ut.f90 \
   sf_isr_uti.f90 sf_isr_ut.f90 \
+  sf_qedpdf_uti.f90 sf_qedpdf_ut.f90 \
   sf_epa_uti.f90 sf_epa_ut.f90 \
   sf_ewa_uti.f90 sf_ewa_ut.f90 \
   sf_escan_uti.f90 sf_escan_ut.f90 \
@@ -186,6 +189,7 @@ sf_mappings_sub.lo: sf_mappings.lo
 sf_aux_sub.lo: sf_aux.lo
 sf_base_sub.lo: sf_base.lo
 sf_isr_sub.lo: sf_isr.lo
+sf_qedpdf_sub.lo: sf_qedpdf.lo
 sf_epa_sub.lo: sf_epa.lo
 sf_ewa_sub.lo: sf_ewa.lo
 sf_escan_sub.lo: sf_escan.lo

@@ -17,6 +17,10 @@ process pythia6_4_p3 = "H" => "b", "bbar"
 me = 1 GeV
 isr_mass = 1 GeV
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 compile ()
 
 seed = 0

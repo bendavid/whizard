@@ -1,0 +1,37 @@
+* Test output: sf_lpdf_1
+*   Purpose: initialize and display test structure function data
+
+* Create empty data object
+
+ QEDPDF data:
+     ePDF ISR mode     = F
+     ISR legacy mode = F
+     running         = F
+     flavor =  p(0)
+     alpha    =  0.000000000000E+00
+     q_max    =  0.000000000000E+00
+     mass     =  0.000000000000E+00
+     eps      =  0.000000000000E+00
+     log      =  0.000000000000E+00
+     n        =  0
+     order    =  3
+
+* Initialize
+
+ QEDPDF data:
+     ePDF ISR mode     = F
+     ISR legacy mode = F
+     running         = F
+     flavor =  f(11)
+     alpha    =  7.299270072993E-03
+     q_max    =  1.000000000000E+01
+     mass     =  5.110000000000E-04
+     eps      =  4.591899412698E-02
+     log      =  1.976345212412E+01
+     n        =  1
+     order    =  3
+
+ Outgoing particle codes:
+   -9 -8 -7 -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6 7 8 9 10
+
+* Test output end: sf_lpdf_1

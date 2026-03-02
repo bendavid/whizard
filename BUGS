@@ -15,6 +15,9 @@ General:
 
 Known (recent) bugs:
 
+* Between WHIZARD 3.1.7 and 2.2.0 the ISR structure functions gave slightly
+  different numerical results. This was fixed in 3.1.8+.
+
 * WHIZARD 3.1.6 and earlier might have problems compiling and linking under
   Darwin Sonoma (and newer) with XCode 16.3 and newer. This should be fixed
   with versions 3.1.7.

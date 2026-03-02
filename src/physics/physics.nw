@@ -3799,7 +3799,7 @@ module lorentz_uti
 
 <<Use kinds>>
   use constants, only: zero, Pi
-  use format_defs, only: FMT_12  
+  use format_defs, only: FMT_12
   use lorentz
 
 <<Standard module head>>
@@ -3959,14 +3959,14 @@ end module lorentz_uti
     write (u, "(A)")  "* 4-vector at rest with mass m = 17"
     write (u, "(A)")
     call vector4_write (vector4_at_rest (17._default), u, testflag = .true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Canonical moving 4-vector"
     write (u, "(A)")
     call vector4_write (vector4_moving (17._default, 42._default, 1), u, testflag = .true.)
     call vector4_write (vector4_moving (17._default, 42._default, 2), u, testflag = .true.)
     call vector4_write (vector4_moving (17._default, 42._default, 3), u, testflag = .true.)
-     
+
     write (u, "(A)")
     write (u, "(A)")  "* Generic moving 4-vector"
     write (u, "(A)")
@@ -3977,7 +3977,7 @@ end module lorentz_uti
     write (u, "(A)")  "* Simple algebra with 4-vectors"
     write (u, "(A)")
     v3_2 = [-2._default, 5._default, -1._default]
-    v4_1 = vector4_moving (8._default, v3_1)    
+    v4_1 = vector4_moving (8._default, v3_1)
     v4_2 = vector4_moving (zero, v3_2)
     write (u, "(1x,A)")  "v4_1:"
     call vector4_write (v4_1, u, testflag=.true.)
@@ -4015,7 +4015,7 @@ end module lorentz_uti
     write (u, "(A)")
     write (u, "(A)")  "* Angles and kinematic properties of 4-vectors"
     write (u, "(A)")
-   
+
     write (u, "(1x,A," // FMT_12 // ")")  "v4_1, azimuth (radians):", azimuthal_angle (v4_1)
     write (u, "(1x,A," // FMT_12 // ")")  "v4_1, azimuth (degrees):", &
          azimuthal_angle_deg (v4_1)
@@ -4071,7 +4071,7 @@ end module lorentz_uti
     write (u, "(A)")
     v3_1 = [3._default, 4._default, 5._default]
     v3_2 = [-2._default, 5._default, -1._default]
-    v4_1 = vector4_moving (8._default, v3_1)    
+    v4_1 = vector4_moving (8._default, v3_1)
     v4_2 = vector4_moving (6._default, v3_2)
     write (u, "(1x,A," // FMT_12 // ")")  "v4_1 * v4_2: ", v4_1 * v4_2
     write (u, "(1x,A," // FMT_12 // ")")  "rapidity distance       :", &
@@ -4212,7 +4212,7 @@ end module lorentz_uti
     type(vector4_t), dimension(8) :: tt_mom
     type(vector4_t), dimension(:), allocatable :: tin, tout
     integer, dimension(:), allocatable :: shuffle
-    
+
     write (u, "(A)")  "* Test output: lorentz_5"
     write (u, "(A)")  "*   Purpose: testing additional kinematics and sets of 4-vectors"
     write (u, "(A)")
@@ -4298,7 +4298,7 @@ module kinematics_vars
 
 <<Kinematics vars: parameters>>
 
-<<Kinematics vars: types>> 
+<<Kinematics vars: types>>
 
   interface
 <<Kinematics vars: sub interfaces>>
@@ -4334,11 +4334,11 @@ end submodule kinematics_vars_s
   ! Gives massless particles a very small mass
   ! scanning step size
 
-@ %def relative_precision prec 
+@ %def relative_precision prec
 @
 <<Kinematics vars: procedures>>=
   subroutine mt2calcmassive (mt2, mn, mt2_b)
-    !!! Code implementation of the massive algorithm for calculating mt2    
+    !!! Code implementation of the massive algorithm for calculating mt2
     type(mt2_t), intent(inout) :: mt2
     real(default), intent(in) :: mn
     real(default) :: Ea, Eb
@@ -4356,26 +4356,26 @@ end submodule kinematics_vars_s
 
     print *, 'using calculation for massive visible particles.'
 
-    !!! Allowed transverse 2-momenta for each invisible partice incloses 
+    !!! Allowed transverse 2-momenta for each invisible partice incloses
     !!! an elliptical region on the px, py plane.
-    !!! To safisfy kinematic constraints, the two elliptical regions must 
-    !!! overlap. MT2 is therefore given by the minimum initial decay mass 
-    !!! in each branch (mt2_b) which gives overlapping elipses 
-    !!! We therefore increase the initial decay mass in each branch (mt2_b) 
+    !!! To safisfy kinematic constraints, the two elliptical regions must
+    !!! overlap. MT2 is therefore given by the minimum initial decay mass
+    !!! in each branch (mt2_b) which gives overlapping elipses
+    !!! We therefore increase the initial decay mass in each branch (mt2_b)
     !!! until the ellipses overlap - the "balanced configuration".
-    !!! In the balanced configuration, the two quadtratic equations 
+    !!! In the balanced configuration, the two quadtratic equations
     !!! can be combined into one quartic equation.
-    !!! We search for the point at which the two ellipses are tangent, 
+    !!! We search for the point at which the two ellipses are tangent,
     !!! using the Sturm sequence method and bisection
 
-    !!! When the smaller ellipse is already inside the larger ellipse, this 
+    !!! When the smaller ellipse is already inside the larger ellipse, this
     !!! is called an "unbalanced configuration", and mt2 is easy to calculate.
 
 
     deltasq0 = mt2%ma*(mt2%ma + 2*mt2%mn)
 
-    !!! Find co-efficients at deltasq = deltasq0 for  the quadratic 
-    !!! equations that describe each  ellipse 
+    !!! Find co-efficients at deltasq = deltasq0 for  the quadratic
+    !!! equations that describe each  ellipse
 
     masq = mt2%ma**2
     mbsq = mt2%mb**2
@@ -4402,7 +4402,7 @@ end submodule kinematics_vars_s
     x00 = (c1*d1 - b1*e1)/(b1*b1 - a1*c1)
     y00 = (a1*e1 - b1*d1)/(b1*b1 - a1*c1)
 
-    !!! check if the large ellipse contains the small one - 
+    !!! check if the large ellipse contains the small one -
     !!! "unbalanced configuration"
     dis = a2*x00*x00 + 2.d0*b2*x00*y00 + c2*y00*y00 + &
          2.d0*d2*x00 + 2.d0*e2*y00 + f2
@@ -4412,7 +4412,7 @@ end submodule kinematics_vars_s
        return
     end if
 
-    !!! find linear and constant terms in quadratic equations for 
+    !!! find linear and constant terms in quadratic equations for
     !!! delta = (deltasq-msq)/(2Esq) as quadratic terms do not change as we adjust delta
 
     d11 = -mt2%pax
@@ -4452,7 +4452,7 @@ end submodule kinematics_vars_s
        deltasqhigh2 = deltasqhigh21
     end if
 
-    ! Upper bound on mt2 is the smallest of these two estimates    
+    ! Upper bound on mt2 is the smallest of these two estimates
     if (deltasqhigh1 < deltasqhigh2) then
        deltasqhigh = deltasqhigh1
     else
@@ -4463,13 +4463,13 @@ end submodule kinematics_vars_s
        mt2_b = sqrt(mnsq + deltasqlow)
        return
     end if
-    nsolslow = nsolutionsmassive (deltasqlow)   
+    nsolslow = nsolutionsmassive (deltasqlow)
     nsolshigh = nsolutionsmassive (deltasqhigh)
     if (nsolshigh==nsolslow) then
        if (nsolshigh==4) then
 
           findhigh = findhighfunc(deltasqhigh)
-          
+
           print *, 'findhigh=', findhigh
 
           if(findhigh==0) then
@@ -4517,7 +4517,7 @@ end submodule kinematics_vars_s
          minmass, maxmass, mass, &
          deltamid, midmass, nsolsmid
     real*16 :: a1, b1, c1, d1, e1, f1, &
-         a2, b2, c2, d2, e2, f2    
+         a2, b2, c2, d2, e2, f2
     real*16 :: d20, d21, e20, e21
     real*16 :: f20, f21, f22
     integer :: nsolshigh, nsolslow, findhigh
@@ -4546,7 +4546,7 @@ end submodule kinematics_vars_s
     pytemp = -s*mt2%pmx + c * mt2%pmy
     mt2%pmx = pxtemp
     mt2%pmy = pytemp
-    
+
     a2  = 1 - mt2%pbx * mt2%pbx / Ebsq
     b2  = - mt2%pbx * mt2%pby / Ebsq
     c2  = 1 - mt2%pby * mt2%pby / Ebsq
@@ -4559,7 +4559,7 @@ end submodule kinematics_vars_s
     f21 = -2*Easq*(mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy) / Ebsq
     f20 = mnsq + pmissxsq + pmissysq - (mt2%pbx * mt2%pmx + &
          mt2%pby * mt2%pmy)*(mt2%pbx * mt2%pmx + mt2%pby * mt2%pmy) / Ebsq
-    
+
     deltasq0 = 0
     deltasqlow = deltasq0 + prec
     nsolslow = nsolutionsmassless (deltasqlow)
@@ -4681,8 +4681,8 @@ end submodule kinematics_vars_s
 
 @ %def mt2_init
 <<Kinematics vars: nsolutionsmassless>>=
-  integer function nsolutionsmassless (dsq) 
-    !!! calculates the number of solutions of quartic function in massless case    
+  integer function nsolutionsmassless (dsq)
+    !!! calculates the number of solutions of quartic function in massless case
     !!! Problem with macOS XCode 14/15
     ! real*16 :: delta, a, b, &
     real(kind=default) :: delta, a, b, &
@@ -4761,7 +4761,7 @@ end submodule kinematics_vars_s
 @ %def nsolutionsmassless
 <<Kinematics vars: nsolutionsmassive>>=
 
-  integer function nsolutionsmassive ( dsq ) 
+  integer function nsolutionsmassive ( dsq )
     !!! calculates the number of solutions of quartic function  in massive case
     integer:: nsol, nsolsmid
     real(kind=default):: deltasqmid, dsq, delta
@@ -4783,7 +4783,7 @@ end submodule kinematics_vars_s
     d2 = (d21*delta)+d20
     e2 = (e21*delta)+e20
     f2 = (f22*delta*delta)+f21*delta+f20
-    
+
     !!! Calculate quartic co-efficients, divided by Ea^n to keep dimensionless
 
 
@@ -5037,9 +5037,9 @@ It looks like as if this function is not used in the code.
   end function scanhigh
 
 @ %def scanhight
-All this subroutine does is to decide whether to use the algorithm  
-for massless visible particles, or the algorithm for massive 
-visible particles. 
+All this subroutine does is to decide whether to use the algorithm
+for massless visible particles, or the algorithm for massive
+visible particles.
 <<Kinematics vars: public>>=
   public :: mt2calc
 <<Kinematics vars: sub interfaces>>=
@@ -5062,7 +5062,7 @@ visible particles.
 
 @ %def mt2calc
 @ This subroutine sets up the event for calculation by defining the
-input variables, and setting them to a scale that aids calculation. 
+input variables, and setting them to a scale that aids calculation.
 The output variables have been rescaled back.
 <<Kinematics vars: public>>=
   public :: mt2_setevent
@@ -5070,7 +5070,7 @@ The output variables have been rescaled back.
     module subroutine mt2_setevent (mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
          pmissx, pmissy, scale, u)
       real(default), intent(out) :: ma, mb ! mass of particles a and b
-      real(default), intent(out) :: mn ! invisible particle mass scaled and unscaled  
+      real(default), intent(out) :: mn ! invisible particle mass scaled and unscaled
       real(default), intent(out) :: scale
       real(default), intent(out) :: pax, pay, pbx, pby
       real(default), intent(out) :: pmissx, pmissy
@@ -5081,10 +5081,10 @@ The output variables have been rescaled back.
   module subroutine mt2_setevent (mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
        pmissx, pmissy, scale, u)
     real(default), intent(out) :: ma, mb ! mass of particles a and b
-    real(default), intent(out) :: mn ! invisible particle mass scaled and unscaled  
+    real(default), intent(out) :: mn ! invisible particle mass scaled and unscaled
     real(default), intent(out) :: scale
-    real(default), intent(out) :: pax, pay, pbx, pby  
-    ! x and y momentum of particles a and b    
+    real(default), intent(out) :: pax, pay, pbx, pby
+    ! x and y momentum of particles a and b
     ! missing x and y momentum
     real(default) :: Ea, Eb
     type(vector4_t) :: pmissa, pa, pb
@@ -5097,16 +5097,16 @@ The output variables have been rescaled back.
     real(default) :: temp, scalesq, rt, relative_precision100
     integer, intent(in) :: u
 
-    !!! Here the 8 input variables are entered. This should be read in from 
+    !!! Here the 8 input variables are entered. This should be read in from
     !!! the syndarin file -  let me know if I can help accomplish this
-    !!! The units of input are equal to the units of the output e.g GeV 
-    !!!    in --> GeV out, MeV in --> MeV out 
+    !!! The units of input are equal to the units of the output e.g GeV
+    !!!    in --> GeV out, MeV in --> MeV out
 
     ma=100 ! total mass of visible particles in branch  a
     mb=100 ! total mass of visible particles in branch  b
     !!! 0810.5178
     !!! mT2 is invariant under longitudinal boosts => set paz = pbz = 0
-    ! mass = transverse mass here!??? 
+    ! mass = transverse mass here!???
 
     pax=40 ! total x momentum of visible partivles in branch a
     pay=40 ! total y momentum of visible partivles in branch a
@@ -5120,8 +5120,8 @@ The output variables have been rescaled back.
 
     pmissa = [ Emiss, pmissx, pmissy, pmissz]
 
-    mn=0 ! starting guess for mass of invisible particle 
-    mn_unscaled = 0 ! starting guess for mass of invisible particle 
+    mn=0 ! starting guess for mass of invisible particle
+    mn_unscaled = 0 ! starting guess for mass of invisible particle
 
     scale=1.d0 ! scale is originally defined as 1
     masq = ma*ma
@@ -5253,7 +5253,7 @@ end module kinematics_vars_uti
 @ %def kinematics_vars_ut
 This has been written by Tom James as a DESY summer student in August
 2013. It is a self-contained Fortran90 program for calculating
-$M_{T2}$ using the Cheng-Han algorithm. 
+$M_{T2}$ using the Cheng-Han algorithm.
 <<Kinematics vars: public test>>=
   public :: kinematics_vars_test
 <<Kinematics vars: test driver>>=
@@ -5284,7 +5284,7 @@ $M_{T2}$ using the Cheng-Han algorithm.
     write (u, "(A)")  "* Test output: mt2_1"
     write (u, "(A)")  "*   Purpose: calculate MT2 for the massive case"
     write (u, "(A)")
-    
+
     call mt2_setevent (mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
          pmissx, pmissy, scale, u)
     call mt2_init (mt2, mn, ma, mb, Easq, Ebsq, pax, pay, pbx, pby, &
@@ -6588,7 +6588,7 @@ Eq. (6.4.11):
   end function psimr
 
 @ %def psim psimr
-@ Nielsen's generalized polylogarithms, 
+@ Nielsen's generalized polylogarithms,
 \begin{equation*}
   S_{n,m}(x) = \frac{(-1)^{n+m-1}}{(n-1)!m!} \int_0^1 t^{-1}
   \; \ln^{n-1} t \; \ln^m (1-xt) \; dt \; ,
@@ -6623,301 +6623,649 @@ imaginary part is set to zero.
     real(default), dimension(0:4), parameter :: &
          fct = [1.0_default,1.0_default,2.0_default,6.0_default,24.0_default]
     real(default), dimension(4,4) :: s1, cc
-    real(default), dimension(0:30,10) :: aa
+    real(default), dimension(0:64,10) :: aa
     complex(default), dimension(0:5) :: vv
     real(default), dimension(0:5) :: uu
     real(default) :: x1, h, alfa, b0, b1, b2, qq, rr
     complex(default) :: sj, sk
     integer, dimension(10), parameter :: &
-         nc = [24,26,28,30,22,24,26,19,22,17]
+         nc = [58,60,62,64,54,56,60,51,54,47]
     integer, dimension(31), parameter :: &
          index = [1,2,3,4,0,0,0,0,0,0,5,6,7,0,0,0,0,0,0,0, &
                   8,9,0,0,0,0,0,0,0,0,10]
     real(default), dimension(0:4), parameter :: &
          sgn = [1._default, -1._default, 1._default, -1._default, 1._default]
     integer :: it, j, k, l, m1, n1
+    real(default), parameter :: &
+      zeta2 = 1.6449340668482264364724151666460251892189_default, &
+      zeta3 = 1.2020569031595942853997381615114499907649_default, &
+      zeta4 = 1.0823232337111381915160036965411679027747_default, &
+      zeta5 = 1.0369277551433699263313654864570341680570_default
     if ((n<1) .or. (n>4) .or. (m<1) .or. (m>4) .or. (n+m > 5)) then
        call msg_fatal &
             ("The Nielsen dilogarithms cannot be applied for these values.")
     end if
     s1 = 0._default
-    s1(1,1) = 1.6449340668482_default
-    s1(1,2) = 1.2020569031596_default
-    s1(1,3) = 1.0823232337111_default
-    s1(1,4) = 1.0369277551434_default
-    s1(2,1) = 1.2020569031596_default
-    s1(2,2) = 2.7058080842778e-1_default
-    s1(2,3) = 9.6551159989444e-2_default
-    s1(3,1) = 1.0823232337111_default
-    s1(3,2) = 9.6551159989444e-2_default
-    s1(4,1) = 1.0369277551434_default
+    s1(1,1) = zeta2
+    s1(1,2) = zeta3
+    s1(1,3) = zeta4
+    s1(1,4) = zeta5
+    s1(2,1) = s1(1,2)
+    s1(2,2) = 2.70580808427784547879000924135e-1_default
+    s1(2,3) = 9.65511599894437344656455314289e-2_default
+    s1(3,1) = s1(1,3)
+    s1(3,2) = s1(2,3)
+    s1(4,1) = s1(1,4)
+
     cc = 0._default
-    cc(1,1) = 1.6449340668482_default
-    cc(1,2) = 1.2020569031596_default
-    cc(1,3) = 1.0823232337111_default
-    cc(1,4) = 1.0369277551434_default
-    cc(2,2) =-1.8940656589945_default
-    cc(2,3) =-3.0142321054407_default
-    cc(3,1) = 1.8940656589945_default
-    cc(3,2) = 3.0142321054407_default
+    cc(1,1) = zeta2
+    cc(1,2) = zeta3
+    cc(1,3) = zeta4
+    cc(1,4) = zeta5
+    cc(2,2) =-pi**4 *(7.0_default / 360.0_default)
+    cc(2,3) =-zeta2*zeta3-zeta5
+    cc(3,1) = -cc(2,2)
+    cc(3,2) = -cc(2,3)
+
+    ! The coefficients below are derived from an expansion in Chebyshew polynominals
+    ! of the fuction S(n,p,x) = (p! * p**n) / x**p *Nilsen(n,p,x)
+
+    ! S11
     aa = 0._default
-    aa( 0,1) = 0.96753215043498_default
-    aa( 1,1) = 0.16607303292785_default
-    aa( 2,1) = 0.02487932292423_default
-    aa( 3,1) = 0.00468636195945_default
-    aa( 4,1) = 0.00100162749616_default
-    aa( 5,1) = 0.00023200219609_default
-    aa( 6,1) = 0.00005681782272_default
-    aa( 7,1) = 0.00001449630056_default
-    aa( 8,1) = 0.00000381632946_default
-    aa( 9,1) = 0.00000102990426_default
-    aa(10,1) = 0.00000028357538_default
-    aa(11,1) = 0.00000007938705_default
-    aa(12,1) = 0.00000002253670_default
-    aa(13,1) = 0.00000000647434_default
-    aa(14,1) = 0.00000000187912_default
-    aa(15,1) = 0.00000000055029_default
-    aa(16,1) = 0.00000000016242_default
-    aa(17,1) = 0.00000000004827_default
-    aa(18,1) = 0.00000000001444_default
-    aa(19,1) = 0.00000000000434_default
-    aa(20,1) = 0.00000000000131_default
-    aa(21,1) = 0.00000000000040_default
-    aa(22,1) = 0.00000000000012_default
-    aa(23,1) = 0.00000000000004_default
-    aa(24,1) = 0.00000000000001_default
+    aa( 0,1) = 0.9675321504349846344088069976659_default
+    aa( 1,1) = 0.1660730329278549950869799430388_default
+    aa( 2,1) = 0.0248793229242280501863524902852_default
+    aa( 3,1) = 0.0046863619594465633232047849455_default
+    aa( 4,1) = 0.0010016274961643181893020148124_default
+    aa( 5,1) = 0.0002320021960943971434061963359_default
+    aa( 6,1) = 0.0000568178227182704307006099647_default
+    aa( 7,1) = 0.0000144963005574886592202154818_default
+    aa( 8,1) = 0.0000038163294634370496359226021_default
+    aa( 9,1) = 0.0000010299042637683208942856048_default
+    aa(10,1) = 0.0000002835753845118003574909448_default
+    aa(11,1) = 0.0000000793870546042600986334360_default
+    aa(12,1) = 0.0000000225367046417416723331692_default
+    aa(13,1) = 0.0000000064743381805283768623443_default
+    aa(14,1) = 0.0000000018791172698429729165002_default
+    aa(15,1) = 0.0000000005502909217137956336053_default
+    aa(16,1) = 0.0000000001624206319427288175587_default
+    aa(17,1) = 0.0000000000482737624304947231502_default
+    aa(18,1) = 0.0000000000144369654082270552265_default
+    aa(19,1) = 0.0000000000043416949564867564114_default
+    aa(20,1) = 0.0000000000013122768920462887781_default
+    aa(21,1) = 0.0000000000003984478218072318937_default
+    aa(22,1) = 0.0000000000001214846149631136928_default
+    aa(23,1) = 0.0000000000000371810319965586007_default
+    aa(24,1) = 0.0000000000000114192399039925973_default
+    aa(25,1) = 0.0000000000000035184360097784191_default
+    aa(26,1) = 0.0000000000000010873099805700257_default
+    aa(27,1) = 0.0000000000000003369414202931789_default
+    aa(28,1) = 0.0000000000000001046811963848087_default
+    aa(29,1) = 0.0000000000000000326002315005515_default
+    aa(30,1) = 0.0000000000000000101751854217645_default
+    aa(31,1) = 0.0000000000000000031825264046772_default
+    aa(32,1) = 0.0000000000000000009973642914733_default
+    aa(33,1) = 0.0000000000000000003131387541354_default
+    aa(34,1) = 0.0000000000000000000984860102529_default
+    aa(35,1) = 0.0000000000000000000310259033044_default
+    aa(36,1) = 0.0000000000000000000097892052414_default
+    aa(37,1) = 0.0000000000000000000030931972205_default
+    aa(38,1) = 0.0000000000000000000009787501366_default
+    aa(39,1) = 0.0000000000000000000003101055179_default
+    aa(40,1) = 0.0000000000000000000000983766980_default
+    aa(41,1) = 0.0000000000000000000000312459536_default
+    aa(42,1) = 0.0000000000000000000000099354989_default
+    aa(43,1) = 0.0000000000000000000000031626941_default
+    aa(44,1) = 0.0000000000000000000000010078017_default
+    aa(45,1) = 0.0000000000000000000000003214575_default
+    aa(46,1) = 0.0000000000000000000000001026323_default
+    aa(47,1) = 0.0000000000000000000000000327974_default
+    aa(48,1) = 0.0000000000000000000000000104899_default
+    aa(49,1) = 0.0000000000000000000000000033579_default
+    aa(50,1) = 0.0000000000000000000000000010758_default
+    aa(51,1) = 0.0000000000000000000000000003449_default
+    aa(52,1) = 0.0000000000000000000000000001107_default
+    aa(53,1) = 0.0000000000000000000000000000355_default
+    aa(54,1) = 0.0000000000000000000000000000114_default
+    aa(55,1) = 0.0000000000000000000000000000037_default
+    aa(56,1) = 0.0000000000000000000000000000012_default
+    aa(57,1) = 0.0000000000000000000000000000004_default
+    aa(58,1) = 0.0000000000000000000000000000001_default
 
-    aa( 0,2) = 0.95180889127832_default
-    aa( 1,2) = 0.43131131846532_default
-    aa( 2,2) = 0.10002250714905_default
-    aa( 3,2) = 0.02442415595220_default
-    aa( 4,2) = 0.00622512463724_default
-    aa( 5,2) = 0.00164078831235_default
-    aa( 6,2) = 0.00044407920265_default
-    aa( 7,2) = 0.00012277494168_default
-    aa( 8,2) = 0.00003453981284_default
-    aa( 9,2) = 0.00000985869565_default
-    aa(10,2) = 0.00000284856995_default
-    aa(11,2) = 0.00000083170847_default
-    aa(12,2) = 0.00000024503950_default
-    aa(13,2) = 0.00000007276496_default
-    aa(14,2) = 0.00000002175802_default
-    aa(15,2) = 0.00000000654616_default
-    aa(16,2) = 0.00000000198033_default
-    aa(17,2) = 0.00000000060204_default
-    aa(18,2) = 0.00000000018385_default
-    aa(19,2) = 0.00000000005637_default
-    aa(20,2) = 0.00000000001735_default
-    aa(21,2) = 0.00000000000536_default
-    aa(22,2) = 0.00000000000166_default
-    aa(23,2) = 0.00000000000052_default
-    aa(24,2) = 0.00000000000016_default
-    aa(25,2) = 0.00000000000005_default
-    aa(26,2) = 0.00000000000002_default
+    ! S12
+    aa( 0,2) = 0.9518088912783238026681565849646_default
+    aa( 1,2) = 0.4313113184653202765302502562949_default
+    aa( 2,2) = 0.1000225071490493715780725996281_default
+    aa( 3,2) = 0.0244241559521965505441631763776_default
+    aa( 4,2) = 0.0062251246372351944219952911316_default
+    aa( 5,2) = 0.0016407883123498974845723045834_default
+    aa( 6,2) = 0.0004440792026453746244096209015_default
+    aa( 7,2) = 0.0001227749416778759100622020098_default
+    aa( 8,2) = 0.0000345398128378265434337853861_default
+    aa( 9,2) = 0.0000098586956462877062166445708_default
+    aa(10,2) = 0.0000028485699500377474896308419_default
+    aa(11,2) = 0.0000008317084734839556874865645_default
+    aa(12,2) = 0.0000002450394988165706076201669_default
+    aa(13,2) = 0.0000000727649615985589185450891_default
+    aa(14,2) = 0.0000000217580234828872627182528_default
+    aa(15,2) = 0.0000000065461581127483145535450_default
+    aa(16,2) = 0.0000000019803276695958649622660_default
+    aa(17,2) = 0.0000000006020441479654977380198_default
+    aa(18,2) = 0.0000000001838453970944702296882_default
+    aa(19,2) = 0.0000000000563678515889300716540_default
+    aa(20,2) = 0.0000000000173463997775074276752_default
+    aa(21,2) = 0.0000000000053561274913811636646_default
+    aa(22,2) = 0.0000000000016589648563768757209_default
+    aa(23,2) = 0.0000000000005153035821263897402_default
+    aa(24,2) = 0.0000000000001604854421022176155_default
+    aa(25,2) = 0.0000000000000501039042510410000_default
+    aa(26,2) = 0.0000000000000156782140756663058_default
+    aa(27,2) = 0.0000000000000049163624754166002_default
+    aa(28,2) = 0.0000000000000015447322876435523_default
+    aa(29,2) = 0.0000000000000004862616733759832_default
+    aa(30,2) = 0.0000000000000001533362464508579_default
+    aa(31,2) = 0.0000000000000000484320101226721_default
+    aa(32,2) = 0.0000000000000000153211674483448_default
+    aa(33,2) = 0.0000000000000000048538372848129_default
+    aa(34,2) = 0.0000000000000000015398483113605_default
+    aa(35,2) = 0.0000000000000000004891456430091_default
+    aa(36,2) = 0.0000000000000000001555738439561_default
+    aa(37,2) = 0.0000000000000000000495388557161_default
+    aa(38,2) = 0.0000000000000000000157921482258_default
+    aa(39,2) = 0.0000000000000000000050396337614_default
+    aa(40,2) = 0.0000000000000000000016098951079_default
+    aa(41,2) = 0.0000000000000000000005147742695_default
+    aa(42,2) = 0.0000000000000000000001647547307_default
+    aa(43,2) = 0.0000000000000000000000527768146_default
+    aa(44,2) = 0.0000000000000000000000169206176_default
+    aa(45,2) = 0.0000000000000000000000054292717_default
+    aa(46,2) = 0.0000000000000000000000017434312_default
+    aa(47,2) = 0.0000000000000000000000005602635_default
+    aa(48,2) = 0.0000000000000000000000001801736_default
+    aa(49,2) = 0.0000000000000000000000000579815_default
+    aa(50,2) = 0.0000000000000000000000000186714_default
+    aa(51,2) = 0.0000000000000000000000000060164_default
+    aa(52,2) = 0.0000000000000000000000000019399_default
+    aa(53,2) = 0.0000000000000000000000000006258_default
+    aa(54,2) = 0.0000000000000000000000000002020_default
+    aa(55,2) = 0.0000000000000000000000000000652_default
+    aa(56,2) = 0.0000000000000000000000000000211_default
+    aa(57,2) = 0.0000000000000000000000000000068_default
+    aa(58,2) = 0.0000000000000000000000000000022_default
+    aa(59,2) = 0.0000000000000000000000000000007_default
+    aa(60,2) = 0.0000000000000000000000000000002_default
 
-    aa( 0,3) = 0.98161027991365_default
-    aa( 1,3) = 0.72926806320726_default
-    aa( 2,3) = 0.22774714909321_default
-    aa( 3,3) = 0.06809083296197_default
-    aa( 4,3) = 0.02013701183064_default
-    aa( 5,3) = 0.00595478480197_default
-    aa( 6,3) = 0.00176769013959_default
-    aa( 7,3) = 0.00052748218502_default
-    aa( 8,3) = 0.00015827461460_default
-    aa( 9,3) = 0.00004774922076_default
-    aa(10,3) = 0.00001447920408_default
-    aa(11,3) = 0.00000441154886_default
-    aa(12,3) = 0.00000135003870_default
-    aa(13,3) = 0.00000041481779_default
-    aa(14,3) = 0.00000012793307_default
-    aa(15,3) = 0.00000003959070_default
-    aa(16,3) = 0.00000001229055_default
-    aa(17,3) = 0.00000000382658_default
-    aa(18,3) = 0.00000000119459_default
-    aa(19,3) = 0.00000000037386_default
-    aa(20,3) = 0.00000000011727_default
-    aa(21,3) = 0.00000000003687_default
-    aa(22,3) = 0.00000000001161_default
-    aa(23,3) = 0.00000000000366_default
-    aa(24,3) = 0.00000000000116_default
-    aa(25,3) = 0.00000000000037_default
-    aa(26,3) = 0.00000000000012_default
-    aa(27,3) = 0.00000000000004_default
-    aa(28,3) = 0.00000000000001_default
+    ! S13
+    aa(0, 3) = 0.9816102799136489556618371085362_default
+    aa(1, 3) = 0.7292680632072654117092113018287_default
+    aa(2, 3) = 0.2277471490932068078018787077929_default
+    aa(3, 3) = 0.0680908329619689667441794507529_default
+    aa(4, 3) = 0.0201370118306379956700999776021_default
+    aa(5, 3) = 0.0059547848019661296870784480560_default
+    aa(6, 3) = 0.0017676901395889876991666161821_default
+    aa(7, 3) = 0.0005274821850246329770142662851_default
+    aa(8, 3) = 0.0001582746145999362263261770147_default
+    aa(9, 3) = 0.0000477492207583940900335032493_default
+    aa(10,3) = 0.0000144792040844464097583535535_default
+    aa(11,3) = 0.0000044115488632587378963063927_default
+    aa(12,3) = 0.0000013500387024040035312833152_default
+    aa(13,3) = 0.0000004148177900464453883495348_default
+    aa(14,3) = 0.0000001279330688818698833815197_default
+    aa(15,3) = 0.0000000395906959409129595926740_default
+    aa(16,3) = 0.0000000122905458003074561558843_default
+    aa(17,3) = 0.0000000038265843782086320721989_default
+    aa(18,3) = 0.0000000011945887783706694596128_default
+    aa(19,3) = 0.0000000003738582689344105021207_default
+    aa(20,3) = 0.0000000001172734910266994306267_default
+    aa(21,3) = 0.0000000000368661189507308898131_default
+    aa(22,3) = 0.0000000000116125275710141854245_default
+    aa(23,3) = 0.0000000000036647203754683979658_default
+    aa(24,3) = 0.0000000000011585582816945773244_default
+    aa(25,3) = 0.0000000000003668687738257387997_default
+    aa(26,3) = 0.0000000000001163526885845655009_default
+    aa(27,3) = 0.0000000000000369552025243266929_default
+    aa(28,3) = 0.0000000000000117536350709701840_default
+    aa(29,3) = 0.0000000000000037431150481622349_default
+    aa(30,3) = 0.0000000000000011935154615944659_default
+    aa(31,3) = 0.0000000000000003810033007361603_default
+    aa(32,3) = 0.0000000000000001217613044140978_default
+    aa(33,3) = 0.0000000000000000389534286880051_default
+    aa(34,3) = 0.0000000000000000124742848698415_default
+    aa(35,3) = 0.0000000000000000039985128927118_default
+    aa(36,3) = 0.0000000000000000012828473001041_default
+    aa(37,3) = 0.0000000000000000004119334919222_default
+    aa(38,3) = 0.0000000000000000001323848129016_default
+    aa(39,3) = 0.0000000000000000000425787093477_default
+    aa(40,3) = 0.0000000000000000000137048859050_default
+    aa(41,3) = 0.0000000000000000000044144155966_default
+    aa(42,3) = 0.0000000000000000000014228953906_default
+    aa(43,3) = 0.0000000000000000000004589470310_default
+    aa(44,3) = 0.0000000000000000000001481257576_default
+    aa(45,3) = 0.0000000000000000000000478372585_default
+    aa(46,3) = 0.0000000000000000000000154582213_default
+    aa(47,3) = 0.0000000000000000000000049980515_default
+    aa(48,3) = 0.0000000000000000000000016168914_default
+    aa(49,3) = 0.0000000000000000000000005233489_default
+    aa(50,3) = 0.0000000000000000000000001694822_default
+    aa(51,3) = 0.0000000000000000000000000549125_default
+    aa(52,3) = 0.0000000000000000000000000178002_default
+    aa(53,3) = 0.0000000000000000000000000057727_default
+    aa(54,3) = 0.0000000000000000000000000018730_default
+    aa(55,3) = 0.0000000000000000000000000006079_default
+    aa(56,3) = 0.0000000000000000000000000001974_default
+    aa(57,3) = 0.0000000000000000000000000000641_default
+    aa(58,3) = 0.0000000000000000000000000000208_default
+    aa(59,3) = 0.0000000000000000000000000000068_default
+    aa(60,3) = 0.0000000000000000000000000000022_default
+    aa(61,3) = 0.0000000000000000000000000000007_default
+    aa(62,3) = 0.0000000000000000000000000000002_default
 
-    aa( 0,4) = 1.0640521184614_default
-    aa( 1,4) = 1.0691720744981_default
-    aa( 2,4) = 0.41527193251768_default
-    aa( 3,4) = 0.14610332936222_default
-    aa( 4,4) = 0.04904732648784_default
-    aa( 5,4) = 0.01606340860396_default
-    aa( 6,4) = 0.00518889350790_default
-    aa( 7,4) = 0.00166298717324_default
-    aa( 8,4) = 0.00053058279969_default
-    aa( 9,4) = 0.00016887029251_default
-    aa(10,4) = 0.00005368328059_default
-    aa(11,4) = 0.00001705923313_default
-    aa(12,4) = 0.00000542174374_default
-    aa(13,4) = 0.00000172394082_default
-    aa(14,4) = 0.00000054853275_default
-    aa(15,4) = 0.00000017467795_default
-    aa(16,4) = 0.00000005567550_default
-    aa(17,4) = 0.00000001776234_default
-    aa(18,4) = 0.00000000567224_default
-    aa(19,4) = 0.00000000181313_default
-    aa(20,4) = 0.00000000058012_default
-    aa(21,4) = 0.00000000018579_default
-    aa(22,4) = 0.00000000005955_default
-    aa(23,4) = 0.00000000001911_default
-    aa(24,4) = 0.00000000000614_default
-    aa(25,4) = 0.00000000000197_default
-    aa(26,4) = 0.00000000000063_default
-    aa(27,4) = 0.00000000000020_default
-    aa(28,4) = 0.00000000000007_default
-    aa(29,4) = 0.00000000000002_default
-    aa(30,4) = 0.00000000000001_default
+    !S14
+    aa(0, 4) = 1.0640521184614153287916218053901_default
+    aa(1, 4) = 1.0691720744981215564005116623125_default
+    aa(2, 4) = 0.4152719325176840366760852048905_default
+    aa(3, 4) = 0.1461033293622244979585805327319_default
+    aa(4, 4) = 0.0490473264878379564968527620697_default
+    aa(5, 4) = 0.0160634086039561522819303980540_default
+    aa(6, 4) = 0.0051888935078954013967313754520_default
+    aa(7, 4) = 0.0016629871732424839217325715116_default
+    aa(8, 4) = 0.0005305827996921396789173716661_default
+    aa(9, 4) = 0.0001688702925056701601999790657_default
+    aa(10,4) = 0.0000536832805902713959732660451_default
+    aa(11,4) = 0.0000170592331252031047497991162_default
+    aa(12,4) = 0.0000054217437433289493563083763_default
+    aa(13,4) = 0.0000017239408208850429336214264_default
+    aa(14,4) = 0.0000005485327507592924207682326_default
+    aa(15,4) = 0.0000001746779498956245539178483_default
+    aa(16,4) = 0.0000000556755046238144258915523_default
+    aa(17,4) = 0.0000000177623419444143840655591_default
+    aa(18,4) = 0.0000000056722440391235432496591_default
+    aa(19,4) = 0.0000000018131320328940939101311_default
+    aa(20,4) = 0.0000000005801228509224022559886_default
+    aa(21,4) = 0.0000000001857887019324231172726_default
+    aa(22,4) = 0.0000000000595549585540266502250_default
+    aa(23,4) = 0.0000000000191075464908072563179_default
+    aa(24,4) = 0.0000000000061357620368058299906_default
+    aa(25,4) = 0.0000000000019719524545889964452_default
+    aa(26,4) = 0.0000000000006342731461118705689_default
+    aa(27,4) = 0.0000000000002041718269934304992_default
+    aa(28,4) = 0.0000000000000657722580195123700_default
+    aa(29,4) = 0.0000000000000212033881282072842_default
+    aa(30,4) = 0.0000000000000068402477041013999_default
+    aa(31,4) = 0.0000000000000022081639833472934_default
+    aa(32,4) = 0.0000000000000007133013256640114_default
+    aa(33,4) = 0.0000000000000002305614384714687_default
+    aa(34,4) = 0.0000000000000000745696995862342_default
+    aa(35,4) = 0.0000000000000000241318581202087_default
+    aa(36,4) = 0.0000000000000000078138086046936_default
+    aa(37,4) = 0.0000000000000000025314526117343_default
+    aa(38,4) = 0.0000000000000000008205473398671_default
+    aa(39,4) = 0.0000000000000000002661070889754_default
+    aa(40,4) = 0.0000000000000000000863417251985_default
+    aa(41,4) = 0.0000000000000000000280278207536_default
+    aa(42,4) = 0.0000000000000000000091023903024_default
+    aa(43,4) = 0.0000000000000000000029574171077_default
+    aa(44,4) = 0.0000000000000000000009612901645_default
+    aa(45,4) = 0.0000000000000000000003125901390_default
+    aa(46,4) = 0.0000000000000000000001016878900_default
+    aa(47,4) = 0.0000000000000000000000330926059_default
+    aa(48,4) = 0.0000000000000000000000107734621_default
+    aa(49,4) = 0.0000000000000000000000035086274_default
+    aa(50,4) = 0.0000000000000000000000011430681_default
+    aa(51,4) = 0.0000000000000000000000003725249_default
+    aa(52,4) = 0.0000000000000000000000001214458_default
+    aa(53,4) = 0.0000000000000000000000000396050_default
+    aa(54,4) = 0.0000000000000000000000000129197_default
+    aa(55,4) = 0.0000000000000000000000000042159_default
+    aa(56,4) = 0.0000000000000000000000000013761_default
+    aa(57,4) = 0.0000000000000000000000000004493_default
+    aa(58,4) = 0.0000000000000000000000000001467_default
+    aa(59,4) = 0.0000000000000000000000000000479_default
+    aa(60,4) = 0.0000000000000000000000000000157_default
+    aa(61,4) = 0.0000000000000000000000000000051_default
+    aa(62,4) = 0.0000000000000000000000000000017_default
+    aa(63,4) = 0.0000000000000000000000000000005_default
+    aa(64,4) = 0.0000000000000000000000000000002_default
 
-    aa( 0,5) = 0.97920860669175_default
-    aa( 1,5) = 0.08518813148683_default
-    aa( 2,5) = 0.00855985222013_default
-    aa( 3,5) = 0.00121177214413_default
-    aa( 4,5) = 0.00020722768531_default
-    aa( 5,5) = 0.00003996958691_default
-    aa( 6,5) = 0.00000838064065_default
-    aa( 7,5) = 0.00000186848945_default
-    aa( 8,5) = 0.00000043666087_default
-    aa( 9,5) = 0.00000010591733_default
-    aa(10,5) = 0.00000002647892_default
-    aa(11,5) = 0.00000000678700_default
-    aa(12,5) = 0.00000000177654_default
-    aa(13,5) = 0.00000000047342_default
-    aa(14,5) = 0.00000000012812_default
-    aa(15,5) = 0.00000000003514_default
-    aa(16,5) = 0.00000000000975_default
-    aa(17,5) = 0.00000000000274_default
-    aa(18,5) = 0.00000000000077_default
-    aa(19,5) = 0.00000000000022_default
-    aa(20,5) = 0.00000000000006_default
-    aa(21,5) = 0.00000000000002_default
-    aa(22,5) = 0.00000000000001_default
+    ! S21
+    aa(0, 5) = 0.9792086066917475663889877454741_default
+    aa(1, 5) = 0.0851881314868305217074339540392_default
+    aa(2, 5) = 0.0085598522201331003249086501245_default
+    aa(3, 5) = 0.0012117721441290943910593917571_default
+    aa(4, 5) = 0.0002072276853075399348144362045_default
+    aa(5, 5) = 0.0000399695869139737770998795317_default
+    aa(6, 5) = 0.0000083806406576521349724311195_default
+    aa(7, 5) = 0.0000018684894472790602460713570_default
+    aa(8, 5) = 0.0000004366608674148643913336941_default
+    aa(9, 5) = 0.0000001059173343792249722256737_default
+    aa(10,5) = 0.0000000264789198296466210869392_default
+    aa(11,5) = 0.0000000067869997569455213975026_default
+    aa(12,5) = 0.0000000017765357540799706166482_default
+    aa(13,5) = 0.0000000004734171144187691611872_default
+    aa(14,5) = 0.0000000001281208379862882664511_default
+    aa(15,5) = 0.0000000000351430103445597708806_default
+    aa(16,5) = 0.0000000000097542781034345207321_default
+    aa(17,5) = 0.0000000000027359141796028831775_default
+    aa(18,5) = 0.0000000000007745862438204462294_default
+    aa(19,5) = 0.0000000000002211470648334124608_default
+    aa(20,5) = 0.0000000000000636182125341497857_default
+    aa(21,5) = 0.0000000000000184274335899969555_default
+    aa(22,5) = 0.0000000000000053711373393327125_default
+    aa(23,5) = 0.0000000000000015745423548918207_default
+    aa(24,5) = 0.0000000000000004640086534555054_default
+    aa(25,5) = 0.0000000000000001374049135276905_default
+    aa(26,5) = 0.0000000000000000408718191665244_default
+    aa(27,5) = 0.0000000000000000122081424353222_default
+    aa(28,5) = 0.0000000000000000036606011305503_default
+    aa(29,5) = 0.0000000000000000011015864895433_default
+    aa(30,5) = 0.0000000000000000003326178267214_default
+    aa(31,5) = 0.0000000000000000001007488981335_default
+    aa(32,5) = 0.0000000000000000000306068515060_default
+    aa(33,5) = 0.0000000000000000000093240336166_default
+    aa(34,5) = 0.0000000000000000000028479066996_default
+    aa(35,5) = 0.0000000000000000000008720076390_default
+    aa(36,5) = 0.0000000000000000000002676261553_default
+    aa(37,5) = 0.0000000000000000000000823183002_default
+    aa(38,5) = 0.0000000000000000000000253731198_default
+    aa(39,5) = 0.0000000000000000000000078363683_default
+    aa(40,5) = 0.0000000000000000000000024248037_default
+    aa(41,5) = 0.0000000000000000000000007516566_default
+    aa(42,5) = 0.0000000000000000000000002334031_default
+    aa(43,5) = 0.0000000000000000000000000725945_default
+    aa(44,5) = 0.0000000000000000000000000226141_default
+    aa(45,5) = 0.0000000000000000000000000070551_default
+    aa(46,5) = 0.0000000000000000000000000022042_default
+    aa(47,5) = 0.0000000000000000000000000006896_default
+    aa(48,5) = 0.0000000000000000000000000002160_default
+    aa(49,5) = 0.0000000000000000000000000000678_default
+    aa(50,5) = 0.0000000000000000000000000000213_default
+    aa(51,5) = 0.0000000000000000000000000000067_default
+    aa(52,5) = 0.0000000000000000000000000000021_default
+    aa(53,5) = 0.0000000000000000000000000000007_default
+    aa(54,5) = 0.0000000000000000000000000000002_default
 
-    aa( 0,6) = 0.95021851963952_default
-    aa( 1,6) = 0.29052529161433_default
-    aa( 2,6) = 0.05081774061716_default
-    aa( 3,6) = 0.00995543767280_default
-    aa( 4,6) = 0.00211733895031_default
-    aa( 5,6) = 0.00047859470550_default
-    aa( 6,6) = 0.00011334321308_default
-    aa( 7,6) = 0.00002784733104_default
-    aa( 8,6) = 0.00000704788108_default
-    aa( 9,6) = 0.00000182788740_default
-    aa(10,6) = 0.00000048387492_default
-    aa(11,6) = 0.00000013033842_default
-    aa(12,6) = 0.00000003563769_default
-    aa(13,6) = 0.00000000987174_default
-    aa(14,6) = 0.00000000276586_default
-    aa(15,6) = 0.00000000078279_default
-    aa(16,6) = 0.00000000022354_default
-    aa(17,6) = 0.00000000006435_default
-    aa(18,6) = 0.00000000001866_default
-    aa(19,6) = 0.00000000000545_default
-    aa(20,6) = 0.00000000000160_default
-    aa(21,6) = 0.00000000000047_default
-    aa(22,6) = 0.00000000000014_default
-    aa(23,6) = 0.00000000000004_default
-    aa(24,6) = 0.00000000000001_default
+    ! S22
+    aa(0, 6) = 0.9502185196395205440438084949210_default
+    aa(1, 6) = 0.2905252916143285629881292586228_default
+    aa(2, 6) = 0.0508177406171564049276463084263_default
+    aa(3, 6) = 0.0099554376728036362446481285347_default
+    aa(4, 6) = 0.0021173389503050035454328201786_default
+    aa(5, 6) = 0.0004785947054961558945873182415_default
+    aa(6, 6) = 0.0001133432130842011594663700485_default
+    aa(7, 6) = 0.0000278473310415513049548915300_default
+    aa(8, 6) = 0.0000070478810781210515572562972_default
+    aa(9, 6) = 0.0000018278873960752768670178132_default
+    aa(10,6) = 0.0000004838749213523421897316245_default
+    aa(11,6) = 0.0000001303384219772300132589886_default
+    aa(12,6) = 0.0000000356376940713934251141106_default
+    aa(13,6) = 0.0000000098717355125409787662712_default
+    aa(14,6) = 0.0000000027658562313789350706081_default
+    aa(15,6) = 0.0000000007827871110033272165151_default
+    aa(16,6) = 0.0000000002235402167537933248138_default
+    aa(17,6) = 0.0000000000643517347477466498872_default
+    aa(18,6) = 0.0000000000186600189943107281601_default
+    aa(19,6) = 0.0000000000054464623810398660468_default
+    aa(20,6) = 0.0000000000015992299022712598565_default
+    aa(21,6) = 0.0000000000004721475556251277412_default
+    aa(22,6) = 0.0000000000001400938885522587722_default
+    aa(23,6) = 0.0000000000000417602097411780219_default
+    aa(24,6) = 0.0000000000000125013054239319098_default
+    aa(25,6) = 0.0000000000000037571738697459778_default
+    aa(26,6) = 0.0000000000000011333366469433026_default
+    aa(27,6) = 0.0000000000000003430356379383191_default
+    aa(28,6) = 0.0000000000000001041607286354915_default
+    aa(29,6) = 0.0000000000000000317222853728082_default
+    aa(30,6) = 0.0000000000000000096881335902953_default
+    aa(31,6) = 0.0000000000000000029665914398440_default
+    aa(32,6) = 0.0000000000000000009106479846339_default
+    aa(33,6) = 0.0000000000000000002801930698836_default
+    aa(34,6) = 0.0000000000000000000864016979329_default
+    aa(35,6) = 0.0000000000000000000266989189140_default
+    aa(36,6) = 0.0000000000000000000082665465848_default
+    aa(37,6) = 0.0000000000000000000025643055087_default
+    aa(38,6) = 0.0000000000000000000007968747348_default
+    aa(39,6) = 0.0000000000000000000002480546582_default
+    aa(40,6) = 0.0000000000000000000000773404726_default
+    aa(41,6) = 0.0000000000000000000000241510410_default
+    aa(42,6) = 0.0000000000000000000000075527340_default
+    aa(43,6) = 0.0000000000000000000000023652854_default
+    aa(44,6) = 0.0000000000000000000000007417328_default
+    aa(45,6) = 0.0000000000000000000000002329009_default
+    aa(46,6) = 0.0000000000000000000000000732203_default
+    aa(47,6) = 0.0000000000000000000000000230466_default
+    aa(48,6) = 0.0000000000000000000000000072623_default
+    aa(49,6) = 0.0000000000000000000000000022910_default
+    aa(50,6) = 0.0000000000000000000000000007235_default
+    aa(51,6) = 0.0000000000000000000000000002287_default
+    aa(52,6) = 0.0000000000000000000000000000724_default
+    aa(53,6) = 0.0000000000000000000000000000229_default
+    aa(54,6) = 0.0000000000000000000000000000073_default
+    aa(55,6) = 0.0000000000000000000000000000023_default
+    aa(56,6) = 0.0000000000000000000000000000007_default
 
-    aa( 0,7) = 0.95064032186777_default
-    aa( 1,7) = 0.54138285465171_default
-    aa( 2,7) = 0.13649979590321_default
-    aa( 3,7) = 0.03417942328207_default
-    aa( 4,7) = 0.00869027883583_default
-    aa( 5,7) = 0.00225284084155_default
-    aa( 6,7) = 0.00059516089806_default
-    aa( 7,7) = 0.00015995617766_default
-    aa( 8,7) = 0.00004365213096_default
-    aa( 9,7) = 0.00001207474688_default
-    aa(10,7) = 0.00000338018176_default
-    aa(11,7) = 0.00000095632476_default
-    aa(12,7) = 0.00000027313129_default
-    aa(13,7) = 0.00000007866968_default
-    aa(14,7) = 0.00000002283195_default
-    aa(15,7) = 0.00000000667205_default
-    aa(16,7) = 0.00000000196191_default
-    aa(17,7) = 0.00000000058018_default
-    aa(18,7) = 0.00000000017246_default
-    aa(19,7) = 0.00000000005151_default
-    aa(20,7) = 0.00000000001545_default
-    aa(21,7) = 0.00000000000465_default
-    aa(22,7) = 0.00000000000141_default
-    aa(23,7) = 0.00000000000043_default
-    aa(24,7) = 0.00000000000013_default
-    aa(25,7) = 0.00000000000004_default
-    aa(26,7) = 0.00000000000001_default
+    ! S23
+    aa(0, 7) = 0.9506403218677694281449679946584_default
+    aa(1, 7) = 0.5413828546517073434933844831906_default
+    aa(2, 7) = 0.1364997959032050293088317846513_default
+    aa(3, 7) = 0.0341794232820737280801223469970_default
+    aa(4, 7) = 0.0086902788358287460114219613096_default
+    aa(5, 7) = 0.0022528408415547326938470781339_default
+    aa(6, 7) = 0.0005951608980649702707788718464_default
+    aa(7, 7) = 0.0001599561776616274156328519068_default
+    aa(8, 7) = 0.0000436521309606699842262892900_default
+    aa(9, 7) = 0.0000120747468843359589701077088_default
+    aa(10,7) = 0.0000033801817550164824335620638_default
+    aa(11,7) = 0.0000009563247633522206242556444_default
+    aa(12,7) = 0.0000002731312883884331432716976_default
+    aa(13,7) = 0.0000000786696839813253930465132_default
+    aa(14,7) = 0.0000000228319547798233819120943_default
+    aa(15,7) = 0.0000000066720486022563246143820_default
+    aa(16,7) = 0.0000000019619095392502334857787_default
+    aa(17,7) = 0.0000000005801782094882116679183_default
+    aa(18,7) = 0.0000000001724628573948215174729_default
+    aa(19,7) = 0.0000000000515105266747680975965_default
+    aa(20,7) = 0.0000000000154525016443757327206_default
+    aa(21,7) = 0.0000000000046543454646935440412_default
+    aa(22,7) = 0.0000000000014071678448486052426_default
+    aa(23,7) = 0.0000000000004269183148794314389_default
+    aa(24,7) = 0.0000000000001299425035664273951_default
+    aa(25,7) = 0.0000000000000396708488693453822_default
+    aa(26,7) = 0.0000000000000121456520663298046_default
+    aa(27,7) = 0.0000000000000037283992241228707_default
+    aa(28,7) = 0.0000000000000011473774660573316_default
+    aa(29,7) = 0.0000000000000003539230155593888_default
+    aa(30,7) = 0.0000000000000001094136672036318_default
+    aa(31,7) = 0.0000000000000000338954317303720_default
+    aa(32,7) = 0.0000000000000000105212773419176_default
+    aa(33,7) = 0.0000000000000000032719617979798_default
+    aa(34,7) = 0.0000000000000000010193390716518_default
+    aa(35,7) = 0.0000000000000000003180981755016_default
+    aa(36,7) = 0.0000000000000000000994259945393_default
+    aa(37,7) = 0.0000000000000000000311244530074_default
+    aa(38,7) = 0.0000000000000000000097574337740_default
+    aa(39,7) = 0.0000000000000000000030631819361_default
+    aa(40,7) = 0.0000000000000000000009629115296_default
+    aa(41,7) = 0.0000000000000000000003030758085_default
+    aa(42,7) = 0.0000000000000000000000955089198_default
+    aa(43,7) = 0.0000000000000000000000301329969_default
+    aa(44,7) = 0.0000000000000000000000095175631_default
+    aa(45,7) = 0.0000000000000000000000030093645_default
+    aa(46,7) = 0.0000000000000000000000009525135_default
+    aa(47,7) = 0.0000000000000000000000003017849_default
+    aa(48,7) = 0.0000000000000000000000000957057_default
+    aa(49,7) = 0.0000000000000000000000000303792_default
+    aa(50,7) = 0.0000000000000000000000000096516_default
+    aa(51,7) = 0.0000000000000000000000000030690_default
+    aa(52,7) = 0.0000000000000000000000000009767_default
+    aa(53,7) = 0.0000000000000000000000000003111_default
+    aa(54,7) = 0.0000000000000000000000000000991_default
+    aa(55,7) = 0.0000000000000000000000000000316_default
+    aa(56,7) = 0.0000000000000000000000000000101_default
+    aa(57,7) = 0.0000000000000000000000000000032_default
+    aa(58,7) = 0.0000000000000000000000000000010_default
+    aa(59,7) = 0.0000000000000000000000000000003_default
+    aa(60,7) = 0.0000000000000000000000000000001_default
 
-    aa( 0,8) = 0.98800011672229_default
-    aa( 1,8) = 0.04364067609601_default
-    aa( 2,8) = 0.00295091178278_default
-    aa( 3,8) = 0.00031477809720_default
-    aa( 4,8) = 0.00004314846029_default
-    aa( 5,8) = 0.00000693818230_default
-    aa( 6,8) = 0.00000124640350_default
-    aa( 7,8) = 0.00000024293628_default
-    aa( 8,8) = 0.00000005040827_default
-    aa( 9,8) = 0.00000001099075_default
-    aa(10,8) = 0.00000000249467_default
-    aa(11,8) = 0.00000000058540_default
-    aa(12,8) = 0.00000000014127_default
-    aa(13,8) = 0.00000000003492_default
-    aa(14,8) = 0.00000000000881_default
-    aa(15,8) = 0.00000000000226_default
-    aa(16,8) = 0.00000000000059_default
-    aa(17,8) = 0.00000000000016_default
-    aa(18,8) = 0.00000000000004_default
-    aa(19,8) = 0.00000000000001_default
+    ! S31
+    aa(0, 8) = 0.9880001167222927044624634661475_default
+    aa(1, 8) = 0.0436406760960066103710772619465_default
+    aa(2, 8) = 0.0029509117827810304421914164929_default
+    aa(3, 8) = 0.0003147780971981235819042968566_default
+    aa(4, 8) = 0.0000431484602929054091095193848_default
+    aa(5, 8) = 0.0000069381823009268443252607896_default
+    aa(6, 8) = 0.0000012464035043567137423888253_default
+    aa(7, 8) = 0.0000002429362797600843119664564_default
+    aa(8, 8) = 0.0000000504082712315239771741587_default
+    aa(9, 8) = 0.0000000109907485067444153803599_default
+    aa(10,8) = 0.0000000024946663935520519957206_default
+    aa(11,8) = 0.0000000005853958845182310329377_default
+    aa(12,8) = 0.0000000001412688090570702508097_default
+    aa(13,8) = 0.0000000000349152083970451539618_default
+    aa(14,8) = 0.0000000000088091439327815710774_default
+    aa(15,8) = 0.0000000000022628473729670403498_default
+    aa(16,8) = 0.0000000000005905249747200388704_default
+    aa(17,8) = 0.0000000000001562794538227910452_default
+    aa(18,8) = 0.0000000000000418784960410811109_default
+    aa(19,8) = 0.0000000000000113488276917891796_default
+    aa(20,8) = 0.0000000000000031067591544781550_default
+    aa(21,8) = 0.0000000000000008583266400336990_default
+    aa(22,8) = 0.0000000000000002391288529165526_default
+    aa(23,8) = 0.0000000000000000671331059305997_default
+    aa(24,8) = 0.0000000000000000189799721622766_default
+    aa(25,8) = 0.0000000000000000054009355677567_default
+    aa(26,8) = 0.0000000000000000015461249211205_default
+    aa(27,8) = 0.0000000000000000004450748062865_default
+    aa(28,8) = 0.0000000000000000001287848769955_default
+    aa(29,8) = 0.0000000000000000000374444907264_default
+    aa(30,8) = 0.0000000000000000000109361617818_default
+    aa(31,8) = 0.0000000000000000000032075368418_default
+    aa(32,8) = 0.0000000000000000000009444856358_default
+    aa(33,8) = 0.0000000000000000000002791472649_default
+    aa(34,8) = 0.0000000000000000000000827926864_default
+    aa(35,8) = 0.0000000000000000000000246368587_default
+    aa(36,8) = 0.0000000000000000000000073541873_default
+    aa(37,8) = 0.0000000000000000000000022017478_default
+    aa(38,8) = 0.0000000000000000000000006610239_default
+    aa(39,8) = 0.0000000000000000000000001989857_default
+    aa(40,8) = 0.0000000000000000000000000600515_default
+    aa(41,8) = 0.0000000000000000000000000181665_default
+    aa(42,8) = 0.0000000000000000000000000055083_default
+    aa(43,8) = 0.0000000000000000000000000016738_default
+    aa(44,8) = 0.0000000000000000000000000005097_default
+    aa(45,8) = 0.0000000000000000000000000001555_default
+    aa(46,8) = 0.0000000000000000000000000000475_default
+    aa(47,8) = 0.0000000000000000000000000000146_default
+    aa(48,8) = 0.0000000000000000000000000000045_default
+    aa(49,8) = 0.0000000000000000000000000000014_default
+    aa(50,8) = 0.0000000000000000000000000000004_default
+    aa(51,8) = 0.0000000000000000000000000000001_default
 
-    aa( 0,9) = 0.95768506546350_default
-    aa( 1,9) = 0.19725249679534_default
-    aa( 2,9) = 0.02603370313918_default
-    aa( 3,9) = 0.00409382168261_default
-    aa( 4,9) = 0.00072681707110_default
-    aa( 5,9) = 0.00014091879261_default
-    aa( 6,9) = 0.00002920458914_default
-    aa( 7,9) = 0.00000637631144_default
-    aa( 8,9) = 0.00000145167850_default
-    aa( 9,9) = 0.00000034205281_default
-    aa(10,9) = 0.00000008294302_default
-    aa(11,9) = 0.00000002060784_default
-    aa(12,9) = 0.00000000522823_default
-    aa(13,9) = 0.00000000135066_default
-    aa(14,9) = 0.00000000035451_default
-    aa(15,9) = 0.00000000009436_default
-    aa(16,9) = 0.00000000002543_default
-    aa(17,9) = 0.00000000000693_default
-    aa(18,9) = 0.00000000000191_default
-    aa(19,9) = 0.00000000000053_default
-    aa(20,9) = 0.00000000000015_default
-    aa(21,9) = 0.00000000000004_default
-    aa(22,9) = 0.00000000000001_default
+    ! S32
+    aa(0, 9) = 0.9576850654634987323756008789534_default
+    aa(1, 9) = 0.1972524967953383447736932294732_default
+    aa(2, 9) = 0.0260337031391819352203922665180_default
+    aa(3, 9) = 0.0040938216826107327930722604472_default
+    aa(4, 9) = 0.0007268170710982637345012156590_default
+    aa(5, 9) = 0.0001409187926077777866989644802_default
+    aa(6, 9) = 0.0000292045891361537468138719768_default
+    aa(7, 9) = 0.0000063763114398759319255179937_default
+    aa(8, 9) = 0.0000014516784959474317155003876_default
+    aa(9, 9) = 0.0000003420528062554720945839368_default
+    aa(10,9) = 0.0000000829430239494917684436363_default
+    aa(11,9) = 0.0000000206078413758347174131762_default
+    aa(12,9) = 0.0000000052282337257450902274685_default
+    aa(13,9) = 0.0000000013506640772261331303538_default
+    aa(14,9) = 0.0000000003545132379631281137927_default
+    aa(15,9) = 0.0000000000943635281286539902259_default
+    aa(16,9) = 0.0000000000254325359376266837975_default
+    aa(17,9) = 0.0000000000069314105105818617725_default
+    aa(18,9) = 0.0000000000019081709017674573984_default
+    aa(19,9) = 0.0000000000005301056384451578108_default
+    aa(20,9) = 0.0000000000001484906427241733838_default
+    aa(21,9) = 0.0000000000000419098147264986510_default
+    aa(22,9) = 0.0000000000000119107646838584419_default
+    aa(23,9) = 0.0000000000000034066746867470292_default
+    aa(24,9) = 0.0000000000000009801132897351016_default
+    aa(25,9) = 0.0000000000000002835224873891297_default
+    aa(26,9) = 0.0000000000000000824319504451417_default
+    aa(27,9) = 0.0000000000000000240795911396509_default
+    aa(28,9) = 0.0000000000000000070649947948219_default
+    aa(29,9) = 0.0000000000000000020814246265860_default
+    aa(30,9) = 0.0000000000000000006155793699904_default
+    aa(31,9) = 0.0000000000000000001827176497093_default
+    aa(32,9) = 0.0000000000000000000544198710764_default
+    aa(33,9) = 0.0000000000000000000162603725530_default
+    aa(34,9) = 0.0000000000000000000048732860303_default
+    aa(35,9) = 0.0000000000000000000014647397760_default
+    aa(36,9) = 0.0000000000000000000004414490307_default
+    aa(37,9) = 0.0000000000000000000001333894810_default
+    aa(38,9) = 0.0000000000000000000000404042889_default
+    aa(39,9) = 0.0000000000000000000000122672232_default
+    aa(40,9) = 0.0000000000000000000000037327572_default
+    aa(41,9) = 0.0000000000000000000000011382378_default
+    aa(42,9) = 0.0000000000000000000000003477877_default
+    aa(43,9) = 0.0000000000000000000000001064718_default
+    aa(44,9) = 0.0000000000000000000000000326556_default
+    aa(45,9) = 0.0000000000000000000000000100334_default
+    aa(46,9) = 0.0000000000000000000000000030880_default
+    aa(47,9) = 0.0000000000000000000000000009519_default
+    aa(48,9) = 0.0000000000000000000000000002939_default
+    aa(49,9) = 0.0000000000000000000000000000909_default
+    aa(50,9) = 0.0000000000000000000000000000281_default
+    aa(51,9) = 0.0000000000000000000000000000087_default
+    aa(52,9) = 0.0000000000000000000000000000027_default
+    aa(53,9) = 0.0000000000000000000000000000008_default
+    aa(54,9) = 0.0000000000000000000000000000003_default
 
-    aa( 0,10) = 0.99343651671347_default
-    aa( 1,10) = 0.02225770126826_default
-    aa( 2,10) = 0.00101475574703_default
-    aa( 3,10) = 0.00008175156250_default
-    aa( 4,10) = 0.00000899973547_default
-    aa( 5,10) = 0.00000120823987_default
-    aa( 6,10) = 0.00000018616913_default
-    aa( 7,10) = 0.00000003174723_default
-    aa( 8,10) = 0.00000000585215_default
-    aa( 9,10) = 0.00000000114739_default
-    aa(10,10) = 0.00000000023652_default
-    aa(11,10) = 0.00000000005082_default
-    aa(12,10) = 0.00000000001131_default
-    aa(13,10) = 0.00000000000259_default
-    aa(14,10) = 0.00000000000061_default
-    aa(15,10) = 0.00000000000015_default
-    aa(16,10) = 0.00000000000004_default
-    aa(17,10) = 0.00000000000001_default
+    ! S41
+    aa(0, 10) = 0.9934365167134715160242131943697_default
+    aa(1, 10) = 0.0222577012682554968097965347610_default
+    aa(2, 10) = 0.0010147557470316776408401502367_default
+    aa(3, 10) = 0.0000817515625031983453500479418_default
+    aa(4, 10) = 0.0000089997354664962670871807606_default
+    aa(5, 10) = 0.0000012082398654316837694982487_default
+    aa(6, 10) = 0.0000001861691348345944992441838_default
+    aa(7, 10) = 0.0000000317472279858392322135961_default
+    aa(8, 10) = 0.0000000058521456976587648812612_default
+    aa(9, 10) = 0.0000000011473938859340981138401_default
+    aa(10,10) = 0.0000000002365174305164033255698_default
+    aa(11,10) = 0.0000000000508196632994558712819_default
+    aa(12,10) = 0.0000000000113075799706565048222_default
+    aa(13,10) = 0.0000000000025921130244139551808_default
+    aa(14,10) = 0.0000000000006097003885134663034_default
+    aa(15,10) = 0.0000000000001466654029815542794_default
+    aa(16,10) = 0.0000000000000359844773450053633_default
+    aa(17,10) = 0.0000000000000089847435282982110_default
+    aa(18,10) = 0.0000000000000022786739490929200_default
+    aa(19,10) = 0.0000000000000005860738894860616_default
+    aa(20,10) = 0.0000000000000001526597081049608_default
+    aa(21,10) = 0.0000000000000000402243018383530_default
+    aa(22,10) = 0.0000000000000000107103170044937_default
+    aa(23,10) = 0.0000000000000000028792519572079_default
+    aa(24,10) = 0.0000000000000000007808747678888_default
+    aa(25,10) = 0.0000000000000000002135049865031_default
+    aa(26,10) = 0.0000000000000000000588157794261_default
+    aa(27,10) = 0.0000000000000000000163155624017_default
+    aa(28,10) = 0.0000000000000000000045553378833_default
+    aa(29,10) = 0.0000000000000000000012795550763_default
+    aa(30,10) = 0.0000000000000000000003614476347_default
+    aa(31,10) = 0.0000000000000000000001026418097_default
+    aa(32,10) = 0.0000000000000000000000292923722_default
+    aa(33,10) = 0.0000000000000000000000083986127_default
+    aa(34,10) = 0.0000000000000000000000024186105_default
+    aa(35,10) = 0.0000000000000000000000006993945_default
+    aa(36,10) = 0.0000000000000000000000002030382_default
+    aa(37,10) = 0.0000000000000000000000000591618_default
+    aa(38,10) = 0.0000000000000000000000000172994_default
+    aa(39,10) = 0.0000000000000000000000000050754_default
+    aa(40,10) = 0.0000000000000000000000000014938_default
+    aa(41,10) = 0.0000000000000000000000000004410_default
+    aa(42,10) = 0.0000000000000000000000000001305_default
+    aa(43,10) = 0.0000000000000000000000000000388_default
+    aa(44,10) = 0.0000000000000000000000000000115_default
+    aa(45,10) = 0.0000000000000000000000000000034_default
+    aa(46,10) = 0.0000000000000000000000000000010_default
+    aa(47,10) = 0.0000000000000000000000000000003_default
 
     if (x == 1._default) then
        nplog = s1(n,m)

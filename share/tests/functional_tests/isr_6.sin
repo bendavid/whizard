@@ -21,6 +21,10 @@ iterations = 1:1000
 !!! Keep me nonzero and fixed for this test
 me = 511.11111 keV
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => isr
 
 !!! Enforce identical samples

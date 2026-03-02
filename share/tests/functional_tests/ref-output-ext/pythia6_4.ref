@@ -8,6 +8,7 @@ $method = "omega"
 | Process library 'pythia6_4_lib': recorded process 'pythia6_4_p3'
 SM.me =>  1.00000E+00
 isr_mass =  1.00000E+00
+?isr_legacy = true
 | Process library 'pythia6_4_lib': compiling ...
 | Process library 'pythia6_4_lib': writing makefile
 | Process library 'pythia6_4_lib': removing old files

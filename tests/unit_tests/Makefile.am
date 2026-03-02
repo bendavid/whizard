@@ -78,6 +78,7 @@ UNIT_TESTS = \
     sf_isr.run \
     sf_epa.run \
     sf_ewa.run \
+    sf_lpdf.run \
     sf_circe1.run \
     sf_circe2.run \
     sf_gaussian.run \

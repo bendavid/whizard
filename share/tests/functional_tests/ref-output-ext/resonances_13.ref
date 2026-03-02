@@ -5,6 +5,7 @@
 seed = 0
 ?resonance_history = true
 resonance_on_shell_limit =  4.00000E+00
+?isr_legacy = true
 | Process library 'resonances_13_lib': recorded process 'resonances_13_p'
 sqrts =  9.20000E+01
 openmp_num_threads = 1

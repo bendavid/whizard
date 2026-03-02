@@ -65,6 +65,7 @@ seed = 0
 |-----------------------------------------------------------------------------|
    6       2352     4.284E+02   3.25E-01    0.08    0.04    54.2    0.13   3
 |=============================================================================|
+?isr_legacy = true
 seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0

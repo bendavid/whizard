@@ -43,6 +43,10 @@ scan int hel_em = (-1, 1) {
 #-----------------------------------------------------------------
 # ILC spectra from CIRCE1 + ISR
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => circe1  => isr
 
 sqrts = 500 GeV
@@ -65,6 +69,7 @@ scan int hel_em = (-1, 1) {
 
 #-----------------------------------------------------------------
 # Test spectra file
+
 
 beams = e1, E1 => beam_events => isr
 $beam_events_file = "uniform_spread_2.5%.dat"

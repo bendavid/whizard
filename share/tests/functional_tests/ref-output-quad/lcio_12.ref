@@ -18,6 +18,7 @@ $circe2_design = "ILC"
 | Process library 'lcio_12_lib': linking
 | Process library 'lcio_12_lib': loading
 | Process library 'lcio_12_lib': ... success.
+?isr_legacy = true
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 28563
 | Initializing integration for process lcio_12_p:

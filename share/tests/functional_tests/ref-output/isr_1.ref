@@ -52,6 +52,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1        784     9.916E+02   2.40E+00    0.24    0.07    33.5
 |=============================================================================|
+?isr_legacy = true
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process isr_1_1:

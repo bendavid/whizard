@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: matrix elements and process libraries
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{FKS Subtraction Scheme}
@@ -12070,7 +12070,7 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
   logical, intent(inout), dimension(:,:,:) :: evaluated
   real(default) :: z, jac
   real(default) :: factor, factor_soft, plus_dist_remnant
-  real(default) :: xb, onemz
+  real(default) :: xb, onemz, onepz
   real(default) :: sqme_scaled, sqme_born_dglap
   real(default) :: charge_rad2, charge_em2
   integer :: flv_em, flv_rad, N_col, i
@@ -12090,10 +12090,18 @@ subroutine evaluate_alr (alr, emitter, i_flv_born, i_flv_real, sqme_alr, evaluat
      end if
      jac = dglap%isr_kinematics%jacobian(emitter)
      onemz = one - z
-     factor = log (sb * template%delta_i / two / z / fac_scale2) / &
-          onemz + two * log (onemz) / onemz
-     factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
-          onemz + two * log (onemz) / onemz
+     if (1-z > 5.e-16_default) then
+        factor = log (sb * template%delta_i / two / z / fac_scale2) / &
+             onemz + two * log (onemz) / onemz
+        factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
+             onemz + two * log (onemz) / onemz
+     else
+        onepz = one + z
+        factor = log (sb * template%delta_i / two / z / fac_scale2) / &
+             onemz + two * log (onemz) * onepz
+        factor_soft = log (sb * template%delta_i / two / fac_scale2) / &
+             onemz + two * log (onemz) * onepz
+     end if
      xb = dglap%isr_kinematics%x(emitter)
      plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / &
           two / fac_scale2) + (log (one - xb)**2 - log (template%xi_cut)**2)

@@ -46,6 +46,10 @@ integrate (circe1_photons_5_p1) { iterations = 3:n:"g", 3:n }
 cuts = sqrts_hat > 50 and all Pt > 10 ["e+"]
 integrate (circe1_photons_5_q1) { iterations = 3:n:"g", 3:n }
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e+", "e-" => circe1 => none, isr
 ?circe1_photon1 = true
 ?circe1_photon2 = false

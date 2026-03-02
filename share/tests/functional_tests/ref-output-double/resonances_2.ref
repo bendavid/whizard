@@ -7,6 +7,7 @@ resonance_on_shell_limit =  4.000000000000E+00
 | Process library 'resonances_2_lib': recorded process 'resonances_2_p'
 SM.mH =>  1.250000000000E+02
 sqrts =  2.500000000000E+02
+?isr_legacy = true
 openmp_num_threads = 1
 | Integrate: current process library needs compilation
 | Process library 'resonances_2_lib': compiling ...

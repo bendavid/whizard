@@ -98,6 +98,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1         10     2.274E-01   0.00E+00    0.00    0.00   100.0
 |=============================================================================|
+?isr_legacy = true
 $beam_events_file = "uniform_spread_2.5%.dat"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2

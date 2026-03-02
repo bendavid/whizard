@@ -113,6 +113,7 @@ openmp_num_threads = 1
 |-----------------------------------------------------------------------------|
    6       2592  4.3466493E+03  1.40E+01    0.32    0.16   52.28    2.68   3
 |=============================================================================|
+?isr_legacy = true
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Initializing integration for process circe1_photons_4_p2:

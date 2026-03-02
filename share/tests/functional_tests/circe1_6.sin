@@ -23,7 +23,11 @@ sqrts = 500
 openmp_num_threads = 1
 
 int n = 1000
-    
+
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", "e+" => isr
 seed = 0
 integrate (circe1_6_p2) { iterations = 1:n:"g", 3:n }

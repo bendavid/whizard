@@ -18,6 +18,7 @@ seed = 0
 $phs_method = "wood"
 $integration_method = "vamp"
 sqrts =  5.00000E+02
+?isr_legacy = true
 openmp_num_threads = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0

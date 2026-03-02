@@ -3881,6 +3881,30 @@ procedure with type [[V_NONE]].
           '(cf. also \ttt{isr}, ' // &
           '\ttt{isr\_q\_max}, \ttt{isr\_alpha}, \ttt{isr\_order}, \ttt{?isr\_recoil}, ' // &
           '\ttt{?isr\_keep\_energy}, \ttt{isr\_log\_order})'))
+    call var_list%append_log (var_str ("?epdf_isr_mode"), .false., &
+          intrinsic=.true., &
+          description=var_str ('Flag to use the old ISR structure function ' // &
+          'infrastructure for the the QED collinear ePDF, default is false.' // &
+          '(cf. also \ttt{isr}, \ttt{isr}, \ttt{isr\_alpha}, \ttt{isr\_mass}, ' // &
+          '\ttt{isr\_order}, \ttt{isr\_q\_max}, \ttt{isr\_log\_order})'))
+    call var_list%append_log (var_str ("?isr_legacy"), .false., &
+          intrinsic=.true., &
+          description=var_str ('Flag to use the deprecated/erroneous Whizard 2 formula ' // &
+          'for the ISR structure function' // &
+          '(cf. also \ttt{isr}, \ttt{isr}, \ttt{isr\_alpha}, \ttt{isr\_mass}, ' // &
+          '\ttt{isr\_order}, \ttt{isr\_q\_max}, \ttt{isr\_log\_order})'))
+    call var_list%append_int (var_str ("isr_nlep"), 1, &
+          intrinsic=.true., &
+          description=var_str ('Number of leptons for the QED collinear PDFs, ' // &
+          'default is n=1' // &
+          '(ePDF).  (cf. also \ttt{isr}, \ttt{isr}, \ttt{isr\_alpha}, \ttt{isr\_mass}, ' // &
+          '\ttt{isr\_order}, \ttt{isr\_q\_max}, \ttt{isr\_log\_order})'))
+    call var_list%append_log (var_str ("?isr_running_coupling"), .false., &
+          intrinsic=.true., &
+          description=var_str ('Use running or fixed coupling for the QED collinear PDFs, ' // &
+          'default is false and corresponds to fixed coupling.' // &
+          '(ePDF).  (cf. also \ttt{isr}, \ttt{isr}, \ttt{isr\_alpha}, \ttt{isr\_mass}, ' // &
+          '\ttt{isr\_order}, \ttt{isr\_q\_max}, \ttt{isr\_log\_order})'))
     call var_list%append_log (var_str ("?isr_recoil"), .false., &
           intrinsic=.true., &
           description=var_str ('Flag to switch on recoil, i.e. a non-vanishing ' // &
@@ -7099,6 +7123,9 @@ procedure with type [[V_NONE]].
          'type via \ttt{nlo\_correction\_type = "{\em <type>}"} to either ' // &
          '\ttt{"QCD"}, \ttt{"EW"}, or to all with \ttt{\em{<type>}} ' // &
          'set to \ttt{"Full"}. Must be set before the \texttt{process} statement.'))
+    call var_list%append_log (var_str ("?nlo_massless_leptons"), .false., &
+         intrinsic = .true., description=var_str ('Logical variable that ' // &
+         'switches on NLO EW corrections for lepton colliders with QED PDFs.'))
     call var_list%append_string (var_str ("$exclude_gauge_splittings"), &
          var_str ("c:b:t:e2:e3"), intrinsic = .true., &
          description=var_str ('String variable that allows via ' // &

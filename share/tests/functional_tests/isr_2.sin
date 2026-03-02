@@ -23,6 +23,10 @@ me = 0
 isr_mass = 511 keV
 ?isr_recoil = false
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => isr
 
 seed = 0

@@ -13,6 +13,10 @@ seed = 0
 ?resonance_history = true
 resonance_on_shell_limit = 4
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => isr
 
 process resonances_13_p = e1, E1 => e2, E2

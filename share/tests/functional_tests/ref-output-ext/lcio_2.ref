@@ -5,6 +5,7 @@
 seed = 0
 | Process library 'lcio_2_lib': recorded process 'lcio_2_p'
 sqrts =  1.000000000000E+03
+?isr_legacy = true
 | Integrate: current process library needs compilation
 | Process library 'lcio_2_lib': compiling ...
 | Process library 'lcio_2_lib': writing makefile

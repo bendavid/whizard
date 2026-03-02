@@ -12,6 +12,10 @@ process lcio_2_p = e1, E1 => e2, E2
 
 sqrts = 1000
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => isr
 
 iterations = 1:100

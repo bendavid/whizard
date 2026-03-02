@@ -784,7 +784,8 @@ expansion, there should be exactly one valid entry per record.
     has_pdf = .false.
     do i = 1, beam_structure%get_n_record ()
        name = beam_structure%get_name (i)
-       has_pdf = has_pdf .or. name == var_str ("pdf_builtin") .or. name == var_str ("lhapdf")
+       has_pdf = has_pdf .or. name == var_str ("pdf_builtin") .or. &
+            name == var_str ("lhapdf") .or. name == var_str ("lpdf")
     end do
   end function beam_structure_has_pdf
 
@@ -12099,7 +12100,7 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
     if (chain%status >= SF_DONE_KINEMATICS) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
-             if (debug2_active (D_BEAMS)) then             
+             if (debug2_active (D_BEAMS)) then
                 print *, "inside sf_chain_instance_evaluate"
                 print *, "size sf_chain = ", size (chain%sf)
              end if
@@ -12124,7 +12125,7 @@ one beam, and keep the other beam as is. We redo it then vice versa having now t
                          end select
                       end do
                    else
-                      if (debug2_active (D_BEAMS)) then                      
+                      if (debug2_active (D_BEAMS)) then
                          print *, "applying sf%int%apply"
                       end if
                       call sf%int%apply (scale, negative_sf, i_sub = n_sub)
@@ -15632,6 +15633,7 @@ singularity which should in principle be resummed.
      real(default) :: log = 0
      logical :: recoil = .false.
      logical :: keep_energy = .true.
+     logical :: isr_legacy = .false.
      integer :: order = 3
      integer :: error = NONE
    contains
@@ -15654,7 +15656,7 @@ singularity which should in principle be resummed.
   procedure :: init => isr_data_init
 <<SF isr: sub interfaces>>=
     module subroutine isr_data_init (data, model, pdg_in, alpha, q_max, &
-         mass, order, recoil, keep_energy)
+         mass, order, recoil, keep_energy, isr_legacy)
       class(isr_data_t), intent(out) :: data
       class(model_data_t), intent(in), target :: model
       type(pdg_array_t), intent(in) :: pdg_in
@@ -15664,10 +15666,11 @@ singularity which should in principle be resummed.
       integer, intent(in), optional :: order
       logical, intent(in), optional :: recoil
       logical, intent(in), optional :: keep_energy
+      logical, intent(in), optional :: isr_legacy
     end subroutine isr_data_init
 <<SF isr: procedures>>=
   module subroutine isr_data_init (data, model, pdg_in, alpha, q_max, &
-       mass, order, recoil, keep_energy)
+       mass, order, recoil, keep_energy, isr_legacy)
     class(isr_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), intent(in) :: pdg_in
@@ -15677,6 +15680,7 @@ singularity which should in principle be resummed.
     integer, intent(in), optional :: order
     logical, intent(in), optional :: recoil
     logical, intent(in), optional :: keep_energy
+    logical, intent(in), optional :: isr_legacy
     integer :: i, n_flv
     real(default) :: charge
     data%model => model
@@ -15695,6 +15699,9 @@ singularity which should in principle be resummed.
     end if
     if (present (keep_energy)) then
        data%keep_energy = keep_energy
+    end if
+    if (present (isr_legacy)) then
+       data%isr_legacy = isr_legacy
     end if
     data%real_mass = data%flv_in(1)%get_mass ()
     if (present (mass)) then
@@ -15724,13 +15731,12 @@ singularity which should in principle be resummed.
     else if (charge == 0) then
        data%error = CHARGE_ZERO;  return
     end if
-    data%eps = data%alpha / pi * charge ** 2 &
-         * (2 * log (data%q_max / data%mass) - 1)
+    call data%pdf%init (data%mass, data%alpha, charge, data%q_max, data%order, &
+         0, 1, legacy_compatibility=.true.)
+    data%eps = data%pdf%get_epsilon (data%q_max, .true.)
     if (data%eps > 1) then
        data%error = EPS_TOO_LARGE;  return
     end if
-    call data%pdf%init (data%mass, data%alpha, charge, data%q_max, data%order, &
-         0, 1)
   end subroutine isr_data_init
 
 @ %def isr_data_init
@@ -15814,9 +15820,10 @@ initialization, unless we are sure everything is ok.
        write (u, "(3x,A," // FMT_19 // ")") "  mass     = ", data%mass
        write (u, "(3x,A," // FMT_19 // ")") "  eps      = ", data%eps
        write (u, "(3x,A," // FMT_19 // ")") "  log      = ", data%log
-       write (u, "(3x,A,I2)")      "  order    = ", data%order
-       write (u, "(3x,A,L2)")      "  recoil   = ", data%recoil
-       write (u, "(3x,A,L2)")      "  keep en. = ", data%keep_energy
+       write (u, "(3x,A,I2)")      "  order           = ", data%order
+       write (u, "(3x,A,L2)")      "  recoil          = ", data%recoil
+       write (u, "(3x,A,L2)")      "  keep en.        = ", data%keep_energy
+       write (u, "(3x,A,L2)")      "  ISR legacy mode = ", data%isr_legacy
     else
        write (u, "(3x,A)") "[undefined]"
     end if
@@ -16256,11 +16263,13 @@ choose to conserve momentum, so energy conservation may be violated.
       else
          f = 0
       end if
-      call data%pdf%evolve_qed_pdf (x, xb, rb, f)
+      call data%pdf%evolve_qed_pdf_isr (x, xb, rb, f, &
+         isr_legacy = data%isr_legacy)
     end associate
     call sf_int%set_matrix_element (cmplx (f, kind=default))
     sf_int%status = SF_EVALUATED
   end subroutine isr_apply
+
 
 @ %def isr_apply
 @
@@ -16389,10 +16398,11 @@ Construct and display a test structure function data object.
 @
 \subsubsection{Structure function without mapping}
 Direct ISR evaluation.  This is the use case for a double-beam
-structure function.  The parameter pair is mapped in the calling program.
+structure function.  The parameter pair is mapped in the calling
+program. Legacy mode of \whizard\ \texttt{v2} and with correct LL functions.
 <<SF isr: execute tests>>=
   call test (sf_isr_2, "sf_isr_2", &
-       "no ISR mapping", &
+       "no ISR mapping, legacy mode", &
        u, results)
 <<SF isr: test declarations>>=
   public :: sf_isr_2
@@ -16427,7 +16437,7 @@ structure function.  The parameter pair is mapped in the calling program.
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
-            0.000511_default, order = 3, recoil = .false.)
+            0.000511_default, order = 3, recoil = .false., isr_legacy = .true.)
     end select
 
     write (u, "(A)")  "* Initialize structure-function object"
@@ -16521,10 +16531,10 @@ structure function.  The parameter pair is mapped in the calling program.
 @
 \subsubsection{Structure function with mapping}
 Apply the optimal ISR mapping.  This is the use case for a single-beam
-structure function.
+structure function. ISR legacy mode.
 <<SF isr: execute tests>>=
   call test (sf_isr_3, "sf_isr_3", &
-       "ISR mapping", &
+       "ISR mapping, legacy mode", &
        u, results)
 <<SF isr: test declarations>>=
   public :: sf_isr_3
@@ -16559,7 +16569,7 @@ structure function.
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
-            0.000511_default, order = 3, recoil = .false.)
+            0.000511_default, order = 3, recoil = .false., isr_legacy = .true.)
     end select
 
     write (u, "(A)")  "* Initialize structure-function object"
@@ -16654,9 +16664,10 @@ structure function.
 \subsubsection{Non-collinear ISR splitting}
 Construct and display a structure function object based on the ISR
 structure function. We blank out numerical fluctuations for 32bit.
+ISR legacy mode.
 <<SF isr: execute tests>>=
   call test (sf_isr_4, "sf_isr_4", &
-       "ISR non-collinear", &
+       "ISR non-collinear, legacy mode", &
        u, results)
 <<SF isr: test declarations>>=
   public :: sf_isr_4
@@ -16698,7 +16709,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
-            0.000511_default, order = 3, recoil = .true.)
+            0.000511_default, order = 3, recoil = .true., isr_legacy = .true.)
     end select
 
     call data%allocate_sf_int (sf_int)
@@ -16803,10 +16814,10 @@ structure function. We blank out numerical fluctuations for 32bit.
 @
 \subsubsection{Structure function pair with mapping}
 Apply the ISR mapping for a ISR pair.
-structure function.
+structure function. ISR legacy mode.
 <<SF isr: execute tests>>=
   call test (sf_isr_5, "sf_isr_5", &
-       "ISR pair mapping", &
+       "ISR pair mapping, legacy mode", &
        u, results)
 <<SF isr: test declarations>>=
   public :: sf_isr_5
@@ -16843,7 +16854,7 @@ structure function.
     select type (data)
     type is (isr_data_t)
        call data%init (model, pdg_in, 1./137._default, 500._default, &
-            0.000511_default, order = 3, recoil = .false.)
+            0.000511_default, order = 3, recoil = .false., isr_legacy = .true.)
     end select
 
     allocate (sf_ip_mapping_t :: mapping)
@@ -16971,6 +16982,2081 @@ structure function.
   end subroutine sf_isr_5
 
 @ %def sf_isr_5
+@
+<<SF isr: execute tests>>=
+  call test (sf_isr_6, "sf_isr_6", &
+       "no ISR mapping", &
+       u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_6
+<<SF isr: tests>>=
+  subroutine sf_isr_6 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(pdg_array_t) :: pdg_in
+    type(flavor_t) :: flv
+    class(sf_data_t), allocatable, target :: data
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x, xb
+    real(default) :: f, f_isr
+
+    write (u, "(A)")  "* Test output: sf_isr_6"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    pdg_in = ELECTRON
+    call flv%init (ELECTRON, model)
+
+    call reset_interaction_counter ()
+
+    allocate (isr_data_t :: data)
+    select type (data)
+    type is (isr_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, recoil = .false.)
+    end select
+
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 500
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    call vector4_write (k, u)
+    call sf_int%seed_kinematics ([k])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for r=0.9, no ISR mapping, &
+         &collinear"
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+    allocate (xb(size (r)))
+
+    r = 0.9_default
+    rb = 1 - r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate ISR structure function"
+    write (u, "(A)")
+
+    call sf_int%apply (scale = 100._default)
+    call sf_int%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    f_isr = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-evaluate structure function, leading order"
+    write (u, "(A)")
+
+    select type (sf_int)
+    type is (isr_t)
+       call sf_int%set_order (0)
+    end select
+    call sf_int%apply (scale = 100._default)
+    f_isr = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_isr_6"
+
+  end subroutine sf_isr_6
+
+@ %def sf_isr_6
+@
+<<SF isr: execute tests>>=
+  call test (sf_isr_7, "sf_isr_7", &
+       "ISR mapping", &
+       u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_7
+<<SF isr: tests>>=
+  subroutine sf_isr_7 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(pdg_array_t) :: pdg_in
+    class(sf_data_t), allocatable, target :: data
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x, xb
+    real(default) :: f, f_isr
+
+    write (u, "(A)")  "* Test output: sf_isr_7"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    call flv%init (ELECTRON, model)
+    pdg_in = ELECTRON
+
+    call reset_interaction_counter ()
+
+    allocate (isr_data_t :: data)
+    select type (data)
+    type is (isr_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, recoil = .false.)
+    end select
+
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 500
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    call vector4_write (k, u)
+    call sf_int%seed_kinematics ([k])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for r=0.7, with ISR mapping, &
+         &collinear"
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+    allocate (xb(size (r)))
+
+    r = 0.7_default
+    rb = 1 - r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate ISR structure function"
+    write (u, "(A)")
+
+    call sf_int%apply (scale = 100._default)
+    call sf_int%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    f_isr = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-evaluate structure function, leading order"
+    write (u, "(A)")
+
+    select type (sf_int)
+    type is (isr_t)
+       call sf_int%set_order (0)
+    end select
+    call sf_int%apply (scale = 100._default)
+    f_isr = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_isr_7"
+
+  end subroutine sf_isr_7
+
+@ %def sf_isr_7
+@
+<<SF isr: execute tests>>=
+  call test (sf_isr_8, "sf_isr_8", &
+       "ISR non-collinear", &
+       u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_8
+<<SF isr: tests>>=
+  subroutine sf_isr_8 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(pdg_array_t) :: pdg_in
+    class(sf_data_t), allocatable, target :: data
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k
+    type(vector4_t), dimension(2) :: q
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x, xb
+    real(default) :: f, f_isr
+    character(len=80) :: buffer
+    integer :: u_scratch, iostat
+
+    write (u, "(A)")  "* Test output: sf_isr_8"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    call flv%init (ELECTRON, model)
+    pdg_in = ELECTRON
+
+    call reset_interaction_counter ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    allocate (isr_data_t :: data)
+    select type (data)
+    type is (isr_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, recoil = .true.)
+    end select
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 500
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    call vector4_write (k, u)
+    call sf_int%seed_kinematics ([k])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.25, with ISR mapping, "
+    write (u, "(A)")  "          non-coll., keeping energy"
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+    allocate (xb(size (r)))
+
+    r = [0.5_default, 0.5_default, 0.25_default]
+    rb = 1 - r
+    sf_int%on_shell_mode = KEEP_ENERGY
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
+    call sf_int%pacify_momenta (1e-10_default)
+
+    write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
+    write (u, "(A,9(1x,F10.7))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Recover x and r from momenta"
+    write (u, "(A)")
+
+    q = sf_int%get_momenta (outgoing=.true.)
+    call sf_int%final ()
+    deallocate (sf_int)
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    call sf_int%seed_kinematics ([k])
+    call sf_int%set_momenta (q, outgoing=.true.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
+
+    write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
+    write (u, "(A,9(1x,F10.7))")  "r =", r
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate ISR structure function"
+    write (u, "(A)")
+
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
+    call sf_int%pacify_momenta (1e-10_default)
+    call sf_int%apply (scale = 10._default)
+    u_scratch = free_unit ()
+    open (u_scratch, status="scratch", action = "readwrite")
+    call sf_int%write (u_scratch, testflag = .true.)
+    rewind (u_scratch)
+    do
+       read (u_scratch, "(A)", iostat=iostat) buffer
+       if (iostat /= 0) exit
+       if (buffer(1:25) == " P =   0.000000E+00  9.57") then
+          buffer = replace (buffer, 26, "XXXX")
+       end if
+       if (buffer(1:25) == " P =   0.000000E+00 -9.57") then
+          buffer = replace (buffer, 26, "XXXX")
+       end if
+       write (u, "(A)") buffer
+    end do
+    close (u_scratch)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value"
+    write (u, "(A)")
+
+    f_isr = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", f_isr
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", f_isr * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_isr_8"
+
+  end subroutine sf_isr_8
+
+@ %def sf_isr_8
+@ For numerics, use a ten times larger electron mass.
+<<SF isr: execute tests>>=
+  call test (sf_isr_9, "sf_isr_9", &
+       "ISR pair mapping", &
+       u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_9
+<<SF isr: tests>>=
+  subroutine sf_isr_9 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(pdg_array_t) :: pdg_in
+    class(sf_data_t), allocatable, target :: data
+    class(sf_mapping_t), allocatable :: mapping
+    class(sf_int_t), dimension(:), allocatable :: sf_int
+    type(vector4_t), dimension(2) :: k
+    real(default) :: E, f_map
+    real(default), dimension(:), allocatable :: p, pb, r, rb, x, xb
+    real(default), dimension(2) :: f, f_isr
+    integer :: i
+
+    write (u, "(A)")  "* Test output: sf_isr_9"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    call flv%init (ELECTRON, model)
+    pdg_in = ELECTRON
+
+    call reset_interaction_counter ()
+
+    allocate (isr_data_t :: data)
+    select type (data)
+    type is (isr_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.00511_default, order = 3, recoil = .false.)
+    end select
+
+    allocate (sf_ip_mapping_t :: mapping)
+    select type (mapping)
+    type is (sf_ip_mapping_t)
+       select type (data)
+       type is (isr_data_t)
+          call mapping%init (eps = data%get_eps ())
+       end select
+       call mapping%set_index (1, 1)
+       call mapping%set_index (2, 2)
+    end select
+
+    call mapping%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    allocate (isr_t :: sf_int (2))
+
+    do i = 1, 2
+       call sf_int(i)%init (data)
+       call sf_int(i)%set_beam_index ([i])
+    end do
+
+    write (u, "(A)")  "* Initialize incoming momenta with E=500"
+    write (u, "(A)")
+    E = 500
+    k(1) = vector4_moving (E,   sqrt (E**2 - flv%get_mass ()**2), 3)
+    k(2) = vector4_moving (E, - sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    do i = 1, 2
+       call vector4_write (k(i), u)
+       call sf_int(i)%seed_kinematics (k(i:i))
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for p=[0.7,0.4], collinear"
+    write (u, "(A)")
+
+    allocate (p (2 * data%get_n_par ()))
+    allocate (pb(size (p)))
+    allocate (r (size (p)))
+    allocate (rb(size (p)))
+    allocate (x (size (p)))
+    allocate (xb(size (p)))
+
+    p = [0.7_default, 0.4_default]
+    pb= 1 - p
+    call mapping%compute (r, rb, f_map, p, pb)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "p =", p
+    write (u, "(A,9(1x," // FMT_12 // "))")  "pb=", pb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "fm=", f_map
+
+    do i = 1, 2
+       call sf_int(i)%complete_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
+            map=.false.)
+    end do
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    do i = 1, 2
+       call sf_int(i)%inverse_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
+            map=.false.)
+    end do
+    call mapping%inverse (r, rb, f_map, p, pb)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "p =", p
+    write (u, "(A,9(1x," // FMT_12 // "))")  "pb=", pb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "fm=", f_map
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate ISR structure function"
+
+    call sf_int(1)%apply (scale = 100._default)
+    call sf_int(2)%apply (scale = 100._default)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure function #1"
+    write (u, "(A)")
+    call sf_int(1)%write (u, testflag = .true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure function #2"
+    write (u, "(A)")
+    call sf_int(2)%write (u, testflag = .true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    do i = 1, 2
+       f_isr(i) = sf_int(i)%get_matrix_element (1)
+    end do
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr         =", &
+         product (f_isr)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_isr * f_map =", &
+         product (f_isr * f) * f_map
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    do i = 1, 2
+       call sf_int(i)%final ()
+    end do
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_isr_9"
+
+  end subroutine sf_isr_9
+
+@ %def sf_isr_9
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{(Massless) QED PDFs}
+
+<<[[sf_qedpdf.f90]]>>=
+<<File header>>
+
+module sf_qedpdf
+
+<<Use kinds>>
+<<Use strings>>
+  use pdg_arrays
+  use model_data
+  use flavors
+  use sf_aux
+  use sf_mappings
+  use sf_base
+  use electron_pdfs
+
+<<Standard module head>>
+
+<<SF qedpdf: public>>
+
+<<SF qedpdf: parameters>>
+
+<<SF qedpdf: types>>
+
+  interface
+<<SF qedpdf: sub interfaces>>
+  end interface
+
+contains
+
+<<SF qedpdf: main procedures>>
+
+end module sf_qedpdf
+@ %def sf_qedpdf
+@
+<<[[sf_qedpdf_sub.f90]]>>=
+<<File header>>
+
+submodule (sf_qedpdf) sf_qedpdf_s
+
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_15, FMT_19
+  use numeric_utils
+  use diagnostics
+  use physics_defs, only: PHOTON, ELECTRON, MUON, TAU
+  use sm_physics, only: Li2
+  use lorentz
+  use colors
+  use quantum_numbers
+  use polarizations
+
+  implicit none
+
+contains
+
+<<SF qedpdf: procedures>>
+
+end submodule sf_qedpdf_s
+
+@ %def sf_qedpdf_s
+@
+\subsection{Physics}
+The ISR structure function is in the most crude approximation (LLA
+without $\alpha$ corrections, i.e. $\epsilon^0$)
+\begin{equation}
+  f_0(x) = \epsilon (1-x)^{-1+\epsilon} \qquad\text{with}\qquad
+  \epsilon = \frac{\alpha}{\pi}q_e^2\ln\frac{s}{m^2},
+\end{equation}
+where $m$ is the mass of the incoming (and outgoing) particle, which
+is initially assumed on-shell.
+
+In $f_0(x)$, there is an integrable singularity at $x=1$ which does
+not spoil the integration, but would lead to an unbounded $f_{\rm
+max}$.  Therefore, we map this singularity like
+\begin{equation}\label{ISR-mapping}
+  x = 1 - (1-x')^{1/\epsilon}
+\end{equation}
+such that
+\begin{equation}
+  \int dx\,f_0(x) = \int dx'
+\end{equation}
+
+For the detailed form of the QED ISR structure function
+cf. Chap.~\ref{chap:qed_pdf}.
+
+\subsection{Implementation}
+
+In the concrete implementation, the zeroth order mapping
+(\ref{ISR-mapping}) is implemented, and the Jacobian is equal to
+$f_i(x)/f_0(x)$.  This can be written as
+\begin{align}
+  \frac{f_0(x)}{f_0(x)} &= 1 \\
+  \frac{f_1(x)}{f_0(x)} &= 1 + \frac34\epsilon - \frac{1-x^2}{2(1-x')} \\
+\begin{split}\label{ISR-f2}
+  \frac{f_2(x)}{f_0(x)} &= 1 + \frac34\epsilon
+    + \frac{27 - 8\pi^2}{96}\epsilon^2
+    - \frac{1-x^2}{2(1-x')} \\
+  &\quad - \frac{(1+3x^2)\ln x
+    + (1-x)\left(4(1+x)\ln(1-x) + 5 + x\right)}{8(1-x')}\epsilon
+\end{split}
+\end{align}
+%'
+For $x=1$ (i.e., numerically indistinguishable from $1$), this reduces to
+\begin{align}
+  \frac{f_0(x)}{f_0(x)} &= 1 \\
+  \frac{f_1(x)}{f_0(x)} &= 1 + \frac34\epsilon \\
+  \frac{f_2(x)}{f_0(x)} &= 1 + \frac34\epsilon
+    + \frac{27 - 8\pi^2}{96}\epsilon^2
+\end{align}
+The last line in (\ref{ISR-f2}) is zero for
+\begin{equation}
+  x_{\rm min} = 0.00714053329734592839549879772019
+\end{equation}
+(Mathematica result), independent of $\epsilon$.  For $x$ values less
+than this we ignore this correction because of the logarithmic
+singularity which should in principle be resummed.
+
+
+\subsection{The QEDPDF data block}
+
+The flag [[invert]] is set for an antilepton, and a mask that
+determines which partons will be actually in use.
+<<SF qedpdf: public>>=
+  public :: qedpdf_data_t
+<<SF qedpdf: types>>=
+  type, extends (sf_data_t) :: qedpdf_data_t
+     private
+     class(model_data_t), pointer :: model => null ()
+     type(flavor_t) :: flv_in
+     type(qed_pdf_t) :: pdf
+     logical :: isr_mode = .false.
+     logical :: isr_legacy = .false.
+     logical :: running = .false.
+     real(default) :: alpha = 0
+     real(default) :: q_max = 0
+     real(default) :: real_mass = 0
+     real(default) :: mass = 0
+     real(default) :: eps = 0
+     real(default) :: log = 0
+     logical :: invert = .false.
+     logical, dimension(-9:10) :: mask = .true.
+     logical :: keep_energy = .true.
+     integer :: n = 0
+     integer :: order = 3
+     integer :: log_order = 3
+     integer :: error = NONE
+   contains
+   <<SF qedpdf: qedpdf data: TBP>>
+  end type qedpdf_data_t
+
+@ %def qedpdf_data_t
+@ Error codes
+<<SF qedpdf: parameters>>=
+  integer, parameter :: NONE = 0
+  integer, parameter :: Q_MAX_TOO_SMALL = 1
+  integer, parameter :: EPS_TOO_LARGE = 2
+  integer, parameter :: INVALID_ORDER = 3
+  integer, parameter :: CHARGE_ZERO = 4
+@ Generate flavor-dependent QEDPDF data:
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: init => qedpdf_data_init
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_data_init (data, model, pdg_in, alpha, q_max, &
+         mass, order, log_order, n, running, isr_mode, isr_legacy)
+      class(qedpdf_data_t), intent(out) :: data
+      class(model_data_t), intent(in), target :: model
+      type(pdg_array_t), intent(in) :: pdg_in
+      real(default), intent(in) :: alpha
+      real(default), intent(in) :: q_max
+      real(default), intent(in), optional :: mass
+      integer, intent(in), optional :: order, log_order, n
+      logical, intent(in), optional :: running
+      logical, intent(in), optional :: isr_legacy, isr_mode
+    end subroutine qedpdf_data_init
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_data_init (data, model, pdg_in, alpha, q_max, &
+       mass, order, log_order, n, running, isr_mode, isr_legacy)
+    class(qedpdf_data_t), intent(out) :: data
+    class(model_data_t), intent(in), target :: model
+    type(pdg_array_t), intent(in) :: pdg_in
+    real(default), intent(in) :: alpha
+    real(default), intent(in) :: q_max
+    real(default), intent(in), optional :: mass
+    integer, intent(in), optional :: order, log_order, n
+    logical, intent(in), optional :: running
+    logical, intent(in), optional :: isr_mode, isr_legacy
+    ! Setting this enforces Numerical agreement for the ISR
+    ! strucuture function and the lepton PDF
+    logical, parameter :: legacy_compatibility = .false.
+    integer :: i
+    real(default) :: charge, p
+    data%model => model
+    if (pdg_in%get_length () /= 1) &
+         call msg_fatal ("QED PDF: incoming particle must be unique")
+    call data%flv_in%init (pdg_in%get (1), model)
+    select case (pdg_in%get (1))
+    case (ELECTRON,MUON,TAU)
+       data%invert = .false.
+    case (-ELECTRON,-MUON,-TAU)
+       data%invert = .true.
+    end select
+    data%alpha = alpha
+    data%q_max = q_max
+    if (present (order)) then
+       call data%set_order (order)
+    end if
+    if (present (log_order)) then
+       data%log_order = log_order
+    end if
+    if (present (n)) then
+       data%n = n
+    end if
+    if (present (running)) then
+       data%running = running
+    end if
+    if (present (isr_mode)) then
+       data%isr_mode = isr_mode
+    end if
+    if (present (isr_legacy)) then
+       data%isr_legacy = isr_legacy
+    end if
+    data%real_mass = data%flv_in%get_mass ()
+    if (present (mass)) then
+       if (mass > 0) then
+          data%mass = mass
+       else
+          data%mass = data%real_mass
+       end if
+    else
+       data%mass = data%real_mass
+    end if
+    if (data%mass >= data%q_max) then
+       data%error = Q_MAX_TOO_SMALL;  return
+    end if
+    data%log = log (1 + (data%q_max / data%mass)**2)
+    charge = data%flv_in%get_charge ()
+    if (charge == 0) then
+       data%error = CHARGE_ZERO;  return
+    end if
+    call data%pdf%init (data%mass, data%alpha, charge, data%q_max, &
+         data%order, data%log_order, data%n, &
+         legacy_compatibility = legacy_compatibility)
+    if (data%running) then
+       call data%pdf%allocate_aqed (order = data%order, n_f = 0, &
+         nlep = data%n, running = data%running)
+    end if
+    data%eps = data%pdf%get_epsilon (data%q_max, &
+         data%isr_mode .or. data%isr_legacy)
+    if (data%eps > 1) then
+       data%error = EPS_TOO_LARGE;  return
+    end if
+  end subroutine qedpdf_data_init
+
+@ %def qedpdf_data_init
+@ Enable/disable partons explicitly.  If a mask entry is true,
+applying the PDF will generate the corresponding flavor on output.
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: set_mask => qedpdf_data_set_mask
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_data_set_mask (data, mask)
+      class(qedpdf_data_t), intent(inout) :: data
+      logical, dimension(-9:10), intent(in) :: mask
+    end subroutine qedpdf_data_set_mask
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_data_set_mask (data, mask)
+    class(qedpdf_data_t), intent(inout) :: data
+    logical, dimension(-9:10), intent(in) :: mask
+    data%mask = mask
+  end subroutine qedpdf_data_set_mask
+
+@ %def qedpdf_data_set_mask
+@ Explicitly set QEDPDF order
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: set_order => qedpdf_data_set_order
+<<SF qedpdf: sub interfaces>>=
+    elemental module subroutine qedpdf_data_set_order (data, order)
+      class(qedpdf_data_t), intent(inout) :: data
+      integer, intent(in) :: order
+    end subroutine qedpdf_data_set_order
+<<SF qedpdf: procedures>>=
+  elemental module subroutine qedpdf_data_set_order (data, order)
+    class(qedpdf_data_t), intent(inout) :: data
+    integer, intent(in) :: order
+    if (order < 0 .or. order > 3) then
+       data%error = INVALID_ORDER
+    else
+       data%order = order
+    end if
+  end subroutine qedpdf_data_set_order
+
+@ %def qedpdf_data_set_order
+@ Handle error conditions.  Should always be done after
+initialization, unless we are sure everything is ok.
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: check => qedpdf_data_check
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_data_check (data)
+      class(qedpdf_data_t), intent(in) :: data
+    end subroutine qedpdf_data_check
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_data_check (data)
+    class(qedpdf_data_t), intent(in) :: data
+    select case (data%error)
+    case (Q_MAX_TOO_SMALL)
+       call msg_fatal ("QEDPDF: Particle mass exceeds Qmax")
+    case (EPS_TOO_LARGE)
+       call msg_fatal ("QEDPDF: Expansion parameter too large, " // &
+            "perturbative expansion breaks down")
+    case (INVALID_ORDER)
+       call msg_error ("QEDPDF: LLA order invalid (valid values are 0,1,2,3)")
+    case (CHARGE_ZERO)
+       call msg_fatal ("QEDPDF: Incoming particle must be charged")
+    end select
+  end subroutine qedpdf_data_check
+
+@ %def qedpdf_data_check
+@ Output
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: write => qedpdf_data_write
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_data_write (data, unit, verbose)
+      class(qedpdf_data_t), intent(in) :: data
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: verbose
+    end subroutine qedpdf_data_write
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_data_write (data, unit, verbose)
+    class(qedpdf_data_t), intent(in) :: data
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)") "QEDPDF data:"
+    write (u, "(3x,A,L1)")  "  ePDF ISR mode     = ", data%isr_mode
+    write (u, "(3x,A,L1)")  "  ISR legacy mode = ", data%isr_legacy
+    write (u, "(3x,A,L1)")  "  running         = ", data%running
+    write (u, "(3x,A)", advance="no") "  flavor =  "
+    call data%flv_in%write (u); write (u, *)
+    write (u, "(3x,A," // FMT_19 // ")") "  alpha    = ", data%alpha
+    write (u, "(3x,A," // FMT_19 // ")") "  q_max    = ", data%q_max
+    write (u, "(3x,A," // FMT_19 // ")") "  mass     = ", data%mass
+    write (u, "(3x,A," // FMT_19 // ")") "  eps      = ", data%eps
+    write (u, "(3x,A," // FMT_19 // ")") "  log      = ", data%log
+    write (u, "(3x,A,I2)")      "  n        = ", data%n
+    write (u, "(3x,A,I2)")      "  order    = ", data%order
+  end subroutine qedpdf_data_write
+
+@ %def qedpdf_data_write
+@ For QEDPDF, there is the option to generate transverse momentum is
+generated. Hence, there can be up to three parameters, $x$, and two
+angles.
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: get_n_par => qedpdf_data_get_n_par
+<<SF qedpdf: sub interfaces>>=
+    module function qedpdf_data_get_n_par (data) result (n)
+      class(qedpdf_data_t), intent(in) :: data
+      integer :: n
+    end function qedpdf_data_get_n_par
+<<SF qedpdf: procedures>>=
+  module function qedpdf_data_get_n_par (data) result (n)
+    class(qedpdf_data_t), intent(in) :: data
+    integer :: n
+    n = 1
+  end function qedpdf_data_get_n_par
+
+@ %def qedpdf_data_get_n_par
+@ Return the outgoing particles PDG codes.  For QEDPDF, these are
+identical to the incoming particles.
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: get_pdg_out => qedpdf_data_get_pdg_out
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_data_get_pdg_out (data, pdg_out)
+      class(qedpdf_data_t), intent(in) :: data
+      type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
+    end subroutine qedpdf_data_get_pdg_out
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_data_get_pdg_out (data, pdg_out)
+    class(qedpdf_data_t), intent(in) :: data
+    type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
+    integer, dimension(:), allocatable :: pdg1
+    integer :: n, i
+    n = count (data%mask)
+    allocate (pdg1 (n))
+    pdg1(1:n) = pack ([(i, i = -9, 10)], data%mask)
+    pdg_out(1) = pdg1
+  end subroutine qedpdf_data_get_pdg_out
+
+@ %def qedpdf_data_get_pdg_out
+@ Return the [[eps]] value.  We need it for an appropriate mapping of
+structure-function parameters.
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: get_eps => qedpdf_data_get_eps
+<<SF qedpdf: sub interfaces>>=
+    module function qedpdf_data_get_eps (data) result (eps)
+      class(qedpdf_data_t), intent(in) :: data
+      real(default) :: eps
+    end function qedpdf_data_get_eps
+<<SF qedpdf: procedures>>=
+  module function qedpdf_data_get_eps (data) result (eps)
+    class(qedpdf_data_t), intent(in) :: data
+    real(default) :: eps
+    eps = data%eps
+  end function qedpdf_data_get_eps
+
+@ %def qedpdf_data_get_eps
+@ Allocate the interaction record. Gfortran 7/8/9 bug, has to remain
+in the module.
+<<SF qedpdf: qedpdf data: TBP>>=
+  procedure :: allocate_sf_int => qedpdf_data_allocate_sf_int
+<<SF qedpdf: main procedures>>=
+  subroutine qedpdf_data_allocate_sf_int (data, sf_int)
+    class(qedpdf_data_t), intent(in) :: data
+    class(sf_int_t), intent(inout), allocatable :: sf_int
+    allocate (qedpdf_t :: sf_int)
+  end subroutine qedpdf_data_allocate_sf_int
+
+@ %def qedpdf_data_allocate_sf_int
+@
+\subsection{The QEDPDF object}
+The [[qedpdf_t]] data type is a $1\to 2$ interaction, i.e., we allow for
+single-photon emission only (but use the multi-photon resummed
+radiator function).  The particles are ordered as (incoming, photon,
+outgoing).
+
+There is no need to handle several flavors (and data blocks) in
+parallel, since QEDPDF is always applied immediately after beam
+collision.  (QEDPDF for partons is accounted for by the PDFs themselves.)
+Polarization is carried through, i.e., we retain the polarization of
+the incoming particle and treat the emitted photon as unpolarized.
+Color is trivially carried through.  This implies that particles 1 and
+3 should be locked together. For QEDPDF we don't need the q variable.
+<<SF qedpdf: public>>=
+  public :: qedpdf_t
+<<SF qedpdf: types>>=
+  type, extends (sf_int_t) :: qedpdf_t
+     private
+     type(qedpdf_data_t), pointer :: data => null ()
+     real(default) :: x = 0
+     real(default) :: xb= 0
+   contains
+   <<SF qedpdf: qedpdf: TBP>>
+  end type qedpdf_t
+
+@ %def qedpdf_t
+@ Type string: has to be here, but there is no string variable on which QEDPDF
+depends. Hence, a dummy routine.
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: type_string => qedpdf_type_string
+<<SF qedpdf: sub interfaces>>=
+    module function qedpdf_type_string (object) result (string)
+      class(qedpdf_t), intent(in) :: object
+      type(string_t) :: string
+    end function qedpdf_type_string
+<<SF qedpdf: procedures>>=
+  module function qedpdf_type_string (object) result (string)
+    class(qedpdf_t), intent(in) :: object
+    type(string_t) :: string
+    if (associated (object%data)) then
+       string = "QEDPDF: e+ e- QEDPDF"
+    else
+       string = "QEDPDF: [undefined]"
+    end if
+  end function qedpdf_type_string
+
+@ %def qedpdf_type_string
+@ Output.  Call the interaction routine after displaying the configuration.
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: write => qedpdf_write
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_write (object, unit, testflag)
+      class(qedpdf_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag
+    end subroutine qedpdf_write
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_write (object, unit, testflag)
+    class(qedpdf_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: u
+    u = given_output_unit (unit)
+    if (associated (object%data)) then
+       call object%data%write (u)
+       if (object%status >= SF_DONE_KINEMATICS) then
+          write (u, "(1x,A)")  "SF parameters:"
+          write (u, "(3x,A," // FMT_15 // ")")  "x =", object%x
+          write (u, "(3x,A," // FMT_15 // ")")  "xb=", object%xb
+       end if
+       call object%base_write (u, testflag)
+    else
+       write (u, "(1x,A)")  "QEDPDF data: [undefined]"
+    end if
+  end subroutine qedpdf_write
+
+@ %def qedpdf_write
+@ Explicitly set QEDPDF order (for unit test).
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: set_order => qedpdf_set_order
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_set_order (object, order)
+      class(qedpdf_t), intent(inout) :: object
+      integer, intent(in) :: order
+    end subroutine qedpdf_set_order
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_set_order (object, order)
+    class(qedpdf_t), intent(inout) :: object
+    integer, intent(in) :: order
+    call object%data%set_order (order)
+    call object%data%pdf%set_order (order)
+  end subroutine qedpdf_set_order
+
+@ %def qedpdf_set_order
+@
+\subsection{Kinematics}
+Set kinematics.  If [[map]] is unset, the $r$ and $x$ values
+coincide, and the Jacobian $f(r)$ were trivial. The QEDPDF structure
+function allows for a straightforward mapping of the unit interval.
+So, to leading order, the structure function value is unity, but the
+$x$ value is transformed.  Higher orders affect the function value.
+
+The structure function implementation applies the above mapping to the
+input (random) number [[r]] to generate the momentum fraction [[x]]
+and the function value [[f]].  For numerical stability reasons, we
+also output [[xb]], which is $\bar x=1-x$.
+
+For the QEDPDF structure function, the mapping Jacobian cancels the
+structure function (to order zero).  We apply the cancellation
+explicitly, therefore both the Jacobian [[f]] and the zeroth-order value
+(see the [[apply]] method) are unity if mapping is turned on.  If
+mapping is turned off, the Jacobian [[f]] includes the value of the
+(zeroth-order) structure function, and strongly peaked.
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: complete_kinematics => qedpdf_complete_kinematics
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_complete_kinematics (sf_int, x, xb, f, r, rb, map)
+      class(qedpdf_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(out) :: x
+      real(default), dimension(:), intent(out) :: xb
+      real(default), intent(out) :: f
+      real(default), dimension(:), intent(in) :: r
+      real(default), dimension(:), intent(in) :: rb
+      logical, intent(in) :: map
+    end subroutine qedpdf_complete_kinematics
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_complete_kinematics (sf_int, x, xb, f, r, rb, map)
+    class(qedpdf_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(in) :: r
+    real(default), dimension(:), intent(in) :: rb
+    logical, intent(in) :: map
+    real(default) :: eps
+    eps = sf_int%data%eps
+    if (map) then
+       call map_power_1 (sf_int%xb, f, rb(1), eps)
+    else
+       sf_int%xb = rb(1)
+       if (rb(1) > 0) then
+          f = 1
+       else
+          f = 0
+       end if
+    end if
+    sf_int%x = 1 - sf_int%xb
+    x(1) = sf_int%x
+    xb(1) = sf_int%xb
+    if (size (x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
+    select case (sf_int%status)
+    case (SF_FAILED_KINEMATICS)
+       sf_int%x = 0
+       sf_int%xb= 0
+       f = 0
+    end select
+  end subroutine qedpdf_complete_kinematics
+
+@ %def qedpdf_complete_kinematics
+@ Overriding the default method: we compute the [[x]] array from the
+momentum configuration.  In the specific case of QEDPDF, we also set the
+internally stored $x$ and $\bar x$ values, so they can be used in the
+following routine.
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: recover_x => sf_qedpdf_recover_x
+<<SF qedpdf: sub interfaces>>=
+    module subroutine sf_qedpdf_recover_x (sf_int, x, xb, x_free)
+      class(qedpdf_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(out) :: x
+      real(default), dimension(:), intent(out) :: xb
+      real(default), intent(inout), optional :: x_free
+    end subroutine sf_qedpdf_recover_x
+<<SF qedpdf: procedures>>=
+  module subroutine sf_qedpdf_recover_x (sf_int, x, xb, x_free)
+    class(qedpdf_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(inout), optional :: x_free
+    call sf_int%base_recover_x (x, xb, x_free)
+    sf_int%x  = x(1)
+    sf_int%xb = xb(1)
+  end subroutine sf_qedpdf_recover_x
+
+@ %def sf_qedpdf_recover_x
+@ Compute inverse kinematics.  Here, we start with the $x$ array and
+compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
+can set momenta by the same formula as for normal kinematics.
+
+For extracting $x$, we rely on the stored $\bar x$ value, since the
+$x$ value in the argument is likely imprecise.  This means that either
+[[complete_kinematics]] or [[recover_x]] must be called first, for the
+current sampling point (but maybe another channel).
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: inverse_kinematics => qedpdf_inverse_kinematics
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_inverse_kinematics &
+         (sf_int, x, xb, f, r, rb, map, set_momenta)
+      class(qedpdf_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(in) :: x
+      real(default), dimension(:), intent(in) :: xb
+      real(default), intent(out) :: f
+      real(default), dimension(:), intent(out) :: r
+      real(default), dimension(:), intent(out) :: rb
+      logical, intent(in) :: map
+      logical, intent(in), optional :: set_momenta
+    end subroutine qedpdf_inverse_kinematics
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_inverse_kinematics &
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
+    class(qedpdf_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(out) :: r
+    real(default), dimension(:), intent(out) :: rb
+    logical, intent(in) :: map
+    logical, intent(in), optional :: set_momenta
+    real(default) :: eps
+    logical :: set_mom
+    set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
+    eps = sf_int%data%eps
+    if (map) then
+       call map_power_inverse_1 (xb(1), f, rb(1), eps)
+    else
+       rb(1) = xb(1)
+       if (rb(1) > 0) then
+          f = 1
+       else
+          f = 0
+       end if
+    end if
+    r(1) = 1 - rb(1)
+    if (size(r) == 3) then
+       r(2:3) = x(2:3)
+       rb(2:3)= xb(2:3)
+    end if
+    if (set_mom) then
+       call sf_int%split_momentum (x, xb)
+       select case (sf_int%status)
+       case (SF_FAILED_KINEMATICS)
+          r = 0
+          rb= 0
+          f = 0
+       end select
+    end if
+  end subroutine qedpdf_inverse_kinematics
+
+@ %def qedpdf_inverse_kinematics
+@
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: init => qedpdf_init
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_init (sf_int, data)
+      class(qedpdf_t), intent(out) :: sf_int
+      class(sf_data_t), intent(in), target :: data
+    end subroutine qedpdf_init
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_init (sf_int, data)
+    class(qedpdf_t), intent(out) :: sf_int
+    class(sf_data_t), intent(in), target :: data
+    type(quantum_numbers_mask_t), dimension(3) :: mask
+    integer, dimension(3) :: hel_lock
+    type(polarization_t), target :: pol
+    type(quantum_numbers_t), dimension(1) :: qn_fc
+    type(flavor_t) :: flv_photon
+    type(color_t) :: col_photon
+    type(quantum_numbers_t) :: qn_hel, qn_photon, qn
+    type(polarization_iterator_t) :: it_hel
+    real(default) :: m2
+    integer :: i
+    mask = quantum_numbers_mask (.false., .false., &
+         mask_h = [.false., .true., .false.])
+    hel_lock = [3, 0, 1]
+    select type (data)
+    type is (qedpdf_data_t)
+       m2 = data%mass**2
+       call sf_int%base_init (mask, [m2], [0._default], [m2], &
+            hel_lock = hel_lock)
+       sf_int%data => data
+       call flv_photon%init (PHOTON, data%model)
+       call col_photon%init ()
+       call qn_photon%init (flv_photon, col_photon)
+       call qn_photon%tag_radiated ()
+       call pol%init_generic (data%flv_in)
+       call qn_fc(1)%init (&
+            flv = data%flv_in, &
+            col = color_from_flavor (data%flv_in, 1))
+       call it_hel%init (pol)
+       do while (it_hel%is_valid ())
+          qn_hel = it_hel%get_quantum_numbers ()
+          qn = qn_hel .merge. qn_fc(1)
+          call sf_int%add_state ([qn, qn_photon, qn])
+          call it_hel%advance ()
+       end do
+       ! call pol%final ()  !!! Obsolete
+       call sf_int%freeze ()
+       if (data%keep_energy) then
+          sf_int%on_shell_mode = KEEP_ENERGY
+       else
+          sf_int%on_shell_mode = KEEP_MOMENTUM
+       end if
+       call sf_int%set_incoming ([1])
+       call sf_int%set_radiated ([2])
+       call sf_int%set_outgoing ([3])
+       sf_int%status = SF_INITIAL
+    end select
+  end subroutine qedpdf_init
+
+@ %def qedpdf_init
+@
+\subsection{QEDPDF application}
+For QEDPDF, we could in principle compute kinematics and function value
+in a single step. In order to be able to reweight matrix elements
+including structure functions we split kinematics and structure
+function calculation. The structure function works on a single beam,
+assuming that the input momentum has been set.
+
+For the structure-function evaluation, we rely on the fact that the
+power mapping, which we apply in the kinematics method (if the [[map]]
+flag is set), has a Jacobian which is just the inverse lowest-order
+structure function.  With mapping active, the two should cancel
+exactly.
+
+After splitting momenta, we set the outgoing momenta on-shell.  We
+choose to conserve momentum, so energy conservation may be violated.
+<<SF qedpdf: qedpdf: TBP>>=
+  procedure :: apply => qedpdf_apply
+<<SF qedpdf: sub interfaces>>=
+    module subroutine qedpdf_apply (sf_int, scale, negative_sf, rescale, i_sub)
+      class(qedpdf_t), intent(inout) :: sf_int
+      real(default), intent(in) :: scale
+      logical, intent(in), optional :: negative_sf
+      class(sf_rescale_t), intent(in), optional :: rescale
+      integer, intent(in), optional :: i_sub
+    end subroutine qedpdf_apply
+<<SF qedpdf: procedures>>=
+  module subroutine qedpdf_apply (sf_int, scale, negative_sf, rescale, i_sub)
+    class(qedpdf_t), intent(inout) :: sf_int
+    real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    real(default) :: ff, finv, x, xb, eps, rb
+    real(default) :: log_x, log_xb, x_2
+    real(default), dimension(-9:10) :: f
+    complex(default), dimension(:), allocatable :: fc
+    integer :: i, i_sub_opt
+    i_sub_opt = 0; if (present (i_sub)) i_sub_opt = i_sub
+    associate (data => sf_int%data)
+      eps = data%eps
+      x = sf_int%x
+      if (present (rescale))  call rescale%apply (x)
+      xb = sf_int%xb
+      if (debug2_active (D_BEAMS)) then
+         call msg_debug2 (D_BEAMS, "qedpdf_apply")
+         call msg_debug2 (D_BEAMS, "rescale: ", present(rescale))
+         call msg_debug2 (D_BEAMS, "i_sub: ", i_sub_opt)
+         call msg_debug2 (D_BEAMS, "x: ", x)
+      end if
+      data%mask(-9:0) = .false.
+      data%mask(2:10) = .false.
+      allocate (fc (count (data%mask)))
+      !!! Hack
+      if (data%isr_mode) then  ! Use old ISR
+         call map_power_inverse_1 (xb, finv, rb, eps)
+         if (finv > 0) then
+            ff = 1 / finv
+         else
+            ff = 0
+         end if
+         call data%pdf%evolve_qed_pdf_isr (x, xb, rb, ff, &
+           isr_legacy = data%isr_legacy)
+         f(1) = ff
+      else  ! Use lepton PDF
+         call data%pdf%evolve_qed_pdf_lpdf &
+              (x, xb, rb, scale, f, data%mask)
+      end if
+      fc = pack (f, data%mask)
+    end associate
+    if (debug_active (D_BEAMS)) print *, 'Set pdfs: ', real (f)
+    call sf_int%set_matrix_element (fc, [(i_sub_opt * size(fc) + i, i = 1, size(fc))])
+    sf_int%status = SF_EVALUATED
+  end subroutine qedpdf_apply
+
+@ %def qedpdf_apply
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[sf_qedpdf_ut.f90]]>>=
+<<File header>>
+
+module sf_qedpdf_ut
+  use unit_tests
+  use sf_qedpdf_uti
+
+<<Standard module head>>
+
+<<SF qedpdf: public test>>
+
+contains
+
+<<SF qedpdf: test driver>>
+
+end module sf_qedpdf_ut
+@ %def sf_qedpdf_ut
+@
+<<[[sf_qedpdf_uti.f90]]>>=
+<<File header>>
+
+module sf_qedpdf_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_defs, only: FMT_12
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use interactions, only: interaction_t
+  use model_data
+  use sf_aux, only: KEEP_ENERGY
+  use sf_mappings
+  use sf_base
+
+  use sf_qedpdf
+
+<<Standard module head>>
+
+<<SF qedpdf: test declarations>>
+
+contains
+
+<<SF qedpdf: tests>>
+
+end module sf_qedpdf_uti
+@ %def sf_qedpdf_ut
+@ API: driver for the unit tests below.
+<<SF qedpdf: public test>>=
+  public :: sf_qedpdf_test
+<<SF qedpdf: test driver>>=
+  subroutine sf_qedpdf_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<SF qedpdf: execute tests>>
+  end subroutine sf_qedpdf_test
+
+@ %def sf_qedpdf_test
+@
+\subsubsection{Test structure function data}
+Construct and display a test structure function data object.
+<<SF qedpdf: execute tests>>=
+  call test (sf_qedpdf_1, "sf_lpdf_1", &
+       "structure function configuration", &
+       u, results)
+<<SF qedpdf: test declarations>>=
+  public :: sf_qedpdf_1
+<<SF qedpdf: tests>>=
+  subroutine sf_qedpdf_1 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(pdg_array_t) :: pdg_in
+    type(pdg_array_t), dimension(1) :: pdg_out
+    integer, dimension(:), allocatable :: pdg1
+    class(sf_data_t), allocatable :: data
+
+    write (u, "(A)")  "* Test output: sf_lpdf_1"
+    write (u, "(A)")  "*   Purpose: initialize and display &
+         &test structure function data"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Create empty data object"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    pdg_in = ELECTRON
+
+    allocate (qedpdf_data_t :: data)
+    call data%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize"
+    write (u, "(A)")
+
+    select type (data)
+    type is (qedpdf_data_t)
+       call data%init (model, pdg_in, 1./137._default, 10._default, &
+            0.000511_default, order = 3, log_order = 0, n = 1)
+    end select
+
+    call data%write (u)
+
+    write (u, "(A)")
+
+    write (u, "(1x,A)")  "Outgoing particle codes:"
+    call data%get_pdg_out (pdg_out)
+    pdg1 = pdg_out(1)
+    write (u, "(2x,99(1x,I0))")  pdg1
+
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_lpdf_1"
+
+  end subroutine sf_qedpdf_1
+
+@ %def sf_qedpdf_1
+@
+\subsubsection{Structure function without mapping}
+Direct QEDPDF evaluation.  This is the use case for a double-beam
+structure function.  The parameter pair is mapped in the calling program.
+<<SF qedpdf: execute tests>>=
+  call test (sf_qedpdf_2, "sf_lpdf_2", &
+       "LL, no QEDPDF mapping", &
+       u, results)
+<<SF qedpdf: test declarations>>=
+  public :: sf_qedpdf_2
+<<SF qedpdf: tests>>=
+  subroutine sf_qedpdf_2 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(pdg_array_t) :: pdg_in
+    type(flavor_t) :: flv
+    class(sf_data_t), allocatable, target :: data
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x, xb
+    real(default) :: f, f_qedpdf
+
+    write (u, "(A)")  "* Test output: sf_lpdf_2"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    pdg_in = ELECTRON
+    call flv%init (ELECTRON, model)
+
+    call reset_interaction_counter ()
+
+    allocate (qedpdf_data_t :: data)
+    select type (data)
+    type is (qedpdf_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, log_order = 0, n = 1)
+    end select
+
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 500
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    call vector4_write (k, u)
+    call sf_int%seed_kinematics ([k])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for r=0.9, no QEDPDF mapping, &
+         &collinear"
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+    allocate (xb(size (r)))
+
+    r = 0.9_default
+    rb = 1 - r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate QEDPDF structure function"
+    write (u, "(A)")
+
+    call sf_int%apply (scale = 100._default)
+    call sf_int%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    f_qedpdf = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", f_qedpdf
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", f_qedpdf * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-evaluate structure function, leading order"
+    write (u, "(A)")
+
+    select type (sf_int)
+    type is (qedpdf_t)
+       call sf_int%set_order (0)
+    end select
+    call sf_int%apply (scale = 100._default)
+    f_qedpdf = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", f_qedpdf
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", f_qedpdf * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_lpdf_2"
+
+  end subroutine sf_qedpdf_2
+
+@ %def sf_qedpdf_2
+@
+\subsubsection{Structure function with mapping}
+Apply the optimal QEDPDF mapping.  This is the use case for a single-beam
+structure function.
+<<SF qedpdf: execute tests>>=
+  call test (sf_qedpdf_3, "sf_lpdf_3", &
+       "LL, QEDPDF mapping", &
+       u, results)
+<<SF qedpdf: test declarations>>=
+  public :: sf_qedpdf_3
+<<SF qedpdf: tests>>=
+  subroutine sf_qedpdf_3 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(pdg_array_t) :: pdg_in
+    class(sf_data_t), allocatable, target :: data
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x, xb
+    real(default) :: f, f_qedpdf
+
+    write (u, "(A)")  "* Test output: sf_lpdf_3"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    call flv%init (ELECTRON, model)
+    pdg_in = ELECTRON
+
+    call reset_interaction_counter ()
+
+    allocate (qedpdf_data_t :: data)
+    select type (data)
+    type is (qedpdf_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, log_order = 0, n = 1)
+    end select
+
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 500
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    call vector4_write (k, u)
+    call sf_int%seed_kinematics ([k])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for r=0.7, with QEDPDF mapping, &
+         &collinear"
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+    allocate (xb(size (r)))
+
+    r = 0.7_default
+    rb = 1 - r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate QEDPDF structure function"
+    write (u, "(A)")
+
+    call sf_int%apply (scale = 100._default)
+    call sf_int%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    f_qedpdf = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", f_qedpdf
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", f_qedpdf * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-evaluate structure function, leading order"
+    write (u, "(A)")
+
+    select type (sf_int)
+    type is (qedpdf_t)
+       call sf_int%set_order (0)
+    end select
+    call sf_int%apply (scale = 100._default)
+    f_qedpdf = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", f_qedpdf
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", f_qedpdf * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_lpdf_3"
+
+  end subroutine sf_qedpdf_3
+
+@ %def sf_qedpdf_3
+@
+\subsubsection{Structure function pair with mapping}
+Apply the QEDPDF mapping for a QEDPDF pair.
+structure function.
+<<SF qedpdf: execute tests>>=
+  call test (sf_qedpdf_4, "sf_lpdf_4", &
+       "LL, QEDPDF pair mapping", &
+       u, results)
+<<SF qedpdf: test declarations>>=
+  public :: sf_qedpdf_4
+<<SF qedpdf: tests>>=
+  subroutine sf_qedpdf_4 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t) :: flv
+    type(pdg_array_t) :: pdg_in
+    class(sf_data_t), allocatable, target :: data
+    class(sf_mapping_t), allocatable :: mapping
+    class(sf_int_t), dimension(:), allocatable :: sf_int
+    type(vector4_t), dimension(2) :: k
+    real(default) :: E, f_map
+    real(default), dimension(:), allocatable :: p, pb, r, rb, x, xb
+    real(default), dimension(2) :: f, f_qedpdf
+    integer :: i
+
+    write (u, "(A)")  "* Test output: sf_lpdf_4"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    call flv%init (ELECTRON, model)
+    pdg_in = ELECTRON
+
+    call reset_interaction_counter ()
+
+    allocate (qedpdf_data_t :: data)
+    select type (data)
+    type is (qedpdf_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, log_order = 0, n = 1)
+    end select
+
+    allocate (sf_ip_mapping_t :: mapping)
+    select type (mapping)
+    type is (sf_ip_mapping_t)
+       select type (data)
+       type is (qedpdf_data_t)
+          call mapping%init (eps = data%get_eps ())
+       end select
+       call mapping%set_index (1, 1)
+       call mapping%set_index (2, 2)
+    end select
+
+    call mapping%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    allocate (qedpdf_t :: sf_int (2))
+
+    do i = 1, 2
+       call sf_int(i)%init (data)
+       call sf_int(i)%set_beam_index ([i])
+    end do
+
+    write (u, "(A)")  "* Initialize incoming momenta with E=500"
+    write (u, "(A)")
+    E = 500
+    k(1) = vector4_moving (E,   sqrt (E**2 - flv%get_mass ()**2), 3)
+    k(2) = vector4_moving (E, - sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    do i = 1, 2
+       call vector4_write (k(i), u)
+       call sf_int(i)%seed_kinematics (k(i:i))
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for p=[0.7,0.4], collinear"
+    write (u, "(A)")
+
+    allocate (p (2 * data%get_n_par ()))
+    allocate (pb(size (p)))
+    allocate (r (size (p)))
+    allocate (rb(size (p)))
+    allocate (x (size (p)))
+    allocate (xb(size (p)))
+
+    p = [0.7_default, 0.4_default]
+    pb= 1 - p
+    call mapping%compute (r, rb, f_map, p, pb)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "p =", p
+    write (u, "(A,9(1x," // FMT_12 // "))")  "pb=", pb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "fm=", f_map
+
+    do i = 1, 2
+       call sf_int(i)%complete_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
+            map=.false.)
+    end do
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    do i = 1, 2
+       call sf_int(i)%inverse_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
+            map=.false.)
+    end do
+    call mapping%inverse (r, rb, f_map, p, pb)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "p =", p
+    write (u, "(A,9(1x," // FMT_12 // "))")  "pb=", pb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "fm=", f_map
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate QEDPDF structure function"
+
+    call sf_int(1)%apply (scale = 100._default)
+    call sf_int(2)%apply (scale = 100._default)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure function #1"
+    write (u, "(A)")
+    call sf_int(1)%write (u, testflag = .true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure function #2"
+    write (u, "(A)")
+    call sf_int(2)%write (u, testflag = .true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    do i = 1, 2
+       f_qedpdf(i) = sf_int(i)%get_matrix_element (1)
+    end do
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", &
+         product (f_qedpdf)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", &
+         product (f_qedpdf * f) * f_map
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    do i = 1, 2
+       call sf_int(i)%final ()
+    end do
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_lpdf_4"
+
+  end subroutine sf_qedpdf_4
+
+@ %def sf_qedpdf_4
+@
+Direct QEDPDF evaluation.  This is the use case for a double-beam
+structure function.  The parameter pair is mapped in the calling program.
+NLL precision.
+<<SF qedpdf: execute tests>>=
+  call test (sf_qedpdf_5, "sf_lpdf_5", &
+       "NLL, no QEDPDF mapping", &
+       u, results)
+<<SF qedpdf: test declarations>>=
+  public :: sf_qedpdf_5
+<<SF qedpdf: tests>>=
+  subroutine sf_qedpdf_5 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(pdg_array_t) :: pdg_in
+    type(flavor_t) :: flv
+    class(sf_data_t), allocatable, target :: data
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x, xb
+    real(default) :: f, f_qedpdf
+
+    write (u, "(A)")  "* Test output: sf_lpdf_5"
+    write (u, "(A)")  "*   Purpose: initialize and fill &
+         &test structure function object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize configuration data"
+    write (u, "(A)")
+
+    call model%init_qed_test ()
+    pdg_in = ELECTRON
+    call flv%init (ELECTRON, model)
+
+    call reset_interaction_counter ()
+
+    allocate (qedpdf_data_t :: data)
+    select type (data)
+    type is (qedpdf_data_t)
+       call data%init (model, pdg_in, 1./137._default, 500._default, &
+            0.000511_default, order = 3, log_order = 1, n = 1)
+    end select
+
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1])
+
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 500
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    call pacify (k, 1e-10_default)
+    call vector4_write (k, u)
+    call sf_int%seed_kinematics ([k])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set kinematics for r=0.9, no QEDPDF mapping, &
+         &collinear"
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+    allocate (xb(size (r)))
+
+    r = 0.9_default
+    rb = 1 - r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
+
+    write (u, "(A)")
+    write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Invert kinematics"
+    write (u, "(A)")
+
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
+    write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
+    write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate QEDPDF structure function"
+    write (u, "(A)")
+
+    call sf_int%apply (scale = 100._default)
+    call sf_int%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Structure-function value, default order"
+    write (u, "(A)")
+
+    f_qedpdf = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", f_qedpdf
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", f_qedpdf * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-evaluate structure function, leading order"
+    write (u, "(A)")
+
+    select type (sf_int)
+    type is (qedpdf_t)
+       call sf_int%set_order (0)
+    end select
+    call sf_int%apply (scale = 100._default)
+    f_qedpdf = sf_int%get_matrix_element (1)
+
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf         =", f_qedpdf
+    write (u, "(A,9(1x," // FMT_12 // "))")  "f_qedpdf * f_map =", f_qedpdf * f
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_lpdf_5"
+
+  end subroutine sf_qedpdf_5
+
+@ %def sf_qedpdf_5
 @
 \clearpage
 %------------------------------------------------------------------------
@@ -19506,8 +21592,8 @@ as constituents of a e.g. proton PDF.
       else
          mu = data%pt_max
       end if
-      select case (data%id)         
-      case (23)         
+      select case (data%id)
+      case (23)
          mV2 = data%mZ**2
       case (24)
          mV2 = data%mW**2
@@ -19607,7 +21693,7 @@ as constituents of a e.g. proton PDF.
             print *, "gL = ", gL
             print *, "x  = ", x
             print *, "xb = ", xb
-            print *, "g/2= ", data%cv            
+            print *, "g/2= ", data%cv
             print *, "ptmax=", data%pt_max
             print *, "scale=", scale
             print *, "mW = ", data%mW
@@ -27878,6 +29964,7 @@ module dispatch_beams
   use sf_base
   use sf_mappings
   use sf_isr
+  use sf_qedpdf
   use sf_epa
   use sf_ewa
   use sf_escan
@@ -27983,8 +30070,9 @@ flavors (beam index, component index) for the hard process.
     logical, intent(in) :: polarized
     type(pdg_array_t), dimension(:), allocatable :: pdg_out
     real(default) :: isr_alpha, isr_q_max, isr_mass
-    integer :: isr_order
-    logical :: isr_recoil, isr_keep_energy
+    integer :: isr_order, isr_log_order, isr_n
+    logical :: isr_recoil, isr_keep_energy, isr_running, &
+          isr_legacy, epdf_isr_mode
     real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_q_max, epa_mass
     logical :: epa_recoil, epa_keep_energy
     integer :: epa_int_mode, ewa_int_mode
@@ -28104,12 +30192,45 @@ flavors (beam index, component index) for the hard process.
        isr_order  = var_list%get_ival (var_str ("isr_order"))
        isr_recoil = var_list%get_lval (var_str ("?isr_recoil"))
        isr_keep_energy = var_list%get_lval (var_str ("?isr_keep_energy"))
+       isr_legacy = var_list%get_lval (var_str ("?isr_legacy"))
        select type (data)
        type is (isr_data_t)
           call data%init &
                (model, pdg_in (i_beam(1)), isr_alpha, isr_q_max, &
-               isr_mass, isr_order, recoil = isr_recoil, keep_energy = &
-               isr_keep_energy)
+               isr_mass, isr_order, &
+               recoil = isr_recoil, &
+               keep_energy = isr_keep_energy, &
+               isr_legacy = isr_legacy)
+          call data%check ()
+          sf_prop%isr_eps(i_beam(1)) = data%get_eps ()
+       end select
+    case ("lpdf")
+       allocate (qedpdf_data_t :: data)
+       isr_alpha = &
+            var_list%get_rval (var_str ("isr_alpha"))
+       if (vanishes (isr_alpha)) then
+          isr_alpha = (var_list%get_rval (var_str ("ee"))) &
+               ** 2 / (4 * PI)
+       end if
+       isr_q_max = &
+            var_list%get_rval (var_str ("isr_q_max"))
+       if (vanishes (isr_q_max)) then
+          isr_q_max = sqrts
+       end if
+       isr_mass   = var_list%get_rval (var_str ("isr_mass"))
+       isr_order  = var_list%get_ival (var_str ("isr_order"))
+       isr_log_order = var_list%get_ival (var_str ("isr_log_order"))
+       isr_n = var_list%get_ival (var_str ("isr_nlep"))
+       isr_running = var_list%get_lval (var_str ("?isr_running_coupling"))
+       epdf_isr_mode = var_list%get_lval (var_str ("?epdf_isr_mode"))
+       isr_legacy = var_list%get_lval (var_str ("?isr_legacy"))
+       select type (data)
+       type is (qedpdf_data_t)
+          call data%init &
+               (model, pdg_in (i_beam(1)), isr_alpha, isr_q_max, &
+               isr_mass, order = isr_order, log_order = isr_log_order, &
+               n = isr_n, running = isr_running, &
+               isr_mode = epdf_isr_mode, isr_legacy = isr_legacy)
           call data%check ()
           sf_prop%isr_eps(i_beam(1)) = data%get_eps ()
        end select
@@ -28347,7 +30468,7 @@ parameter.
     case ("pdf_builtin","pdf_builtin_photon", &
           "lhapdf","lhapdf_photon")
        n = 1
-    case ("isr","epa","ewa")
+    case ("isr","epa","ewa", "lpdf")
        n = 1
     case ("circe1", "circe2")
        n = 2

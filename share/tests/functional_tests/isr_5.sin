@@ -22,6 +22,10 @@ iterations = 1:1000
 
 beams = e1, E1 => isr
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 seed = 0
 integrate (isr_5)
 

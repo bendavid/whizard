@@ -29,6 +29,10 @@ cuts = sqrts_hat > 200
 seed = 0
 integrate (circe1_4_p1) { iterations = 3:n:"g", 3:n }
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", "e+" => isr
 seed = 0
 integrate (circe1_4_p2) { iterations = 5:n:"g", 3:n }

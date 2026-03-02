@@ -18,6 +18,7 @@ SM.me =>  0.00000E+00
 isr_mass =  5.11000E-04
 isr_q_max =  2.00000E+00
 ?isr_recoil = false
+?isr_legacy = true
 epa_mass =  5.11000E-04
 epa_x_min =  1.00000E-02
 epa_q_max =  1.00000E+00

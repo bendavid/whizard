@@ -42,6 +42,9 @@ circe1_eps = 1e-5
 
 integrate (ewa_2_p1, ewa_2_p2) { iterations = 5:n:"g", 3:n }
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
 
 beams = "e-", "e+" => isr => ewa
 integrate (ewa_2_p3, ewa_2_p4) { iterations = 5:n:"g", 3:n }

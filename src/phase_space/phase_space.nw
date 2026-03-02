@@ -30598,7 +30598,15 @@ structure-function chain.
          "none, isr")
        allocate (single_mapping (1), source = [1])
        single_parameter = .true.
+    case ("lpdf, none", &
+         "none, lpdf")
+       allocate (single_mapping (1), source = [1])
+       single_parameter = .true.
     case ("isr, none => none, isr")
+       allocate (s_mapping (2), source = [1, 2])
+       power_mapping = .true.
+       power_mapping_eps = minval (sf_prop%isr_eps)
+    case ("lpdf, none => none, lpdf")
        allocate (s_mapping (2), source = [1, 2])
        power_mapping = .true.
        power_mapping_eps = minval (sf_prop%isr_eps)
@@ -30739,12 +30747,25 @@ structure-function chain.
        allocate (s_mapping (2), source = [2, 3])
        power_mapping = .true.
        power_mapping_eps = minval (sf_prop%isr_eps)
+    case ("circe2 => lpdf, none => none, lpdf", &
+       "gaussian => lpdf, none => none, lpdf", &
+       "beam_events => lpdf, none => none, lpdf")
+       allocate (s_mapping (2), source = [2, 3])
+       power_mapping = .true.
+       power_mapping_eps = minval (sf_prop%isr_eps)
     case ("circe2 => isr, none", &
          "circe2 => none, isr", &
          "gaussian => isr, none", &
          "gaussian => none, isr", &
          "beam_events => isr, none", &
          "beam_events => none, isr")
+       allocate (single_mapping (1), source = [2])
+    case ("circe2 => lpdf, none", &
+         "circe2 => none, lpdf", &
+         "gaussian => lpdf, none", &
+         "gaussian => none, lpdf", &
+         "beam_events => lpdf, none", &
+         "beam_events => none, lpdf")
        allocate (single_mapping (1), source = [2])
     case ("circe2 => epa, none => none, epa", &
          "gaussian => epa, none => none, epa", &

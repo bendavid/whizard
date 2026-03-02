@@ -23,6 +23,10 @@ iterations = 1:1000
 beams = e1, N1
 integrate (isr_1_1)
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, N1 => isr, none
 integrate (isr_1_1) { cuts = all 70 GeV < M < 90 GeV [e2, N2] }
 

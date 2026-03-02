@@ -25,6 +25,10 @@ $circe2_file = "ilc500.circe"
 $circe2_design = "ILC"
 ?circe2_polarized = false
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 !!! Tests should be run single-threaded
 openmp_num_threads = 1
 

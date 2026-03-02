@@ -3,6 +3,7 @@
 ?integration_timer = false
 seed = 0
 | Process library 'hepmc2_8_lib': recorded process 'hepmc2_8_p'
+?isr_legacy = true
 sqrts =  1.000000000000E+02
 openmp_num_threads = 1
 n_events = 1

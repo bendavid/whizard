@@ -33,6 +33,10 @@ cuts =
 
 compile
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => circe2 => isr,isr  
 
 integrate (resonances_15_p) { iterations = 3:10000 }

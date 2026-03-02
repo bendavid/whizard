@@ -10,6 +10,7 @@ sqrts =  5.000000000000E+02
 $circe2_file = "ilc500.circe"
 $circe2_design = "ILC"
 ?circe2_polarized = false
+?isr_legacy = true
 openmp_num_threads = 1
 | Integrate: current process library needs compilation
 | Process library 'resonances_3_lib': compiling ...

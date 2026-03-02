@@ -1540,6 +1540,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call sf_ewa_test (u, results)
 @
+\subsubsection{SF ISR}
+<<Main: use tests>>=
+  use sf_qedpdf_ut, only: sf_qedpdf_test
+<<Main: test cases>>=
+  case ("sf_lpdf")
+     call sf_qedpdf_test (u, results)
+<<Main: all tests>>=
+  call sf_qedpdf_test (u, results)
+@
 \subsubsection{SF CIRCE1}
 <<Main: use tests>>=
   use sf_circe1_ut, only: sf_circe1_test

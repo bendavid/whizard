@@ -20,6 +20,7 @@ $integration_method = "vamp"
 sqrts =  1.00000E+03
 openmp_num_threads = 1
 [user variable] n = 1000
+?isr_legacy = true
 $circe1_acc = "TESLA"
 circe1_chat = 2
 circe1_eps =  1.00000E-05

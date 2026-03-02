@@ -26,6 +26,10 @@ openmp_num_threads = 1
 
 int n = 1000
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", "e+" => circe1 => isr => ewa
 $circe1_acc = "TESLA"
 circe1_chat = 2

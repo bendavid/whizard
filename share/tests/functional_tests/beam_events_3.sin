@@ -28,6 +28,10 @@ int n = 1000
 
 cuts = sqrts_hat > 50
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", "e+" => isr
 integrate (beam_events_3_p1) { iterations = 3:n:"wg", 3:n }
 

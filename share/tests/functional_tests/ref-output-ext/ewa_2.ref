@@ -133,6 +133,7 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    8       3000     5.014E-02   8.27E-04    1.65    0.90    10.3    3.99   3
 |=============================================================================|
+?isr_legacy = true
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initializing integration for process ewa_2_p3:

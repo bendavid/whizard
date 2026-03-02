@@ -36,6 +36,10 @@ integrate (ep_1_p1) { iterations = 5:n:"g", 3:n }
 beams = p, "e-" => pdf_builtin, none
 integrate (ep_1_q1) { iterations = 5:n:"g", 3:n }
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", p => isr, pdf_builtin
 integrate (ep_1_p2) { iterations = 5:n:"g", 3:n }
 beams = p, "e-" => pdf_builtin, isr

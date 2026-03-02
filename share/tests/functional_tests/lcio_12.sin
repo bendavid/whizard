@@ -23,7 +23,11 @@ process lcio_12_p =  e1,E1 => e2,E2
 
 compile
 
-beams = e1, E1 => circe2 => isr,isr  
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
+beams = e1, E1 => circe2 => isr,isr
 
 cuts = sqrts_hat > sqrts * 0.8
 

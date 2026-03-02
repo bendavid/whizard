@@ -18,6 +18,7 @@ openmp_num_threads = 1
 SM.me =>  0.00000E+00
 isr_mass =  5.11000E-04
 ?isr_recoil = false
+?isr_legacy = true
 $circe2_file = "ilc500.circe"
 $circe2_design = "ILC"
 ?circe2_polarized = false

@@ -22,6 +22,11 @@ $integration_method = "vamp"
 iterations = 3:1000:"g", 3:1000
 sqrts = 500
 cuts = all Pt > 100 [u:ubar]
+
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = "e-", "e+" => circe1 => isr
 
 !!! Tests should be run single-threaded 

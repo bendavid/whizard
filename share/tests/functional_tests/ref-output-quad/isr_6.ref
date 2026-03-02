@@ -16,6 +16,7 @@
 sqrts =  1.00000E+01
 openmp_num_threads = 1
 SM.me =>  5.11111E-04
+?isr_legacy = true
 seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1

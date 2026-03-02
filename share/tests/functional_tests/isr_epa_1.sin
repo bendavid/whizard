@@ -26,6 +26,9 @@ me = 0
 isr_mass = 511 keV
 isr_q_max = 2 GeV
 ?isr_recoil = false
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
 
 epa_mass = 511 keV
 epa_x_min = 0.01

@@ -1,4 +1,4 @@
-%% -*- ess-noweb-wp-code-mode: f90-mode; noweb-wp-code-mode: f90-mode; -*-
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; noweb-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: QED ISR structure functions ("PDFs")
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{QED Parton Distribution Functions}
@@ -194,6 +194,7 @@ The basic type for lepton beam (QED) structure functions:
      integer :: log_order
      integer :: nlep
      logical :: running
+     logical :: legacy_compatibility
    contains
    <<Electron PDFs: QED PDF: TBP>>
   end type qed_pdf_t
@@ -286,17 +287,21 @@ The basic type for lepton beam (QED) structure functions:
   procedure :: init => qed_pdf_init
 <<Electron PDFs: sub interfaces>>=
     module subroutine qed_pdf_init &
-         (qed_pdf, mass, alpha, charge, q_max, order, log_order, nlep)
+         (qed_pdf, mass, alpha, charge, q_max, order, log_order, nlep, &
+           legacy_compatibility)
       class(qed_pdf_t), intent(out) :: qed_pdf
       real(default), intent(in) :: mass, alpha, q_max, charge
       integer, intent(in) :: order, log_order, nlep
+      logical, intent(in), optional :: legacy_compatibility
     end subroutine qed_pdf_init
 <<Electron PDFs: procedures>>=
   module subroutine qed_pdf_init &
-       (qed_pdf, mass, alpha, charge, q_max, order, log_order, nlep)
+       (qed_pdf, mass, alpha, charge, q_max, order, log_order, nlep, &
+         legacy_compatibility)
     class(qed_pdf_t), intent(out) :: qed_pdf
     real(default), intent(in) :: mass, alpha, q_max, charge
     integer, intent(in) :: order, log_order, nlep
+    logical, intent(in), optional :: legacy_compatibility
     qed_pdf%mass = real(mass,kind=wp)
     qed_pdf%q_max = real(q_max,kind=wp)
     qed_pdf%alpha = real(alpha,kind=wp)
@@ -304,9 +309,13 @@ The basic type for lepton beam (QED) structure functions:
     qed_pdf%log_order = log_order
     qed_pdf%nlep = nlep
     qed_pdf%running = .false.
-    qed_pdf%eps = alpha/pi * real(charge,kind=wp)**2 &
-         * (2._wp * log (q_max / mass) - 1._wp)
-  end subroutine qed_pdf_init
+    if (present (legacy_compatibility)) then
+      qed_pdf%legacy_compatibility = legacy_compatibility
+    else
+      qed_pdf%legacy_compatibility = .false.
+    end if
+    qed_pdf%eps = qed_pdf%get_epsilon (qed_pdf%q_max, qed_pdf%legacy_compatibility)
+end subroutine qed_pdf_init
 
 @ %def qed_pdf_init
 @ Write routine.
@@ -333,11 +342,12 @@ The basic type for lepton beam (QED) structure functions:
     write (u, "(5x,A," // FMT_12 // ")") "Mass      = ", qed_pdf%mass
     write (u, "(5x,A," // FMT_12 // ")") "q_max     = ", qed_pdf%q_max
     write (u, "(5x,A," // FMT_12 // ")") "alpha     = ", qed_pdf%alpha
+    write (u, "(5x,A," // FMT_12 // ")") "epsilon   = ", qed_pdf%eps
     write (u, "(5x,A,I0)") "Order     = ", qed_pdf%order
     write (u, "(5x,A,I0)") "Log. ord. = ", qed_pdf%log_order
-    write (u, "(5x,A,I0)") "# leptons = ", qed_pdf%nlep
-    write (u, "(5x,A,I0)") "Run. Coupling = ", qed_pdf%running
-    write (u, "(5x,A," // FMT_12 // ")") "epsilon   = ", qed_pdf%eps
+    write (u, "(5x,A,I0)") "leptons   = ", qed_pdf%nlep
+    write (u, "(5x,A,I0)") "Run. Coupling        = ", qed_pdf%running
+    write (u, "(5x,A,I0)") "legacy_compatibility = ", qed_pdf%legacy_compatibility
     if (show_qed) then
        call qed_pdf%aqed%write (u)
     end if
@@ -363,17 +373,29 @@ The basic type for lepton beam (QED) structure functions:
 @ Calculate the actual value depending on the order and a possible
 mapping parameter.
 <<Electron PDFs: QED PDF: TBP>>=
-  procedure :: evolve_qed_pdf => qed_pdf_evolve_qed_pdf
+  procedure :: evolve_qed_pdf_isr => qed_pdf_evolve_qed_pdf_isr
+  procedure :: evolve_qed_pdf_lpdf => qed_pdf_evolve_qed_pdf_lpdf
 <<Electron PDFs: sub interfaces>>=
-    module subroutine qed_pdf_evolve_qed_pdf (qed_pdf, x, xb, rb, ff)
+    module subroutine qed_pdf_evolve_qed_pdf_isr &
+         (qed_pdf, x, xb, rb, ff, isr_legacy)
       class(qed_pdf_t), intent(inout) :: qed_pdf
       real(default), intent(in) :: x, xb, rb
+      logical, intent(in), optional :: isr_legacy
       real(default), intent(inout) :: ff
-    end subroutine qed_pdf_evolve_qed_pdf
+    end subroutine qed_pdf_evolve_qed_pdf_isr
+    module subroutine qed_pdf_evolve_qed_pdf_lpdf &
+         (qed_pdf, x, xb, rb, scale, ff, mask)
+      class(qed_pdf_t), intent(inout) :: qed_pdf
+      real(default), intent(in) :: x, xb, rb, scale
+      real(default), intent(inout), dimension(-9:10) :: ff
+      logical, intent(inout), dimension(-9:10) :: mask
+    end subroutine qed_pdf_evolve_qed_pdf_lpdf
 <<Electron PDFs: procedures>>=
-  module subroutine qed_pdf_evolve_qed_pdf (qed_pdf, x, xb, rb, ff)
+  module subroutine qed_pdf_evolve_qed_pdf_isr &
+       (qed_pdf, x, xb, rb, ff, isr_legacy)
     class(qed_pdf_t), intent(inout) :: qed_pdf
     real(default), intent(in) :: x, xb, rb
+    logical, intent(in), optional :: isr_legacy
     real(default), intent(inout) :: ff
     real(default), parameter :: &
          & xmin = 0.00714053329734592839549879772019_default
@@ -381,37 +403,89 @@ mapping parameter.
          g1 = 3._default / 4._default, &
          g2 = (27 - 8 * pi2) / 96._default, &
          g3 = (27 - 24 * pi2 + 128 * zeta3) / 384._default
-    real(default) :: x_2, log_x, log_xb
-    if (ff > 0 .and. qed_pdf%order > 0) then
-       ff = ff * (1 + g1 * qed_pdf%eps)
-       x_2 = x * x
-       if (rb > 0)  ff = ff * (1 - (1-x_2) / (2 * rb))
-       if (qed_pdf%order > 1) then
-          ff = ff * (1 + g2 * qed_pdf%eps**2)
-          if (rb > 0 .and. xb > 0 .and. x > xmin) then
-             log_x  = log_prec (x, xb)
-             log_xb = log_prec (xb, x)
-             ff = ff * (1 - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * &
-                  log_xb + 5 + x)) / (8 * rb) * qed_pdf%eps)
-          end if
-          if (qed_pdf%order > 2) then
-             ff = ff * (1 + g3 * qed_pdf%eps**3)
-             if (rb > 0 .and. xb > 0 .and. x > xmin) then
-                ff = ff * (1 - ((1 + x) * xb &
-                     * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi2) &
-                     + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
-                     + 6 * (x + 5) * xb * log_xb &
-                     + 12 * (1 + x_2) * log_x * log_xb &
-                     - (1 + 7 * x_2) * log_x**2 / 2 &
-                     + (39 - 24 * x - 15 * x_2) / 4) &
-                     / (48 * rb) * qed_pdf%eps**2)
-             end if
-          end if
-       end if
+    real(default) :: x_2, log_x, log_xb, f00
+    logical :: lc = .false.
+    if (present (isr_legacy)) then
+      lc = isr_legacy
     end if
-  end subroutine qed_pdf_evolve_qed_pdf
+    if (.not. lc) then ! Conventional 'sum' form
+      f00 = ff
+      ff = 1._default
+      if (ff > 0 .and. qed_pdf%order > 0) then
+         ff = ff + g1 * qed_pdf%eps
+         x_2 = x * x
+         if (rb > 0)  ff = ff - (1-x_2) / (2 * rb)
+         if (qed_pdf%order > 1) then
+            ff = ff + g2 * qed_pdf%eps**2
+            if (rb > 0 .and. xb > 0 .and. x > xmin) then
+               log_x  = log_prec (x, xb)
+               log_xb = log_prec (xb, x)
+               ff = ff - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * &
+                    log_xb + 5 + x)) / (8 * rb) * qed_pdf%eps
+            end if
+            if (qed_pdf%order > 2) then
+               ff = ff + g3 * qed_pdf%eps**3
+               if (rb > 0 .and. xb > 0 .and. x > xmin) then
+                  ff = ff - ((1 + x) * xb &
+                       * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi2) &
+                       + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
+                       + 6 * (x + 5) * xb * log_xb &
+                       + 12 * (1 + x_2) * log_x * log_xb &
+                       - (1 + 7 * x_2) * log_x**2 / 2 &
+                       + (39 - 24 * x - 15 * x_2) / 4) &
+                       / (48 * rb) * qed_pdf%eps**2
+               end if
+            end if
+         end if
+      end if
+      ff = ff * f00
+    else ! Old ISR 'Product' form for legacy compatibility
+      if (ff > 0 .and. qed_pdf%order > 0) then
+         ff = ff * (1 + g1 * qed_pdf%eps)
+         x_2 = x * x
+         if (rb > 0)  ff = ff * (1 - (1-x_2) / (2 * rb))
+         if (qed_pdf%order > 1) then
+            ff = ff * (1 + g2 * qed_pdf%eps**2)
+            if (rb > 0 .and. xb > 0 .and. x > xmin) then
+               log_x  = log_prec (x, xb)
+               log_xb = log_prec (xb, x)
+               ff = ff * (1 - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * &
+                    log_xb + 5 + x)) / (8 * rb) * qed_pdf%eps)
+            end if
+            if (qed_pdf%order > 2) then
+               ff = ff * (1 + g3 * qed_pdf%eps**3)
+               if (rb > 0 .and. xb > 0 .and. x > xmin) then
+                  ff = ff * (1 - ((1 + x) * xb &
+                       * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi2) &
+                       + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
+                       + 6 * (x + 5) * xb * log_xb &
+                       + 12 * (1 + x_2) * log_x * log_xb &
+                       - (1 + 7 * x_2) * log_x**2 / 2 &
+                       + (39 - 24 * x - 15 * x_2) / 4) &
+                       / (48 * rb) * qed_pdf%eps**2)
+               end if
+            end if
+         end if
+      end if
+    end if
+  end subroutine qed_pdf_evolve_qed_pdf_isr
 
-@ %def qed_pdf_evolve_qed_pdf
+  module subroutine qed_pdf_evolve_qed_pdf_lpdf &
+       (qed_pdf, x, xb, rb, scale, ff, mask)
+    class(qed_pdf_t), intent(inout) :: qed_pdf
+    real(default), intent(in) :: x, xb, rb, scale
+    real(default), intent(inout), dimension(-9:10) :: ff
+    logical, intent(inout), dimension(-9:10) :: mask
+    ff = 0
+    if (mask (0)) then
+       ff(0) = elec_pdf (qed_pdf, EPDF_G, x, xb, scale)
+    end if
+    if (mask (1)) then
+       ff(1) = elec_pdf (qed_pdf, EPDF_ELE, x, xb, scale)
+    end if
+  end subroutine qed_pdf_evolve_qed_pdf_lpdf
+
+@ %def qed_pdf_evolve_qed_pdf_isr qed_pdf_evolve_qed_pdf_lpdf
 @
 <<Electron PDFs: QED PDF: TBP>>=
   procedure :: allocate_aqed => qed_pdf_allocate_aqed
@@ -442,27 +516,101 @@ mapping parameter.
 
 @ %def qed_pdf_allocate_qed
 @ Part for the singlet- and non-singlet contributions of the PDF.
+<<Electron PDFs: QED PDF: TBP>>=
+  procedure :: get_epsilon => qed_pdf_get_epsilon
+<<Electron PDFs: sub interfaces>>=
+    module function qed_pdf_get_epsilon (epdf, scale, legacy) result (eps)
+      class(qed_pdf_t), intent(in) :: epdf
+      real(wp), intent(in) :: scale
+      logical, intent(in) :: legacy
+      real(wp) :: eps
+    end function qed_pdf_get_epsilon
+<<Electron PDFs: procedures>>=
+  module function qed_pdf_get_epsilon (epdf, scale, legacy) result (eps)
+    class(qed_pdf_t), intent(in) :: epdf
+    real(wp), intent(in) :: scale
+    logical, intent(in) :: legacy
+    real(wp) :: eps
+    real(wp) :: eta0, b0, b01, ex0, xi0, al_2pi
+    integer :: nlep, nf
+    eps = 0._wp
+    ! Parameter changes to the ePDF to force the same analytical
+    ! expressions as in the original ISR code
+    if (legacy) then
+       eps = epdf%alpha/pi * (2._wp*log(scale/epdf%mass) - 1._wp)
+       return
+    end if
+    if (allocated (epdf%q_in)) then
+       eta0 = epdf%alpha/pi * 2._wp*log(scale/epdf%q_in)
+    else
+       eta0 = epdf%alpha/pi * 2._wp*log(scale/epdf%mass)
+    end if
+    if (epdf%running) then
+       xi0 = 2._wp * t_alpha (epdf, scale)
+    else
+       xi0 = eta0
+    end if
+    if (epdf%log_order == 0) then  ! LL
+       eps = xi0
+    elseif (epdf%log_order == 1) then  ! NLL
+       if (epdf%running) then
+          select type (aqed => epdf%aqed)
+          type is (alpha_qed_from_scale_t)
+             nf = aqed%nf
+             nlep = aqed%nlep
+             al_2pi = aqed%get(scale) / 2._wp / pi
+          type is (alpha_qed_fixed_t)
+             call msg_fatal &
+                  ("Object has to be called with running alpha.")
+          end select
+          b0  = coeffqed_b0(nf,nlep)
+          b01 = coeffqed_b1(nf,nlep)/b0
+          ex0 = al_2pi*(1._wp - exp(-b0*xi0))/b0
+          eps = xi0 - 2._wp*ex0*(5._wp/9._wp*real(epdf%nlep,wp) + b01)
+       else
+          nlep = epdf%nlep
+          al_2pi = epdf%alpha / 2._wp / pi
+          eps = xi0*(1._wp - 10._wp/9._wp*al_2pi*real(nlep,wp))
+       end if
+       ! This factor boosts the integration efficiency
+       ! but is not understood exactly.
+       eps = eps * 2._default/3._default
+    else
+       call msg_fatal ("QED PDF: log_order must be 0 or 1.")
+    end if
+  end function qed_pdf_get_epsilon
+
+@ %def qed_pdf_get_epsilon
+@
 <<Electron PDFs: public>>=
   public :: set_qed_pdf_parameters
 <<Electron PDFs: sub interfaces>>=
     module subroutine set_qed_pdf_parameters &
-        (epdf, scale, alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
+        (epdf, scale, alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order, &
+         legacy_compatibility)
       type(qed_pdf_t), intent(in) :: epdf
       real(wp), intent(in) :: scale
       logical, intent(out) :: running
       real(wp), intent(out) :: ln0, eta0, p, alpha, al0_2pi, al_2pi, n, run
       integer, intent(out) :: nlep, nf
+      logical, intent(in), optional :: legacy_compatibility
       logical, dimension(6), intent(out) :: order
     end subroutine set_qed_pdf_parameters
 <<Electron PDFs: procedures>>=
   module subroutine set_qed_pdf_parameters &
-      (epdf, scale, alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
+      (epdf, scale, alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order, &
+       legacy_compatibility)
     type(qed_pdf_t), intent(in) :: epdf
     real(wp), intent(in) :: scale
     real(wp), intent(out) :: ln0, eta0, p, alpha, al0_2pi, al_2pi, n, run
     logical, intent(out) :: running
     integer, intent(out) :: nlep, nf
+    logical, intent(in), optional :: legacy_compatibility
     logical, dimension(6), intent(out) :: order
+    logical :: lc = .false.
+    if (present(legacy_compatibility)) then
+      lc = legacy_compatibility
+    end if
     order = .false.
     running=epdf%running
     alpha=epdf%alpha
@@ -474,6 +622,14 @@ mapping parameter.
        ln0 = 0._wp
        eta0 = alpha/pi * 2._wp*log(scale/epdf%mass)
     end if
+    ! Parameter changes to the ePDF to force the same analytical
+    ! expressions as in the original ISR code
+    ! Note that this force fully overrides the running alpha.
+    if (lc) then
+       ln0 = 0._wp
+       eta0 = alpha/pi * (2._wp*log(scale/epdf%mass) - 1._wp)
+       running = .false.
+    end if
     if (running) then
        p = t_alpha (epdf, scale)
        run = 1._wp
@@ -483,12 +639,31 @@ mapping parameter.
     end if
     select case (epdf%log_order)
     case (EPDF_LL)
-       order(1:4) = .true.
+       if (epdf%order .ge. 1) then
+          order(1) = .true.
+       end if
+       if (epdf%order .ge. 2) then
+          order(2) = .true.
+       end if
+       if (epdf%order .ge. 3) then
+          order(3) = .true.
+       end if
        nlep = epdf%nlep
        nf = 0
-       al_2pi = 0._wp
+       al_2pi = al0_2pi
     case (EPDF_NLL)
-       order(1:6) = .true.
+       if (epdf%order .ge. 1) then
+          order(1) = .true.
+          order(4) = .true.
+       end if
+       if (epdf%order .ge. 2) then
+          order(2) = .true.
+          order(5) = .true.
+       end if
+       if (epdf%order .ge. 3) then
+          order(3) = .true.
+          order(6) = .true.
+       end if
        if (running) then
           select type (aqed => epdf%aqed)
           type is (alpha_qed_from_scale_t)
@@ -504,6 +679,11 @@ mapping parameter.
           al_2pi = al0_2pi
        end if
     end select
+    ! Parameter changes to the ePDF to force the same analytical
+    ! expressions as in the original ISR code
+    if (lc) then
+       nlep = 0
+    end if
     n = real(nlep, kind=wp)
   end subroutine set_qed_pdf_parameters
 
@@ -513,33 +693,42 @@ mapping parameter.
   public :: elec_asym
 <<Electron PDFs: sub interfaces>>=
     module pure function elec_asym &
-        (xb, nlep, nf, n, p, al0_2pi, al_2pi, order, running) &
-        result (elec_as)
+        (xb, nlep, nf, n, p, al0_2pi, al_2pi, order, running, &
+        legacy_compatibility) result (elec_as)
       real(wp), dimension(7,7,2) :: elec_as
       real(wp), intent(in) :: xb
       real(wp), intent(in) :: n, p, al0_2pi, al_2pi
       integer, intent(in) :: nf, nlep
       logical, intent(in) :: running
       logical, intent(in), dimension(6) :: order
+      logical, intent(in), optional :: legacy_compatibility
     end function elec_asym
 <<Electron PDFs: procedures>>=
   module pure function elec_asym &
-      (xb, nlep, nf, n, p, al0_2pi, al_2pi, order, running) &
-      result (elec_as)
+      (xb, nlep, nf, n, p, al0_2pi, al_2pi, order, running, &
+      legacy_compatibility) result (elec_as)
     real(wp), dimension(7,7,2) :: elec_as
     real(wp), intent(in) :: xb
     real(wp), intent(in) :: n, p, al0_2pi, al_2pi
     integer, intent(in) :: nf, nlep
     logical, intent(in) :: running
     logical, intent(in), dimension(6) :: order
+    logical, intent(in), optional :: legacy_compatibility
     real(wp), parameter :: lambda0 = 3._wp/4._wp
     real(wp) :: lambda1, xi0, xi1, xihat1, fac, ex0
     real(wp) :: ca, cb, b0, b01
+    logical :: lc
+    if (present(legacy_compatibility)) then
+      lc = legacy_compatibility
+    else
+      lc = .false.
+    end if
     elec_as=0.0_wp
     xi0 = 2._wp*p
-    if ( order(5) .eqv. .false. ) then
-       elec_as(7,4,1) = exp((lambda0 - eulerc)*xi0) / gamma (xi0) * &
-            xb**(xi0 - 1._wp)
+    if ( order(4) .eqv. .false. ) then
+       ! Legacy compatibility ISR uses an expanded prefactor
+       fac = prefactor(xi0, lambda0, order, lc)
+       elec_as(7,4,1) = fac * xb**(xi0 - 1._wp)
     else
        lambda1 = 3._wp/16._wp - pi2/4._wp + 3._wp*zeta3 - &
             n*(3._wp + 4._wp*pi2)/36._wp
@@ -562,6 +751,35 @@ mapping parameter.
        elec_as(7,5,1) = 2._wp*ca*elec_as(7,5,2)
        elec_as(7,6,1) = -elec_as(7,5,2)
     end if
+
+    contains
+      pure function prefactor(xi, lambda, order, expand) result (fac)
+        real(wp), intent(in) :: xi
+        real(wp), intent(in) :: lambda
+        logical, intent(in), dimension(6) :: order
+        logical, intent(in) :: expand
+        real(wp) :: fac
+        real(wp), parameter :: &
+             g0 = 1._wp, &
+             g1 = 3._wp / 4._wp, &
+             g2 = (27 - 8 * pi2) / 96._wp, &
+             g3 = (27 - 24 * pi2 + 128 * zeta3) / 384._wp
+        if (expand) then
+          fac = g0
+          if (order(1) .eqv. .true.) then
+            fac = fac + g1*xi
+          end if
+          if (order(2) .eqv. .true.) then
+            fac = fac + g2*xi**2
+          end if
+          if (order(3) .eqv. .true.) then
+            fac = fac + g3*xi**3
+          end if
+          fac = xi*fac
+        else
+          fac = exp((lambda - eulerc)*xi) / gamma(xi)
+        end if
+      end function prefactor
   end function elec_asym
 
 @ %def elec_asym
@@ -591,7 +809,7 @@ mapping parameter.
     real(wp) :: d1, d2, cc, k0
     phot_as = 0.0_wp
     xi0 = 2._wp*p
-    if (order(5) .eqv. .false. ) then
+    if (order(4) .eqv. .false. ) then
        den = -2._wp/3._wp*n - 3._wp/2._wp - 2._wp*log_xb
        mf10 = 1._wp - 2._wp/3._wp*pi2/den**2
        mf1k = 1._wp - xi0*(pi2/3._wp - 2._wp*zeta3*xi0)/den - &
@@ -637,29 +855,38 @@ mapping parameter.
 <<Electron PDFs: sub interfaces>>=
     module function recasym &
          (flv, x, xb, log_xb, nlep, nf, n, p, &
-         al0_2pi, al_2pi, order, running) result (jll_nll)
+         al0_2pi, al_2pi, order, running, &
+         legacy_compatibility) result (jll_nll)
       integer, intent(in) :: flv, nlep, nf
       real(wp), intent(in) :: x, xb, log_xb
       real(wp), intent(in) :: n, p, al0_2pi, al_2pi
       logical, intent(in) :: running
       logical, dimension(6), intent(in) :: order
+      logical, intent(in), optional :: legacy_compatibility
       real(wp), dimension(7,7,2) :: jll_nll
     end function recasym
 <<Electron PDFs: procedures>>=
   module function recasym &
        (flv, x, xb, log_xb, nlep, nf, n, p, &
-       al0_2pi, al_2pi, order, running) result (jll_nll)
+       al0_2pi, al_2pi, order, running, &
+       legacy_compatibility) result (jll_nll)
     integer, intent(in) :: flv, nlep, nf
     real(wp), intent(in) :: x, xb, log_xb
     real(wp), intent(in) :: n, p, al0_2pi, al_2pi
     logical, intent(in) :: running
+    logical, intent(in), optional :: legacy_compatibility
     logical, dimension(6), intent(in) :: order
     real(wp), dimension(7,7,2) :: jll_nll
+    logical :: lc = .false.
+    if (present(legacy_compatibility)) then
+       lc = legacy_compatibility
+    endif
     jll_nll = 0.0
     select case (flv)
     case (EPDF_ELE,EPDF_S,EPDF_NS)
       jll_nll = elec_asym &
-         (xb, nlep, nf, n, p, al0_2pi, al_2pi, order, running)
+         (xb, nlep, nf, n, p, al0_2pi, al_2pi, order, running, &
+         legacy_compatibility=lc)
     case (EPDF_POS)
       jll_nll = 0._wp
     case (EPDF_G)
@@ -855,25 +1082,24 @@ all of them.
       jll_nll(4,5,1)=-4._wp
     end if
     if (order(5)) then
-      jll_nll(5,4,1)=1._wp- &
-        4._wp*(5._wp/9._wp*n - pi2/3._wp - (n/3._wp-3._wp/4._wp)*run)
-      jll_nll(5,4,2)=2._wp*(3._wp-2._wp/3._wp*n*run)
-      jll_nll(5,5,1)=-2._wp*(7._wp-4._wp/3._wp*n*run)
-      jll_nll(5,5,2)=8._wp
-      jll_nll(5,6,1)=-12._wp
+      jll_nll(5,4,1) = (3._wp*(4._wp*pi2 + 3._wp*(1._wp - 3._wp*run)) - &
+        4._wp*n*(5._wp - 3._wp*run))/9._wp
+      jll_nll(5,4,2) = (2._wp*(9._wp - 2._wp*n*run))/3._wp
+      jll_nll(5,5,1) = (-2._wp*(21._wp - 4._wp*n*run))/3._wp
+      jll_nll(5,5,2) = 8._wp
+      jll_nll(5,6,1) = -12._wp
     end if
     if (order(6)) then
-      jll_nll(6,4,1)=2._wp*(4.5_wp - 20._wp*zeta3 + 3._wp*pi2 - &
-      n*(11._wp+ (4._wp/3._wp)*pi2)/3._wp - &
-      2._wp*(4._wp + 4._wp/9._wp*pi2 + 2._wp/9._wp*n**2 - 1._wp/27._wp*n)*run)
-      jll_nll(6,4,2)= 2._wp*(6.75_wp - 2._wp*pi2 - &
-         4._wp*(1._wp - n/3._wp)*n*run)
-      jll_nll(6,5,1)=-2._wp*(8.5_wp + (80._wp/9._wp)*n - (20._wp/3._wp)*pi2 + &
-        4._wp*(3._wp - 7._wp/3._wp*n + 2._wp/9._wp*n**2)*run)
-      jll_nll(6,5,2)=4._wp*(9._wp - 8._wp/3._wp*n*run)
-      jll_nll(6,6,1)=-12._wp*(5._wp - 4._wp/3._wp*n*run)
-      jll_nll(6,6,2)=24._wp
-      jll_nll(6,7,1)=-32._wp
+      jll_nll(6,4,1)=(2._wp*(-((243._wp - 8._wp*n**2)*run) + &
+        3._wp*(n*(-4._wp*pi2 - 3._wp*(11._wp - run)) + pi2*(27._wp - 8._wp*n*run))) + &
+        27._wp*(9._wp - 40._wp*zeta3))/27._wp
+      jll_nll(6,4,2) = (9._wp*(27._wp - 8._wp*pi2) - 16._wp*(9._wp - n)*n*run)/18._wp
+      jll_nll(6,5,1) = -1._wp/9._wp*(3._wp*(51._wp - 40._wp*pi2) + 8._wp*(n*(20._wp - 21._wp*run) + &
+        (27._wp + 2._wp*n**2)*run))
+      jll_nll(6,5,2) = (4._wp*(27._wp - 8._wp*n*run))/3._wp
+      jll_nll(6,6,1) = (-4._wp*(15._wp - 4._wp*n*run))
+      jll_nll(6,6,2) = 24._wp
+      jll_nll(6,7,1) = -32._wp
     end if
     jll_nll = jll_nll/xb
   end subroutine elecbar_asym_p
@@ -911,24 +1137,25 @@ all of them.
       jll_nll(4,4,2)=1._wp
     end if
     if (order(5)) then
-      jll_nll(5,4,1)=-4._wp - 26._wp/9._wp*n + 2._wp*(n/3._wp - 3._wp/4._wp)*run
-      jll_nll(5,4,2)=3._wp/2._wp - 2._wp/3._wp*n - 2._wp/3._wp*n*run
-      jll_nll(5,5,1)=-7._wp - 4._wp/3._wp*n
-      jll_nll(5,5,2)=2._wp
-      jll_nll(5,6,1)=-3._wp
+      jll_nll(5,4,1) = (-4._wp*n*(13._wp - 3._wp*run) - &
+        9._wp*(8._wp + 3._wp*run))/18._wp
+      jll_nll(5,4,2) = (9._wp - 4._wp*n*(1._wp + run))/6._wp
+      jll_nll(5,5,1) = (-21._wp - 4._wp*n)/3._wp
+      jll_nll(5,5,2) = 2._wp
+      jll_nll(5,6,1) = -3._wp
     end if
     if (order(6)) then
-      jll_nll(6,4,1)= -5.625_wp + 11._wp/6._wp*pi2 - 6._wp*zeta3 + &
-         (2._wp/9._wp*pi2 - 23._wp/6._wp)*n + 52._wp * n**2/27._wp + &
-         (13._wp/3._wp*n - 9._wp/2._wp + 28._wp/27._wp*n**2)*run
-      jll_nll(6,4,2)=2.25_wp - 2._wp/3._wp*pi2 - &
-         n + 4._wp/9._wp*n**2 + 2._wp*(8._wp/9._wp*n - 1._wp)*n*run
-      jll_nll(6,5,1)=-18.5_wp + 2._wp*pi2 + 8._wp/9._wp*n**2 - 20._wp/3._wp*n + &
-         2._wp*(3._wp*n - 3._wp + 4._wp/9._wp*n**2)*run
-      jll_nll(6,5,2)=2._wp*(3._wp - 2._wp*n/3._wp - 4._wp/3._wp*n*run)
-      jll_nll(6,6,1)=-18.5_wp - 2._wp/3._wp*n + 10._wp/3._wp*n*run
-      jll_nll(6,6,2)=4._wp
-      jll_nll(6,7,1)=-6._wp
+      jll_nll(6,4,1)=(4._wp*n*(8._wp*n*(13._wp + 7._wp*run) - &
+        3._wp*(69._wp - 2._wp*(2._wp*pi2 + 39._wp*run))) - &
+        9._wp*(135._wp - 4._wp*(11._wp*pi2 + 9._wp*(-3._wp*run - 4._wp*zeta3))))/216._wp
+      jll_nll(6,5,1)=(-9._wp*(37._wp - 4._wp*(pi2 - 3._wp*run)) + &
+        4._wp*n*(-3._wp*(10._wp - 9._wp*run) + 4._wp*n*(1._wp + run)))/18._wp
+      jll_nll(6, 6, 1) = (-111._wp - 4._wp*n*(1._wp - 5._wp*run))/6._wp
+      jll_nll(6, 7, 1) = -6._wp
+      jll_nll(6, 4, 2) = (3._wp*(27._wp - 8._wp*pi2) + &
+        4._wp*n*(-9._wp*(1._wp + 2._wp*run) + 4._wp*n*(1._wp + 3._wp*run)))/36._wp
+      jll_nll(6, 5, 2) = (2._wp*(9._wp - 2._wp*n*(1._wp + 2._wp*run)))/3._wp
+      jll_nll(6, 6, 2) = 4._wp
     end if
   end subroutine photbar_asym_p
 
@@ -995,8 +1222,9 @@ all of them.
     real(wp), intent(in) :: n, run
     logical, dimension(6), intent(in) :: order
     real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     jll_nll = 0._wp
-    if (x .le. 0.1e-5_wp) then
+    if (x .le. xasym) then
       if (order(1)) then
         jll_nll(1,4,1) = 1._wp
       end if
@@ -1024,7 +1252,7 @@ all of them.
         jll_nll(6,4,2) = (3._wp*(27._wp - 8._wp*pi2) + &
           4._wp*n*(-9._wp*(1._wp + 2._wp*run) + 4._wp*n*(1._wp + 3._wp*run)))/36._wp
       end if
-    elseif (xb .le. 1.0e-7_wp) then
+    elseif (xb .le. xbasym) then
       if (order(1)) then
         jll_nll(1,4,1) = 1._wp
       end if
@@ -1114,8 +1342,9 @@ all of them.
     real(wp), intent(in) :: n, run
     logical, dimension(6), intent(in) :: order
     real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     jll_nll = 0._wp
-    if (x .le. 0.1e-5_wp) then
+    if (x .le. xasym) then
       if (order(1)) then
         jll_nll(1,4,1) = 2._wp*x
       end if
@@ -1138,7 +1367,7 @@ all of them.
           2._wp*n*(22._wp - (15._wp - 4._wp*n)*run))/9._wp
         jll_nll(6,4,2) = (2._wp*(27._wp - 8._wp*n*run))/3._wp
       end if
-    elseif (xb .le. 1.0e-7_wp) then
+    elseif (xb .le. xbasym) then
       if (order(1)) then
         jll_nll(1,4,1) = 2._wp/xb
       end if
@@ -1310,8 +1539,9 @@ all of them.
     real(wp), intent(in) :: n, run
     logical, dimension(6), intent(in) :: order
     real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     jll_nll = 0._wp
-    if (x .le. 1.0e-7_wp) then
+    if (x .le. xasym) then
       if (order(1)) then
         jll_nll(1,4,1) = 2._wp/x
       end if
@@ -1340,7 +1570,7 @@ all of them.
         jll_nll(6,3,2) = (-16._wp*n)/(3._wp*x)
         jll_nll(6,4,2) = (-4._wp*n*(31._wp - 2._wp*n*(1._wp + 3._wp*run)))/(9._wp*x)
       end if
-    elseif (xb .le. 1.0e-7_wp) then
+    elseif (xb .le. xbasym) then
       if (order(1)) then
         jll_nll(1,4,1) = xb
       end if
@@ -1495,8 +1725,9 @@ all of them.
     real(wp), intent(in) :: n, run
     logical, dimension(6), intent(in) :: order
     real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     jll_nll=0._wp
-    if (x .le. 1.0e-7_wp) then
+    if (x .le. xasym) then
       if (order(1)) then
         jll_nll(1,4,1) = 1._wp
       end if
@@ -1521,7 +1752,7 @@ all of them.
           3._wp*(2._wp*(6._wp - pi2) - 9._wp*run)))/(27._wp*x)
         jll_nll(6,4,2) = (-8._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x)
       end if
-    elseif (xb .le. 1.0e-7_wp) then
+    elseif (xb .le. xbasym) then
       if (order(1)) then
         jll_nll(1,4,1) = xb
       end if
@@ -1676,8 +1907,9 @@ all of them.
     real(wp), intent(in) :: n, run
     logical, dimension(6), intent(in) :: order
     real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     jll_nll = 0._wp
-    if (x .le. 1.0e-7_wp) then
+    if (x .le. xasym) then
       if (order(1)) then
         jll_nll(1,:,:)=0._wp
       end if
@@ -1701,7 +1933,7 @@ all of them.
           3._wp*(2._wp*(6._wp - pi2) - 9._wp*run)))/(27._wp*x)
         jll_nll(6,4,2) = (-8._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x)
       end if
-    elseif (xb .le. 1.0e-7_wp) then
+    elseif (xb .le. xbasym) then
       if (order(1)) then
         jll_nll(1,:,:)=0._wp
       end if
@@ -1980,13 +2212,13 @@ $alpha$ is set equal to 0.
    module pure function rec_log_series (log_x, log_xb, ln0, expansion) result (jll_nll)
      real(wp), intent(in) :: log_x, log_xb, ln0
      real(wp), dimension(7,7,2), intent(in) :: expansion
-     real(wp), dimension(6) :: jll_nll
+     real(wp), dimension(7) :: jll_nll
    end function rec_log_series
 <<Electron PDFs: procedures>>=
   module pure function rec_log_series (log_x, log_xb, ln0, expansion) result (jll_nll)
     real(wp), intent(in) :: log_x, log_xb, ln0
     real(wp), dimension(7,7,2), intent(in) :: expansion
-    real(wp), dimension(6) :: jll_nll
+    real(wp), dimension(7) :: jll_nll
     real(wp), dimension(7) :: lv
     real(wp), dimension(2) :: l0v
     real(wp) :: temp, s, t, c , cc, cs, ccs
@@ -1994,7 +2226,7 @@ $alpha$ is set equal to 0.
     lv = [log_x**3, log_x**2, log_x, 1.0_wp, log_xb, log_xb**2, log_xb**3]
     l0v = [1._wp, ln0]
     jll_nll = 0._wp
-    do i = 1, size(expansion,1) - 1
+    do i = 1, size(expansion,1)
       ! Use Kahan Babushka Klein summation algorithm
       t = 0._wp
       c = 0._wp
@@ -2137,13 +2369,14 @@ $alpha$ is set equal to 0.
     real(wp), intent(in) :: x, xb, xp
     real(wp), dimension(12), intent(in) :: pl
     real(wp), dimension(7) :: ints
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     ints=0._wp
-    if (xb .le. 1.0e-7_wp) then
+    if (xb .le. xbasym) then
       ints(4) = (2._wp*xb*(-pi2 + ln2*(4._wp*pi2 + (9._wp - 10._wp*ln2)*ln2) + &
         3._wp*(8._wp - 11._wp*zeta3)))/3._wp
       ints(5) = (-4._wp*(6._wp - pi2)*xb)/3._wp
       ints(7) = -4._wp*xb
-    elseif (x .le. 1.0e-7_wp ) then
+    elseif (x .le. xasym ) then
       ints(4) = (-8._wp*zeta3)/x
     else
       ints(3) = (8._wp*(-pi2 + 6._wp*pl(6)))/3._wp
@@ -2172,11 +2405,12 @@ $alpha$ is set equal to 0.
     real(wp), intent(in) :: x, xb, xp, n
     real(wp), dimension(12), intent(in) :: pl
     real(wp), dimension(7) :: ints
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     ints = 0._wp
-    if (xb .le. 1.0e-7_wp) then
+    if (xb .le. xbasym) then
       ints(4) = (xb*(4._wp*(-18._wp*n - pi2) + 15._wp*ln2*(6._wp + 5._wp*ln2)))/6._wp
       ints(5) = -1._wp/3._wp*(pi2*xb)
-    elseif (x .le. 1.0e-7_wp) then
+    elseif (x .le. xasym) then
       ints(1) = -4._wp/3._wp
       ints(2) = 1._wp
       ints(3) = 2._wp*(n*pi2 - 2._wp*(1._wp - pi)*(1._wp + pi))
@@ -2224,11 +2458,12 @@ $alpha$ is set equal to 0.
     real(wp), intent(in) :: x, xb, xp, n
     real(wp), dimension(12), intent(in) :: pl
     real(wp), dimension(7) :: ints
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
     ints=0._wp
-    if (xb .le. 1.0e-7_wp) then
+    if (xb .le. xbasym) then
       ints(4) = ((-6._wp*(5._wp + 6._wp*n) - pi2)*xb)/3._wp
       ints(5) = 4._wp*xb
-    elseif (x .le. 1.0e-7_wp) then
+    elseif (x .le. xasym) then
       ints(3) = (-2._wp*(1._wp - 3._wp*n)*pi2)/3._wp
       ints(4) = 2._wp*(-pi2 - 2._wp*(1._wp - 3._wp*n*zeta3))
     else
@@ -2244,6 +2479,621 @@ $alpha$ is set equal to 0.
   end function endpoint_func_ELE
 
 @ %def endpoint_func_ELE
+@
+<<Electron PDFs: public>>=
+  public :: recfull_ele
+<<Electron PDFs: sub interfaces>>=
+    module subroutine recfull_ele (x, xb, xp, pl, jll_nll, n, run, order, &
+      legacy_compatibility)
+      real(wp), intent(in) :: x, xb, xp
+      real(wp), dimension(12), intent(in) :: pl
+      real(wp), intent(in) :: n, run
+      logical, optional, intent(in) :: legacy_compatibility
+      logical, dimension(6), intent(in) :: order
+      real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    end subroutine recfull_ele
+<<Electron PDFs: procedures>>=
+  module subroutine recfull_ele (x, xb, xp, pl, jll_nll, n, run, order, &
+    legacy_compatibility)
+    real(wp), intent(in) :: x, xb, xp
+    real(wp), dimension(12), intent(in) :: pl
+    real(wp), intent(in) :: n, run
+    logical, optional, intent(in) :: legacy_compatibility
+    logical, dimension(6), intent(in) :: order
+    real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
+    real(wp), parameter :: xmin_legacy = 0.00714053329734592839549879772019_wp
+    logical :: lc = .false.
+    if (present(legacy_compatibility)) then
+      lc = legacy_compatibility
+    end if
+    jll_nll = 0._wp
+    if (x .le. xasym) then ! x -> 0
+      if (order(1)) then
+        jll_nll(1,4,1) = -1._wp
+      end if
+      ! For the old ISR only the first order is used if x <= xmin_legacy
+      if (lc) then
+        return
+      endif
+      if (order(2)) then
+        jll_nll(2,4, 1) = (4._wp*n)/(3._wp*x)
+      end if
+      if (order(3)) then
+        jll_nll(3,4,1) = (-8._wp*n**2)/(9._wp*x)
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1) = 1._wp
+        jll_nll(4,4,2) = -1._wp
+      end if
+      if (order(5)) then
+        jll_nll(5,3,1) = (-8._wp*n)/(3._wp*x)
+        jll_nll(5,4,1) = (-2._wp*n)/x
+        jll_nll(5,4,2) = (4._wp*n)/(3._wp*x)
+      end if
+      if (order(6)) then
+        jll_nll(6,3,1) = (16._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x)
+        jll_nll(6, 4,1) = (4._wp*n*(-(n*(1._wp - 28._wp*run)) + &
+          3._wp*(2._wp*(6._wp - pi2) - 9._wp*run)))/(27._wp*x)
+        jll_nll(6, 4,2) = (-8._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x)
+      end if
+    elseif (xb .le. xbasym) then ! x-> 1
+      if (order(1)) then
+        jll_nll(1,4,1) = -2._wp
+      end if
+      if (order(2)) then
+        jll_nll(2,4, 1) = -2._wp
+        jll_nll(2,5, 1) = -8._wp
+      end if
+      if (order(3)) then
+        jll_nll(3,4,1) = (9._wp + 8._wp*pi2)/2._wp
+        jll_nll(3,5,1) = -12._wp
+        jll_nll(3,6,1) = -24._wp
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1) = 2._wp
+        jll_nll(4,5,1) = 4._wp
+        jll_nll(4,4,2) = -2._wp
+      end if
+      if (order(5)) then
+        jll_nll(5,4,1) = (-3._wp*(2._wp*(3._wp + 2._wp*pi2) - 9._wp*run) + &
+          4._wp*n*(8._wp - 3._wp*run))/9._wp
+        jll_nll(5,5,1) = (2._wp*(15._wp - 4._wp*n*run))/3._wp
+        jll_nll(5,6,1) = 12._wp
+        jll_nll(5,4,2) = (-2._wp*(3._wp - 2._wp*n*run))/3._wp
+      end if
+      if (order(6)) then
+        jll_nll(6,4,1)=(2._wp*(n*(-20._wp*n*run + 3._wp*(11._wp + 4._wp*(3._wp*run + &
+          pi2*(1._wp + 2._wp*run)))) - 9._wp*(5._wp*pi2 + 3._wp*(-3._wp*run + 2._wp*(1._wp -&
+          10._wp*zeta3)))))/27._wp
+        jll_nll(6,5,1) = (-3._wp*(21._wp + 8._wp*(5._wp*pi2 - 9._wp*run)) + &
+          16._wp*n*(13._wp - (6._wp - n)*run))/9._wp
+        jll_nll(6,6,1) = 4._wp*(9._wp - 4._wp*n*run)
+        jll_nll(6,7,1) = 32._wp
+        jll_nll(6,4,2) = (9._wp*(9._wp + 8._wp*pi2) + 16._wp*(3._wp - n)*n*run)/18._wp
+        jll_nll(6,5,2) = (-4._wp*(9._wp - 8._wp*n*run))/3._wp
+        jll_nll(6,6,2) = -24._wp
+      end if
+    else
+      if (order(1)) then
+        jll_nll(1,4,1) = -xp
+      end if
+      ! For the old ISR only the first order is used if x <= xmin_legacy
+      if (lc .and. (x .le. xmin_legacy)) then
+        return
+      endif
+      if (order(2)) then
+        jll_nll(2,3, 1) = -4._wp/xb + (3._wp + 2._wp*n)*xp
+        jll_nll(2,4, 1) = (4._wp*n)/(3._wp*x) + (-3._wp*(5._wp + x) - &
+          n*(1._wp + 3._wp*x - 4._wp*xb*xp))/3._wp
+        jll_nll(2,5, 1) = -4._wp*xp
+      end if
+      if (order(3)) then
+        jll_nll(3,2,1) = 4._wp/xb - ((7._wp + 4._wp*n)*xp)/2._wp
+        jll_nll(3,3,1) = -18._wp/xb + (9._wp*(11._wp + 3._wp*x) + 8._wp*n*(4._wp + &
+          3._wp*x + (-n - 4._wp*xb)*xp))/6._wp
+        jll_nll(3,4,1)=(-8._wp*n**2)/(9._wp*x) + (4._wp*(n*(-3._wp*(23._wp - 23._wp*x - &
+          4._wp*pi2*xp) + 2._wp*n*(1._wp + 3._wp*x - 4._wp*xb*xp)) - 18._wp*(9._wp + &
+          4._wp*n)*xp*pl(2)) + 9._wp*(-3._wp*(13._wp + 5._wp*x) + 4._wp*xp*(5._wp*pi2 - &
+          12._wp*pl(4))))/36._wp - (4._wp*(pi2 - 6._wp*(pl(2) + pl(4))))/xb
+        jll_nll(3,5,1) = (16._wp*n)/(3._wp*x) + (2._wp*(-9._wp*(5._wp + x) - &
+          2._wp*n*(1._wp + 3._wp*x - 4._wp*xb*xp)))/3._wp
+        jll_nll(3,6,1) = -12._wp*xp
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1) = xp
+        jll_nll(4,5,1) = 2._wp*xp
+        jll_nll(4,4,2) = -xp
+      end if
+      if (order(5)) then
+        jll_nll(5,2,1) = -1._wp/2._wp*((1._wp + 6._wp*n)*xp)
+        jll_nll(5,3,1) = (-8._wp*n)/(3._wp*x) + (3._wp - 4._wp*n)/(3._wp*xb) + &
+          (-(n*(13._wp + 8._wp*x)*xb) - 9._wp*xp)/3._wp
+        jll_nll(5,4,1)=(-2._wp*n)/x + (2._wp*(pi2 - 6._wp*(pl(2) + pl(4))))/(3._wp*xb) + &
+          (-3._wp*(3._wp*(11._wp + 3._wp*(-run - 3._wp*x - run*x)) + 8._wp*pi2*xp) + &
+          2._wp*(-(n*(47._wp - 85._wp*x + 6._wp*(run - 3._wp*xb)*xp)) + &
+          18._wp*xp*(2._wp*pl(2) + pl(4))))/18._wp
+        jll_nll(5,5,1) = (3._wp*(11._wp + 3._wp*x) - 4._wp*n*run*xp)/3._wp
+        jll_nll(5,6,1) = 6._wp*xp
+        jll_nll(5,3,2) = -4._wp/xb + (3._wp + 2._wp*n)*xp
+        jll_nll(5,4,2) = (4._wp*n)/(3._wp*x) + (-3._wp*(5._wp + x) - n*(1._wp + 3._wp*x - &
+          2._wp*(run + 2._wp*xb)*xp))/3._wp
+        jll_nll(5,5,2) = -4._wp*xp
+      end if
+      if (order(6)) then
+        jll_nll(6,1,1) = ((1._wp + 6._wp*n)*xp)/3._wp
+        jll_nll(6,2,1)=(2._wp*(3._wp + 4._wp*n))/(3._wp*xb) + (3._wp*x + &
+          n*(-5._wp*(4._wp + 3._wp*x) + (run + 2._wp*(n*(2._wp + 5._wp*run) + &
+          10._wp*xb))*xp))/3._wp
+        jll_nll(6,3,1)=(16._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x) + (-3._wp*(15._wp + &
+          8._wp*pi2) + 2._wp*(n*(22._wp - 15._wp*run) + 2._wp*(27._wp + &
+          2._wp*n**2)*run))/(9._wp*xb) + (n*(277._wp + 2._wp*(-3._wp*run*(3._wp + 5._wp*x) + &
+          4._wp*(-3._wp*pi2*xp + 2._wp*(-9._wp*x - 4._wp*xb*xp)) + n*(run*(23._wp + &
+          7._wp*x + 8._wp*xb*xp) - 2._wp*(11._wp - 4._wp*(-4._wp*x + xb*xp))))) + &
+          3._wp*(6._wp*(7._wp - 4._wp*x) + xp*(5._wp*pi2 + 3._wp*(-9._wp*run - &
+          4._wp*(1._wp - n)*pl(2)))))/9._wp
+        jll_nll(6,4,1)=(-2._wp*n*(9._wp*(3._wp - run*(7._wp - 13._wp/xb) - (11._wp - &
+          2._wp*pi2)/xb) + 2._wp*(n*(1._wp - 28._wp*run) + 18._wp*(-2._wp*pl(2) - &
+          pl(4)))))/(27._wp*x) - (2._wp*(n*(3._wp*(11._wp - 13._wp*run) + 2._wp*(-pi2 - &
+          12._wp*(pl(2) + pl(4)))) + 3._wp*(9._wp*(-7._wp*xb + 4._wp*(pl(2) + pl(4))) + &
+          2._wp*(pi2*(n*run + 3._wp*(1._wp - 2._wp*x)) + 3._wp*run*(-3._wp*xb - &
+          2._wp*n*(pl(2) + pl(4)))))))/(9._wp*xb) + (4._wp*(9._wp*((24._wp*(2._wp + x) + &
+          n*(10._wp*(1._wp - run - run*x) - (1._wp - 4._wp*(n + 2._wp*xb))*xp))*pl(2) + &
+          (6._wp*(5._wp + x) - n*(5._wp + 7._wp*x + 2._wp*(3._wp*run - &
+          2._wp*xb)*xp))*pl(4) + 3._wp*xp*((5._wp + 4._wp*n)*pl(3) + 2._wp*(5._wp + &
+          2._wp*n)*pl(5))) + n*(-(n*(7._wp - 9._wp*x + 2._wp*((19._wp + 3._wp*pi2 - &
+          19._wp*x)*xp + 2._wp*run*(-2._wp*(3._wp - 11._wp*x) - 5._wp*xb*xp)))) + &
+          3._wp*(94._wp - 85._wp*x + pi2*(9._wp*run - 2._wp*(1._wp - 2._wp*x + &
+          3._wp*xb*xp)) + 3._wp*(-(run*x*(1._wp - 3._wp*(pi2 + 2._wp*x))) + 3._wp*xp*(xb - &
+          4._wp*zeta3))))) - 27._wp*xp*(51._wp + 2._wp*(3._wp*(pi2 - run) - &
+          10._wp*zeta3)))/54._wp
+        jll_nll(6,5,1)=(-8._wp*n*(1._wp + 2._wp*n))/(9._wp*x) + (4._wp*(pi2 - &
+          6._wp*(pl(2) + pl(4))))/xb + (-3._wp*(3._wp*(15._wp - 49._wp*x) + &
+          2._wp*(31._wp*pi2 - 36._wp*run)*xp) + 2._wp*(-(n*(125._wp - 293._wp*x - &
+          2._wp*(-3._wp*pi2*xp + 2._wp*(-3._wp*run*(11._wp + 3._wp*x) + 16._wp*xb*xp + &
+          n*(1._wp + 3._wp*x + 2._wp*(run - 2._wp*xb)*xp))))) + 18._wp*xp*((11._wp + &
+          2._wp*n)*pl(2) + (1._wp - 2._wp*n)*pl(4))))/18._wp
+        jll_nll(6,6,1) = (-8._wp*n)/(3._wp*x) + (2._wp*(15._wp*(5._wp + x) + n*(1._wp + &
+          3._wp*x - 4._wp*(3._wp*run + xb)*xp)))/3._wp
+        jll_nll(6,7,1) = 16._wp*xp
+        jll_nll(6,2,2) = 4._wp/xb - ((7._wp + 4._wp*n)*xp)/2._wp
+        jll_nll(6,3,2)=(-2._wp*(27._wp - 8._wp*n*run))/(3._wp*xb) + (9._wp*(11._wp + &
+          3._wp*x) + 8._wp*n*(4._wp - (n*(1._wp + 2._wp*run) + 4._wp*xb)*xp - 3._wp*(-x + &
+          run*xp)))/6._wp
+        jll_nll(6,4,2)=(-8._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x) + &
+          (4._wp*(n*(2._wp*n*(1._wp + (3._wp + 4._wp*run)*x - 4._wp*(1._wp + &
+          2._wp*run)*xb*xp) - 3._wp*(23._wp - 23._wp*x - 4._wp*(run*(5._wp + x) + &
+          pi2*xp))) - 18._wp*(9._wp + 4._wp*n)*xp*pl(2)) + 9._wp*(-3._wp*(13._wp + &
+          5._wp*x) + 4._wp*xp*(5._wp*pi2 - 12._wp*pl(4))))/36._wp - (4._wp*(pi2 - &
+          6._wp*(pl(2) + pl(4))))/xb
+        jll_nll(6,5,2) = (16._wp*n)/(3._wp*x) + (2._wp*(-9._wp*(5._wp + x) - &
+          2._wp*n*(1._wp + 3._wp*x - 4._wp*(run + xb)*xp)))/3._wp
+        jll_nll(6,6,2) = -12._wp*xp
+      end if
+    end if
+  end subroutine recfull_ele
+
+@ %def recfull_ele
+@
+<<Electron PDFs: public>>=
+  public :: recfull_pos
+<<Electron PDFs: sub interfaces>>=
+    module subroutine recfull_pos (x, xb, xp, pl, jll_nll, n, run, order)
+      real(wp), intent(in) :: x, xb, xp
+      real(wp), dimension(12), intent(in) :: pl
+      real(wp), intent(in) :: n, run
+      logical, dimension(6), intent(in) :: order
+      real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    end subroutine recfull_pos
+<<Electron PDFs: procedures>>=
+  module subroutine recfull_pos (x, xb, xp, pl, jll_nll, n, run, order)
+    real(wp), intent(in) :: x, xb, xp
+    real(wp), dimension(12), intent(in) :: pl
+    real(wp), intent(in) :: n, run
+    logical, dimension(6), intent(in) :: order
+    real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
+    jll_nll = 0._wp
+    if (x .le. xasym) then ! x -> 0
+      if (order(1)) then
+        jll_nll(1,4,1) = 0._wp
+      end if
+      if (order(2)) then
+        jll_nll(2,4,1) = (4._wp*n)/(3._wp*x)
+        jll_nll(2,4,1) = (4._wp*n)/(3._wp*x)
+      end if
+      if (order(3)) then
+        jll_nll(3,4,1) = (-8._wp*n**2)/(9._wp*x)
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1)=0._wp
+      end if
+      if (order(5)) then
+        jll_nll(5,3,1) = (-8._wp*n)/(3._wp*x)
+        jll_nll(5,4,1) = (-2._wp*n)/x
+        jll_nll(5,4,2) = (4._wp*n)/(3._wp*x)
+      end if
+      if (order(6)) then
+        jll_nll(6,3,1) = (16._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x)
+        jll_nll(6,4,1) = (4._wp*n*(-(n*(1._wp - 28._wp*run)) + &
+          3._wp*(2._wp*(6._wp - pi2) - 9._wp*run)))/(27._wp*x)
+        jll_nll(6,4,2) = (-8._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x)
+      end if
+    elseif (xb .le. xbasym) then ! x -> 1
+      if (order(1)) then
+        jll_nll(1,4,1) = 0._wp
+      end if
+      if (order(2)) then
+        jll_nll(2,4,1) = n*xb
+      end if
+      if (order(3)) then
+        jll_nll(3,4,1) = -1._wp/3._wp*(n*(3._wp + 2._wp*n)*xb)
+        jll_nll(3,5,1) = 4._wp*n*xb
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1)=0._wp
+      end if
+      if (order(5)) then
+        jll_nll(5,4,1) = -(n*xb)
+        jll_nll(5,4,2) = n*xb
+      end if
+      if (order(6)) then
+        jll_nll(6,4,1) = 0._wp
+      end if
+    else
+      if (order(1)) then
+        jll_nll(1,4,1)=0._wp
+      end if
+      if (order(2)) then
+        jll_nll(2,3,1) = 2._wp*n*xp
+        jll_nll(2,4,1) = (4._wp*n)/(3._wp*x) - (n*(1._wp + 3._wp*x - 4._wp*xb*xp))/3._wp
+      end if
+      if (order(3)) then
+        jll_nll(3,2,1) = -2._wp*n*xp
+        jll_nll(3,3,1) = (4._wp*n*(4._wp + 3._wp*x + (-n - 4._wp*xb)*xp))/3._wp
+        jll_nll(3,4,1)=(-8._wp*n**2)/(9._wp*x) + (n*(-3._wp*(23._wp - 23._wp*x - &
+          4._wp*pi2*xp) + 2._wp*(n*(1._wp + 3._wp*x - 4._wp*xb*xp) - &
+          36._wp*xp*pl(2))))/9._wp
+        jll_nll(3,5,1) = (16._wp*n)/(3._wp*x) - (4._wp*n*(1._wp + 3._wp*x - 4._wp*xb*xp))/3._wp
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1)=0._wp
+      end if
+      if (order(5)) then
+        jll_nll(5,2,1) = -xb + 2._wp/xp - 3._wp*n*xp
+        jll_nll(5,3,1) = (-8._wp*n)/(3._wp*x) + (6._wp*xp - n*(7._wp - 3._wp*x + 8._wp*xb*xp))/3._wp
+        jll_nll(5,4,1)=(-2._wp*n)/x + (2._wp*(pi2 + 6._wp*(-pl(1)**2 - &
+          2._wp*pl(8))))/(3._wp*xp) + (-3._wp*n*(5._wp - 7._wp*x - &
+          2._wp*xb*xp) + xb*(-pi2 + 6._wp*(pl(1)**2 + 2._wp*(1._wp + pl(8)))))/3._wp
+        jll_nll(5,3,2) = 2._wp*n*xp
+        jll_nll(5,4,2) = (4._wp*n)/(3._wp*x) - (n*(1._wp + 3._wp*x - 4._wp*xb*xp))/3._wp
+      end if
+      if (order(6)) then
+        jll_nll(6,1,1) = -8._wp/(3._wp*xp) + 2._wp*(xb + n*xp)
+        jll_nll(6,2,1)=(2._wp*(9._wp - 2._wp*n*run))/(3._wp*xp) + (-3._wp*(7._wp + &
+          5._wp*x) + n*(-9._wp*x - 2._wp*(7._wp - run*xb - (n*(2._wp + 5._wp*run) + &
+          10._wp*xb)*xp)))/3._wp
+        jll_nll(6,3,1)=(16._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x) + (n*(283._wp + &
+          2._wp*(3._wp*(-4._wp*pi2*xp - 11._wp*(x + run*xp)) + n*(run*(25._wp + 9._wp*x + &
+          8._wp*xb*xp) - 2._wp*(11._wp - 4._wp*(-4._wp*x + xb*xp))) + 2._wp*xp*(-16._wp*xb + &
+          9._wp*pl(2)))) + 6._wp*(-3._wp*(5._wp - 3._wp*x) + 2._wp*xb*(-pi2 + &
+          9._wp*(pl(6) - pl(8)))))/9._wp + (4._wp*(pi2 + 6._wp*(-pl(6) + &
+          3._wp*pl(8))))/(3._wp*xp)
+        jll_nll(6,4,1)=(-2._wp*n*(-9._wp*xb*(11._wp - 3._wp*(4._wp*run + (1._wp - &
+          2._wp*run)*xb*xp)) + 2._wp*(n*(1._wp - 28._wp*run) + 9._wp*(pi2*(2._wp/xp - &
+          xb**2*xp) + 2._wp*(-2._wp*pl(2) - pl(4))))))/(27._wp*x) - &
+          (2._wp*(pi2*(2._wp*n*(6._wp + run) - 3._wp*(3._wp + pl(1))) + &
+          3._wp*(pl(1)*(pl(1)*(2._wp*(9._wp - 2._wp*n*run) + 15._wp*pl(1)) + &
+          6._wp*(-8._wp*(pl(2) + pl(4)) + 3._wp*(pl(6) - pl(8)))) + 4._wp*((9._wp - &
+          2._wp*n*run)*pl(8) + 3._wp*(2._wp*(-pl(7) + pl(3) + 2._wp*(-pl(5) - 3._wp*pl(9)) + &
+          pl(12)) + 7._wp*zeta3)))))/(9._wp*xp) + (n*(-2._wp*n*(7._wp - 9._wp*x + &
+          2._wp*((19._wp + 3._wp*pi2 - 19._wp*x)*xp + 2._wp*run*(-2._wp*(2._wp - 9._wp*x) - &
+          5._wp*xb*xp))) + 3._wp*((169._wp - 2._wp*pi2*(6._wp - run) - 87._wp*run)*xb - &
+          72._wp*xp*zeta3)) + 9._wp*(2._wp*((3._wp*(7._wp + x) - 2._wp*n*run*xb)*pl(1)**2 + &
+          (n*(13._wp + 3._wp*x + 8._wp*xb*xp) + 4._wp*(-((3._wp - n**2)*xp) - &
+          6._wp*xb*pl(1)))*pl(2) + (-(n*(1._wp + 3._wp*x - 4._wp*xb*xp)) - &
+          24._wp*xb*pl(1))*pl(4) + (6._wp*(7._wp + x) + xb*(-4._wp*n*run - &
+          9._wp*pl(1)))*pl(8) + 12._wp*((xb + n*xp)*pl(3) + (-2._wp*xb + n*xp)*pl(5))) + &
+          xb*(pl(1)*(-pi2 + 3._wp*(5._wp*pl(1)**2 + 6._wp*pl(6))) + 3._wp*(-pi2 - &
+          4._wp*(5._wp - 2._wp*(-3._wp*pl(7) + pl(12) + 2._wp*(-3._wp*pl(9) + &
+          zeta3)))))))/27._wp
+        jll_nll(6,5,1)=(-8._wp*n*(1._wp + 2._wp*n))/(9._wp*x) - (8._wp*(pi2 + &
+          12._wp*pl(6)))/(3._wp*xp) + (12._wp*xb*(pi2 + 12._wp*(1._wp + pl(6))) - &
+          n*(157._wp - 165._wp*x - 2._wp*(-3._wp*pi2*xp + 2._wp*(n*(1._wp + 3._wp*x - &
+          4._wp*xb*xp) + xp*(16._wp*xb + 9._wp*(pl(2) - pl(4)))))))/9._wp
+        jll_nll(6,6,1) = (-8._wp*n)/(3._wp*x) + (2._wp*n*(1._wp + 3._wp*x - 4._wp*xb*xp))/3._wp
+        jll_nll(6,2,2) = -2._wp*n*xp
+        jll_nll(6,3,2) = (4._wp*n*(4._wp + 3._wp*x + (-(n*(1._wp + 2._wp*run)) - &
+          4._wp*xb)*xp))/3._wp
+        jll_nll(6,4,2)=(-8._wp*n**2*(1._wp + 2._wp*run))/(9._wp*x) + (n*(-3._wp*(23._wp - &
+          23._wp*x - 4._wp*pi2*xp) + 2._wp*(n*(1._wp + 2._wp*run)*(1._wp + 3._wp*x - &
+          4._wp*xb*xp) - 36._wp*xp*pl(2))))/9._wp
+        jll_nll(6,5,2) = (16._wp*n)/(3._wp*x) - (4._wp*n*(1._wp + 3._wp*x - &
+          4._wp*xb*xp))/3._wp
+      end if
+    end if
+  end subroutine recfull_pos
+
+@ %def recfull_pos
+@
+<<Electron PDFs: public>>=
+  public :: recfull_gam
+<<Electron PDFs: sub interfaces>>=
+    module subroutine recfull_gam (x, xb, xp, pl, jll_nll, n, run, order)
+      real(wp), intent(in) :: x, xb, xp
+      real(wp), dimension(12), intent(in) :: pl
+      real(wp), intent(in) :: n, run
+      logical, dimension(6), intent(in) :: order
+      real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    end subroutine recfull_gam
+<<Electron PDFs: procedures>>=
+  module subroutine recfull_gam (x, xb, xp, pl, jll_nll, n, run, order)
+    real(wp), intent(in) :: x, xb, xp
+    real(wp), dimension(12), intent(in) :: pl
+    real(wp), intent(in) :: n, run
+    logical, dimension(6), intent(in) :: order
+    real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), parameter :: xasym = 1.0e-7_wp, xbasym = 1.0e-7_wp
+    jll_nll = 0._wp
+    if (x .le. xasym) then ! X -> 0
+      if (order(1)) then
+        jll_nll(1,4,1) = 2._wp/x
+      end if
+      if (order(2)) then
+        jll_nll(2,4,1) = (-4._wp*n)/(3._wp*x)
+      end if
+      if (order(3)) then
+        jll_nll(3,3,1) = (-16._wp*n)/(3._wp*x)
+        jll_nll(3,4,1) = (-4._wp*(31._wp - 2._wp*n)*n)/(9._wp*x)
+      end if
+      if (order(4)) then
+          jll_nll(4,3,1) = -4._wp/x
+          jll_nll(4,4,1) = -2._wp/x
+          jll_nll(4,4,2) = 2._wp/x
+      end if
+      if (order(5)) then
+        jll_nll(5,3,1) = (8._wp*n*(1._wp + run))/(3._wp*x)
+        jll_nll(5,4,1) = (-4._wp*n*(7._wp - 3._wp*run) - 27._wp*run)/(9._wp*x)
+        jll_nll(5,4,2) = (-4._wp*n*(1._wp + run))/(3._wp*x)
+      end if
+      if (order(6)) then
+        jll_nll(6,2,1) = (16._wp*n)/(3._wp*x)
+        jll_nll(6,3,1) = (8._wp*n*(15._wp - 2._wp*n*(1._wp + 3._wp*run)))/(9._wp*x)
+        jll_nll(6,4,1)=(2._wp*n*(81._wp*run - 4._wp*(34._wp - n*(7._wp + run))) + &
+          27._wp*(13._wp + 2._wp*(-pi2 + 4._wp*zeta3)))/(27._wp*x)
+        jll_nll(6,3,2) = (-16._wp*n)/(3._wp*x)
+        jll_nll(6,4,2) = (-4._wp*n*(31._wp - 2._wp*n*(1._wp + 3._wp*run)))/(9._wp*x)
+      end if
+    elseif (xb .le. xbasym) then ! X -> 1
+      if (order(1)) then
+        jll_nll(1,4,1) = 1._wp
+      end if
+      if (order(2)) then
+        jll_nll(2,4,1) = (9._wp - 4._wp*n)/6._wp
+        jll_nll(2,5,1) = 2._wp
+      end if
+      if (order(3)) then
+        jll_nll(3,4,1) = (-4._wp*(9._wp - 4._wp*n)*n + 3._wp*(27._wp - 8._wp*pi2))/36._wp
+        jll_nll(3,5,1) = (2._wp*(9._wp - 2._wp*n))/3._wp
+        jll_nll(3,3,1) = 4._wp
+      end if
+      if (order(4)) then
+        jll_nll(4,4,1) = -1._wp
+        jll_nll(4,4,2) = 1._wp
+      end if
+      if (order(5)) then
+        jll_nll(5,4,1) = (-4._wp*n*(13._wp - 3._wp*run) - 9._wp*(8._wp + 3._wp*run))/18._wp
+        jll_nll(5,5,1) = (-21._wp - 4._wp*n)/3._wp
+        jll_nll(5,5,1) = -3._wp
+        jll_nll(5,4,2) = (9._wp - 4._wp*n*(1._wp + run))/6._wp
+        jll_nll(5,5,2) = 2._wp
+      end if
+      if (order(6)) then
+        jll_nll(6,4,1)=(4._wp*(n*(8._wp*n*(13._wp + 7._wp*run) - 3._wp*(69._wp - &
+          2._wp*(2._wp*pi2 + 39._wp*run))) + 72._wp*ln2*(-pi2 + 3._wp*ln2**2)) - &
+          9._wp*(135._wp - 4._wp*(11._wp*pi2 + 3._wp*(-9._wp*run + 4._wp*zeta3))))/216._wp
+        jll_nll(6,5,1)=(-3._wp*(111._wp - 4._wp*(pi2 - 9._wp*run)) + &
+          4._wp*n*(-3._wp*(10._wp - 9._wp*run) + 4._wp*n*(1._wp + run)))/18._wp
+        jll_nll(6,6,1) = (-111._wp - 4._wp*n*(1._wp - 5._wp*run))/6._wp
+        jll_nll(6,7,1) = -2._wp
+        jll_nll(6,4,2) = (3._wp*(27._wp - 8._wp*pi2) + 4._wp*n*(-9._wp*(1._wp + &
+          2._wp*run) + 4._wp*n*(1._wp + 3._wp*run)))/36._wp
+        jll_nll(6,5,2) = (2._wp*(9._wp - 2._wp*n*(1._wp + 2._wp*run)))/3._wp
+        jll_nll(6,6,2) = 4._wp
+      end if
+    else
+      if (order(1)) then
+        jll_nll(1,4,1) = -2._wp + 2._wp/x + x
+      end if
+      if (order(2)) then
+        jll_nll(2,3,1) = 2._wp - x
+        jll_nll(2,4,1) = (4._wp*n*(2._wp - x) + 3._wp*(4._wp - x))/6._wp - (4._wp*n)/(3._wp*x)
+        jll_nll(2,5,1) = -2._wp*(2._wp - x) + 4._wp/x
+      end if
+      if (order(3)) then
+        jll_nll(3,2,1) = -1._wp/2._wp*((1._wp - 4._wp*n)*(2._wp - x))
+        jll_nll(3,3,1) = (-4._wp*n*(1._wp - 5._wp*x) - 3._wp*(5._wp - 2._wp*x))/3._wp - &
+          (16._wp*n)/(3._wp*x)
+        jll_nll(3,4,1)=(4._wp*(-((31._wp - 2._wp*n)*n) + 3._wp*(-pi2 + &
+          6._wp*pl(4))))/(9._wp*x) + (-3._wp*(3._wp*(2._wp - 11._wp*x) - 16._wp*pi2*(2._wp - &
+          x)) + 4._wp*(-(n*(159._wp*x - 2._wp*(137._wp - 8._wp*xb*xp))) - 4._wp*(2._wp - &
+          x)*(n**2 + 9._wp*(pl(2) + pl(4)))))/36._wp
+        jll_nll(3,5,1) = (2._wp*(2._wp*n*(2._wp - x) + 3._wp*(4._wp - x)))/3._wp - &
+          (8._wp*n)/(3._wp*x)
+        jll_nll(3,3,1) = -4._wp*(2._wp - x) + 8._wp/x
+      end if
+      if (order(4)) then
+        jll_nll(4,3,1) = 2._wp*(2._wp - x) - 4._wp/x
+        jll_nll(4,4,1) = 2._wp - 2._wp/x - x
+        jll_nll(4,4,2) = -2._wp + 2._wp/x + x
+      end if
+      if (order(5)) then
+        jll_nll(5,2,1) = (-2._wp + x)/2._wp
+        jll_nll(5,3,1) = (8._wp*n*(1._wp + run))/(3._wp*x) + (-8._wp*n*(1._wp + &
+          run)*(2._wp - x) + 15._wp*x)/6._wp
+        jll_nll(5,4,1)=(-4._wp*n*(7._wp - 3._wp*run) - 27._wp*run)/(9._wp*x) + &
+          (3._wp*(-2._wp*pi2*(2._wp - x) + 3._wp*(-5._wp*x - 3._wp*(1._wp - run*(3._wp - &
+          xp)))) + 4._wp*(n*(14._wp - 3._wp*run*(2._wp - x) - 13._wp*x) + 9._wp*(2._wp - &
+          x)*pl(2)))/18._wp
+        jll_nll(5,5,1) = (4._wp*n*(2._wp - x) - 9._wp*x)/3._wp - &
+          (4._wp*(3._wp + 2._wp*n))/(3._wp*x)
+        jll_nll(5,5,1) = 3._wp*(2._wp - x) - 6._wp/x
+        jll_nll(5,3,2) = 2._wp - x
+        jll_nll(5,4,2) = (4._wp*n*(1._wp + run)*(2._wp - x) + 3._wp*(4._wp - x))/6._wp - &
+          (4._wp*n*(1._wp + run))/(3._wp*x)
+        jll_nll(5,5,2) = -2._wp*(2._wp - x) + 4._wp/x
+      end if
+      if (order(6)) then
+        jll_nll(6,1,1) = (2._wp*(1._wp - 4._wp*n*(2._wp - x)) + x)/3._wp
+        jll_nll(6,2,1) = (16._wp*n)/(3._wp*x) + (-(n*(-(run*(2._wp - x)) + 12._wp*(2._wp + &
+          x))) + 6._wp*xp)/3._wp
+        jll_nll(6,3,1)=(-3._wp*(-2._wp*(81._wp - 2._wp*(4._wp*pi2 + 9._wp*run*(2._wp - &
+          x))) - 39._wp*x) + 4._wp*(n*(3._wp*(run*(4._wp - 3._wp*x) - 15._wp*x) - &
+          2._wp*(397._wp - 4._wp*(n*(1._wp + 3._wp*run)*(2._wp - x) + 4._wp*xb*xp))) + &
+          18._wp*(-((6._wp - x)*pl(2)) + (2._wp + x)*(pl(6) - pl(8)))))/36._wp - &
+          (2._wp*(-4._wp*n*(15._wp - 2._wp*n*(1._wp + 3._wp*run)) + 3._wp*(-pi2 + &
+          6._wp*(pl(6) + pl(8)))))/(9._wp*x)
+        jll_nll(6,4,1)=(n*(3._wp*(1179._wp - 8._wp*pi2*run)*x + &
+          2._wp*(-9._wp*run*(17._wp - 12._wp*x) + 2._wp*(3._wp*pi2*(-2._wp*(1._wp - &
+          2._wp*run) + x) + 2._wp*(-(n*(14._wp + run*(2._wp - 7._wp*x) - 13._wp*x)) - &
+          2._wp*(200._wp + 7._wp*xb*xp))))) - 9._wp*(135._wp - pi2*(-8._wp*ln2 - &
+          3._wp*(2._wp + x)*pl(1)) - 2._wp*((-8._wp*n*run*(2._wp - x) - 9._wp*(2._wp + &
+          x))*pl(2) + (3._wp*(4._wp - 7._wp*x) + 4._wp*n*(2._wp - x))*pl(4) + &
+          3._wp*(-4._wp*(5._wp + 2._wp*x) - (2._wp + x)*pl(1))*pl(8) + 2._wp*(5._wp*pi2 + &
+          3._wp*(-3._wp*run + 2._wp*ln2**3 - (5._wp + 2._wp*x)*pl(1)**2 + (14._wp - &
+          3._wp*x)*pl(3) + (10._wp - 3._wp*x)*pl(5)))) - (2._wp + &
+          x)*(pl(1)*(5._wp*pl(1)**2 + 6._wp*pl(6)) + 24._wp*(-pl(7) - &
+          2._wp*pl(9)))))/54._wp + (27._wp*(135._wp - xb*xp*(31._wp + 32._wp*zeta3)) + &
+          4._wp*(81._wp*run*(1._wp - xb*xp) + 2._wp*(9._wp*(pi2*(2._wp*(5._wp - &
+          3._wp*xb*xp) - 3._wp*pl(1)) + pl(1)*(-((18._wp - 5._wp*pl(1))*pl(1)) + &
+          6._wp*(pl(6) - pl(8)))) + 2._wp*(n*(81._wp*run + 2._wp*(3._wp*pi2 - &
+          2._wp*(34._wp - n*(7._wp + run) + 9._wp*pl(4)))) + 54._wp*(2._wp*(-pl(4) + pl(7) + &
+          2._wp*(pl(5) - pl(9))) + 3._wp*(-pl(8) + zeta3))))))/(216._wp*x)
+        jll_nll(6,5,1)=-1._wp/9._wp*(45._wp - 4._wp*(3._wp*(3._wp*(pi2 - 3._wp*run) - &
+          n*(8._wp - run)) + 4._wp*(n**2*(1._wp + run) - 9._wp*pl(4))))/x + &
+          (3._wp*(-(pi2*(46._wp - 19._wp*x)) - 69._wp*x + 4._wp*(-3._wp*(1._wp - &
+          3._wp*run*(2._wp - x)) + n*(2._wp*(8._wp - 5._wp*x) + run*(6._wp + x)))) - &
+          2._wp*(2._wp - x)*(8._wp*n**2*(1._wp + run) + 9._wp*(-7._wp*pl(2) - &
+          pl(4))))/18._wp
+        jll_nll(6,6,1)=(-4._wp*(6._wp + n*(1._wp - 5._wp*run)))/(3._wp*x) + &
+          (4._wp*n*(1._wp - 5._wp*run)*(2._wp - x) - 9._wp*(4._wp + 3._wp*x))/6._wp
+        jll_nll(6,7,1) = 2._wp*(8._wp - 3._wp*x) - 12._wp/x
+        jll_nll(6,2,2) = -1._wp/2._wp*((1._wp - 4._wp*n)*(2._wp - x))
+        jll_nll(6,3,2) = (-4._wp*n*(1._wp + run*(2._wp - x) - 5._wp*x) - 3._wp*(5._wp - &
+          2._wp*x))/3._wp - (16._wp*n)/(3._wp*x)
+        jll_nll(6,4,2)=(4._wp*(-(n*(31._wp - 2._wp*n*(1._wp + 3._wp*run))) + 3._wp*(-pi2 + &
+          6._wp*pl(4))))/(9._wp*x) + (-3._wp*(3._wp*(2._wp - 11._wp*x) - &
+          16._wp*pi2*(2._wp - x)) + 4._wp*(n*(-159._wp*x + 2._wp*(137._wp - &
+          3._wp*run*(4._wp - x) - 8._wp*xb*xp)) - 4._wp*(2._wp - x)*(n**2*(1._wp + &
+          3._wp*run) + 9._wp*(pl(2) + pl(4)))))/36._wp
+        jll_nll(6,5,2)=(2._wp*(2._wp*n*(1._wp + 2._wp*run)*(2._wp - x) + 3._wp*(4._wp - &
+          x)))/3._wp - (8._wp*n*(1._wp + 2._wp*run))/(3._wp*x)
+        jll_nll(6,6,2) = -4._wp*(2._wp - x) + 8._wp/x
+      end if
+    end if
+  end subroutine recfull_gam
+
+@ %def recfull_gam
+@
+<<Electron PDFs: public>>=
+  public :: recfull_singlet
+<<Electron PDFs: sub interfaces>>=
+    module subroutine recfull_singlet (x, xb, xp, pl,  jll_nll, n, run, order)
+      real(wp), intent(in) :: x, xb, xp
+      real(wp), intent(in) :: n, run
+      real(wp), dimension(12), intent(in) :: pl
+      logical, dimension(6), intent(in) :: order
+      real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    end subroutine recfull_singlet
+<<Electron PDFs: procedures>>=
+  module subroutine recfull_singlet (x, xb, xp, pl,  jll_nll, n, run, order)
+    real(wp), intent(in) :: x, xb, xp
+    real(wp), intent(in) :: n, run
+    real(wp), dimension(12), intent(in) :: pl
+    logical, dimension(6), intent(in) :: order
+    real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), dimension(7,7,2) :: jll_nll_pos, jll_nll_ele
+    call recfull_ele (x, xb, xp, pl, jll_nll_ele, n, run, order)
+    call recfull_pos (x, xb, xp, pl, jll_nll_pos, n, run, order)
+    jll_nll = add_logvec(jll_nll_ele,jll_nll_pos)
+  end subroutine recfull_singlet
+
+@ %def recfull_singlet
+@
+<<Electron PDFs: public>>=
+  public :: recfull_nonsinglet
+<<Electron PDFs: sub interfaces>>=
+    module subroutine recfull_nonsinglet (x, xb, xp, pl,  jll_nll, n, run, order)
+      real(wp), intent(in) :: x, xb, xp
+      real(wp), intent(in) :: n, run
+      real(wp), dimension(12), intent(in) :: pl
+      logical, dimension(6), intent(in) :: order
+      real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    end subroutine recfull_nonsinglet
+<<Electron PDFs: procedures>>=
+  module subroutine recfull_nonsinglet (x, xb, xp, pl, jll_nll, n, run, order)
+    real(wp), intent(in) :: x, xb, xp
+    real(wp), intent(in) :: n, run
+    logical, dimension(6), intent(in) :: order
+    real(wp), dimension(12), intent(in) :: pl
+    real(wp), dimension(7,7,2), intent(out) :: jll_nll
+    real(wp), dimension(7,7,2) :: jll_nll_pos, jll_nll_ele
+    call recfull_ele (x, xb, xp, pl, jll_nll_ele, n, run, order)
+    call recfull_pos (x, xb, xp, pl, jll_nll_pos, n, run, order)
+    jll_nll = sub_logvec(jll_nll_ele,jll_nll_pos)
+  end subroutine recfull_nonsinglet
+
+@ %def recfull_nonsinglet
+@
+<<Electron PDFs: public>>=
+  public :: recfull
+<<Electron PDFs: sub interfaces>>=
+    module function recfull &
+         (flv, x, xb, xp, pl, n, run, order, &
+          legacy_compatibility) result (jll_nll)
+      integer, intent(in) :: flv
+      real(wp), dimension(7,7,2) :: jll_nll
+      real(wp), intent(in) :: x, xb, xp
+      real(wp), intent(in) :: n, run
+      real(wp), dimension(12), intent(in) :: pl
+      logical, dimension(6), intent(in) :: order
+    logical, optional, intent(in) :: legacy_compatibility
+    end function recfull
+<<Electron PDFs: procedures>>=
+  module function recfull &
+       (flv, x, xb, xp, pl, n, run, order, &
+        legacy_compatibility) result (jll_nll)
+    integer, intent(in) :: flv
+    real(wp), dimension(7,7,2) :: jll_nll
+    real(wp), intent(in) :: x, xb, xp
+    real(wp), intent(in) :: n, run
+    real(wp), dimension(12), intent(in) :: pl
+    logical, optional, intent(in) :: legacy_compatibility
+    logical, dimension(6), intent(in) :: order
+    logical :: lc = .false.
+    if (present(legacy_compatibility)) then
+       lc = legacy_compatibility
+    endif
+    jll_nll = 0._wp
+    select case (flv)
+    case (EPDF_S)
+     call recfull_singlet (x, xb, xp, pl, jll_nll, n, run, order)
+    case (EPDF_NS)
+     call recfull_nonsinglet (x, xb, xp, pl, jll_nll, n, run, order)
+    case (EPDF_G)
+     call recfull_gam (x, xb, xp, pl, jll_nll, n, run, order)
+    case (EPDF_ELE)
+     call recfull_ele (x, xb, xp, pl, jll_nll, n, run, order, &
+          legacy_compatibility=lc)
+    case (EPDF_POS)
+     call recfull_pos (x, xb, xp, pl, jll_nll, n, run, order)
+    case default
+       call msg_fatal &
+            ("recfull: wrong lepton flavor.")
+    end select
+  end function recfull
+
+@ %def recfull
 @
 <<Electron PDFs: procedures>>=
   subroutine photon_matching (log_xb, x0, x1, p, bar, asym)
@@ -2288,75 +3138,102 @@ $alpha$ is set equal to 0.
     integer :: nf, nlep
     real(wp), parameter :: &
       x0gam = 2.0_wp, x1gam = 6.0_wp, pgam = 2.0_wp
-    real(wp), parameter :: xmin=0._wp, xmax=1._wp
+    real(wp), parameter :: &
+      xasym  = 1.0e-7_wp, & ! Use asymptotic expression for x->0
+      xbasym = 1.0e-7_wp, & ! Use asymptotic expression for x->1
+      xmin_vaild=0.0_wp, &
+      xmax_vaild=1.0_wp, &
+      xmax_ele = 1.0e-318_wp, &
+      xmax_pos = 1.0e-318_wp, &
+      xmax_gam = 1.0e-318_wp, &
+      xmin = 1.0e-308_wp
     real(wp) :: xp, log_x, log_xb
     real(wp) :: ln0, eta0, alpha, al0_2pi, al_2pi, p, n, run
     real(wp), dimension(7,7,2) :: &
-      asym=0._wp, asymb=0._wp, hat=0._wp, bar=0._wp, num=0.0_wp
+      asym=0._wp, asymb=0._wp, hat=0._wp, bar=0._wp, num=0.0_wp, full=0.0_wp
     real(wp), dimension(12) :: pl
-    logical :: running
+    logical :: running, lc
     logical, dimension(6) :: order
+    lc = epdf%legacy_compatibility
+    if ( & ! Check for invalid input values
+      x .lt. xmin_vaild .or. x .gt. xmax_vaild .or. &
+      xb .lt. xmin_vaild .or. xb .gt. xmax_vaild &
+    ) then
+      call msg_fatal ("elec_pdf: x or xb vaule not in [0,1].")
+    endif
     ! Cut for x->0
-    if (x .le. 1.0e-45_wp) then
-      res = 0._wp
-      return
-    end if
-    ! Cut Positron part for x->1
-    if (xb .le. 1.0e-6_wp .and. flv .eq. EPDF_POS) then
-      res = 0._wp
-      return
-    end if
-    ! Cut Photon part for x->1
-    if (xb .le. 1.0e-8_wp .and. flv .eq. EPDF_G) then
+    if (x .le. xmin) then
       res = 0._wp
       return
     end if
     ! Cut Electron part for x->1
-    if (xb .le. 1.0e-15_wp .and. flv .eq. EPDF_ELE) then
+    if (xb .le. xmax_ele .and. flv .eq. EPDF_ELE) then
       res = 0._wp
       return
     end if
-    ! Calculate computing intensive polylogs only if necessary
+    ! Cut Positron part for x->1
+    if (xb .le. xmax_pos .and. flv .eq. EPDF_POS) then
+      res = 0._wp
+      return
+    end if
+    ! Cut Photon part for x->1
+    if (xb .le. xmax_gam .and. flv .eq. EPDF_G) then
+      res = 0._wp
+      return
+    end if
+    xp = 1._wp + x
     pl = 0._wp
-    if (xb .ge. 1.0e-7_wp .and. x .ge. 1.0e-7) then
-      pl(1) = log(1._wp+x)
+    ! Calculate computing intensive polylogs only if necessary
+    ! Asymptotic expression are free of polylogs
+    if (xb .ge. xbasym .and. x .ge. xasym) then
+      pl(1) = log(xp)
       pl(2) = polylog(2,x)
       pl(3) = polylog(3,x)
       pl(4) = polylog(2,xb)
       pl(5) = polylog(3,xb)
       pl(6) = polylog(2,-x)
       pl(7) = polylog(3,-x)
-      pl(8) = polylog(2,1._wp/(1._wp+x))
-      pl(9) = polylog(3,1._wp/(1._wp+x))
-      pl(10) = polylog(2,(1._wp+x)/2._wp)
-      pl(11) = polylog(3,(1._wp+x)/2._wp)
-      pl(12) = polylog(3,xb*(1._wp+x))
+      pl(8) = polylog(2,xp**(-1))
+      pl(9) = polylog(3,xp**(-1))
+      pl(10) = polylog(2,xp/2._wp)
+      pl(11) = polylog(3,xp/2._wp)
+      pl(12) = polylog(3,xb*xp)
     endif
-    xp = 1._wp + x
     log_x = log_prec(x,xb)
     log_xb = log_prec(xb,x)
     call set_qed_pdf_parameters (epdf, scale, alpha, running, &
-      nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
+      nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order, &
+      legacy_compatibility=lc)
     select case (flv)
-    case (EPDF_S,EPDF_NS,EPDF_ELE, EPDF_POS)
-       bar   = recbar (flv, x, xb, n, run, order)
-       hat   = rechat (flv, x, xb, xp, pl, n, run, order)
+    case (EPDF_S,EPDF_NS)
+       bar = recbar (flv, x, xb, n, run, order)
+       hat = rechat (flv, x, xb, xp, pl, n, run, order)
+       num = recnum (flv, x, xb, xp, pl, n)
        asymb = - bar_asym (flv, xb, n, run, order)
        asym  = recasym (flv, x, xb, log_xb, nlep, nf, &
          n, p, al0_2pi, al_2pi, order, running)
-       num = recnum (flv, x, xb, xp, pl, n)
+       res = full_series (log_x, log_xb, ln0, p, al_2pi, &
+         bar, hat, num, asymb, asym)
+    case (EPDF_POS,EPDF_ELE)
+       full = recfull (flv, x, xb, xp, pl, n, run, order, &
+         legacy_compatibility=lc)
+       asym  = recasym (flv, x, xb, log_xb, nlep, nf, &
+         n, p, al0_2pi, al_2pi, order, running, &
+         legacy_compatibility=lc)
+       res = full_series (log_x, log_xb, ln0, p, al_2pi, full, asym)
     case (EPDF_G)
-       bar   = recbar (flv, x, xb, n, run, order)
-       hat   = rechat (flv, x, xb, xp, pl, n, run, order)
-       asymb = 0._wp
        asym  = recasym (flv, x, xb, log_xb, nlep, nf, &
          n, p, al0_2pi, al_2pi, order, running)
+       bar = recbar (flv, x, xb, n, run, order)
+       hat = rechat (flv, x, xb, xp, pl, n, run, order)
        num = recnum (flv, x, xb, xp, pl, n)
+       asymb = 0._wp
        call photon_matching (log_xb, x0gam, x1gam, pgam, bar, asym)
+       res = full_series (log_x, log_xb, ln0, p, al_2pi, &
+         bar, hat, num, asymb, asym)
     case default
        call msg_fatal ("elec_pdf: wrong lepton flavor.")
     end select
-    res = full_series (log_x, log_xb, ln0, p, al_2pi, bar, hat, num, asymb, asym)
   end function elec_pdf
 
 @ %def elec_pdf
@@ -2399,81 +3276,75 @@ module electron_pdfs_uti
 <<Electron PDFs: test declarations>>
 
 integer, parameter :: wp = default
-integer, parameter :: dimx = 37
+
+! integer, parameter :: dimxlim = 43
+integer, parameter :: dimxlim = 23
+integer, parameter :: dimxmid = 10
+integer, parameter :: nxbcut = 19 ! Remove the last testing values for x-> 1
+integer, parameter :: dimx = 2 * dimxlim + dimxmid - nxbcut
 !
 ! Attention:
 ! The commented out c values are for testing only and cause minor
 ! numerical fluctuations between quadruple, extended and double precision
 !
-real(wp), dimension(dimx), parameter :: xx = [ &
-  ! 0.000000000000000000000000000000000000000000010_wp, &
-  ! 0.000000000000000000000000000000000000000000100_wp, &
-  ! 0.000000000000000000000000000000000000000001000_wp, &
-  ! 0.000000000000000000000000000000000000000010000_wp, &
-  ! 0.000000000000000000000000000000000000000100000_wp, &
-  ! 0.000000000000000000000000000000000000001000000_wp, &
-  ! 0.000000000000000000000000000000000000010000000_wp, &
-  ! 0.000000000000000000000000000000000000100000000_wp, &
-  ! 0.000000000000000000000000000000000001000000000_wp, &
-  ! 0.000000000000000000000000000000000010000000000_wp, &
-  ! 0.000000000000000000000000000000000100000000000_wp, &
-  ! 0.000000000000000000000000000000001000000000000_wp, &
-  ! 0.000000000000000000000000000000010000000000000_wp, &
-  ! 0.000000000000000000000000000000100000000000000_wp, &
-  ! 0.000000000000000000000000000001000000000000000_wp, &
-  ! 0.000000000000000000000000000010000000000000000_wp, &
-  ! 0.000000000000000000000000000100000000000000000_wp, &
-  ! 0.000000000000000000000000001000000000000000000_wp, &
-  ! 0.000000000000000000000000010000000000000000000_wp, &
-  ! 0.000000000000000000000000100000000000000000000_wp, &
-  0.000000000000000000000001000000000000000000000_wp, &
-  0.000000000000000000000010000000000000000000000_wp, &
-  0.000000000000000000000100000000000000000000000_wp, &
-  0.000000000000000000001000000000000000000000000_wp, &
-  0.000000000000000000010000000000000000000000000_wp, &
-  0.000000000000000000100000000000000000000000000_wp, &
-  0.000000000000000001000000000000000000000000000_wp, &
-  0.000000000000000010000000000000000000000000000_wp, &
-  0.000000000000000100000000000000000000000000000_wp, &
-  0.000000000000001000000000000000000000000000000_wp, &
-  0.000000000000010000000000000000000000000000000_wp, &
-  0.000000000000100000000000000000000000000000000_wp, &
-  0.000000000001000000000000000000000000000000000_wp, &
-  0.000000000010000000000000000000000000000000000_wp, &
-  0.000000000100000000000000000000000000000000000_wp, &
-  0.000000001000000000000000000000000000000000000_wp, &
-  0.000000010000000000000000000000000000000000000_wp, &
-  0.000000100000000000000000000000000000000000000_wp, &
-  0.000001000000000000000000000000000000000000000_wp, &
-  0.000010000000000000000000000000000000000000000_wp, &
-  0.000100000000000000000000000000000000000000000_wp, &
-  0.001000000000000000000000000000000000000000000_wp, &
-  0.010000000000000000000000000000000000000000000_wp, &
-  0.100000000000000000000000000000000000000000000_wp, &
-  0.200000000000000000000000000000000000000000000_wp, &
-  0.300000000000000000000000000000000000000000000_wp, &
-  0.400000000000000000000000000000000000000000000_wp, &
-  0.500000000000000000000000000000000000000000000_wp, &
-  0.600000000000000000000000000000000000000000000_wp, &
-  0.700000000000000000000000000000000000000000000_wp, &
-  0.800000000000000000000000000000000000000000000_wp, &
-  0.900000000000000000000000000000000000000000000_wp, &
-  0.950000000000000000000000000000000000000000000_wp, &
-  0.990000000000000000000000000000000000000000000_wp, &
-  0.999000000000000000000000000000000000000000000_wp, &
-  0.999900000000000000000000000000000000000000000_wp, &
-  0.999990000000000000000000000000000000000000000_wp &
-  ! 0.999999000000000000000000000000000000000000000_wp, &
-  ! 0.999999900000000000000000000000000000000000000_wp, &
-  ! 0.999999990000000000000000000000000000000000000_wp, &
-  ! 0.999999999000000000000000000000000000000000000_wp, &
-  ! 0.999999999900000000000000000000000000000000000_wp, &
-  ! 0.999999999990000000000000000000000000000000000_wp, &
-  ! 0.999999999999000000000000000000000000000000000_wp, &
-  ! 0.999999999999900000000000000000000000000000000_wp, &
-  ! 0.999999999999990000000000000000000000000000000_wp, &
-  ! 0.999999999999999000000000000000000000000000000_wp, &
-  ! 0.999999999999999900000000000000000000000000000_wp &
+
+real(wp), dimension(dimxlim), parameter :: xxlim = [ &
+  ! 1.e-318_wp, & ! First NAN for double precision (x->1, electron)
+  ! 1.e-310_wp, &
+  ! 1.e-308_wp, & ! First NAN for double precision (x->0, electron)
+  ! 1.e-307_wp, &
+  ! 1.e-305_wp, &
+  ! 1.e-300_wp, &
+  ! 1.e-200_wp, &
+  ! 1.e-150_wp, &
+  ! 1.e-125_wp, &
+  ! 1.e-100_wp, &
+  ! 1.e-90_wp, &
+  ! 1.e-80_wp, &
+  ! 1.e-70_wp, &
+  ! 1.e-60_wp, &
+  ! 1.e-50_wp, &
+  ! 1.e-45_wp, &
+  ! 1.e-40_wp, &
+  ! 1.e-35_wp, &
+  ! 1.e-30_wp, &
+  ! 1.e-25_wp, &
+  1.e-24_wp, &
+  1.e-23_wp, &
+  1.e-22_wp, &
+  1.e-21_wp, &
+  1.e-20_wp, &
+  1.e-19_wp, &
+  1.e-18_wp, &
+  1.e-17_wp, &
+  1.e-16_wp, &
+  1.e-15_wp, &
+  1.e-14_wp, &
+  1.e-13_wp, &
+  1.e-12_wp, &
+  1.e-11_wp, &
+  1.e-10_wp, &
+  1.e-9_wp, &
+  1.e-8_wp, &
+  1.e-7_wp, &
+  1.e-6_wp, &
+  1.e-5_wp, &
+  1.e-4_wp, &
+  1.e-3_wp, &
+  1.e-2_wp &
+]
+
+real(wp), dimension(dimxmid), parameter :: xxmid = [ &
+  0.1_wp, &
+  0.2_wp, &
+  0.3_wp, &
+  0.4_wp, &
+  0.5_wp, &
+  0.6_wp, &
+  0.7_wp, &
+  0.8_wp, &
+  0.9_wp, &
+  0.95_wp &
 ]
 
 contains
@@ -2493,6 +3364,55 @@ end module electron_pdfs_uti
   end subroutine electron_pdfs_test
 
 @ %def electron_pdfs_test
+@
+<<Electron PDFs: test declarations>>=
+  public :: set_test_values_for_x
+<<Electron PDFs: tests>>=
+  subroutine set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
+    real(wp), dimension(dimx), intent(out) :: x, xb, xp
+    real(wp), dimension(dimx), intent(out)  :: log_x, log_xb
+    real(wp), dimension(dimx,12), intent(out) :: pl
+    integer :: i, j
+    x  = 0._wp
+    xb = 0._wp
+    xp = 0._wp
+    log_x = 0._wp
+    log_xb = 0._wp
+    pl = 0._wp
+    do i = 1, size(xxlim) ! Limit x->0
+      x(i) =xxlim(i)
+      xb(i) = 1._wp - x(i)
+    end do
+    do i = 1, size(xxmid) ! Middle
+      j = size(xxlim) + i
+      x(j) = xxmid(i)
+      xb(j) = 1._wp - x(j)
+    end do
+    do i = 1, size(xxlim) - nxbcut ! Limit x->1
+      j = size(xxlim) + size(xxmid) + i
+      xb(j) =xxlim(size(xxlim) + 1 - i)
+      x (j) = 1._wp - xb(j)
+    end do
+    do i = 1, size(x)
+      xp(i) = 1._wp + x(i)
+      log_x(i) = log_prec(x(i),xb(i))
+      log_xb(i) = log_prec(xb(i),x(i))
+      pl(i,1) = log(xp(i))
+      pl(i,2) = polylog(2,x(i))
+      pl(i,3) = polylog(3,x(i))
+      pl(i,4) = polylog(2,xb(i))
+      pl(i,5) = polylog(3,xb(i))
+      pl(i,6) = polylog(2,-x(i))
+      pl(i,7) = polylog(3,-x(i))
+      pl(i,8) = polylog(2,xp(i)**(-1))
+      pl(i,9) = polylog(3,xp(i)**(-1))
+      pl(i,10) = polylog(2,xp(i)/2._wp)
+      pl(i,11) = polylog(3,xp(i)/2._wp)
+      pl(i,12) = polylog(3,xb(i)*xp(i))
+    end do
+  end subroutine set_test_values_for_x
+
+@ %def set_test_values_for_x
 @
 \subsubsection{Electron PDF tests}
 <<Electron PDFs: execute tests>>=
@@ -2514,25 +3434,7 @@ end module electron_pdfs_uti
     integer :: nlep, nf, i
     alpha = ALPHA_QED_ME_REF
     nlep = 1
-    do i = 1, size(x)
-      x(i) =real(xx(i), kind=wp)
-      xb(i) = 1._wp - x(i)
-      xp(i) = 1._wp + x(i)
-      log_x(i) = log_prec(x(i),xb(i))
-      log_xb(i) = log_prec(xb(i),x(i))
-      pl(i,1) = log(1._wp+x(i))
-      pl(i,2) = polylog(2,x(i))
-      pl(i,3) = polylog(3,x(i))
-      pl(i,4) = polylog(2,xb(i))
-      pl(i,5) = polylog(3,xb(i))
-      pl(i,6) = polylog(2,-x(i))
-      pl(i,7) = polylog(3,-x(i))
-      pl(i,8) = polylog(2,1._wp/(1._wp+x(i)))
-      pl(i,9) = polylog(3,1._wp/(1._wp+x(i)))
-      pl(i,10) = polylog(2,(1._wp+x(i))/2._wp)
-      pl(i,11) = polylog(3,(1._wp+x(i))/2._wp)
-      pl(i,12) = polylog(3,xb(i)*(1._wp+x(i)))
-    end do
+    call set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
     write (u, "(A)")  "* Test output: electron_pdfs_1"
     write (u, "(A)")  "*   Purpose: check analytic properties"
     write (u, "(A)")
@@ -2545,7 +3447,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,1) "  elec_asym (LL,x=", xx(i) ,")   = ", &
+      write (u,1) "  elec_asym (LL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, elec_asym ( &
         xb(i), nlep, nf, n, p, al0_2pi, al_2pi, order, .false.) &
       )
@@ -2557,7 +3459,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,2) "  elec_asym (NLL,x=", xx(i) ,")   = ", &
+      write (u,2) "  elec_asym (NLL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, elec_asym ( &
         xb(i), nlep, nf, n, p, al0_2pi, al_2pi, order, .false.) &
       )
@@ -2573,7 +3475,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,3) "  elec_asym (LL,x=", xx(i) ,")   = ", &
+      write (u,3) "  elec_asym (LL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, elec_asym ( &
         xb(i), nlep, nf, n, p, al0_2pi, al_2pi, order, .true.) &
       )
@@ -2586,7 +3488,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,4) "  elec_asym (NLL,x=", xx(i) ,")   = ", &
+      write (u,4) "  elec_asym (NLL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, elec_asym ( &
         xb(i), nlep, nf, n, p, al0_2pi, al_2pi, order, .true.) &
       )
@@ -2600,7 +3502,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,5) "  phot_asym (LL,x=", xx(i) ,")   = ", &
+      write (u,5) "  phot_asym (LL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, phot_asym ( &
         x(i), xb(i), log_xb(i), n, p, al0_2pi, order, .false.) &
       )
@@ -2612,7 +3514,7 @@ end module electron_pdfs_uti
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     write (u, "(A)")
     do i = 1, size(x)
-      write (u,6) "  phot_asym (NLL,x=", xx(i) ,")   = ", &
+      write (u,6) "  phot_asym (NLL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, phot_asym ( &
         x(i), xb(i), log_xb(i), n, p, al0_2pi, order, .false.) &
       )
@@ -2627,7 +3529,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,7) "  phot_asym (LL,x=", xx(i) ,")   = ", &
+      write (u,7) "  phot_asym (LL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, phot_asym ( &
         x(i), xb(i), log_xb(i), n, p, al0_2pi, order, .true.) &
       )
@@ -2640,7 +3542,7 @@ end module electron_pdfs_uti
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     write (u, "(A)")
     do i = 1, size(x)
-      write (u,8) "  phot_asym (NLL,x=", xx(i) ,")   = ", &
+      write (u,8) "  phot_asym (NLL,x=", x(i) ,")   = ", &
       full_series(log_x(i), log_xb(i), ln0, p, al_2pi, phot_asym ( &
         x(i), xb(i), log_xb(i), n, p, al0_2pi, order, .true.) &
       )
@@ -2671,25 +3573,7 @@ end module electron_pdfs_uti
     logical :: running
     integer :: nlep, nf, i
     nlep = 1
-    do i = 1, size(x)
-      x(i) =real(xx(i), kind=wp)
-      xb(i) = 1._wp - x(i)
-      xp(i) = 1._wp + x(i)
-      log_x(i) = log_prec(x(i),xb(i))
-      log_xb(i) = log_prec(xb(i),x(i))
-      pl(i,1) = log(1._wp+x(i))
-      pl(i,2) = polylog(2,x(i))
-      pl(i,3) = polylog(3,x(i))
-      pl(i,4) = polylog(2,xb(i))
-      pl(i,5) = polylog(3,xb(i))
-      pl(i,6) = polylog(2,-x(i))
-      pl(i,7) = polylog(3,-x(i))
-      pl(i,8) = polylog(2,1._wp/(1._wp+x(i)))
-      pl(i,9) = polylog(3,1._wp/(1._wp+x(i)))
-      pl(i,10) = polylog(2,(1._wp+x(i))/2._wp)
-      pl(i,11) = polylog(3,(1._wp+x(i))/2._wp)
-      pl(i,12) = polylog(3,xb(i)*(1._wp+x(i)))
-    end do
+    call set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
     call pdf%init (ME_REF, ALPHA_QED_ME_REF, -1._default, &
          3000.0_default, 3, 1, nlep)
     call pdf%allocate_aqed (order = 1, n_f = 0, nlep = 1, running = .true.)
@@ -2704,7 +3588,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call elecbar_asym_p (xb(i), jll_nll, n, 0._wp, order)
-      write (u,1) "  elecbar_asym_p (x=", xx(i) ,")   = " , &
+      write (u,1) "  elecbar_asym_p (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       1 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2713,7 +3597,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call elecbar_asym_p (xb(i), jll_nll, n, 1._wp, order)
-      write (u,2) "  elecbar_asym_p (x=", xx(i) ,")   = " , &
+      write (u,2) "  elecbar_asym_p (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       2 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2722,7 +3606,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call photbar_asym_p (jll_nll, n, 0._wp, order)
-      write (u,3) "  photbar_asym_p (x=", xx(i) ,")   = " , &
+      write (u,3) "  photbar_asym_p (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       3 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2731,7 +3615,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call photbar_asym_p (jll_nll, n, run, order)
-      write (u,4) "  photbar_asym_p (x=", xx(i) ,")   = " , &
+      write (u,4) "  photbar_asym_p (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       4 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2740,7 +3624,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_singlet (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, 0._wp, order)
-      write (u,5) "  rechat_singlet (x=", xx(i) ,")   = " , &
+      write (u,5) "  rechat_singlet (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       5 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2749,7 +3633,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_singlet (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, run, order)
-      write (u,6) "  rechat_singlet (x=", xx(i) ,")   = " , &
+      write (u,6) "  rechat_singlet (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       6 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2758,7 +3642,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_nonsinglet (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, 0._wp, order)
-      write (u,7) "  rechat_nonsinglet (x=", xx(i) ,")   = " , &
+      write (u,7) "  rechat_nonsinglet (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       7 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2767,7 +3651,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_nonsinglet (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, run, order)
-      write (u,8) "  rechat_nonsinglet (x=", xx(i) ,")   = " , &
+      write (u,8) "  rechat_nonsinglet (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       8 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2776,7 +3660,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_photon (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, 0._wp, order)
-      write (u,9) "  rechat_photon (x=", xx(i) ,")   = " , &
+      write (u,9) "  rechat_photon (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       9 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2785,7 +3669,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_photon (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, run, order)
-      write (u,10) "  rechat_photon (x=", xx(i) ,")   = " , &
+      write (u,10) "  rechat_photon (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       10 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2794,7 +3678,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_ele (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, 0._wp, order)
-      write (u,11) "  rechat_ele (x=", xx(i) ,")   = " , &
+      write (u,11) "  rechat_ele (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       11 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2803,7 +3687,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_ele (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, run, order)
-      write (u,12) "  rechat_ele (x=", xx(i) ,")   = " , &
+      write (u,12) "  rechat_ele (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       12 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2812,7 +3696,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_pos (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, 0._wp, order)
-      write (u,13) "  rechat_pos (x=", xx(i) ,")   = " , &
+      write (u,13) "  rechat_pos (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       13 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2821,7 +3705,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call rechat_pos (x(i), xb(i), xp(i),  pl(i,:), jll_nll, n, run, order)
-      write (u,14) "  rechat_pos (x=", xx(i) ,")   = " , &
+      write (u,14) "  rechat_pos (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       14 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2830,7 +3714,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_singlet (x(i), xb(i), jll_nll, n, 0._wp, order)
-      write (u,15) "  recbar_singlet (x=", xx(i) ,")   = " , &
+      write (u,15) "  recbar_singlet (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       15 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2839,7 +3723,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_singlet (x(i), xb(i), jll_nll, n, run, order)
-      write (u,16) "  recbar_singlet (x=", xx(i) ,")   = " ,&
+      write (u,16) "  recbar_singlet (x=", x(i) ,")   = " ,&
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       16 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2848,7 +3732,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_nonsinglet (x(i), xb(i), jll_nll, n, 0._wp, order)
-      write (u,17) "  recbar_nonsinglet (x=", xx(i) ,")   = " ,&
+      write (u,17) "  recbar_nonsinglet (x=", x(i) ,")   = " ,&
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       17 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2857,7 +3741,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_nonsinglet (x(i), xb(i), jll_nll, n, run, order)
-      write (u,18) "  recbar_nonsinglet (x=", xx(i) ,")   = " ,&
+      write (u,18) "  recbar_nonsinglet (x=", x(i) ,")   = " ,&
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       18 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2866,7 +3750,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_photon (jll_nll, x(i), xb(i), n, 0._wp, order)
-      write (u,19) "  recbar_photon (x=", xx(i) ,")   = " , &
+      write (u,19) "  recbar_photon (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       19 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2875,7 +3759,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_photon (jll_nll, x(i), xb(i), n, run, order)
-      write (u,20) "  recbar_photon (x=", xx(i) ,")   = " , &
+      write (u,20) "  recbar_photon (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       20 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2884,7 +3768,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_ele (x(i), xb(i), jll_nll, n, 0._wp, order)
-      write (u,21) "  recbar_ele (x=", xx(i) ,")   = " , &
+      write (u,21) "  recbar_ele (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       21 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2893,7 +3777,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_ele (x(i), xb(i), jll_nll, n, run, order)
-      write (u,22) "  recbar_ele (x=", xx(i) ,")   = " , &
+      write (u,22) "  recbar_ele (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       22 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2902,7 +3786,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_pos (jll_nll, n, 0._wp, order)
-      write (u,23) "  recbar_pos (x=", xx(i) ,")   = " , &
+      write (u,23) "  recbar_pos (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       23 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2911,7 +3795,7 @@ end module electron_pdfs_uti
     write (u, "(A)")
     do i = 1, size(x)
       call recbar_pos (jll_nll, n, run, order)
-      write (u,24) "  recbar_pos (x=", xx(i) ,")   = " , &
+      write (u,24) "  recbar_pos (x=", x(i) ,")   = " , &
         rec_log_series(log_x(i), log_xb(i), ln0, jll_nll)
       24 format(A,RN,ES20.10,A,6(1x,ES12.3))
     end do
@@ -2940,25 +3824,7 @@ end module electron_pdfs_uti
     integer :: nlep, nf, i
     alpha = ALPHA_QED_ME_REF
     nlep = 1
-    do i = 1, size(x)
-      x(i) =real(xx(i), kind=wp)
-      xb(i) = 1._wp - x(i)
-      xp(i) = 1._wp + x(i)
-      log_x(i) = log_prec(x(i),xb(i))
-      log_xb(i) = log_prec(xb(i),x(i))
-      pl(i,1) = log(1._wp+x(i))
-      pl(i,2) = polylog(2,x(i))
-      pl(i,3) = polylog(3,x(i))
-      pl(i,4) = polylog(2,xb(i))
-      pl(i,5) = polylog(3,xb(i))
-      pl(i,6) = polylog(2,-x(i))
-      pl(i,7) = polylog(3,-x(i))
-      pl(i,8) = polylog(2,1._wp/(1._wp+x(i)))
-      pl(i,9) = polylog(3,1._wp/(1._wp+x(i)))
-      pl(i,10) = polylog(2,(1._wp+x(i))/2._wp)
-      pl(i,11) = polylog(3,(1._wp+x(i))/2._wp)
-      pl(i,12) = polylog(3,xb(i)*(1._wp+x(i)))
-    end do
+    call set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
     write (u, "(A)")  "* Test output: electron_pdfs_3"
     write (u, "(A)")  "*   Purpose: check analytic properties"
     write (u, "(A)")
@@ -2971,7 +3837,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,1) "  bar_asym (ELE,LL,x=", xx(i) ,")   =", &
+      write (u,1) "  bar_asym (ELE,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
          EPDF_ELE, xb(i), n, run, order))
       1 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -2982,7 +3848,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,2) "  bar_asym (ELE,NLL,x=", xx(i) ,")  =", &
+      write (u,2) "  bar_asym (ELE,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
          EPDF_ELE, xb(i), n, run, order))
       2 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -2996,7 +3862,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,3) "  bar_asym (ELE,LL,x=", xx(i) ,")   =", &
+      write (u,3) "  bar_asym (ELE,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
             EPDF_ELE, xb(i), n, run, order))
       3 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3008,7 +3874,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,4) "  bar_asym (ELE,NLL,x=", xx(i) ,")  =", &
+      write (u,4) "  bar_asym (ELE,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
             EPDF_ELE, xb(i), n, run, order))
       4 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3021,7 +3887,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,5) "  bar_asym (GAM,LL,x=", xx(i) ,")   =", &
+      write (u,5) "  bar_asym (GAM,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
             EPDF_G, xb(i), n, run, order))
       5 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3032,7 +3898,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,6) "  bar_asym (GAM,NLL,x=", xx(i) ,")  =", &
+      write (u,6) "  bar_asym (GAM,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
             EPDF_G, xb(i), n, run, order))
       6 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3046,7 +3912,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,7) "  bar_asym (GAM,LL,x=", xx(i) ,")   =", &
+      write (u,7) "  bar_asym (GAM,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
             EPDF_G, xb(i), n, run, order))
       7 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3058,7 +3924,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,8) "  bar_asym (GAM,NLL,x=", xx(i) ,")  =", &
+      write (u,8) "  bar_asym (GAM,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, bar_asym ( &
             EPDF_G, xb(i), n, run, order))
       8 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3071,7 +3937,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,9) "  recbar (S,LL,x=", xx(i) ,")   =", &
+      write (u,9) "  recbar (S,LL,x=", x(i) ,")   =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_S, x(i), xb(i), n, 0._wp, order))
       9 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3082,7 +3948,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,10) "  recbar (S,NLL,x=", xx(i) ,")  =", &
+      write (u,10) "  recbar (S,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_S, x(i), xb(i), n, 0._wp, order))
       10 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3096,7 +3962,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,11) "  recbar (S,LL,x=", xx(i) ,")   =", &
+      write (u,11) "  recbar (S,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_S, x(i), xb(i), n, run, order))
       11 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3108,7 +3974,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,12) "  recbar (S,NLL,x=", xx(i) ,")  =", &
+      write (u,12) "  recbar (S,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_S, x(i), xb(i), n, run, order))
       12 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3121,7 +3987,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,13) "  recbar (NS,LL,x=", xx(i) ,")   =", &
+      write (u,13) "  recbar (NS,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_NS, x(i), xb(i), n, 0._wp, order))
       13 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3132,7 +3998,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,14) "  recbar (NS,NLL,x=", xx(i) ,")  =", &
+      write (u,14) "  recbar (NS,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_NS, x(i), xb(i), n, 0._wp, order))
       14 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3146,7 +4012,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,15) "  recbar (NS,LL,x=", xx(i) ,")   =", &
+      write (u,15) "  recbar (NS,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_NS, x(i), xb(i), n, run, order))
       15 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3158,7 +4024,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,16) "  recbar (NS,NLL,x=", xx(i) ,")  =", &
+      write (u,16) "  recbar (NS,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_NS, x(i), xb(i), n, run, order))
       16 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3171,7 +4037,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,17) "  recbar (GAM,LL,x=", xx(i) ,")   =", &
+      write (u,17) "  recbar (GAM,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_G, x(i), xb(i), n, run, order))
       17 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3182,7 +4048,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,18) "  recbar (GAM,NLL,x=", xx(i) ,")  =", &
+      write (u,18) "  recbar (GAM,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_G, x(i), xb(i), n, run, order))
       18 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3196,7 +4062,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,19) "  recbar (GAM,LL,x=", xx(i) ,")   =", &
+      write (u,19) "  recbar (GAM,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_G, x(i), xb(i), n, run, order))
       19 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3208,7 +4074,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,20) "  recbar (GAM,NLL,x=", xx(i) ,")  =", &
+      write (u,20) "  recbar (GAM,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_G, x(i), xb(i), n, run, order))
       20 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3221,7 +4087,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,21) "  recbar (ELE,LL,x=", xx(i) ,")   =", &
+      write (u,21) "  recbar (ELE,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_ELE, x(i), xb(i), n, 0._wp, order))
       21 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3232,7 +4098,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,22) "  recbar (ELE,NLL,x=", xx(i) ,")  =", &
+      write (u,22) "  recbar (ELE,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_ELE, x(i), xb(i), n, 0._wp, order))
       22 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3246,7 +4112,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,23) "  recbar (ELE,LL,x=", xx(i) ,")   =", &
+      write (u,23) "  recbar (ELE,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_ELE, x(i), xb(i), n, run, order))
       23 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3258,7 +4124,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,24) "  recbar (ELE,NLL,x=", xx(i) ,")  =", &
+      write (u,24) "  recbar (ELE,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_ELE, x(i), xb(i), n, run, order))
       24 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3271,7 +4137,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,25) "  recbar (POS,LL,x=", xx(i) ,")   =", &
+      write (u,25) "  recbar (POS,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_POS, x(i), xb(i), n, 0._wp, order))
       25 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3282,7 +4148,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,26) "  recbar (POS,NLL,x=", xx(i) ,")  =", &
+      write (u,26) "  recbar (POS,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_POS, x(i), xb(i), n, 0._wp, order))
       26 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3296,7 +4162,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,27) "  recbar (POS,LL,x=", xx(i) ,")   =", &
+      write (u,27) "  recbar (POS,LL,x=", x(i) ,")   =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_POS, x(i), xb(i), n, run, order))
       27 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3308,7 +4174,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,28) "  recbar (POS,NLL,x=", xx(i) ,")  =", &
+      write (u,28) "  recbar (POS,NLL,x=", x(i) ,")  =", &
        full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recbar ( &
             EPDF_POS, x(i), xb(i), n, run, order))
      28 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3338,25 +4204,7 @@ end module electron_pdfs_uti
     integer :: nlep, nf, i
     alpha = ALPHA_QED_ME_REF
     nlep = 1
-    do i = 1, size(x)
-      x(i) =real(xx(i), kind=wp)
-      xb(i) = 1._wp - x(i)
-      xp(i) = 1._wp + x(i)
-      log_x(i) = log_prec(x(i),xb(i))
-      log_xb(i) = log_prec(xb(i),x(i))
-      pl(i,1) = log(1._wp+x(i))
-      pl(i,2) = polylog(2,x(i))
-      pl(i,3) = polylog(3,x(i))
-      pl(i,4) = polylog(2,xb(i))
-      pl(i,5) = polylog(3,xb(i))
-      pl(i,6) = polylog(2,-x(i))
-      pl(i,7) = polylog(3,-x(i))
-      pl(i,8) = polylog(2,1._wp/(1._wp+x(i)))
-      pl(i,9) = polylog(3,1._wp/(1._wp+x(i)))
-      pl(i,10) = polylog(2,(1._wp+x(i))/2._wp)
-      pl(i,11) = polylog(3,(1._wp+x(i))/2._wp)
-      pl(i,12) = polylog(3,xb(i)*(1._wp+x(i)))
-    end do
+    call set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
     write (u, "(A)")  "* Test output: electron_pdfs_4"
     write (u, "(A)")  "*   Purpose: check analytic properties"
     write (u, "(A)")
@@ -3369,7 +4217,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,1) "  rechat (S,LL,x=", xx(i) ,")   =", &
+      write (u,1) "  rechat (S,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_S, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       1 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3380,7 +4228,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,2) "  rechat (S,NLL,x=", xx(i) ,")  =", &
+      write (u,2) "  rechat (S,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_S, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       2 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3394,7 +4242,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,3) "  rechat (S,LL,x=", xx(i) ,")   =", &
+      write (u,3) "  rechat (S,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_S, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       3 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3406,7 +4254,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,4) "  rechat (S,NLL,x=", xx(i) ,")  =", &
+      write (u,4) "  rechat (S,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_S, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       4 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3419,7 +4267,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,5) "  rechat (NS,LL,x=", xx(i) ,")   =", &
+      write (u,5) "  rechat (NS,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_NS, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       5 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3430,7 +4278,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,6) "  rechat (NS,NLL,x=", xx(i) ,")  =", &
+      write (u,6) "  rechat (NS,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_NS, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       6 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3444,7 +4292,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,7) "  rechat (NS,LL,x=", xx(i) ,")   =", &
+      write (u,7) "  rechat (NS,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_NS, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       7 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3456,7 +4304,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,8) "  rechat (NS,NLL,x=", xx(i) ,")  =", &
+      write (u,8) "  rechat (NS,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_NS, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       8 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3469,7 +4317,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,9) "  rechat (GAM,LL,x=", xx(i) ,")   =", &
+      write (u,9) "  rechat (GAM,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_G, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       9 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3480,7 +4328,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,10) "  rechat (GAM,NLL,x=", xx(i) ,")  =", &
+      write (u,10) "  rechat (GAM,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_G, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       10 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3494,7 +4342,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,11) "  rechat (GAM,LL,x=", xx(i) ,")   =", &
+      write (u,11) "  rechat (GAM,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_G, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       11 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3506,7 +4354,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,12) "  rechat (GAM,NLL,x=", xx(i) ,")  =", &
+      write (u,12) "  rechat (GAM,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_G, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       12 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3519,7 +4367,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,13) "  rechat (ELE,LL,x=", xx(i) ,")   =", &
+      write (u,13) "  rechat (ELE,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_ELE, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       13 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3530,7 +4378,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,14) "  rechat (ELE,NLL,x=", xx(i) ,")  =", &
+      write (u,14) "  rechat (ELE,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_ELE, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       14 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3544,7 +4392,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,15) "  rechat (ELE,LL,x=", xx(i) ,")   =", &
+      write (u,15) "  rechat (ELE,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_ELE, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       15 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3556,7 +4404,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,16) "  rechat (ELE,NLL,x=", xx(i) ,")  =", &
+      write (u,16) "  rechat (ELE,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_ELE, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       16 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3569,7 +4417,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,17) "  rechat (POS,LL,x=", xx(i) ,")   =", &
+      write (u,17) "  rechat (POS,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_POS, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       17 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3580,7 +4428,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,18) "  rechat (POS,NLL,x=", xx(i) ,")  =", &
+      write (u,18) "  rechat (POS,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_POS, x(i), xb(i), xp(i),  pl(i,:), n, 0._wp, order))
       18 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3594,7 +4442,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,19) "  rechat (POS,LL,x=", xx(i) ,")   =", &
+      write (u,19) "  rechat (POS,LL,x=", x(i) ,")   =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_POS, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       19 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3606,7 +4454,7 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,20) "  rechat (POS,NLL,x=", xx(i) ,")  =", &
+      write (u,20) "  rechat (POS,NLL,x=", x(i) ,")  =", &
           full_series(log_x(i), log_xb(i), ln0, p, al_2pi, rechat ( &
             EPDF_POS, x(i), xb(i), xp(i),  pl(i,:), n, run, order))
       20 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3639,25 +4487,7 @@ end module electron_pdfs_uti
     integer :: nlep, nf, i
     alpha = ALPHA_QED_ME_REF
     nlep=1
-    do i = 1, size(x)
-      x(i) =real(xx(i), kind=wp)
-      xb(i) = 1._wp - x(i)
-      xp(i) = 1._wp + x(i)
-      log_x(i) = log_prec(x(i),xb(i))
-      log_xb(i) = log_prec(xb(i),x(i))
-      pl(i,1) = log(1._wp+x(i))
-      pl(i,2) = polylog(2,x(i))
-      pl(i,3) = polylog(3,x(i))
-      pl(i,4) = polylog(2,xb(i))
-      pl(i,5) = polylog(3,xb(i))
-      pl(i,6) = polylog(2,-x(i))
-      pl(i,7) = polylog(3,-x(i))
-      pl(i,8) = polylog(2,1._wp/(1._wp+x(i)))
-      pl(i,9) = polylog(3,1._wp/(1._wp+x(i)))
-      pl(i,10) = polylog(2,(1._wp+x(i))/2._wp)
-      pl(i,11) = polylog(3,(1._wp+x(i))/2._wp)
-      pl(i,12) = polylog(3,xb(i)*(1._wp+x(i)))
-    end do
+    call set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
     write (u, "(A)")  "* Test output: electron_pdfs_5"
     write (u, "(A)")  "*   Purpose: check analytic properties"
     write (u, "(A)")
@@ -3685,21 +4515,21 @@ end module electron_pdfs_uti
       egam=full_series(log_x(i), log_xb(i), ln0, p, al_2pi, iegam)
       eele=full_series(log_x(i), log_xb(i), ln0, p, al_2pi, ieele)
       epos=full_series(log_x(i), log_xb(i), ln0, p, al_2pi, iepos)
-      write (u,1) "  endpoint_func_NS  (", xx(i) ,") =", ens
+      write (u,1) "  endpoint_func_NS  (", x(i) ,") =", ens
       1 format(A,RN,ES20.10,A,1(1x,ES12.3))
-      write (u,2) "  endpoint_func_S   (", xx(i) ,") =", es
+      write (u,2) "  endpoint_func_S   (", x(i) ,") =", es
       2 format(A,RN,ES20.10,A,1(1x,ES12.3))
-      write (u,3) "  endpoint_func_GAM (", xx(i) ,") =", egam
+      write (u,3) "  endpoint_func_GAM (", x(i) ,") =", egam
       3 format(A,RN,ES20.10,A,1(1x,ES12.3))
-      write (u,4) "  endpoint_func_ELE (", xx(i) ,") =", eele
+      write (u,4) "  endpoint_func_ELE (", x(i) ,") =", eele
       4 format(A,RN,ES20.10,A,1(1x,ES12.3))
-      write (u,5) "  endpoint_func_POS (", xx(i) ,") =", epos
+      write (u,5) "  endpoint_func_POS (", x(i) ,") =", epos
       5 format(A,RN,ES20.10,A,1(1x,ES12.3))
       write (u, "(A,RN,ES20.10,A,F20.8)") &
-        "  endpoint_func (x = ", xx(i), ", e- - [S + NS]/2) = ", &
+        "  endpoint_func (x = ", x(i), ", e- - [S + NS]/2) = ", &
         abs(eele - (es + ens)/2._wp) / abs(eele + (es + ens)/2._wp) / 2._wp
       write (u, "(A,RN,ES20.10,A,F20.8)") &
-        "  endpoint_func (x = ", xx(i), ", e+ - [S - NS]/2) = ", &
+        "  endpoint_func (x = ", x(i), ", e+ - [S - NS]/2) = ", &
         abs(epos - (es - ens)/2._wp ) / abs(epos + (es - ens)/2._wp) / 2._wp
     end do
     write (u, "(A)")
@@ -3710,31 +4540,31 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,6) "  recnum (S,   ", xx(i) ,") =", &
+      write (u,6) "  recnum (S,   ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_S, x(i), xb(i), xp(i), pl(i,:), n))
       6 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,7) "  recnum (NS,  ", xx(i) ,") =", &
+      write (u,7) "  recnum (NS,  ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_NS, x(i), xb(i), xp(i), pl(i,:), n))
       7 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,8) "  recnum (GAM, ", xx(i) ,") =", &
+      write (u,8) "  recnum (GAM, ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_G, x(i), xb(i), xp(i), pl(i,:), n))
       8 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,9) "  recnum (ELE, ", xx(i) ,") =", &
+      write (u,9) "  recnum (ELE, ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_ELE, x(i), xb(i), xp(i), pl(i,:), n))
       9 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,10) "  recnum (POS, ", xx(i) ,") =", &
+      write (u,10) "  recnum (POS, ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_POS, x(i), xb(i), xp(i), pl(i,:), n))
       10 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3748,31 +4578,31 @@ end module electron_pdfs_uti
     call set_qed_pdf_parameters (pdf, q, &
       alpha, running, nlep, nf, ln0, eta0, p, al0_2pi, al_2pi, n, run, order)
     do i = 1, size(x)
-      write (u,11) "  recnum (S,   ", xx(i) ,") =", &
+      write (u,11) "  recnum (S,   ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_S, x(i), xb(i), xp(i), pl(i,:), n))
       11 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,12) "  recnum (NS,  ", xx(i) ,") =", &
+      write (u,12) "  recnum (NS,  ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_NS, x(i), xb(i), xp(i), pl(i,:), n))
       12 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,13) "  recnum (GAM, ", xx(i) ,") =", &
+      write (u,13) "  recnum (GAM, ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_G, x(i), xb(i), xp(i), pl(i,:), n))
       13 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,14) "  recnum (ELE, ", xx(i) ,") =", &
+      write (u,14) "  recnum (ELE, ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_ELE, x(i), xb(i), xp(i), pl(i,:), n))
       14 format(A,RN,ES20.10,A,1(1x,ES12.3))
     end do
     do i = 1, size(x)
-      write (u,15) "  recnum (POS, ", xx(i) ,") =", &
+      write (u,15) "  recnum (POS, ", x(i) ,") =", &
         full_series(log_x(i), log_xb(i), ln0, p, al_2pi, recnum( &
           EPDF_POS, x(i), xb(i), xp(i), pl(i,:), n))
       15 format(A,RN,ES20.10,A,1(1x,ES12.3))
@@ -3802,32 +4632,64 @@ end module electron_pdfs_uti
     integer :: nlep, nf, i, iq
     alpha = ALPHA_QED_ME_REF
     nlep = 1
-    do i = 1, size(x)
-      x(i) =real(xx(i), kind=wp)
-      xb(i) = 1._wp - x(i)
-      xp(i) = 1._wp + x(i)
-      log_x(i) = log_prec(x(i),xb(i))
-      log_xb(i) = log_prec(xb(i),x(i))
-      pl(i,1) = log(1._wp+x(i))
-      pl(i,2) = polylog(2,x(i))
-      pl(i,3) = polylog(3,x(i))
-      pl(i,4) = polylog(2,xb(i))
-      pl(i,5) = polylog(3,xb(i))
-      pl(i,6) = polylog(2,-x(i))
-      pl(i,7) = polylog(3,-x(i))
-      pl(i,8) = polylog(2,1._wp/(1._wp+x(i)))
-      pl(i,9) = polylog(3,1._wp/(1._wp+x(i)))
-      pl(i,10) = polylog(2,(1._wp+x(i))/2._wp)
-      pl(i,11) = polylog(3,(1._wp+x(i))/2._wp)
-      pl(i,12) = polylog(3,xb(i)*(1._wp+x(i)))
-    end do
+    call set_test_values_for_x(x, xb, xp, log_x, log_xb, pl)
     write (u, "(A)")  "* Test output: electron_pdfs_6"
     write (u, "(A)")  "*   Purpose: full electron PDFs"
     write (u, "(A)")
     write (u, "(A)")  "* Full NLL electron PDFs:"
     do iq = 1, size(Q)
-      write (u, 1)  "* Q = ", Q(iq), " GeV, NLL, alpha fixed:"
+      write (u, "(A)")
+      write (u, 1)  "* Q = ", Q(iq), " GeV, LL, alpha fixed:"
       1 format(A,ES10.4,A)
+      write (u, "(A)")
+      call pdf%init (ME_REF, ALPHA_QED_ME_REF, -1._default, &
+           3000.0_default, 3, 0, nlep)
+      do i = 1, size(x)
+        pdf_s   = elec_pdf (pdf, EPDF_S, x(i), xb(i), Q(iq))
+        pdf_g   = elec_pdf (pdf, EPDF_G, x(i), xb(i), Q(iq))
+        pdf_ns  = elec_pdf (pdf, EPDF_NS, x(i), xb(i), Q(iq))
+        pdf_ele = elec_pdf (pdf, EPDF_ELE, x(i), xb(i), Q(iq))
+        pdf_pos = elec_pdf (pdf, EPDF_POS, x(i), xb(i), Q(iq))
+        write (u,2)  "  ePDF (x = ", x(i), ", S/NS/ELE/POS/GAM) = ", &
+          pdf_s, pdf_ns, pdf_ele, pdf_pos, pdf_g
+        2 format(A,RN,ES20.10,A,5(1x,ES12.3))
+        ! write (u, "(A,RN,ES20.10,A,F10.8)") &
+        !   "  ePDF (x = ", x(i), ", e- - [S + NS]/2) = ", &
+        !   abs(pdf_ele - (pdf_s + pdf_ns)/2._wp) / &
+        !   abs(pdf_ele + (pdf_s + pdf_ns)/2._wp) / 2._wp
+        ! write (u, "(A,RN,ES20.10,A,F10.8)") &
+        !   "  ePDF (x = ", x(i), ", e+ - [S - NS]/2) = ", &
+        !   abs(pdf_pos - (pdf_s - pdf_ns)/2._wp) / &
+        !   abs(pdf_pos + (pdf_s - pdf_ns)/2._wp) / 2._wp
+      end do
+      write (u, "(A)")
+      write (u, 3)  "* Q = ", Q(iq), " GeV, LL, alpha running:"
+      3 format(A,ES10.4,A)
+      write (u, "(A)")
+      call pdf%init (ME_REF, ALPHA_QED_ME_REF, -1._default, &
+           3000.0_default, 3, 0, nlep)
+      call pdf%allocate_aqed (order = 1, n_f = 0, nlep = 1, running = .true.)
+      do i = 1, size(x)
+        pdf_s   = elec_pdf (pdf, EPDF_S, x(i), xb(i), Q(iq))
+        pdf_ns  = elec_pdf (pdf, EPDF_NS, x(i), xb(i), Q(iq))
+        pdf_ele = elec_pdf (pdf, EPDF_ELE, x(i), xb(i), Q(iq))
+        pdf_pos = elec_pdf (pdf, EPDF_POS, x(i), xb(i), Q(iq))
+        pdf_g   = elec_pdf (pdf, EPDF_G, x(i), xb(i), Q(iq))
+        write (u,4)  "  epdf (x = ", x(i), ", S/NS/ELE/POS/GAM) = ", &
+          pdf_s, pdf_ns, pdf_ele, pdf_pos, pdf_g
+        4 format(A,RN,ES20.10,A,5(1x,ES12.3))
+        ! write (u, "(A,RN,ES20.10,A,F10.8)") &
+        !   "  ePDF (x = ", x(i), ", e- - [S + NS]/2) = ", &
+        !   abs(pdf_ele - (pdf_s + pdf_ns)/2._wp) / &
+        !   abs(pdf_ele + (pdf_s + pdf_ns)/2._wp) / 2._wp
+        ! write (u, "(A,RN,ES20.10,A,F10.8)") &
+        !   "  ePDF (x = ", x(i), ", e+ - [S - NS]/2) = ", &
+        !   abs(pdf_pos - (pdf_s - pdf_ns)/2._wp) / &
+        !   abs(pdf_pos + (pdf_s - pdf_ns)/2._wp) / 2._wp
+      end do
+      write (u, "(A)")
+      write (u, 5)  "* Q = ", Q(iq), " GeV, NLL, alpha fixed:"
+      5 format(A,ES10.4,A)
       write (u, "(A)")
       call pdf%init (ME_REF, ALPHA_QED_ME_REF, -1._default, &
            3000.0_default, 3, 1, nlep)
@@ -3837,21 +4699,21 @@ end module electron_pdfs_uti
         pdf_ns  = elec_pdf (pdf, EPDF_NS, x(i), xb(i), Q(iq))
         pdf_ele = elec_pdf (pdf, EPDF_ELE, x(i), xb(i), Q(iq))
         pdf_pos = elec_pdf (pdf, EPDF_POS, x(i), xb(i), Q(iq))
-        write (u,2)  "  ePDF (x = ", xx(i), ", S/NS/ELE/POS/GAM) = ", &
+        write (u,6)  "  ePDF (x = ", x(i), ", S/NS/ELE/POS/GAM) = ", &
           pdf_s, pdf_ns, pdf_ele, pdf_pos, pdf_g
-        2 format(A,RN,ES20.10,A,5(1x,ES12.3))
+        6 format(A,RN,ES20.10,A,5(1x,ES12.3))
         ! write (u, "(A,RN,ES20.10,A,F10.8)") &
-        !   "  ePDF (x = ", xx(i), ", e- - [S + NS]/2) = ", &
+        !   "  ePDF (x = ", x(i), ", e- - [S + NS]/2) = ", &
         !   abs(pdf_ele - (pdf_s + pdf_ns)/2._wp) / &
         !   abs(pdf_ele + (pdf_s + pdf_ns)/2._wp) / 2._wp
         ! write (u, "(A,RN,ES20.10,A,F10.8)") &
-        !   "  ePDF (x = ", xx(i), ", e+ - [S - NS]/2) = ", &
+        !   "  ePDF (x = ", x(i), ", e+ - [S - NS]/2) = ", &
         !   abs(pdf_pos - (pdf_s - pdf_ns)/2._wp) / &
         !   abs(pdf_pos + (pdf_s - pdf_ns)/2._wp) / 2._wp
       end do
       write (u, "(A)")
-      write (u, 3)  "* Q = ", Q(iq), " GeV, NLL, alpha running:"
-      3 format(A,ES10.4,A)
+      write (u, 7)  "* Q = ", Q(iq), " GeV, NLL, alpha running:"
+      7 format(A,ES10.4,A)
       write (u, "(A)")
       call pdf%init (ME_REF, ALPHA_QED_ME_REF, -1._default, &
            3000.0_default, 3, 1, nlep)
@@ -3862,15 +4724,15 @@ end module electron_pdfs_uti
         pdf_ele = elec_pdf (pdf, EPDF_ELE, x(i), xb(i), Q(iq))
         pdf_pos = elec_pdf (pdf, EPDF_POS, x(i), xb(i), Q(iq))
         pdf_g   = elec_pdf (pdf, EPDF_G, x(i), xb(i), Q(iq))
-        write (u,4)  "  epdf (x = ", xx(i), ", S/NS/ELE/POS/GAM) = ", &
+        write (u,8)  "  epdf (x = ", x(i), ", S/NS/ELE/POS/GAM) = ", &
           pdf_s, pdf_ns, pdf_ele, pdf_pos, pdf_g
-        4 format(A,RN,ES20.10,A,5(1x,ES12.3))
+        8 format(A,RN,ES20.10,A,5(1x,ES12.3))
         ! write (u, "(A,RN,ES20.10,A,F10.8)") &
-        !   "  ePDF (x = ", xx(i), ", e- - [S + NS]/2) = ", &
+        !   "  ePDF (x = ", x(i), ", e- - [S + NS]/2) = ", &
         !   abs(pdf_ele - (pdf_s + pdf_ns)/2._wp) / &
         !   abs(pdf_ele + (pdf_s + pdf_ns)/2._wp) / 2._wp
         ! write (u, "(A,RN,ES20.10,A,F10.8)") &
-        !   "  ePDF (x = ", xx(i), ", e+ - [S - NS]/2) = ", &
+        !   "  ePDF (x = ", x(i), ", e+ - [S - NS]/2) = ", &
         !   abs(pdf_pos - (pdf_s - pdf_ns)/2._wp) / &
         !   abs(pdf_pos + (pdf_s - pdf_ns)/2._wp) / 2._wp
       end do
@@ -3880,4 +4742,4 @@ end module electron_pdfs_uti
   end subroutine electron_pdfs_6
 
 @ %def electron_pdfs_6
-wp
+@

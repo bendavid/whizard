@@ -19668,7 +19668,7 @@ determines [[n_components]].
     integer, dimension(:), allocatable :: i_list
     logical :: use_real_finite
     logical :: gks_active
-    logical :: initial_state_colored
+    logical :: initial_state_colored, initial_state_massless_lep
     logical :: neg_sf
     integer :: comp_mult
     integer :: gks_multiplicity
@@ -19883,8 +19883,11 @@ determines [[n_components]].
          pl_excluded_gauge_splittings, qcd = qcd_corr, qed = qed_corr)
     call radiation_generator%set_n (n_in, n_out, 0)
     initial_state_colored = pdg_in%has_colored_particles ()
+    initial_state_massless_lep = var_list%get_lval &
+         (var_str ('?nlo_massless_leptons'))
     if ((n_in == 2 .and. initial_state_colored) .or. qed_corr) then
-        requires_dglap_remnants = n_in == 2 .and. initial_state_colored
+        requires_dglap_remnants = n_in == 2 .and. &
+             (initial_state_colored .or. initial_state_massless_lep)
         call radiation_generator%set_initial_state_emissions ()
     else
        requires_dglap_remnants = .false.
@@ -27509,7 +27512,7 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "ALT strfun_id = " &
           // "none | lhapdf | lhapdf_photon | pdf_builtin | pdf_builtin_photon | " &
           // "isr | epa | ewa | circe1 | circe2 | energy_scan | " &
-          // "gaussian | beam_events")
+          // "gaussian | beam_events | lpdf")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
     call ifile_append (ifile, "KEY lhapdf_photon")
@@ -27523,6 +27526,7 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "KEY energy_scan")
     call ifile_append (ifile, "KEY gaussian")
     call ifile_append (ifile, "KEY beam_events")
+    call ifile_append (ifile, "KEY lpdf")
     call ifile_append (ifile, "SEQ cmd_integrate = " &
          // "integrate proc_arg options?")
     call ifile_append (ifile, "KEY integrate")

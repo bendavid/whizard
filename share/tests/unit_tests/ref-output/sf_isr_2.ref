@@ -34,9 +34,10 @@ f =  1.00000E+00
      mass     =  5.110000000000E-04
      eps      =  6.177418616369E-02
      log      =  2.758749813237E+01
-     order    =  3
-     recoil   =  F
-     keep en. =  T
+     order           =  3
+     recoil          =  F
+     keep en.        =  T
+     ISR legacy mode =  T
  SF parameters:
    x = 9.00000000E-01
    xb= 1.00000000E-01

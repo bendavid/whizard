@@ -19,6 +19,10 @@ mH = 125 GeV
 
 sqrts = 250 GeV
 
+### Backwards compatibility with Whizard 2
+### ISR "legacy" mode
+?isr_legacy = true
+
 beams = e1, E1 => isr
 
 !!! Tests should be run single-threaded

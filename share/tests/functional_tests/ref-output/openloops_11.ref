@@ -8,6 +8,7 @@ alphas_power = 0
 ?openloops_use_cms = false
 $method = "openloops"
 openmp_num_threads = 1
+?isr_legacy = true
 | Process library 'openloops_11_lib': recorded process 'openloops_11_p1'
 seed = 42
 sqrts =  2.00000E+02

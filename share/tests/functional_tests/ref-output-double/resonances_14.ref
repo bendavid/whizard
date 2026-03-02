@@ -72,6 +72,7 @@ Warning:  Intermediate decay of zero-width particle mu- may be possible.
 | Process library 'resonances_14_p_R': linking
 | Process library 'resonances_14_p_R': loading
 | Process library 'resonances_14_p_R': ... success.
+?isr_legacy = true
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 28564
 | Initializing integration for process resonances_14_p:

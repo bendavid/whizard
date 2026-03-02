@@ -15,9 +15,10 @@
      mass     =  5.110000000000E-04
      eps      =  4.359556430082E-02
      log      =  1.976345212412E+01
-     order    =  3
-     recoil   =  F
-     keep en. =  T
+     order           =  3
+     recoil          =  F
+     keep en.        =  T
+     ISR legacy mode =  F
 
  Outgoing particle codes:
    11
