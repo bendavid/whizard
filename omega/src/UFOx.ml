@@ -867,12 +867,77 @@ module Tensor (A : Atom) : Tensor
           List.map (fun (t, cs) -> (t, QC.sum cs)) (ThoList.factorize terms))
         ratios
 
+    (* This is an algorithm for finding optimal rational approximations
+       by searching the \textit{Stern-Brocot} tree recursively.
+       See section~4.5 of \textit{Concrete Mathematics} for a discussion
+       and proofs. The notation is taken from there.
+       We terminate whenever the distance of the rational number
+       from [x] goes below [eps] or the size of the denominator exceeds~[max_m]. *)
+    let stern_brocot max_n eps x =
+      let abs_x = abs_float x in
+      let rec stern_brocot' ~left:(m, n as left) ~right:(m', n' as right) =
+        if n <= max_n && n' <= max_n then
+          let mm' = m + m'
+          and nn' = n + n' in
+          let mediant = float_of_int mm' /. float_of_int nn' in
+          if (abs_float (abs_x -. mediant) < eps) then
+            if (nn' <= max_n) then
+              (mm', nn')
+            else if (n' > n) then
+              (m', n')
+            else
+              (m, n)
+          else if (abs_x > mediant) then
+            stern_brocot' ~left:(mm', nn') ~right
+          else
+            stern_brocot' ~left ~right:(mm', nn')
+        else if n > max_n then
+          (m', n')
+        else
+          (m, n) in
+      let m, n = stern_brocot' ~left:(0,1) ~right:(1,0) in
+      if x >= 0.0 then
+        (m, n)
+      else
+        (-m, n)
+
+(*i
+    let check_stern_brocot max_n eps x =
+      let m, n = stern_brocot max_n eps x in
+      let x' = float_of_int m /. float_of_int n in
+      if n > max_n then
+        Printf.printf "den = %d > max_n = %d for x = %g\n" n max_n x;
+      let diff = abs_float (x -. x') in
+      if diff >= max eps (1.0 /. float_of_int max_n) then
+        Printf.printf "|%d/%d = %g - %g| = %g >= eps = %g for x = %g\n" m n x' x diff eps x
+
+    let _ =
+      Random.self_init ();
+      for i = 1 to 10000000 do
+        let x = Random.float 20. -. 10. in
+        check_stern_brocot 1000000000 1e-8 x
+      done
+i*)
+
+    let float_to_ratio x =
+      stern_brocot 1000 1.0e-6 x
+
+    let make_ratio num den =
+      Linear [([], QC.make (Q.make num den) Q.null)]
+
+    let make_integer i =
+      make_ratio i 1
+
     let rec of_expr e =
       contract_pairs (compress (of_expr' e))
 
     and of_expr' = function
-      | S.Integer i -> Linear [([], QC.make (Q.make i 1) Q.null)]
-      | S.Float _ -> invalid_arg "UFOx.Tensor.of_expr: unexpected float"
+      | S.Integer i -> make_integer i
+      | S.Float x ->
+        let num, den = float_to_ratio x in
+        Printf.eprintf
+          "warning: approximated unexpected float %g by %d/%d in UFO tensor coefficient!\n" x num den;
+        make_ratio num den
       | S.Quoted name ->
 	 invalid_arg ("UFOx.Tensor.of_expr: unexpected quoted variable '" ^
 			 name ^ "'")
@@ -1771,6 +1836,19 @@ module Test : Test =
     let apup_id expr =
       apup expr expr
 
+    let tpup unparsed expr =
+      assert_equal ~printer:(fun s -> s)
+        unparsed (Expr.of_string expr |> Lorentz.of_expr |> Lorentz.to_string)
+
+    let suite_float =
+      "float" >:::
+      [ "1. => 1" >:: (fun () -> tpup "1" "1.");
+        "0.5 => 1/2" >:: (fun () -> tpup "(1/2)" "0.5");
+        "-0.5 => -1/2" >:: (fun () -> tpup "-(1/2)" "-0.5");
+        "0.333333 => 1/3" >:: (fun () -> tpup "(1/3)" "0.333333");
+        "-0.333333 => -1/3" >:: (fun () -> tpup "-(1/3)" "-0.333333");
+        "3.14 => 157/50" >:: (fun () -> tpup "(157/50)" "3.14") ]
+
     let suite_arithmetic =
       "arithmetic" >:::
         [ "1 + 2" >:: (fun () -> apup "3" "1+2");
@@ -1868,7 +1946,8 @@ module Test : Test =
       
     let suite =
       "UFOx" >:::
-	[suite_arithmetic;
+	[suite_float;
+         suite_arithmetic;
          suite_complex;
          suite_product;
          suite_power;

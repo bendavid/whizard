@@ -178,6 +178,8 @@ module Make (M : Model.T) (P : Momentum.T) :
         | CS.Gauss_not (f, p) ->
             only_wf
               (Gauss_not (List.map M.flavor_of_string f, P.of_ints dim p))
+        | CS.Polarized (_fs, _p, _pols) ->
+           failwith "polarization projections incomplete"
         | CS.Any_flavor p ->
             only_wf (Any_flavor (P.of_ints dim p))
         | CS.And cs ->

@@ -30,6 +30,8 @@
 
 (* [False] is probably redundant.  *)
 
+type polarization = Left | Right | Longitudinal | Scalar
+
 type ('flavor, 'p, 'constant) t =
   | True
   | False
@@ -39,6 +41,7 @@ type ('flavor, 'p, 'constant) t =
   | Off_shell_not of 'flavor list * 'p
   | Gauss of 'flavor list * 'p
   | Gauss_not of 'flavor list * 'p
+  | Polarized of 'flavor list * 'p * polarization list
   | Any_flavor of 'p
   | And of ('flavor, 'p, 'constant) t list
   | X_Flavor of 'flavor list
@@ -85,6 +88,8 @@ let to_string flavor_to_string momentum_to_string coupling_to_string cascades =
         momentum_to_string p ^ " # " ^ flavors_to_string fs
     | Gauss_not (fs, p) ->
         momentum_to_string p ^ " # !" ^ flavors_to_string fs
+    | Polarized (_fs, _p, _pols) ->
+        failwith "polarization projections incomplete"
     | Any_flavor p ->
         momentum_to_string p ^ " ~ ?"
     | And cs ->

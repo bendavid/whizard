@@ -22,6 +22,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
+type polarization = Left | Right | Longitudinal | Scalar
+
 type ('flavor, 'p, 'constant) t =
   | True
   | False
@@ -31,6 +33,7 @@ type ('flavor, 'p, 'constant) t =
   | Off_shell_not of 'flavor list * 'p
   | Gauss of 'flavor list * 'p
   | Gauss_not of 'flavor list * 'p
+  | Polarized of 'flavor list * 'p * polarization list
   | Any_flavor of 'p
   | And of ('flavor, 'p, 'constant) t list
   | X_Flavor of 'flavor list
@@ -55,12 +58,3 @@ val to_string : ('flavor -> string) -> ('p -> string) ->
   ('constant -> string) -> ('flavor, 'p, 'constant) t -> string
 
 exception Syntax_Error of string * int * int
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
-
