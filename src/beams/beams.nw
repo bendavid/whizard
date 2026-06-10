@@ -24239,11 +24239,29 @@ end submodule sf_pz_spectrum_s
     class(pz_spectrum_data_t), intent(in) :: data
     real(default), intent(in) :: u
     real(default) :: pz
-    real(default) :: uc, r2, c_lo, pz_true, u_lc, m
-    integer :: i, lo, n_shell
+    real(default) :: uc, r2, c_lo, pz_true, u_lc, m, du
+    integer :: i, lo, n_shell, hi, mid, lo2, hi2, ks
     uc = min (max (u, 1e-15_default), 1 - 1e-15_default)
     if (allocated (data%tab_pz)) then
-       pz = tab_quantile (data%tab_pz, data%tab_cdf, uc)
+       !!! inline interpolation: passing the array components to
+       !!! assumed-shape dummies leaks heap temporaries with gfortran 16
+       lo = 1
+       hi = size (data%tab_cdf)
+       do while (hi - lo > 1)
+          mid = (lo + hi) / 2
+          if (data%tab_cdf(mid) <= uc) then
+             lo = mid
+          else
+             hi = mid
+          end if
+       end do
+       du = data%tab_cdf(hi) - data%tab_cdf(lo)
+       if (du > 0) then
+          pz = data%tab_pz(lo) + (data%tab_pz(hi) - data%tab_pz(lo)) &
+               * (uc - data%tab_cdf(lo)) / du
+       else
+          pz = data%tab_pz(lo)
+       end if
     else if (data%impulse) then
        !!! impulse approximation: pick shell by occupancy (stratified in uc),
        !!! sample the true p_z from its hydrogenic profile, form the bound
@@ -24263,8 +24281,26 @@ end submodule sf_pz_spectrum_s
        r2 = (uc - c_lo) / (data%shell_cum(lo) - c_lo)
        r2 = min (max (r2, 1e-15_default), 1 - 1e-15_default)
        if (allocated (data%shell_tab(lo)%pz)) then
-          pz_true = tab_quantile (data%shell_tab(lo)%pz, &
-               data%shell_tab(lo)%cdf, r2)
+          ks = lo
+          lo2 = 1
+          hi2 = size (data%shell_tab(ks)%cdf)
+          do while (hi2 - lo2 > 1)
+             mid = (lo2 + hi2) / 2
+             if (data%shell_tab(ks)%cdf(mid) <= r2) then
+                lo2 = mid
+             else
+                hi2 = mid
+             end if
+          end do
+          du = data%shell_tab(ks)%cdf(hi2) - data%shell_tab(ks)%cdf(lo2)
+          if (du > 0) then
+             pz_true = data%shell_tab(ks)%pz(lo2) &
+                  + (data%shell_tab(ks)%pz(hi2) &
+                  -  data%shell_tab(ks)%pz(lo2)) &
+                  * (r2 - data%shell_tab(ks)%cdf(lo2)) / du
+          else
+             pz_true = data%shell_tab(ks)%pz(lo2)
+          end if
        else
           pz_true = data%shell_p0(lo) * hydrogenic_quantile (r2)
        end if
@@ -24303,11 +24339,31 @@ end submodule sf_pz_spectrum_s
     class(pz_spectrum_data_t), intent(in) :: data
     real(default), intent(in) :: pz
     real(default) :: u
+    real(default) :: du
+    integer :: lo, hi, mid
     if (data%impulse) then
        call msg_bug ("pz_spectrum: forward CDF not defined in impulse mode")
     end if
     if (allocated (data%tab_pz)) then
-       u = tab_cdf_at (data%tab_pz, data%tab_cdf, pz)
+       if (pz <= data%tab_pz(1)) then
+          u = 0
+       else if (pz >= data%tab_pz(size (data%tab_pz))) then
+          u = 1
+       else
+          lo = 1
+          hi = size (data%tab_pz)
+          do while (hi - lo > 1)
+             mid = (lo + hi) / 2
+             if (data%tab_pz(mid) <= pz) then
+                lo = mid
+             else
+                hi = mid
+             end if
+          end do
+          du = data%tab_pz(hi) - data%tab_pz(lo)
+          u = data%tab_cdf(lo) + (data%tab_cdf(hi) - data%tab_cdf(lo)) &
+               * (pz - data%tab_pz(lo)) / du
+       end if
     else
        u = hydrogenic_cdf (pz / data%p0)
     end if
@@ -24406,55 +24462,6 @@ end submodule sf_pz_spectrum_s
     cdf = cdf / norm
   end subroutine read_pz_profile
 
-  function tab_quantile (pz, cdf, uc) result (x)
-    real(default), dimension(:), intent(in) :: pz, cdf
-    real(default), intent(in) :: uc
-    real(default) :: x
-    real(default) :: du
-    integer :: lo, hi, mid
-    lo = 1
-    hi = size (cdf)
-    do while (hi - lo > 1)
-       mid = (lo + hi) / 2
-       if (cdf(mid) <= uc) then
-          lo = mid
-       else
-          hi = mid
-       end if
-    end do
-    du = cdf(hi) - cdf(lo)
-    if (du > 0) then
-       x = pz(lo) + (pz(hi) - pz(lo)) * (uc - cdf(lo)) / du
-    else
-       x = pz(lo)
-    end if
-  end function tab_quantile
-
-  function tab_cdf_at (pz, cdf, x) result (u)
-    real(default), dimension(:), intent(in) :: pz, cdf
-    real(default), intent(in) :: x
-    real(default) :: u
-    real(default) :: du
-    integer :: lo, hi, mid
-    if (x <= pz(1)) then
-       u = 0
-    else if (x >= pz(size (pz))) then
-       u = 1
-    else
-       lo = 1
-       hi = size (pz)
-       do while (hi - lo > 1)
-          mid = (lo + hi) / 2
-          if (pz(mid) <= x) then
-             lo = mid
-          else
-             hi = mid
-          end if
-       end do
-       du = pz(hi) - pz(lo)
-       u = cdf(lo) + (cdf(hi) - cdf(lo)) * (x - pz(lo)) / du
-    end if
-  end function tab_cdf_at
 
   function hydrogenic_cdf (t) result (u)
     real(default), intent(in) :: t

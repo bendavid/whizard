@@ -19366,7 +19366,7 @@ in the term expressions.
        do i = 1, size (instance%term)
           if (instance%term(i)%active) then
              call instance%term(i)%evaluate_expressions &
-                  (instance%process%get_beam_config (), scale_forced)
+                  (instance%process%get_beam_config_ptr (), scale_forced)
           end if
        end do
        call evaluate_real_scales_and_cuts ()
@@ -19966,7 +19966,7 @@ Sindarin, e.g. for POWHEG matching.
           end if
           call term%compute_eff_kinematics ()
           call term%evaluate_expressions &
-               (instance%process%get_beam_config (), scale_forced)
+               (instance%process%get_beam_config_ptr (), scale_forced)
           call term%evaluate_interaction (core, kin)
           call term%evaluate_trace (kin)
           if (term%is_subtraction ()) then
