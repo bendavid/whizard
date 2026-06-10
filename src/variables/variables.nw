@@ -4229,8 +4229,10 @@ procedure with type [[V_NONE]].
           description=var_str ('Multi-shell spectral function for the ' // &
           '\ttt{pz\_spectrum} structure function: list of shells ' // &
           '"n1 Erem1 p01; n2 Erem2 p02; ..." with occupancies, removal ' // &
-          'energies and hydrogenic momentum scales (GeV). Activates the ' // &
-          'impulse approximation. (cf. \ttt{pz\_spectrum})'))
+          'energies and hydrogenic momentum scales (GeV); a shell entry ' // &
+          'may instead reference a tabulated profile as "n Erem @file" ' // &
+          '(two columns: pz [GeV], density). Activates the impulse ' // &
+          'approximation. (cf. \ttt{pz\_spectrum})'))
     call var_list%append_string (var_str ("$beam_events_file"), &
           intrinsic=.true., &
           description=var_str ('String variable that allows to set the ' // &

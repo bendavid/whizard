@@ -23924,6 +23924,11 @@ end submodule sf_pz_spectrum_s
   public :: pz_spectrum_t
 @ %def pz_spectrum_data_t pz_spectrum_t
 <<SF pz spectrum: types>>=
+  type :: pz_shell_table_t
+     real(default), dimension(:), allocatable :: pz
+     real(default), dimension(:), allocatable :: cdf
+  end type pz_shell_table_t
+
   type, extends(sf_data_t) :: pz_spectrum_data_t
      private
      type(flavor_t), dimension(2) :: flv_in
@@ -23934,6 +23939,7 @@ end submodule sf_pz_spectrum_s
      real(default), dimension(:), allocatable :: shell_cum
      real(default), dimension(:), allocatable :: shell_erem
      real(default), dimension(:), allocatable :: shell_p0
+     type(pz_shell_table_t), dimension(:), allocatable :: shell_tab
      real(default), dimension(:), allocatable :: tab_pz
      real(default), dimension(:), allocatable :: tab_cdf
      class(rng_factory_t), allocatable :: rng_factory
@@ -24086,13 +24092,10 @@ end submodule sf_pz_spectrum_s
     type(string_t), intent(in) :: file
     type(string_t), intent(in) :: shells
     class(rng_factory_t), intent(inout), allocatable :: rng_factory
-    integer :: u, iostat, n, i
-    real(default) :: q, dens, norm, m
-    real(default), dimension(:), allocatable :: tq, td
+    integer :: i
+    real(default) :: m, occ
     character(len=:), allocatable :: buf
-    integer :: ntok, n_shell, j
-    logical :: prev_blank
-    real(default), dimension(:,:), allocatable :: shl
+    integer :: n_shell, j, i1, i2
     call data%flv_in(1)%init (pdg_in(1)%get (1), model)
     call data%flv_in(2)%init (pdg_in(2)%get (1), model)
     data%p0 = p0
@@ -24103,49 +24106,47 @@ end submodule sf_pz_spectrum_s
     end if
     m = data%flv_in(i_beam)%get_mass ()
     if (len (shells) > 0) then
-       !!! multi-shell impulse-approximation mode:
-       !!! "n1 Erem1 p01; n2 Erem2 p02; ..."  (separators ;, treated as blanks)
+       !!! multi-shell impulse-approximation mode: ';'-separated entries
+       !!! "n E_rem p0"  (hydrogenic)  or  "n E_rem @file"  (tabulated J(pz))
        buf = char (shells)
        do j = 1, len (buf)
-          if (buf(j:j) == ";" .or. buf(j:j) == "," .or. buf(j:j) == char(9) &
-               .or. buf(j:j) == char(10))  buf(j:j) = " "
+          if (buf(j:j) == char(9) .or. buf(j:j) == char(10))  buf(j:j) = " "
        end do
-       ntok = 0
-       prev_blank = .true.
+       n_shell = 1
        do j = 1, len (buf)
-          if (buf(j:j) /= " ") then
-             if (prev_blank)  ntok = ntok + 1
-             prev_blank = .false.
-          else
-             prev_blank = .true.
-          end if
+          if (buf(j:j) == ";")  n_shell = n_shell + 1
        end do
-       if (ntok == 0 .or. mod (ntok, 3) /= 0) then
-          call msg_fatal ("pz_spectrum: $pz_spectrum_shells must contain " &
-               // "triplets 'occupancy E_rem p0' (energies in GeV)")
-       end if
-       n_shell = ntok / 3
-       allocate (shl (3, n_shell))
-       read (buf, *, iostat = iostat) shl
-       if (iostat /= 0) then
-          call msg_fatal ("pz_spectrum: cannot parse $pz_spectrum_shells")
-       end if
-       if (any (shl(1,:) <= 0) .or. any (shl(2,:) < 0) &
-            .or. any (shl(3,:) <= 0)) then
-          call msg_fatal ("pz_spectrum: shell occupancies and p0 must be " &
-               // "positive, removal energies non-negative")
-       end if
-       if (any (shl(2,:) > 0.1_default * m)) then
-          call msg_fatal ("pz_spectrum: shell removal energy exceeds " &
-               // "0.1 * target mass")
-       end if
        allocate (data%shell_cum (n_shell))
        allocate (data%shell_erem (n_shell), data%shell_p0 (n_shell))
-       data%shell_erem = shl(2,:)
-       data%shell_p0 = shl(3,:)
-       data%shell_cum(1) = shl(1,1)
-       do i = 2, n_shell
-          data%shell_cum(i) = data%shell_cum(i-1) + shl(1,i)
+       allocate (data%shell_tab (n_shell))
+       i1 = 1
+       do i = 1, n_shell
+          i2 = index (buf(i1:), ";")
+          if (i2 == 0) then
+             i2 = len (buf) + 1
+          else
+             i2 = i1 + i2 - 1
+          end if
+          call parse_shell_entry (buf(i1:i2-1), occ, &
+               data%shell_erem(i), data%shell_p0(i), data%shell_tab(i))
+          if (occ <= 0 .or. data%shell_erem(i) < 0) then
+             call msg_fatal ("pz_spectrum: shell occupancies must be " &
+                  // "positive, removal energies non-negative")
+          end if
+          if (data%shell_erem(i) > 0.1_default * m) then
+             call msg_fatal ("pz_spectrum: shell removal energy exceeds " &
+                  // "0.1 * target mass")
+          end if
+          if (.not. allocated (data%shell_tab(i)%pz) &
+               .and. data%shell_p0(i) <= 0) then
+             call msg_fatal ("pz_spectrum: shell p0 must be positive " &
+                  // "(or give '@file')")
+          end if
+          data%shell_cum(i) = occ
+          if (i > 1) then
+             data%shell_cum(i) = data%shell_cum(i) + data%shell_cum(i-1)
+          end if
+          i1 = i2 + 1
        end do
        data%shell_cum = data%shell_cum / data%shell_cum(n_shell)
        data%impulse = .true.
@@ -24162,9 +24163,6 @@ end submodule sf_pz_spectrum_s
        data%impulse = .true.
     end if
     if (data%impulse) then
-       if (any (data%shell_p0 <= 0)) then
-          call msg_fatal ("pz_spectrum: p0 must be positive in impulse mode")
-       end if
        if (len (file) > 0) then
           call msg_fatal ("pz_spectrum: $pz_spectrum_file cannot be " &
                // "combined with e_rem/shells (encode removal energies " &
@@ -24172,50 +24170,7 @@ end submodule sf_pz_spectrum_s
        end if
     end if
     if (len (file) > 0) then
-       u = free_unit ()
-       open (u, file = char (file), action = "read", status = "old", &
-            iostat = iostat)
-       if (iostat /= 0) then
-          call msg_fatal ("pz_spectrum: file '" // char (file) &
-               // "' not found")
-       end if
-       n = 0
-       do
-          read (u, *, iostat = iostat) q, dens
-          if (iostat /= 0)  exit
-          n = n + 1
-       end do
-       if (n < 2) then
-          call msg_fatal ("pz_spectrum: file '" // char (file) &
-               // "' must contain at least two rows: pz density")
-       end if
-       allocate (tq (n), td (n))
-       rewind (u)
-       do i = 1, n
-          read (u, *) tq(i), td(i)
-       end do
-       close (u)
-       do i = 2, n
-          if (tq(i) <= tq(i-1)) then
-             call msg_fatal ("pz_spectrum: file '" // char (file) &
-                  // "': pz column must be strictly increasing")
-          end if
-       end do
-       if (any (td < 0)) then
-          call msg_fatal ("pz_spectrum: profile density must not be negative")
-       end if
-       allocate (data%tab_pz (n), data%tab_cdf (n))
-       data%tab_pz = tq
-       data%tab_cdf(1) = 0
-       do i = 2, n
-          data%tab_cdf(i) = data%tab_cdf(i-1) &
-               + 0.5_default * (td(i) + td(i-1)) * (tq(i) - tq(i-1))
-       end do
-       norm = data%tab_cdf(n)
-       if (norm <= 0) then
-          call msg_fatal ("pz_spectrum: profile normalization vanishes")
-       end if
-       data%tab_cdf = data%tab_cdf / norm
+       call read_pz_profile (char (file), data%tab_pz, data%tab_cdf)
     else if (.not. data%impulse) then
        if (p0 <= 0) then
           call msg_fatal ("pz_spectrum: pz_spectrum_p0 must be positive " &
@@ -24265,8 +24220,14 @@ end submodule sf_pz_spectrum_s
        write (u, "(3x,A,1x,I0,A)") "profile = impulse approximation with", &
             size (data%shell_cum), " shell(s)"
        do i = 1, size (data%shell_cum)
-          write (u, "(5x,A,I0,A,2(1x," // FMT_12 // "))") "shell ", i, &
-               ": E_rem, p0 =", data%shell_erem(i), data%shell_p0(i)
+          if (allocated (data%shell_tab(i)%pz)) then
+             write (u, "(5x,A,I0,A,1x," // FMT_12 // ",A,I0,A)") "shell ", &
+                  i, ": E_rem =", data%shell_erem(i), ", table with ", &
+                  size (data%shell_tab(i)%pz), " points"
+          else
+             write (u, "(5x,A,I0,A,2(1x," // FMT_12 // "))") "shell ", i, &
+                  ": E_rem, p0 =", data%shell_erem(i), data%shell_p0(i)
+          end if
        end do
     else
        write (u, "(3x,A,1x," // FMT_12 // ")") "p0     =", data%p0
@@ -24278,27 +24239,11 @@ end submodule sf_pz_spectrum_s
     class(pz_spectrum_data_t), intent(in) :: data
     real(default), intent(in) :: u
     real(default) :: pz
-    real(default) :: uc, du, r2, c_lo, pz_true, u_lc, m
-    integer :: i, lo, hi, mid, n_shell
+    real(default) :: uc, r2, c_lo, pz_true, u_lc, m
+    integer :: i, lo, n_shell
     uc = min (max (u, 1e-15_default), 1 - 1e-15_default)
     if (allocated (data%tab_pz)) then
-       lo = 1
-       hi = size (data%tab_cdf)
-       do while (hi - lo > 1)
-          mid = (lo + hi) / 2
-          if (data%tab_cdf(mid) <= uc) then
-             lo = mid
-          else
-             hi = mid
-          end if
-       end do
-       du = data%tab_cdf(hi) - data%tab_cdf(lo)
-       if (du > 0) then
-          pz = data%tab_pz(lo) + (data%tab_pz(hi) - data%tab_pz(lo)) &
-               * (uc - data%tab_cdf(lo)) / du
-       else
-          pz = data%tab_pz(lo)
-       end if
+       pz = tab_quantile (data%tab_pz, data%tab_cdf, uc)
     else if (data%impulse) then
        !!! impulse approximation: pick shell by occupancy (stratified in uc),
        !!! sample the true p_z from its hydrogenic profile, form the bound
@@ -24317,7 +24262,12 @@ end submodule sf_pz_spectrum_s
        if (lo > 1)  c_lo = data%shell_cum(lo-1)
        r2 = (uc - c_lo) / (data%shell_cum(lo) - c_lo)
        r2 = min (max (r2, 1e-15_default), 1 - 1e-15_default)
-       pz_true = data%shell_p0(lo) * hydrogenic_quantile (r2)
+       if (allocated (data%shell_tab(lo)%pz)) then
+          pz_true = tab_quantile (data%shell_tab(lo)%pz, &
+               data%shell_tab(lo)%cdf, r2)
+       else
+          pz_true = data%shell_p0(lo) * hydrogenic_quantile (r2)
+       end if
        !!! clamp the unphysical deep tail (u_lc must stay positive); the
        !!! clamped region is far below threshold and carries zero weight
        pz_true = min (pz_true, 0.8_default * (m - data%shell_erem(lo)))
@@ -24353,35 +24303,158 @@ end submodule sf_pz_spectrum_s
     class(pz_spectrum_data_t), intent(in) :: data
     real(default), intent(in) :: pz
     real(default) :: u
-    real(default) :: du
-    integer :: lo, hi, mid
     if (data%impulse) then
        call msg_bug ("pz_spectrum: forward CDF not defined in impulse mode")
     end if
     if (allocated (data%tab_pz)) then
-       if (pz <= data%tab_pz(1)) then
-          u = 0
-       else if (pz >= data%tab_pz(size (data%tab_pz))) then
-          u = 1
-       else
-          lo = 1
-          hi = size (data%tab_pz)
-          do while (hi - lo > 1)
-             mid = (lo + hi) / 2
-             if (data%tab_pz(mid) <= pz) then
-                lo = mid
-             else
-                hi = mid
-             end if
-          end do
-          du = data%tab_pz(hi) - data%tab_pz(lo)
-          u = data%tab_cdf(lo) + (data%tab_cdf(hi) - data%tab_cdf(lo)) &
-               * (pz - data%tab_pz(lo)) / du
-       end if
+       u = tab_cdf_at (data%tab_pz, data%tab_cdf, pz)
     else
        u = hydrogenic_cdf (pz / data%p0)
     end if
   end function pz_spectrum_data_cdf
+
+  subroutine parse_shell_entry (entry, occ, erem, p0, tab)
+    character(len=*), intent(in) :: entry
+    real(default), intent(out) :: occ, erem, p0
+    type(pz_shell_table_t), intent(out) :: tab
+    integer :: iostat, k, k3a, k3b, ntok
+    logical :: inword
+    read (entry, *, iostat = iostat) occ, erem
+    if (iostat /= 0) then
+       call msg_fatal ("pz_spectrum: cannot parse shell entry '" &
+            // trim (entry) // "'")
+    end if
+    !!! locate the third whitespace-separated token
+    ntok = 0
+    inword = .false.
+    k3a = 0
+    k3b = 0
+    do k = 1, len (entry)
+       if (entry(k:k) /= " ") then
+          if (.not. inword) then
+             ntok = ntok + 1
+             if (ntok == 3)  k3a = k
+          end if
+          inword = .true.
+          if (ntok == 3)  k3b = k
+       else
+          inword = .false.
+       end if
+    end do
+    if (k3a == 0) then
+       call msg_fatal ("pz_spectrum: shell entry '" // trim (entry) &
+            // "' must be 'n E_rem p0' or 'n E_rem @file'")
+    end if
+    p0 = 0
+    if (entry(k3a:k3a) == "@") then
+       call read_pz_profile (entry(k3a+1:k3b), tab%pz, tab%cdf)
+    else
+       read (entry(k3a:k3b), *, iostat = iostat) p0
+       if (iostat /= 0) then
+          call msg_fatal ("pz_spectrum: cannot parse p0 in shell entry '" &
+               // trim (entry) // "'")
+       end if
+    end if
+  end subroutine parse_shell_entry
+
+  subroutine read_pz_profile (file, pz, cdf)
+    character(len=*), intent(in) :: file
+    real(default), dimension(:), allocatable, intent(out) :: pz, cdf
+    integer :: u, iostat, n, i
+    real(default) :: q, dens, norm
+    real(default), dimension(:), allocatable :: tq, td
+    u = free_unit ()
+    open (u, file = file, action = "read", status = "old", iostat = iostat)
+    if (iostat /= 0) then
+       call msg_fatal ("pz_spectrum: file '" // file // "' not found")
+    end if
+    n = 0
+    do
+       read (u, *, iostat = iostat) q, dens
+       if (iostat /= 0)  exit
+       n = n + 1
+    end do
+    if (n < 2) then
+       call msg_fatal ("pz_spectrum: file '" // file &
+            // "' must contain at least two rows: pz density")
+    end if
+    allocate (tq (n), td (n))
+    rewind (u)
+    do i = 1, n
+       read (u, *) tq(i), td(i)
+    end do
+    close (u)
+    do i = 2, n
+       if (tq(i) <= tq(i-1)) then
+          call msg_fatal ("pz_spectrum: file '" // file &
+               // "': pz column must be strictly increasing")
+       end if
+    end do
+    if (any (td < 0)) then
+       call msg_fatal ("pz_spectrum: profile density must not be negative")
+    end if
+    allocate (pz (n), cdf (n))
+    pz = tq
+    cdf(1) = 0
+    do i = 2, n
+       cdf(i) = cdf(i-1) + 0.5_default * (td(i) + td(i-1)) * (tq(i) - tq(i-1))
+    end do
+    norm = cdf(n)
+    if (norm <= 0) then
+       call msg_fatal ("pz_spectrum: profile normalization vanishes")
+    end if
+    cdf = cdf / norm
+  end subroutine read_pz_profile
+
+  function tab_quantile (pz, cdf, uc) result (x)
+    real(default), dimension(:), intent(in) :: pz, cdf
+    real(default), intent(in) :: uc
+    real(default) :: x
+    real(default) :: du
+    integer :: lo, hi, mid
+    lo = 1
+    hi = size (cdf)
+    do while (hi - lo > 1)
+       mid = (lo + hi) / 2
+       if (cdf(mid) <= uc) then
+          lo = mid
+       else
+          hi = mid
+       end if
+    end do
+    du = cdf(hi) - cdf(lo)
+    if (du > 0) then
+       x = pz(lo) + (pz(hi) - pz(lo)) * (uc - cdf(lo)) / du
+    else
+       x = pz(lo)
+    end if
+  end function tab_quantile
+
+  function tab_cdf_at (pz, cdf, x) result (u)
+    real(default), dimension(:), intent(in) :: pz, cdf
+    real(default), intent(in) :: x
+    real(default) :: u
+    real(default) :: du
+    integer :: lo, hi, mid
+    if (x <= pz(1)) then
+       u = 0
+    else if (x >= pz(size (pz))) then
+       u = 1
+    else
+       lo = 1
+       hi = size (pz)
+       do while (hi - lo > 1)
+          mid = (lo + hi) / 2
+          if (pz(mid) <= x) then
+             lo = mid
+          else
+             hi = mid
+          end if
+       end do
+       du = pz(hi) - pz(lo)
+       u = cdf(lo) + (cdf(hi) - cdf(lo)) * (x - pz(lo)) / du
+    end if
+  end function tab_cdf_at
 
   function hydrogenic_cdf (t) result (u)
     real(default), intent(in) :: t
