@@ -30739,6 +30739,8 @@ structure-function chain.
        end if
     case ("circe2", &
          "gaussian", &
+         "pz_spectrum", &
+         "gaussian => pz_spectrum", &
          "beam_events")
        !!! no mapping
     case ("circe2 => isr, none => none, isr", &
@@ -30757,9 +30759,14 @@ structure-function chain.
          "circe2 => none, isr", &
          "gaussian => isr, none", &
          "gaussian => none, isr", &
+         "pz_spectrum => isr, none", &
+         "pz_spectrum => none, isr", &
          "beam_events => isr, none", &
          "beam_events => none, isr")
        allocate (single_mapping (1), source = [2])
+    case ("gaussian => pz_spectrum => isr, none", &
+         "gaussian => pz_spectrum => none, isr")
+       allocate (single_mapping (1), source = [3])
     case ("circe2 => lpdf, none", &
          "circe2 => none, lpdf", &
          "gaussian => lpdf, none", &

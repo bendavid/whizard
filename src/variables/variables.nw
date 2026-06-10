@@ -4200,6 +4200,37 @@ procedure with type [[V_NONE]].
      call var_list%append_real (var_str ("gaussian_spread2"), 0._default, &
           intrinsic=.true., &
           description=var_str ('Ditto, for the second beam.'))
+    call var_list%append_real (var_str ("pz_spectrum_p0"), 0._default, &
+          intrinsic=.true., &
+          description=var_str ('Scale parameter $p_0 = Z_{\rm eff} ' // &
+          '\alpha m_e$ (in GeV) of the hydrogenic 1s Compton profile ' // &
+          'from which the longitudinal momentum of the target beam ' // &
+          'particle is sampled. (cf. \ttt{pz\_spectrum})'))
+    call var_list%append_real (var_str ("pz_spectrum_e_rem"), 0._default, &
+          intrinsic=.true., &
+          description=var_str ('Removal (binding) energy in GeV of the ' // &
+          'target electron for the \ttt{pz\_spectrum} structure function. ' // &
+          'If positive, the impulse approximation is used: the sampled ' // &
+          'light-cone component is $u = m - E_{\rm rem} - p_z$. ' // &
+          '(cf. \ttt{pz\_spectrum})'))
+    call var_list%append_int (var_str ("pz_spectrum_beam"), 2, &
+          intrinsic=.true., &
+          description=var_str ('Index (1 or 2) of the beam whose ' // &
+          'longitudinal momentum is sampled by the \ttt{pz\_spectrum} ' // &
+          'structure function. (cf. \ttt{pz\_spectrum})'))
+    call var_list%append_string (var_str ("$pz_spectrum_file"), &
+          intrinsic=.true., &
+          description=var_str ('Optional two-column file (momentum ' // &
+          'in GeV, density) with a tabulated longitudinal-momentum ' // &
+          'profile for the \ttt{pz\_spectrum} structure function; ' // &
+          'overrides \ttt{pz\_spectrum\_p0}. (cf. \ttt{pz\_spectrum})'))
+    call var_list%append_string (var_str ("$pz_spectrum_shells"), &
+          intrinsic=.true., &
+          description=var_str ('Multi-shell spectral function for the ' // &
+          '\ttt{pz\_spectrum} structure function: list of shells ' // &
+          '"n1 Erem1 p01; n2 Erem2 p02; ..." with occupancies, removal ' // &
+          'energies and hydrogenic momentum scales (GeV). Activates the ' // &
+          'impulse approximation. (cf. \ttt{pz\_spectrum})'))
     call var_list%append_string (var_str ("$beam_events_file"), &
           intrinsic=.true., &
           description=var_str ('String variable that allows to set the ' // &

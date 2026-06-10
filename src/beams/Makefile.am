@@ -45,6 +45,7 @@ BEAMS_MODULES = \
   sf_ewa.f90 \
   sf_escan.f90 \
   sf_gaussian.f90 \
+  sf_pz_spectrum.f90 \
   sf_beam_events.f90 \
   sf_circe1.f90 \
   sf_circe2.f90 \
@@ -66,6 +67,7 @@ BEAMS_SUBMODULES = \
   sf_ewa_sub.f90 \
   sf_escan_sub.f90 \
   sf_gaussian_sub.f90 \
+  sf_pz_spectrum_sub.f90 \
   sf_beam_events_sub.f90 \
   sf_circe1_sub.f90 \
   sf_circe2_sub.f90 \
@@ -194,6 +196,7 @@ sf_epa_sub.lo: sf_epa.lo
 sf_ewa_sub.lo: sf_ewa.lo
 sf_escan_sub.lo: sf_escan.lo
 sf_gaussian_sub.lo: sf_gaussian.lo
+sf_pz_spectrum_sub.lo: sf_pz_spectrum.lo
 sf_beam_events_sub.lo: sf_beam_events.lo
 sf_circe1_sub.lo: sf_circe1.lo
 sf_circe2_sub.lo: sf_circe2.lo

@@ -2447,6 +2447,22 @@ we collect them in a single record.
          write (u, "(2x,A,1x," // FMT_12 // ")") "Gaussian spread 2    =", &
               var_list%get_rval (var_str ("gaussian_spread2"))
       end if
+      if (beams%contains ("pz_spectrum")) then
+         write (u, "(2x,A,1x," // FMT_12 // ")") "pz spectrum p0       =", &
+              var_list%get_rval (var_str ("pz_spectrum_p0"))
+         write (u, "(2x,A,1x," // FMT_12 // ")") "pz spectrum E_rem    =", &
+              var_list%get_rval (var_str ("pz_spectrum_e_rem"))
+         write (u, "(2x,A,1x,I0)") "pz spectrum beam     =", &
+              var_list%get_ival (var_str ("pz_spectrum_beam"))
+         s = var_list%get_sval (var_str ("$pz_spectrum_file"))
+         if (len (s) > 0) then
+            write (u, "(2x,A,1x,A)") "pz spectrum file     =", char (s)
+         end if
+         s = var_list%get_sval (var_str ("$pz_spectrum_shells"))
+         if (len (s) > 0) then
+            write (u, "(2x,A,1x,A)") "pz spectrum shells   =", char (s)
+         end if
+      end if
       if (beams%contains ("beam_events")) then
          s = var_list%get_sval (var_str ("$beam_events_file"))
          write (u, "(2x,A,1x,A)") "Beam events file     =", char (s)
@@ -27512,7 +27528,7 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "ALT strfun_id = " &
           // "none | lhapdf | lhapdf_photon | pdf_builtin | pdf_builtin_photon | " &
           // "isr | epa | ewa | circe1 | circe2 | energy_scan | " &
-          // "gaussian | beam_events | lpdf")
+          // "gaussian | pz_spectrum | beam_events | lpdf")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
     call ifile_append (ifile, "KEY lhapdf_photon")
@@ -27525,6 +27541,7 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "KEY circe2")
     call ifile_append (ifile, "KEY energy_scan")
     call ifile_append (ifile, "KEY gaussian")
+    call ifile_append (ifile, "KEY pz_spectrum")
     call ifile_append (ifile, "KEY beam_events")
     call ifile_append (ifile, "KEY lpdf")
     call ifile_append (ifile, "SEQ cmd_integrate = " &

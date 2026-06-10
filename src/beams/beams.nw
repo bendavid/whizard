@@ -23839,6 +23839,758 @@ Active the beam event reader, generate an event.
 @
 \clearpage
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Fixed-target electron longitudinal-momentum spectrum}
+
+This pair spectrum samples, event by event, the longitudinal momentum
+of a (fixed) target beam particle from a Compton profile.  It is a
+generator-type spectrum analogous to the Gaussian beam spread above,
+intended for fixed-target setups such as
+\begin{quote}
+[[beams_momentum = pb, 0]] \\
+[[beams = E1, e1 => gaussian => pz_spectrum => isr, none]]
+\end{quote}
+The sampled beam (selected by [[pz_spectrum_beam]], default 2) stays on
+its mass shell; its momentum is shifted along the direction of the
+other (projectile) beam.  The profile is either the analytic hydrogenic
+1s Compton profile $J(q) = (8 p_0^5/3\pi)/(q^2+p_0^2)^3$ with scale
+parameter $p_0 = Z_{\rm eff}\,\alpha\,m$ ([[pz_spectrum_p0]]), or an
+arbitrary tabulated profile ([[\$pz_spectrum_file]]).
+
+In the impulse-approximation mode (activated by [[pz_spectrum_e_rem]]
+or [[\$pz_spectrum_shells]]) the sampled quantity is the bound
+electron's light-cone component $u = m - E_{\rm rem} - p_z$, including
+the shell removal (binding) energy; the kinematics are built from the
+on-shell effective momentum $p_z^{\rm eff} = (m^2-u^2)/(2u)$ that
+reproduces this $u$ exactly.  Since $\sqrt{s}$ depends on the initial
+state only through $u$ (to relative $10^{-9}$), this treatment is
+exact for the hard process.  [[\$pz_spectrum_shells]] specifies a full
+multi-shell spectral function as occupancy/removal-energy/$p_0$
+triplets, e.g.\ for argon
+\begin{quote}
+[[$pz_spectrum_shells = "2 3.2059e-6 66.0e-6; 2 326.3e-9 25.8e-6;]] \\
+[[   6 248.6e-9 25.8e-6; 2 29.24e-9 8.4e-6; 6 15.76e-9 8.4e-6"]]
+\end{quote}
+<<[[sf_pz_spectrum.f90]]>>=
+<<File header>>
+
+module sf_pz_spectrum
+
+<<Use kinds>>
+<<Use strings>>
+  use rng_base
+  use pdg_arrays
+  use model_data
+  use flavors
+  use quantum_numbers
+  use state_matrices
+  use polarizations
+  use sf_base
+
+<<Standard module head>>
+
+<<SF pz spectrum: public>>
+
+<<SF pz spectrum: types>>
+
+  interface
+<<SF pz spectrum: sub interfaces>>
+  end interface
+
+end module sf_pz_spectrum
+@ %def sf_pz_spectrum
+@
+<<[[sf_pz_spectrum_sub.f90]]>>=
+<<File header>>
+
+submodule (sf_pz_spectrum) sf_pz_spectrum_s
+
+  use io_units
+  use format_defs, only: FMT_12
+  use constants, only: pi
+  use diagnostics
+  use lorentz
+
+  implicit none
+
+contains
+
+<<SF pz spectrum: procedures>>
+
+end submodule sf_pz_spectrum_s
+@ %def sf_pz_spectrum_s
+@ The data and interaction types, mirroring the Gaussian spread.
+<<SF pz spectrum: public>>=
+  public :: pz_spectrum_data_t
+  public :: pz_spectrum_t
+@ %def pz_spectrum_data_t pz_spectrum_t
+<<SF pz spectrum: types>>=
+  type, extends(sf_data_t) :: pz_spectrum_data_t
+     private
+     type(flavor_t), dimension(2) :: flv_in
+     real(default) :: p0 = 0
+     real(default) :: e_rem = 0
+     integer :: i_beam = 2
+     logical :: impulse = .false.
+     real(default), dimension(:), allocatable :: shell_cum
+     real(default), dimension(:), allocatable :: shell_erem
+     real(default), dimension(:), allocatable :: shell_p0
+     real(default), dimension(:), allocatable :: tab_pz
+     real(default), dimension(:), allocatable :: tab_cdf
+     class(rng_factory_t), allocatable :: rng_factory
+   contains
+     procedure :: init => pz_spectrum_data_init
+     procedure :: is_generator => pz_spectrum_data_is_generator
+     procedure :: get_n_par => pz_spectrum_data_get_n_par
+     procedure :: get_pdg_out => pz_spectrum_data_get_pdg_out
+     procedure :: allocate_sf_int => pz_spectrum_data_allocate_sf_int
+     procedure :: write => pz_spectrum_data_write
+     procedure :: quantile => pz_spectrum_data_quantile
+     procedure :: cdf => pz_spectrum_data_cdf
+  end type pz_spectrum_data_t
+
+  type, extends (sf_int_t) :: pz_spectrum_t
+     type(pz_spectrum_data_t), pointer :: data => null ()
+     class(rng_t), allocatable :: rng
+   contains
+     procedure :: type_string => pz_spectrum_type_string
+     procedure :: write => pz_spectrum_write
+     procedure :: init => pz_spectrum_init
+     procedure :: final => sf_pz_spectrum_final
+     procedure :: is_generator => pz_spectrum_is_generator
+     procedure :: generate_free => pz_spectrum_generate_free
+     procedure :: complete_kinematics => pz_spectrum_complete_kinematics
+     procedure :: inverse_kinematics => pz_spectrum_inverse_kinematics
+     procedure :: apply => pz_spectrum_apply
+     procedure :: set_target_momenta => pz_spectrum_set_target_momenta
+  end type pz_spectrum_t
+@ %def pz_spectrum_data_t pz_spectrum_t
+@
+<<SF pz spectrum: sub interfaces>>=
+    module subroutine pz_spectrum_data_allocate_sf_int (data, sf_int)
+      class(pz_spectrum_data_t), intent(in) :: data
+      class(sf_int_t), intent(inout), allocatable :: sf_int
+    end subroutine pz_spectrum_data_allocate_sf_int
+    module subroutine pz_spectrum_data_init &
+         (data, model, pdg_in, p0, e_rem, i_beam, file, shells, rng_factory)
+      class(pz_spectrum_data_t), intent(out) :: data
+      class(model_data_t), intent(in), target :: model
+      type(pdg_array_t), dimension(2), intent(in) :: pdg_in
+      real(default), intent(in) :: p0
+      real(default), intent(in) :: e_rem
+      integer, intent(in) :: i_beam
+      type(string_t), intent(in) :: file
+      type(string_t), intent(in) :: shells
+      class(rng_factory_t), intent(inout), allocatable :: rng_factory
+    end subroutine pz_spectrum_data_init
+    module function pz_spectrum_data_is_generator (data) result (flag)
+      class(pz_spectrum_data_t), intent(in) :: data
+      logical :: flag
+    end function pz_spectrum_data_is_generator
+    module function pz_spectrum_data_get_n_par (data) result (n)
+      class(pz_spectrum_data_t), intent(in) :: data
+      integer :: n
+    end function pz_spectrum_data_get_n_par
+    module subroutine pz_spectrum_data_get_pdg_out (data, pdg_out)
+      class(pz_spectrum_data_t), intent(in) :: data
+      type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
+    end subroutine pz_spectrum_data_get_pdg_out
+    module subroutine pz_spectrum_data_write (data, unit, verbose)
+      class(pz_spectrum_data_t), intent(in) :: data
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: verbose
+    end subroutine pz_spectrum_data_write
+    module function pz_spectrum_data_quantile (data, u) result (pz)
+      class(pz_spectrum_data_t), intent(in) :: data
+      real(default), intent(in) :: u
+      real(default) :: pz
+    end function pz_spectrum_data_quantile
+    module function pz_spectrum_data_cdf (data, pz) result (u)
+      class(pz_spectrum_data_t), intent(in) :: data
+      real(default), intent(in) :: pz
+      real(default) :: u
+    end function pz_spectrum_data_cdf
+    module function pz_spectrum_type_string (object) result (string)
+      class(pz_spectrum_t), intent(in) :: object
+      type(string_t) :: string
+    end function pz_spectrum_type_string
+    module subroutine pz_spectrum_write (object, unit, testflag)
+      class(pz_spectrum_t), intent(in) :: object
+      integer, intent(in), optional :: unit
+      logical, intent(in), optional :: testflag
+    end subroutine pz_spectrum_write
+    module subroutine pz_spectrum_init (sf_int, data)
+      class(pz_spectrum_t), intent(out) :: sf_int
+      class(sf_data_t), intent(in), target :: data
+    end subroutine pz_spectrum_init
+    module subroutine sf_pz_spectrum_final (object)
+      class(pz_spectrum_t), intent(inout) :: object
+    end subroutine sf_pz_spectrum_final
+    module function pz_spectrum_is_generator (sf_int) result (flag)
+      class(pz_spectrum_t), intent(in) :: sf_int
+      logical :: flag
+    end function pz_spectrum_is_generator
+    module subroutine pz_spectrum_generate_free (sf_int, r, rb, x_free)
+      class(pz_spectrum_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(out) :: r, rb
+      real(default), intent(inout) :: x_free
+    end subroutine pz_spectrum_generate_free
+    module subroutine pz_spectrum_complete_kinematics &
+         (sf_int, x, xb, f, r, rb, map)
+      class(pz_spectrum_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(out) :: x
+      real(default), dimension(:), intent(out) :: xb
+      real(default), intent(out) :: f
+      real(default), dimension(:), intent(in) :: r
+      real(default), dimension(:), intent(in) :: rb
+      logical, intent(in) :: map
+    end subroutine pz_spectrum_complete_kinematics
+    module subroutine pz_spectrum_inverse_kinematics &
+         (sf_int, x, xb, f, r, rb, map, set_momenta)
+      class(pz_spectrum_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(in) :: x
+      real(default), dimension(:), intent(in) :: xb
+      real(default), intent(out) :: f
+      real(default), dimension(:), intent(out) :: r
+      real(default), dimension(:), intent(out) :: rb
+      logical, intent(in) :: map
+      logical, intent(in), optional :: set_momenta
+    end subroutine pz_spectrum_inverse_kinematics
+    module subroutine pz_spectrum_apply &
+         (sf_int, scale, negative_sf, rescale, i_sub)
+      class(pz_spectrum_t), intent(inout) :: sf_int
+      real(default), intent(in) :: scale
+      logical, intent(in), optional :: negative_sf
+      class(sf_rescale_t), intent(in), optional :: rescale
+      integer, intent(in), optional :: i_sub
+    end subroutine pz_spectrum_apply
+    module subroutine pz_spectrum_set_target_momenta (sf_int, x)
+      class(pz_spectrum_t), intent(inout) :: sf_int
+      real(default), dimension(:), intent(in) :: x
+    end subroutine pz_spectrum_set_target_momenta
+@
+<<SF pz spectrum: procedures>>=
+  module subroutine pz_spectrum_data_allocate_sf_int (data, sf_int)
+    class(pz_spectrum_data_t), intent(in) :: data
+    class(sf_int_t), intent(inout), allocatable :: sf_int
+    allocate (pz_spectrum_t :: sf_int)
+  end subroutine pz_spectrum_data_allocate_sf_int
+
+  module subroutine pz_spectrum_data_init &
+       (data, model, pdg_in, p0, e_rem, i_beam, file, shells, rng_factory)
+    class(pz_spectrum_data_t), intent(out) :: data
+    class(model_data_t), intent(in), target :: model
+    type(pdg_array_t), dimension(2), intent(in) :: pdg_in
+    real(default), intent(in) :: p0
+    real(default), intent(in) :: e_rem
+    integer, intent(in) :: i_beam
+    type(string_t), intent(in) :: file
+    type(string_t), intent(in) :: shells
+    class(rng_factory_t), intent(inout), allocatable :: rng_factory
+    integer :: u, iostat, n, i
+    real(default) :: q, dens, norm, m
+    real(default), dimension(:), allocatable :: tq, td
+    character(len=:), allocatable :: buf
+    integer :: ntok, n_shell, j
+    logical :: prev_blank
+    real(default), dimension(:,:), allocatable :: shl
+    call data%flv_in(1)%init (pdg_in(1)%get (1), model)
+    call data%flv_in(2)%init (pdg_in(2)%get (1), model)
+    data%p0 = p0
+    data%e_rem = e_rem
+    data%i_beam = i_beam
+    if (i_beam /= 1 .and. i_beam /= 2) then
+       call msg_fatal ("pz_spectrum: pz_spectrum_beam must be 1 or 2")
+    end if
+    m = data%flv_in(i_beam)%get_mass ()
+    if (len (shells) > 0) then
+       !!! multi-shell impulse-approximation mode:
+       !!! "n1 Erem1 p01; n2 Erem2 p02; ..."  (separators ;, treated as blanks)
+       buf = char (shells)
+       do j = 1, len (buf)
+          if (buf(j:j) == ";" .or. buf(j:j) == "," .or. buf(j:j) == char(9) &
+               .or. buf(j:j) == char(10))  buf(j:j) = " "
+       end do
+       ntok = 0
+       prev_blank = .true.
+       do j = 1, len (buf)
+          if (buf(j:j) /= " ") then
+             if (prev_blank)  ntok = ntok + 1
+             prev_blank = .false.
+          else
+             prev_blank = .true.
+          end if
+       end do
+       if (ntok == 0 .or. mod (ntok, 3) /= 0) then
+          call msg_fatal ("pz_spectrum: $pz_spectrum_shells must contain " &
+               // "triplets 'occupancy E_rem p0' (energies in GeV)")
+       end if
+       n_shell = ntok / 3
+       allocate (shl (3, n_shell))
+       read (buf, *, iostat = iostat) shl
+       if (iostat /= 0) then
+          call msg_fatal ("pz_spectrum: cannot parse $pz_spectrum_shells")
+       end if
+       if (any (shl(1,:) <= 0) .or. any (shl(2,:) < 0) &
+            .or. any (shl(3,:) <= 0)) then
+          call msg_fatal ("pz_spectrum: shell occupancies and p0 must be " &
+               // "positive, removal energies non-negative")
+       end if
+       if (any (shl(2,:) > 0.1_default * m)) then
+          call msg_fatal ("pz_spectrum: shell removal energy exceeds " &
+               // "0.1 * target mass")
+       end if
+       allocate (data%shell_cum (n_shell))
+       allocate (data%shell_erem (n_shell), data%shell_p0 (n_shell))
+       data%shell_erem = shl(2,:)
+       data%shell_p0 = shl(3,:)
+       data%shell_cum(1) = shl(1,1)
+       do i = 2, n_shell
+          data%shell_cum(i) = data%shell_cum(i-1) + shl(1,i)
+       end do
+       data%shell_cum = data%shell_cum / data%shell_cum(n_shell)
+       data%impulse = .true.
+    else if (e_rem > 0) then
+       !!! single-shell impulse mode using pz_spectrum_p0 / pz_spectrum_e_rem
+       if (e_rem > 0.1_default * m) then
+          call msg_fatal ("pz_spectrum: pz_spectrum_e_rem exceeds " &
+               // "0.1 * target mass")
+       end if
+       allocate (data%shell_cum (1), data%shell_erem (1), data%shell_p0 (1))
+       data%shell_cum = [ 1._default ]
+       data%shell_erem = [ e_rem ]
+       data%shell_p0 = [ p0 ]
+       data%impulse = .true.
+    end if
+    if (data%impulse .and. any (data%shell_p0 <= 0)) then
+       call msg_fatal ("pz_spectrum: p0 must be positive in impulse mode")
+    end if
+    if (data%impulse .and. len (file) > 0) then
+       call msg_fatal ("pz_spectrum: $pz_spectrum_file cannot be combined " &
+            // "with e_rem/shells (encode removal energies in the table)")
+    end if
+    if (len (file) > 0) then
+       u = free_unit ()
+       open (u, file = char (file), action = "read", status = "old", &
+            iostat = iostat)
+       if (iostat /= 0) then
+          call msg_fatal ("pz_spectrum: file '" // char (file) &
+               // "' not found")
+       end if
+       n = 0
+       do
+          read (u, *, iostat = iostat) q, dens
+          if (iostat /= 0)  exit
+          n = n + 1
+       end do
+       if (n < 2) then
+          call msg_fatal ("pz_spectrum: file '" // char (file) &
+               // "' must contain at least two rows: pz density")
+       end if
+       allocate (tq (n), td (n))
+       rewind (u)
+       do i = 1, n
+          read (u, *) tq(i), td(i)
+       end do
+       close (u)
+       do i = 2, n
+          if (tq(i) <= tq(i-1)) then
+             call msg_fatal ("pz_spectrum: file '" // char (file) &
+                  // "': pz column must be strictly increasing")
+          end if
+       end do
+       if (any (td < 0)) then
+          call msg_fatal ("pz_spectrum: profile density must not be negative")
+       end if
+       allocate (data%tab_pz (n), data%tab_cdf (n))
+       data%tab_pz = tq
+       data%tab_cdf(1) = 0
+       do i = 2, n
+          data%tab_cdf(i) = data%tab_cdf(i-1) &
+               + 0.5_default * (td(i) + td(i-1)) * (tq(i) - tq(i-1))
+       end do
+       norm = data%tab_cdf(n)
+       if (norm <= 0) then
+          call msg_fatal ("pz_spectrum: profile normalization vanishes")
+       end if
+       data%tab_cdf = data%tab_cdf / norm
+    else if (.not. data%impulse) then
+       if (p0 <= 0) then
+          call msg_fatal ("pz_spectrum: pz_spectrum_p0 must be positive " &
+               // "(or provide $pz_spectrum_file / $pz_spectrum_shells)")
+       end if
+    end if
+    call move_alloc (from = rng_factory, to = data%rng_factory)
+  end subroutine pz_spectrum_data_init
+
+  module function pz_spectrum_data_is_generator (data) result (flag)
+    class(pz_spectrum_data_t), intent(in) :: data
+    logical :: flag
+    flag = .true.
+  end function pz_spectrum_data_is_generator
+
+  module function pz_spectrum_data_get_n_par (data) result (n)
+    class(pz_spectrum_data_t), intent(in) :: data
+    integer :: n
+    n = 2
+  end function pz_spectrum_data_get_n_par
+
+  module subroutine pz_spectrum_data_get_pdg_out (data, pdg_out)
+    class(pz_spectrum_data_t), intent(in) :: data
+    type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
+    integer :: i, n
+    n = 2
+    do i = 1, n
+       pdg_out(i) = data%flv_in(i)%get_pdg ()
+    end do
+  end subroutine pz_spectrum_data_get_pdg_out
+
+  module subroutine pz_spectrum_data_write (data, unit, verbose)
+    class(pz_spectrum_data_t), intent(in) :: data
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)") "Target p_z spectrum data:"
+    write (u, "(3x,A,A,A,A)") "prt_in = ", &
+         char (data%flv_in(1)%get_name ()), &
+         ", ", char (data%flv_in(2)%get_name ())
+    write (u, "(3x,A,1x,I0)") "beam   =", data%i_beam
+    if (allocated (data%tab_pz)) then
+       write (u, "(3x,A,1x,I0,A)") "profile = table with", &
+            size (data%tab_pz), " points"
+    else if (data%impulse) then
+       write (u, "(3x,A,1x,I0,A)") "profile = impulse approximation with", &
+            size (data%shell_cum), " shell(s)"
+       do i = 1, size (data%shell_cum)
+          write (u, "(5x,A,I0,A,2(1x," // FMT_12 // "))") "shell ", i, &
+               ": E_rem, p0 =", data%shell_erem(i), data%shell_p0(i)
+       end do
+    else
+       write (u, "(3x,A,1x," // FMT_12 // ")") "p0     =", data%p0
+    end if
+    call data%rng_factory%write (u)
+  end subroutine pz_spectrum_data_write
+
+  module function pz_spectrum_data_quantile (data, u) result (pz)
+    class(pz_spectrum_data_t), intent(in) :: data
+    real(default), intent(in) :: u
+    real(default) :: pz
+    real(default) :: uc, du, r2, c_lo, pz_true, u_lc, m
+    integer :: i, lo, hi, mid, n_shell
+    uc = min (max (u, 1e-15_default), 1 - 1e-15_default)
+    if (allocated (data%tab_pz)) then
+       lo = 1
+       hi = size (data%tab_cdf)
+       do while (hi - lo > 1)
+          mid = (lo + hi) / 2
+          if (data%tab_cdf(mid) <= uc) then
+             lo = mid
+          else
+             hi = mid
+          end if
+       end do
+       du = data%tab_cdf(hi) - data%tab_cdf(lo)
+       if (du > 0) then
+          pz = data%tab_pz(lo) + (data%tab_pz(hi) - data%tab_pz(lo)) &
+               * (uc - data%tab_cdf(lo)) / du
+       else
+          pz = data%tab_pz(lo)
+       end if
+    else if (data%impulse) then
+       !!! impulse approximation: pick shell by occupancy (stratified in uc),
+       !!! sample the true p_z from its hydrogenic profile, form the bound
+       !!! electron's light-cone component u_lc = m - E_rem - p_z, and return
+       !!! the on-shell effective momentum reproducing u_lc exactly
+       m = data%flv_in(data%i_beam)%get_mass ()
+       n_shell = size (data%shell_cum)
+       lo = n_shell
+       c_lo = 0
+       do i = 1, n_shell
+          if (uc <= data%shell_cum(i)) then
+             lo = i
+             exit
+          end if
+       end do
+       if (lo > 1)  c_lo = data%shell_cum(lo-1)
+       r2 = (uc - c_lo) / (data%shell_cum(lo) - c_lo)
+       r2 = min (max (r2, 1e-15_default), 1 - 1e-15_default)
+       pz_true = data%shell_p0(lo) * hydrogenic_quantile (r2)
+       !!! clamp the unphysical deep tail (u_lc must stay positive); the
+       !!! clamped region is far below threshold and carries zero weight
+       pz_true = min (pz_true, 0.8_default * (m - data%shell_erem(lo)))
+       u_lc = m - data%shell_erem(lo) - pz_true
+       pz = (m ** 2 - u_lc ** 2) / (2 * u_lc)
+    else
+       !!! legacy free-electron mode: on-shell with the sampled true p_z
+       pz = data%p0 * hydrogenic_quantile (uc)
+    end if
+  end function pz_spectrum_data_quantile
+
+  function hydrogenic_quantile (uc) result (t)
+    real(default), intent(in) :: uc
+    real(default) :: t
+    real(default) :: th_lo, th_hi, th
+    integer :: i
+    !!! invert the hydrogenic 1s profile CDF by bisection in
+    !!! theta = atan (pz / p0)
+    th_lo = - pi / 2
+    th_hi = pi / 2
+    do i = 1, 96
+       th = 0.5_default * (th_lo + th_hi)
+       if (hydrogenic_cdf (tan (th)) <= uc) then
+          th_lo = th
+       else
+          th_hi = th
+       end if
+    end do
+    t = tan (0.5_default * (th_lo + th_hi))
+  end function hydrogenic_quantile
+
+  module function pz_spectrum_data_cdf (data, pz) result (u)
+    class(pz_spectrum_data_t), intent(in) :: data
+    real(default), intent(in) :: pz
+    real(default) :: u
+    real(default) :: du
+    integer :: lo, hi, mid
+    if (data%impulse) then
+       call msg_bug ("pz_spectrum: forward CDF not defined in impulse mode")
+    end if
+    if (allocated (data%tab_pz)) then
+       if (pz <= data%tab_pz(1)) then
+          u = 0
+       else if (pz >= data%tab_pz(size (data%tab_pz))) then
+          u = 1
+       else
+          lo = 1
+          hi = size (data%tab_pz)
+          do while (hi - lo > 1)
+             mid = (lo + hi) / 2
+             if (data%tab_pz(mid) <= pz) then
+                lo = mid
+             else
+                hi = mid
+             end if
+          end do
+          du = data%tab_pz(hi) - data%tab_pz(lo)
+          u = data%tab_cdf(lo) + (data%tab_cdf(hi) - data%tab_cdf(lo)) &
+               * (pz - data%tab_pz(lo)) / du
+       end if
+    else
+       u = hydrogenic_cdf (pz / data%p0)
+    end if
+  end function pz_spectrum_data_cdf
+
+  function hydrogenic_cdf (t) result (u)
+    real(default), intent(in) :: t
+    real(default) :: u
+    real(default) :: t2
+    t2 = t * t
+    u = 0.5_default + (8 / (3 * pi)) &
+         * (t / (4 * (1 + t2) ** 2) &
+         +  3 * t / (8 * (1 + t2)) &
+         +  0.375_default * atan (t))
+  end function hydrogenic_cdf
+
+  module function pz_spectrum_type_string (object) result (string)
+    class(pz_spectrum_t), intent(in) :: object
+    type(string_t) :: string
+    if (associated (object%data)) then
+       string = "pz_spectrum: target p_z (Compton profile) spectrum"
+    else
+       string = "pz_spectrum: [undefined]"
+    end if
+  end function pz_spectrum_type_string
+
+  module subroutine pz_spectrum_write (object, unit, testflag)
+    class(pz_spectrum_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: u
+    u = given_output_unit (unit)
+    if (associated (object%data)) then
+       call object%data%write (u)
+       call object%rng%write (u)
+       call object%base_write (u, testflag)
+    else
+       write (u, "(1x,A)")  "pz_spectrum data: [undefined]"
+    end if
+  end subroutine pz_spectrum_write
+
+  module subroutine pz_spectrum_init (sf_int, data)
+    class(pz_spectrum_t), intent(out) :: sf_int
+    class(sf_data_t), intent(in), target :: data
+    real(default), dimension(2) :: m2
+    real(default), dimension(0) :: mr2
+    type(quantum_numbers_mask_t), dimension(4) :: mask
+    integer, dimension(4) :: hel_lock
+    type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
+    type(polarization_t), target :: pol1, pol2
+    type(polarization_iterator_t) :: it_hel1, it_hel2
+    integer :: i
+    select type (data)
+    type is (pz_spectrum_data_t)
+       m2 = data%flv_in%get_mass () ** 2
+       hel_lock = [3, 4, 1, 2]
+       mask = quantum_numbers_mask (.false., .false., .false.)
+       call sf_int%base_init (mask, m2, mr2, m2, hel_lock = hel_lock)
+       sf_int%data => data
+       do i = 1, 2
+          call qn_fc(i)%init ( &
+               flv = data%flv_in(i), &
+               col = color_from_flavor (data%flv_in(i)))
+          call qn_fc(i+2)%init ( &
+               flv = data%flv_in(i), &
+               col = color_from_flavor (data%flv_in(i)))
+       end do
+       call pol1%init_generic (data%flv_in(1))
+       call it_hel1%init (pol1)
+       do while (it_hel1%is_valid ())
+          qn_hel(1) = it_hel1%get_quantum_numbers ()
+          qn_hel(3) = it_hel1%get_quantum_numbers ()
+          call pol2%init_generic (data%flv_in(2))
+          call it_hel2%init (pol2)
+          do while (it_hel2%is_valid ())
+             qn_hel(2) = it_hel2%get_quantum_numbers ()
+             qn_hel(4) = it_hel2%get_quantum_numbers ()
+             qn = qn_hel .merge. qn_fc
+             call sf_int%add_state (qn)
+             call it_hel2%advance ()
+          end do
+          call it_hel1%advance ()
+       end do
+       call sf_int%freeze ()
+       call sf_int%set_incoming ([1,2])
+       call sf_int%set_outgoing ([3,4])
+       sf_int%status = SF_INITIAL
+    end select
+    call sf_int%data%rng_factory%make (sf_int%rng)
+  end subroutine pz_spectrum_init
+
+  module subroutine sf_pz_spectrum_final (object)
+    class(pz_spectrum_t), intent(inout) :: object
+    call object%interaction_t%final ()
+  end subroutine sf_pz_spectrum_final
+
+  module function pz_spectrum_is_generator (sf_int) result (flag)
+    class(pz_spectrum_t), intent(in) :: sf_int
+    logical :: flag
+    flag = sf_int%data%is_generator ()
+  end function pz_spectrum_is_generator
+
+  module subroutine pz_spectrum_generate_free (sf_int, r, rb, x_free)
+    class(pz_spectrum_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: r, rb
+    real(default), intent(inout) :: x_free
+    real(default), dimension(1) :: u
+    real(default) :: pz, m, e
+    associate (data => sf_int%data)
+      call sf_int%rng%generate (u)
+      r = 1
+      rb = 0
+      r (data%i_beam) = u(1)
+      rb(data%i_beam) = 1 - u(1)
+      !!! estimate of the s-rescaling for downstream mappings:
+      !!! light-cone fraction (E - pz) / m of the target
+      pz = data%quantile (u(1))
+      m = data%flv_in(data%i_beam)%get_mass ()
+      if (m > 0) then
+         e = sqrt (m ** 2 + pz ** 2)
+         x_free = x_free * (e - pz) / m
+      end if
+    end associate
+  end subroutine pz_spectrum_generate_free
+
+  module subroutine pz_spectrum_complete_kinematics &
+       (sf_int, x, xb, f, r, rb, map)
+    class(pz_spectrum_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(in) :: r
+    real(default), dimension(:), intent(in) :: rb
+    logical, intent(in) :: map
+    if (map) then
+       call msg_fatal ("pz_spectrum: map flag not supported")
+    else
+       x = r
+       xb= rb
+       f = 1
+    end if
+    call sf_int%set_target_momenta (x)
+  end subroutine pz_spectrum_complete_kinematics
+
+  module subroutine pz_spectrum_set_target_momenta (sf_int, x)
+    class(pz_spectrum_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(in) :: x
+    type(vector4_t), dimension(2) :: k
+    type(vector4_t), dimension(2) :: q
+    type(vector3_t) :: n3, p3
+    real(default) :: pz, m, pn
+    integer :: it, ip
+    if (sf_int%status >= SF_SEED_KINEMATICS) then
+       associate (data => sf_int%data)
+         it = data%i_beam
+         ip = 3 - it
+         k(1) = sf_int%get_momentum (1)
+         k(2) = sf_int%get_momentum (2)
+         pz = data%quantile (x(it))
+         m = data%flv_in(it)%get_mass ()
+         !!! shift the target momentum along the projectile direction
+         pn = space_part_norm (k(ip))
+         if (pn > 0) then
+            n3 = (1 / pn) * space_part (k(ip))
+         else
+            n3 = vector3_canonical (3)
+         end if
+         p3 = space_part (k(it)) + pz * n3
+         q(ip) = k(ip)
+         q(it) = vector4_moving (sqrt (m ** 2 + p3 ** 2), p3)
+         call sf_int%set_momenta (q, outgoing = .true.)
+         sf_int%status = SF_DONE_KINEMATICS
+       end associate
+    end if
+  end subroutine pz_spectrum_set_target_momenta
+
+  module subroutine pz_spectrum_inverse_kinematics &
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
+    class(pz_spectrum_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(out) :: r
+    real(default), dimension(:), intent(out) :: rb
+    logical, intent(in) :: map
+    logical, intent(in), optional :: set_momenta
+    logical :: set_mom
+    set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
+    if (map) then
+       call msg_fatal ("pz_spectrum: map flag not supported")
+    else
+       r = x
+       rb= xb
+       f = 1
+    end if
+    if (set_mom) then
+       call sf_int%set_target_momenta (x)
+    end if
+  end subroutine pz_spectrum_inverse_kinematics
+
+  module subroutine pz_spectrum_apply &
+       (sf_int, scale, negative_sf, rescale, i_sub)
+    class(pz_spectrum_t), intent(inout) :: sf_int
+    real(default), intent(in) :: scale
+    logical, intent(in), optional :: negative_sf
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    real(default) :: f
+    f = 1
+    call sf_int%set_matrix_element (cmplx (f, kind=default))
+    sf_int%status = SF_EVALUATED
+  end subroutine pz_spectrum_apply
+
+
+@ %def pz_spectrum procedures
+@
 \section{Using beam event data}
 
 Instead of an analytic beam description, beam data may be provided in
@@ -29969,6 +30721,7 @@ module dispatch_beams
   use sf_ewa
   use sf_escan
   use sf_gaussian
+  use sf_pz_spectrum
   use sf_beam_events
   use sf_circe1
   use sf_circe2
@@ -30096,6 +30849,9 @@ flavors (beam index, component index) for the hard process.
     logical :: circe2_polarized
     type(string_t) :: circe2_design, circe2_file
     real(default), dimension(2) :: gaussian_spread
+    real(default) :: pz_spectrum_p0, pz_spectrum_e_rem
+    integer :: pz_spectrum_beam
+    type(string_t) :: pz_spectrum_file, pz_spectrum_shells
     logical :: beam_events_warn_eof
     type(string_t) :: beam_events_dir, beam_events_file
     logical :: escan_normalize
@@ -30390,6 +31146,27 @@ flavors (beam index, component index) for the hard process.
           call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
           call data%init (model, pdg_in, gaussian_spread, rng_factory)
        end select
+    case ("pz_spectrum")
+       allocate (pz_spectrum_data_t :: data)
+       select type (data)
+       type is (pz_spectrum_data_t)
+          pz_spectrum_p0 = &
+               var_list%get_rval (var_str ("pz_spectrum_p0"))
+          pz_spectrum_e_rem = &
+               var_list%get_rval (var_str ("pz_spectrum_e_rem"))
+          pz_spectrum_beam = &
+               var_list%get_ival (var_str ("pz_spectrum_beam"))
+          pz_spectrum_file = &
+               var_list%get_sval (var_str ("$pz_spectrum_file"))
+          pz_spectrum_shells = &
+               var_list%get_sval (var_str ("$pz_spectrum_shells"))
+          call dispatch_rng_factory &
+               (rng_factory, var_list_global, next_rng_seed)
+          call update_rng_seed_in_var_list (var_list_global, next_rng_seed)
+          call data%init (model, pdg_in, pz_spectrum_p0, pz_spectrum_e_rem, &
+               pz_spectrum_beam, pz_spectrum_file, pz_spectrum_shells, &
+               rng_factory)
+       end select
     case ("beam_events")
        allocate (beam_events_data_t :: data)
        select type (data)
@@ -30473,6 +31250,8 @@ parameter.
     case ("circe1", "circe2")
        n = 2
     case ("gaussian")
+       n = 2
+    case ("pz_spectrum")
        n = 2
     case ("beam_events")
        n = 2
