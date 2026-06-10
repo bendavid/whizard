@@ -24161,12 +24161,15 @@ end submodule sf_pz_spectrum_s
        data%shell_p0 = [ p0 ]
        data%impulse = .true.
     end if
-    if (data%impulse .and. any (data%shell_p0 <= 0)) then
-       call msg_fatal ("pz_spectrum: p0 must be positive in impulse mode")
-    end if
-    if (data%impulse .and. len (file) > 0) then
-       call msg_fatal ("pz_spectrum: $pz_spectrum_file cannot be combined " &
-            // "with e_rem/shells (encode removal energies in the table)")
+    if (data%impulse) then
+       if (any (data%shell_p0 <= 0)) then
+          call msg_fatal ("pz_spectrum: p0 must be positive in impulse mode")
+       end if
+       if (len (file) > 0) then
+          call msg_fatal ("pz_spectrum: $pz_spectrum_file cannot be " &
+               // "combined with e_rem/shells (encode removal energies " &
+               // "in the table)")
+       end if
     end if
     if (len (file) > 0) then
        u = free_unit ()
