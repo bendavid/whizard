@@ -30767,6 +30767,10 @@ structure-function chain.
     case ("gaussian => pz_spectrum => isr, none", &
          "gaussian => pz_spectrum => none, isr")
        allocate (single_mapping (1), source = [3])
+    case ("gaussian => pz_spectrum => isr, none => none, isr")
+       allocate (s_mapping (2), source = [3, 4])
+       power_mapping = .true.
+       power_mapping_eps = minval (sf_prop%isr_eps)
     case ("circe2 => lpdf, none", &
          "circe2 => none, lpdf", &
          "gaussian => lpdf, none", &
